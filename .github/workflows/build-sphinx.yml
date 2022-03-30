@@ -27,9 +27,7 @@ jobs:
           apt-get install -y rsync
           apt-get install -y cmake
           apt-get install -y libeigen3-dev
-          ls
           git clone "https://token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" .
-          git clone "https://token:${GITHUB_TOKEN}@github.com/libigl/eigen" ./Eigen
         shell: bash
       - name: Run build script for Sphinx pages
         env:

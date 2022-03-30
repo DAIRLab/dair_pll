@@ -1,13 +1,8 @@
 #!/bin/bash
 set -x
 
-#apt-get update
-#apt-get -y install git rsync python3-sphinx
-
-#pushd "./repo"
 pwd ls -lah
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
-#popd
 
 ##############
 # BUILD DOCS #
@@ -16,14 +11,9 @@ export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 # build tools
 pip install --upgrade pip setuptools wheel
 
-# Eigen source
-CMAKE_MODULE_PATH=${PWD}/Eigen/cmake
-echo ${CMAKE_MODULE_PATH}
-ls ${CMAKE_MODULE_PATH}
-
 # git deps
 pip install git+https://github.com/mshalm/diffqcqp.git
-
+pip install git+https://github.com/DAIRLab/drake-pytorch.git
 # install package to get deps
 pip install -e .
 
@@ -54,11 +44,12 @@ touch .nojekyll
 cat > README.md <<EOF
 # README for the GitHub Pages Branch
 This branch is simply a cache for the website served from https://dairlab.github.io/dair_pll/,
-and is  not intended to be viewed on github.com.
+and is not intended to be viewed on github.com.
 
 For more information on how this site is built using Sphinx, Read the Docs, and GitHub Actions/Pages, see:
  * https://www.docslikecode.com/articles/github-pages-python-sphinx/
  * https://tech.michaelaltfield.net/2020/07/18/sphinx-rtd-github-pages-1
+ * 
 EOF
  
 # Copy the resulting html pages built from Sphinx to the gh-pages branch 
