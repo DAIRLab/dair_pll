@@ -14,7 +14,7 @@ install_reqs = [
     'typing_extensions',
     'meshcat',
     'matplotlib',
-    'threadpoolctl'
+    'threadpoolctl',
     'click',
     # documentation
     'pydeps',
