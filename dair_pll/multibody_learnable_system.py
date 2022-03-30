@@ -1,0 +1,379 @@
+"""Construction and analysis of learnable multibody systems.
+
+Similar to Drake, multibody systems are instantiated as a child class of
+``System``: ``MultibodyLearnableSystem``. This object is a thin wrapper for a
+``MultibodyTerms`` member variable, which manages computation of lumped terms
+necessary for simulation and evaluation.
+
+Simulation is implemented via Anitescu's [1] convex method.
+
+An interface for the ContactNets [2] loss is also defined as an alternative
+to prediction loss.
+
+A large portion of the internal implementation of ``DrakeSystem`` is
+implemented in ``MultibodyPlantDiagram``.
+
+[1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
+multibody dynamics,” Mathematical Programming, 2006,
+https://doi.org/10.1007/s10107-005-0590-7
+[2] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning Discontinuous
+Contact Dynamics with Smooth, Implicit Representations," Conference on
+Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
+"""
+from multiprocessing import pool
+from os import path
+from typing import Tuple, Optional, Dict
+
+import numpy as np
+import torch
+from diffqcqp import LCQPFn2  # type: ignore
+from torch import Tensor
+
+from dair_pll import file_utils
+from dair_pll import meshcat_utils
+from dair_pll import urdf_utils
+from dair_pll.drake_system import DrakeSystem
+from dair_pll.experiment import LEARNED_SYSTEM_NAME, \
+    PREDICTION_NAME, TARGET_NAME
+from dair_pll.integrator import VelocityIntegrator
+from dair_pll.multibody_terms import MultibodyTerms
+from dair_pll.system import System, \
+    SystemSummary
+from dair_pll.tensor_utils import pbmm, one_vector_block_diagonal, \
+    batch_diagonal
+
+
+def tripled_phi(phi: Tensor) -> Tensor:
+    """Utility function to broadcast phi to J shape.
+
+    The last index of the broadcasted output is formatted as::
+        [phi, phi_1, phi_1, ..., phi_n_contacts, phi_n_contacts].
+
+    Args:
+        (*, n_contacts) signed distance phi.
+    Returns:
+        (*, 3 * n_contacts) broadcasted phi.
+    """
+    n_contacts = phi.shape[-1]
+    double_phi_shape = phi.shape[:-1] + (2 * n_contacts,)
+    phi_tiled = phi.unsqueeze(-1).repeat([1] * len(phi.shape) +
+                                         [2]).reshape(double_phi_shape)
+    # pylint: disable=E1103
+    return torch.cat((phi, phi_tiled), dim=-1)
+
+
+class MultibodyLearnableSystem(System):
+    """``System`` interface for dynamics associated with ``MultibodyTerms``."""
+    multibody_terms: MultibodyTerms
+    urdfs: Dict[str, str]
+    visualization_system: Optional[DrakeSystem]
+    solver: LCQPFn2
+    dt: float
+
+    def __init__(self, urdfs: Dict[str, str], dt: float) -> None:
+        """Inits ``MultibodyLearnableSystem`` with provided model URDFs.
+
+        Implementation is primarily based on Drake. Bodies are modeled via
+        ``MultibodyTerms``, which uses Drake symbolics to generate dynamics
+        terms, and the system can be exported back to a Drake-interpretable
+        representation as a set of URDFs.
+
+        Args:
+            urdfs: Names and corresponding URDFs to model with
+            ``MultibodyTerms``.
+            dt: Time step of system in seconds.
+        """
+        multibody_terms = MultibodyTerms(urdfs)
+        space = multibody_terms.plant_diagram.space
+        integrator = VelocityIntegrator(space, self.sim_step, dt)
+        super().__init__(space, integrator)
+        self.multibody_terms = multibody_terms
+        self.urdfs = urdfs
+        self.visualization_system = None
+        self.solver = LCQPFn2()
+        self.dt = dt
+        self.set_carry_sampler(lambda: Tensor([[False]]))
+        self.max_batch_dim = 1
+
+    def get_updated_drake_system(self, storage_name: str) -> DrakeSystem:
+        """Exports current parameterization as a ``DrakeSystem``.
+
+        Args:
+            storage_name: name of file storage location in which to store new
+            URDFs for Drake to read.
+
+        Returns:
+            New Drake system instantiated on new URDFs.
+        """
+        old_urdfs = self.urdfs
+        new_urdf_strings = urdf_utils.represent_multibody_terms_as_urdfs(
+            self.multibody_terms)
+        new_urdfs = {}
+        urdf_dir = file_utils.urdf_dir(storage_name)
+
+        # saves new urdfs with identical file basenames to original ones,
+        # but in new folder.
+        for urdf_name, new_urdf_string in new_urdf_strings.items():
+            old_urdf_filename = path.basename(old_urdfs[urdf_name])
+            new_urdf_path = path.join(urdf_dir, old_urdf_filename)
+            with open(new_urdf_path, 'w', encoding="utf8") as new_urdf_file:
+                new_urdf_file.write(new_urdf_string)
+            new_urdfs[urdf_name] = new_urdf_path
+
+        return DrakeSystem(new_urdfs, self.dt)
+
+    def get_visualization_system(self) -> DrakeSystem:
+        """Generate a dummy ``DrakeSystem`` for visualizing comparisons
+        between trajectories generated by this system and something else,
+        e.g. data.
+
+        Implemented as a thin wrapper of
+        ``meshcat_utils.generate_visualization_system()``, which generates a
+        drake system where each model in the ``MultibodyLearnableSystem`` has a
+        duplicate, and visualization elements are repainted for visual
+        distinction.
+
+        Returns:
+            New ``DrakeSystem`` with doubled state and repainted elements.
+        """
+        if not self.visualization_system:
+            self.visualization_system = \
+                meshcat_utils.generate_visualization_system(
+                    DrakeSystem(self.urdfs, self.dt)
+                )
+
+        return self.visualization_system
+
+    def visualize(self, target_trajectory: Tensor,
+                  prediction_trajectory: Tensor) -> Tuple[np.ndarray, int]:
+        """Visualizes a comparison between a target trajectory and one
+        predicted by this system.
+
+        Implemented as a wrapper to ``meshcat_utils.visualize_trajectory()``.
+
+        Args:
+            target_trajectory: (T, space.n_x) trajectory to compare to.
+            prediction_trajectory: (T, space.n_x) trajectory predicted by
+            this system.
+
+        Returns:
+            (1, T, 3, H, W) ndarray video capture of trajectory with resolution
+            H x W, approximately 640 x 480.
+            The framerate of the video in frames/second, rounded to an integer.
+        """
+        space = self.space
+        # pylint: disable=E1103
+        visualization_trajectory = torch.cat(
+            (space.q(target_trajectory), space.q(prediction_trajectory),
+             space.v(target_trajectory), space.v(prediction_trajectory)), -1)
+        return meshcat_utils.visualize_trajectory(
+            self.get_visualization_system(), visualization_trajectory)
+
+    def contactnets_loss(self,
+                         x: Tensor,
+                         u: Tensor,
+                         x_plus: Tensor,
+                         loss_pool: Optional[pool.Pool] = None) -> Tensor:
+        """Calculate ContactNets [1] loss for state transition.
+
+        References:
+            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
+            Discontinuous Contact Dynamics with Smooth, Implicit
+            Representations," Conference on Robotic Learning, 2020,
+            https://proceedings.mlr.press/v155/pfrommer21a.html
+
+        Args:
+            x: (*, space.n_x) current state batch.
+            u: (*, ?) input batch.
+            x_plus: (*, space.n_x) current state batch.
+            loss_pool: optional processing pool to enable multithreaded solves.
+
+        Returns:
+            (*,) loss batch.
+        """
+        # pylint: disable-msg=too-many-locals
+        v = self.space.v(x)
+        q_plus, v_plus = self.space.q_v(x_plus)
+        dt = self.dt
+
+        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
+            q_plus, v_plus, u)
+
+        n_contacts = phi.shape[-1]
+        J_t = J[..., n_contacts:, :]
+
+        # block diagonal matrix of [1; 1] vectors
+        E = one_vector_block_diagonal(n_contacts, 2)
+        phi_tripled = tripled_phi(phi)
+        sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
+
+        # Assemble maximum dissipation loss
+        dissipation_normal_mat = pbmm(
+            batch_diagonal(sliding_velocities.squeeze(2)), E)
+
+        sliding_speeds_squared = pbmm(E.t(),
+                                      sliding_velocities * sliding_velocities)
+
+        # pylint: disable=E1103
+        repeated_squared_sliding_speeds = pbmm(
+            E, torch.sqrt(sliding_speeds_squared)).squeeze(2)
+        dissipation_tangent_mat = batch_diagonal(
+            repeated_squared_sliding_speeds)
+
+        # pylint: disable=E1103
+        dissipation_penalty_sqrt = torch.cat(
+            (dissipation_normal_mat, dissipation_tangent_mat), dim=-1)
+        dissipation_penalty = pbmm(dissipation_penalty_sqrt.transpose(-1, -2),
+                                   dissipation_penalty_sqrt)
+
+        Q = delassus + batch_diagonal(phi_tripled) + dissipation_penalty
+
+        dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
+        q = pbmm(J, dv.transpose(-1, -2))
+
+        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+
+        # Envelope theorem guarantees that gradient of loss w.r.t. parameters
+        # can ignore the gradient of the force w.r.t. the QCQP parameters.
+        # Therefore, we can detach ``force`` from pytorch's computation graph
+        # without causing error in the overall loss gradient.
+        # pylint: disable=E1103
+        force = self.solver.apply(Q, q, torch.rand(q.shape), 1e-7, 1000, 1e-7,
+                                  loss_pool).detach()
+
+        loss = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) + pbmm(
+            force.transpose(-1, -2), q) + constant
+
+        return loss.squeeze()
+
+    def forward_dynamics(self,
+                         q: Tensor,
+                         v: Tensor,
+                         u: Tensor,
+                         dynamics_pool: Optional[pool.Pool] = None) -> Tensor:
+        """Calculates delta velocity from current state and input.
+
+        Implement's Anitescu's [1] convex formulation in dual form, derived
+        similarly to Tedrake [2] and described here.
+
+        Let v_minus be the contact-free next velocity, i.e.::
+
+            v + dt * non_contact_acceleration.
+
+        Let FC be the combined friction cone::
+
+            FC = {[beta_n beta_t]: beta_n_i >= ||beta_t_i||}.
+
+        The primal version of Anitescu's formulation is as follows::
+
+            min_{v_plus,s}  (v_plus - v_minus)^T M(q)(v_plus - v_minus)/2
+            s.t.            s = [I; 0]phi(q)/dt + J(q)v_plus,
+                            s \\in FC.
+
+        The KKT conditions are the mixed cone complementarity
+        problem [3, Theorem 2]::
+
+            s = [I; 0]phi(q)/dt + J(q)v_plus,
+            M(q)(v_plus - v_minus) = J(q)^T f,
+            FC \\ni s \\perp f \\in FC.
+
+        As M(q) is positive definite, we can solve for v_plus in terms of
+        lambda, and thus these conditions can be simplified to::
+
+        FC \\ni D(q)f + J(q)v_minus + [I;0]phi(q)/dt \\perp f \\in FC.
+
+        which in turn are the KKT conditions for the dual QCQP we solve::
+
+            min_{f}     f^T D(q) f/2 + f^T(J(q)v_minus + [I;0]phi(q)/dt)
+            s.t.        f \\in FC.
+
+        References:
+            [1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
+            multibody dynamics,” Mathematical Programming, 2006,
+            https://doi.org/10.1007/s10107-005-0590-7
+            [2] R. Tedrake. Underactuated Robotics: Algorithms for Walking,
+            Running, Swimming, Flying, and Manipulation (Course Notes for MIT
+            6.832), https://underactuated.mit.edu
+            [3] S. Z. N'emeth, G. Zhang, "Conic optimization and
+            complementarity problems," arXiv,
+            https://doi.org/10.48550/arXiv.1607.05161
+        Args:
+            q: (*, space.n_q) current configuration batch.
+            v: (*, space.n_v) current velocity batch.
+            u: (*, ?) current input batch.
+            dynamics_pool: optional processing pool to enable multithreaded
+            solves.
+
+        Returns:
+            (*, space.n_v) delta velocity batch.
+        """
+        # pylint: disable=too-many-locals
+        dt = self.dt
+        eps = 1
+        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
+            q, v, u)
+        n_contacts = phi.shape[-1]
+        contact_filter = (tripled_phi(phi) <= eps).unsqueeze(-1)
+        contact_matrix_filter = pbmm(contact_filter.int(),
+                                     contact_filter.transpose(-1,
+                                                              -2).int()).bool()
+
+        # pylint: disable=E1103
+        double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
+        phi_then_zero = torch.cat((phi, double_zero_vector),
+                                  dim=-1).unsqueeze(-1)
+        # pylint: disable=E1103
+        Q_full = delassus + torch.eye(3 * n_contacts) * 1e-4
+
+        v_minus = v + dt * non_contact_acceleration
+        q_full = pbmm(J, v_minus.unsqueeze(-1)) + (1 / dt) * phi_then_zero
+
+        Q = torch.zeros_like(Q_full)
+        q = torch.zeros_like(q_full)
+        Q[contact_matrix_filter] += Q_full[contact_matrix_filter]
+        q[contact_filter] += q_full[contact_filter]
+
+        impulse_full = self.solver.apply(Q, q, torch.rand(q.shape), 1e-7, 1000,
+                                         1e-7, dynamics_pool)
+
+        impulse = torch.zeros_like(impulse_full)
+        impulse[contact_filter] += impulse_full[contact_filter]
+
+        return v_minus + torch.linalg.solve(M, pbmm(J.transpose(-1, -2),
+                                                    impulse)).squeeze(-1)
+
+    def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
+        """``Integrator.partial_step`` wrapper for ``forward_dynamics``."""
+        q, v = self.space.q_v(x)
+        u = torch.zeros(q.shape[:-1] + (0,))
+        v_plus = self.forward_dynamics(q.squeeze(-2), v.squeeze(-2),
+                                       u.squeeze(-2)).unsqueeze(-2)
+        return v_plus, carry
+
+    def summary(self, statistics: Dict) -> SystemSummary:
+        """Generates summary statistics for multibody system.
+
+        The scalars returned are simply the scalar description of the
+        system's ``MultibodyTerms``. Additionally, two trajectory pairs are
+        visualized as videos, one for training set and one for validation set,
+
+        Args:
+            statistics: Updated evaluation statistics for the model.
+        Returns:
+            Scalars and videos packaged into a ``SystemSummary``.
+        """
+        scalars = self.multibody_terms.scalars()
+        videos = {}
+        for set_name in ['train', 'valid']:
+            traj_num = 0
+            target_trajectory = Tensor(
+                statistics[f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'][
+                    0])
+            prediction_trajectory = Tensor(
+                statistics[
+                    f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
+            video, framerate = self.visualize(target_trajectory,
+                                              prediction_trajectory)
+            videos[f'{set_name}_trajectory_prediction_{traj_num}'] = (video,
+                                                                      framerate)
+        return SystemSummary(scalars=scalars, videos=videos)
