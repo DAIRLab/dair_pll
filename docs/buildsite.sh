@@ -17,7 +17,9 @@ export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 pip install --upgrade pip setuptools wheel
 
 # Eigen source
-CMAKE_PREFIX_PATH=$PWD/Eigen/cmake
+CMAKE_PREFIX_PATH=${PWD}/Eigen/cmake
+echo ${CMAKE_PREFIX_PATH}
+ls ${CMAKE_PREFIX_PATH}
 
 # git deps
 pip install git+https://github.com/mshalm/diffqcqp.git
