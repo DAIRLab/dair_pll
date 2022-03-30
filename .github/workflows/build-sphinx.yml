@@ -30,7 +30,6 @@ jobs:
           apt-get update
           apt-get install -y git
           ls
-          git clone "https://token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" .
         shell: bash
       - name: Run build script for Sphinx pages
         env:
