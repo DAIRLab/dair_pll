@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.tensorboard_manager &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.model" href="dair_pll.model.html" />
+    <link rel="prev" title="dair_pll.file_utils" href="dair_pll.file_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.tensorboard_manager</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.tensorboard_manager.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.tensorboard_manager">
+<span id="dair-pll-tensorboard-manager"></span><h1>dair_pll.tensorboard_manager<a class="headerlink" href="#module-dair_pll.tensorboard_manager" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardPlot">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.tensorboard_manager.</span></span><span class="sig-name descname"><span class="pre">TensorboardPlot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax1_vars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax2_vars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_axis</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardPlot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardPlot" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Convenient struct to encapsulate simple line plots.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardPlot.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardPlot.name" title="Permalink to this definition"></a></dt>
+<dd><p>what to name the plot.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ax1_vars</span> <span class="pre">/</span> <span class="pre">ax2_vars</span></span></dt>
+<dd><p>which variables to plot against each axis.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardPlot.log_axis">
+<span class="sig-name descname"><span class="pre">log_axis</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardPlot.log_axis" title="Permalink to this definition"></a></dt>
+<dd><p>make the y axis log scale</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></em><a class="headerlink" href="#id0" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardPlot.ax1_vars">
+<span class="sig-name descname"><span class="pre">ax1_vars</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardPlot.ax1_vars" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardPlot.ax2_vars">
+<span class="sig-name descname"><span class="pre">ax2_vars</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardPlot.ax2_vars" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">log_axis</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></em><a class="headerlink" href="#id1" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardSequentialHistogram">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.tensorboard_manager.</span></span><span class="sig-name descname"><span class="pre">TensorboardSequentialHistogram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sequential</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardSequentialHistogram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardSequentialHistogram" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Convenient struct for visualizing data passing through a torch Sequential.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardSequentialHistogram.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardSequentialHistogram.name" title="Permalink to this definition"></a></dt>
+<dd><p>what to name the histogram.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardSequentialHistogram.sequential">
+<span class="sig-name descname"><span class="pre">sequential</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardSequentialHistogram.sequential" title="Permalink to this definition"></a></dt>
+<dd><p>the sequential module to pass through the data.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardSequentialHistogram.data">
+<span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardSequentialHistogram.data" title="Permalink to this definition"></a></dt>
+<dd><p>batch_n x input_size.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></em><a class="headerlink" href="#id2" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">sequential</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">torch.nn.modules.container.Sequential</span></em><a class="headerlink" href="#id3" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><span class="pre">torch.Tensor</span></a></em><a class="headerlink" href="#id4" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.tensorboard_manager.</span></span><span class="sig-name descname"><span class="pre">TensorboardManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Manage logging of the training process.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.writer">
+<span class="sig-name descname"><span class="pre">writer</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.writer" title="Permalink to this definition"></a></dt>
+<dd><p>the TensorboardX writer for logging to the tensorboard files.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">plots</span> <span class="pre">/</span> <span class="pre">histograms</span></span></dt>
+<dd><p>the structs to log each epoch.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.callback">
+<span class="sig-name descname"><span class="pre">callback</span></span><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.callback" title="Permalink to this definition"></a></dt>
+<dd><p>an optional callback to log additional stuff. Takes the writer</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">and</span> <span class="pre">a</span> <span class="pre">dictionary</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">variables</span> <span class="pre">computed</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">epoch</span> <span class="pre">as</span> <span class="pre">arguments.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">writer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tensorboardX.writer.SummaryWriter</span></em><a class="headerlink" href="#id5" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">callback</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">tensorboardX.writer.SummaryWriter</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id6" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.plots">
+<span class="sig-name descname"><span class="pre">plots</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#dair_pll.tensorboard_manager.TensorboardPlot" title="dair_pll.tensorboard_manager.TensorboardPlot"><span class="pre">dair_pll.tensorboard_manager.TensorboardPlot</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.plots" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.histograms">
+<span class="sig-name descname"><span class="pre">histograms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#dair_pll.tensorboard_manager.TensorboardSequentialHistogram" title="dair_pll.tensorboard_manager.TensorboardSequentialHistogram"><span class="pre">dair_pll.tensorboard_manager.TensorboardSequentialHistogram</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.histograms" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.create_writer">
+<span class="sig-name descname"><span class="pre">create_writer</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardManager.create_writer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.create_writer" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.kill_old_process">
+<span class="sig-name descname"><span class="pre">kill_old_process</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardManager.kill_old_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.kill_old_process" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.launch">
+<span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardManager.launch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.launch" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.tensorboard_manager.TensorboardManager.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch_vars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">videos</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/tensorboard_manager.html#TensorboardManager.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.tensorboard_manager.TensorboardManager.update" title="Permalink to this definition"></a></dt>
+<dd><p>Performs all logging to the tensorboard files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.file_utils.html" class="btn btn-neutral float-left" title="dair_pll.file_utils" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.model.html" class="btn btn-neutral float-right" title="dair_pll.model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

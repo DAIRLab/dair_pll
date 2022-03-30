@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.experiment &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.deep_learnable_system" href="dair_pll.deep_learnable_system.html" />
+    <link rel="prev" title="dair_pll.dataset_management" href="dair_pll.dataset_management.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.experiment</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.experiment.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.experiment">
+<span id="dair-pll-experiment"></span><h1>dair_pll.experiment<a class="headerlink" href="#module-dair_pll.experiment" title="Permalink to this headline"></a></h1>
+<p>Defines interfaces for various learning experiments to be run.</p>
+<p>Current supported experiment types include:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment" title="dair_pll.experiment.SupervisedLearningExperiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">SupervisedLearningExperiment</span></code></a>: An experiment where a
+<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a> is learned to mimic a
+dataset of trajectories.</p></li>
+</ul>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.experiment.SystemConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">SystemConfig</span></span><a class="reference internal" href="_modules/dair_pll/experiment.html#SystemConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SystemConfig" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Dummy base <code class="xref py py-class docutils literal notranslate"><span class="pre">dataclass</span></code> for parameters for
+learning dynamics; all inheriting classes are expected to contain all
+necessary configuration attributes.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">OptimizerConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer=&lt;class</span> <span class="pre">'Adam'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr=1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wd=4e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs=10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience=30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size=64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#OptimizerConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p><a href="#id1"><span class="problematic" id="id2">:funct:`~dataclasses.dataclass`</span></a> defining setup and usage opf a Pytorch
+<code class="xref py py-func docutils literal notranslate"><span class="pre">Optimizer()</span></code> for learning.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig.optimizer">
+<span class="sig-name descname"><span class="pre">optimizer</span></span><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig.optimizer" title="Permalink to this definition"></a></dt>
+<dd><p>Subclass of <a class="reference external" href="https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code></a> to use.</p>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.optim.adam.Adam</span></code></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig.lr">
+<span class="sig-name descname"><span class="pre">lr</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1e-05</span></em><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig.lr" title="Permalink to this definition"></a></dt>
+<dd><p>Learning rate.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig.wd">
+<span class="sig-name descname"><span class="pre">wd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4e-05</span></em><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig.wd" title="Permalink to this definition"></a></dt>
+<dd><p>Weight decay.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig.epochs">
+<span class="sig-name descname"><span class="pre">epochs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10000</span></em><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig.epochs" title="Permalink to this definition"></a></dt>
+<dd><p>Maximum number of epochs to optimize.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig.patience">
+<span class="sig-name descname"><span class="pre">patience</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">30</span></em><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig.patience" title="Permalink to this definition"></a></dt>
+<dd><p>Number of epochs to wait for early stopping.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.OptimizerConfig.batch_size">
+<span class="sig-name descname"><span class="pre">batch_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">64</span></em><a class="headerlink" href="#dair_pll.experiment.OptimizerConfig.batch_size" title="Permalink to this definition"></a></dt>
+<dd><p>Size of batch for an individual gradient step.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">SupervisedLearningExperimentConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_config=DataConfig(storage='./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt=0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_train=512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_valid=128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_test=128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_skip=0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_history=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_prediction=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generation_config=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">import_directory=None)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_config=SystemConfig()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learnable_config=SystemConfig()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_config=OptimizerConfig(optimizer=&lt;class</span> <span class="pre">'torch.optim.adam.Adam'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr=1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wd=4e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs=10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience=30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size=64)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_tensorboard=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_evaluation_samples=5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperimentConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">dataclass</span></code> defining setup of a
+<a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment" title="dair_pll.experiment.SupervisedLearningExperiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">SupervisedLearningExperiment</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig.data_config">
+<span class="sig-name descname"><span class="pre">data_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.dataset_management.html#dair_pll.dataset_management.DataConfig" title="dair_pll.dataset_management.DataConfig"><span class="pre">dair_pll.dataset_management.DataConfig</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">DataConfig(storage='./',</span> <span class="pre">dt=0.001,</span> <span class="pre">n_train=512,</span> <span class="pre">n_valid=128,</span> <span class="pre">n_test=128,</span> <span class="pre">t_skip=0,</span> <span class="pre">t_history=1,</span> <span class="pre">t_prediction=1,</span> <span class="pre">generation_config=None,</span> <span class="pre">import_directory=None)</span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig.data_config" title="Permalink to this definition"></a></dt>
+<dd><p>Configuration for experiment’s
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SystemDataManager</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig.base_config">
+<span class="sig-name descname"><span class="pre">base_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.experiment.SystemConfig" title="dair_pll.experiment.SystemConfig"><span class="pre">dair_pll.experiment.SystemConfig</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">SystemConfig()</span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig.base_config" title="Permalink to this definition"></a></dt>
+<dd><p>Configuration for experiment’s “base” system, from which trajectories
+are modeled and optionally generated.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig.learnable_config">
+<span class="sig-name descname"><span class="pre">learnable_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.experiment.SystemConfig" title="dair_pll.experiment.SystemConfig"><span class="pre">dair_pll.experiment.SystemConfig</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">SystemConfig()</span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig.learnable_config" title="Permalink to this definition"></a></dt>
+<dd><p>Configuration for system to be learned.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig.optimizer_config">
+<span class="sig-name descname"><span class="pre">optimizer_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.experiment.OptimizerConfig" title="dair_pll.experiment.OptimizerConfig"><span class="pre">dair_pll.experiment.OptimizerConfig</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">OptimizerConfig(optimizer=&lt;class</span> <span class="pre">'torch.optim.adam.Adam'&gt;,</span> <span class="pre">lr=1e-05,</span> <span class="pre">wd=4e-05,</span> <span class="pre">epochs=10000,</span> <span class="pre">patience=30,</span> <span class="pre">batch_size=64)</span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig.optimizer_config" title="Permalink to this definition"></a></dt>
+<dd><p>Configuration for experiment’s optimization process.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig.run_tensorboard">
+<span class="sig-name descname"><span class="pre">run_tensorboard</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig.run_tensorboard" title="Permalink to this definition"></a></dt>
+<dd><p>Whether to run Tensorboard logging.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperimentConfig.full_evaluation_samples">
+<span class="sig-name descname"><span class="pre">full_evaluation_samples</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperimentConfig.full_evaluation_samples" title="Permalink to this definition"></a></dt>
+<dd><p>How many trajectories to save in full for experiment’s summary.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="dair_pll.experiment.EpochCallbackCallable">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">EpochCallbackCallable</span></span><a class="headerlink" href="#dair_pll.experiment.EpochCallbackCallable" title="Permalink to this definition"></a></dt>
+<dd><p>Type hint for extra callback to be called on each epoch of training.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epoch</strong> – Current epoch.</p></li>
+<li><p><strong>learned_system</strong> – Partially-trained learned system.</p></li>
+<li><p><strong>train_loss</strong> – Current epoch’s average training loss.</p></li>
+<li><p><strong>best_valid_loss</strong> – Best validation loss so far.</p></li>
+</ul>
+</dd>
+</dl>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Callable</span></code>[[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.system.System</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="dair_pll.experiment.LossCallbackCallable">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">LossCallbackCallable</span></span><a class="headerlink" href="#dair_pll.experiment.LossCallbackCallable" title="Permalink to this definition"></a></dt>
+<dd><p>Callback to evaluate loss on batch of trajectory slices.</p>
+<p>By default, set to prediction loss (
+<a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment.prediction_loss" title="dair_pll.experiment.SupervisedLearningExperiment.prediction_loss"><code class="xref py py-meth docutils literal notranslate"><span class="pre">SupervisedLearningExperiment.prediction_loss()</span></code></a>)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_past</strong> – <code class="docutils literal notranslate"><span class="pre">(*,t_history,space.n_x)</span></code> previous states in slice.</p></li>
+<li><p><strong>x_future</strong> – <code class="docutils literal notranslate"><span class="pre">(*,t_prediction,space.n_x)</span></code> future states in slice.</p></li>
+<li><p><strong>system</strong> – system on which to evaluate loss</p></li>
+<li><p><strong>keep_batch</strong> – whether or not to collapse batch into a single scalar.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(*,)</span></code> or scalar loss.</p>
+</dd>
+</dl>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Callable</span></code>[[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a>, <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.system.System</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]], <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.experiment.default_epoch_callback">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">default_epoch_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_learned_system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">best_valid_loss</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#default_epoch_callback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.default_epoch_callback" title="Permalink to this definition"></a></dt>
+<dd><p>Default <a class="reference internal" href="#dair_pll.experiment.EpochCallbackCallable" title="dair_pll.experiment.EpochCallbackCallable"><code class="xref py py-data docutils literal notranslate"><span class="pre">EpochCallbackCallable</span></code></a> which prints epoch, training
+loss, and best validation loss so far.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.experiment.</span></span><span class="sig-name descname"><span class="pre">SupervisedLearningExperiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>Supervised learning experiment.</p>
+<p>Implements the training and evaluation processes for a supervised
+learning experiment, where a <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a> is
+learned to capture a dataset of trajectories.</p>
+<p>The dataset of trajectories is encapsulated in a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SystemDataManager</span></code>
+object. This dataset is either stored to disc by the user,
+or alternatively is generated from the experiment’s <em>base system</em>.</p>
+<p>The <em>base system</em>is a <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a> with
+the same <a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.StateSpace" title="dair_pll.state_space.StateSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">StateSpace</span></code></a> as the
+system to be learned.</p>
+<p>Training is completed via a Pytorch <a class="reference external" href="https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code></a>.</p>
+<p>The training process keeps track of various statistics about the learning
+process, and optionally logs the learned system’s
+<a class="reference internal" href="dair_pll.system.html#dair_pll.system.SystemSummary" title="dair_pll.system.SystemSummary"><code class="xref py py-class docutils literal notranslate"><span class="pre">SystemSummary</span></code></a> to Tensorboard on each
+epoch.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.config">
+<span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperimentConfig" title="dair_pll.experiment.SupervisedLearningExperimentConfig"><span class="pre">dair_pll.experiment.SupervisedLearningExperimentConfig</span></a></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.config" title="Permalink to this definition"></a></dt>
+<dd><p>Configuration of the experiment.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.space">
+<span class="sig-name descname"><span class="pre">space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.StateSpace" title="dair_pll.state_space.StateSpace"><span class="pre">dair_pll.state_space.StateSpace</span></a></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.space" title="Permalink to this definition"></a></dt>
+<dd><p>State space of experiment, inferred from base system.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.data_manager">
+<span class="sig-name descname"><span class="pre">data_manager</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.dataset_management.html#dair_pll.dataset_management.SystemDataManager" title="dair_pll.dataset_management.SystemDataManager"><span class="pre">dair_pll.dataset_management.SystemDataManager</span></a></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.data_manager" title="Permalink to this definition"></a></dt>
+<dd><p>Data manager constructed from details in <a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment.config" title="dair_pll.experiment.SupervisedLearningExperiment.config"><code class="xref py py-attr docutils literal notranslate"><span class="pre">config</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.loss_callback">
+<span class="sig-name descname"><span class="pre">loss_callback</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><span class="pre">torch.Tensor</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><span class="pre">torch.Tensor</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><span class="pre">dair_pll.system.System</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><span class="pre">torch.Tensor</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.loss_callback" title="Permalink to this definition"></a></dt>
+<dd><p>Callback function for loss, defaults to prediction loss.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.tensorboard_manager">
+<span class="sig-name descname"><span class="pre">tensorboard_manager</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="dair_pll.tensorboard_manager.html#dair_pll.tensorboard_manager.TensorboardManager" title="dair_pll.tensorboard_manager.TensorboardManager"><span class="pre">dair_pll.tensorboard_manager.TensorboardManager</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.tensorboard_manager" title="Permalink to this definition"></a></dt>
+<dd><p>Optional tensorboard interface.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.get_base_system">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_base_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.get_base_system"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.get_base_system" title="Permalink to this definition"></a></dt>
+<dd><p>Abstract callback function to construct base system from system
+config.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Experiment’s base system.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.get_oracle_system">
+<span class="sig-name descname"><span class="pre">get_oracle_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.get_oracle_system"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.get_oracle_system" title="Permalink to this definition"></a></dt>
+<dd><p>Abstract callback function to construct oracle system for
+experiment.</p>
+<p>Conceptually, the oracle system is an ideal system to compare the
+learned system against. By default, the oracle system is simply the
+base system. However, in some scenarios, a different type of oracle
+is appropriate. For example, if the learned system is recurrent,
+the oracle system might most appropriately take a recurrent slice of
+initial states, process them with a Kalman Filter for the base
+system, and then predict the future.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Experiment’s oracle system.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.get_learned_system">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_learned_system</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_states</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.get_learned_system"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.get_learned_system" title="Permalink to this definition"></a></dt>
+<dd><p>Abstract callback function to construct learnable system for
+experiment.</p>
+<p>Optionally, learned system can be initialized to depend on the
+training dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>train_states</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">space.n_x)</span></code> batch of all states in training
+set.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Experiment’s learnable system.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.get_optimizer">
+<span class="sig-name descname"><span class="pre">get_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">learned_system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.get_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.get_optimizer" title="Permalink to this definition"></a></dt>
+<dd><p>Constructs optimizer for experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>learned_system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – System to be trained.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Optimizer for training.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.batch_predict">
+<span class="sig-name descname"><span class="pre">batch_predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_past</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.batch_predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.batch_predict" title="Permalink to this definition"></a></dt>
+<dd><p>Predict forward in time from initial conditions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_past</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">t_history,</span> <span class="pre">space.n_x)</span></code> batch of initial states.</p></li>
+<li><p><strong>system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – System to run prediction on.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">t_prediction,</span> <span class="pre">space.n_x)</span></code> batch of predicted future states.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.trajectory_predict">
+<span class="sig-name descname"><span class="pre">trajectory_predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.trajectory_predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.trajectory_predict" title="Permalink to this definition"></a></dt>
+<dd><p>Predict from full lists of trajectories.</p>
+<p>Preloads initial conditions from the first <code class="docutils literal notranslate"><span class="pre">t_skip</span> <span class="pre">+</span> <span class="pre">1</span></code> elements of
+each trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]) – List of <code class="docutils literal notranslate"><span class="pre">(T,</span> <span class="pre">space.n_x)</span></code> trajectories.</p></li>
+<li><p><strong>system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – System to run prediction on.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><p>List of <code class="docutils literal notranslate"><span class="pre">(T</span> <span class="pre">-</span> <span class="pre">t_skip</span> <span class="pre">-</span> <span class="pre">1,</span> <span class="pre">space.n_x)</span></code> predicted trajectories.</p>
+<p>List of <code class="docutils literal notranslate"><span class="pre">(T</span> <span class="pre">-</span> <span class="pre">t_skip</span> <span class="pre">-</span> <span class="pre">1,</span> <span class="pre">space.n_x)</span></code> target trajectories.</p>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.prediction_loss">
+<span class="sig-name descname"><span class="pre">prediction_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_past</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_future</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_batch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.prediction_loss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.prediction_loss" title="Permalink to this definition"></a></dt>
+<dd><p>Default <a class="reference internal" href="#dair_pll.experiment.LossCallbackCallable" title="dair_pll.experiment.LossCallbackCallable"><code class="xref py py-data docutils literal notranslate"><span class="pre">LossCallbackCallable</span></code></a> which evaluates to system’s
+<span class="math notranslate nohighlight">\(l_2\)</span> prediction error on batch:</p>
+<div class="math notranslate nohighlight">
+\[\mathcal{L}(x_{p,i,\cdot}, x_{f,i,\cdot}) = \sum_{j} ||\hat x_{f,
+i,j} - x_{f,i,j}||^2,\]</div>
+<p>where <span class="math notranslate nohighlight">\(x_{p,i,\cdot}, x_{f,i,\cdot}\)</span> are the <span class="math notranslate nohighlight">\(i\)</span>th
+elements of the past and future batches; and
+<span class="math notranslate nohighlight">\(\hat x_{f,i,j}\)</span> is the <span class="math notranslate nohighlight">\(j\)</span>-step forward prediction of the
+model from the past batch.</p>
+<p>See <a class="reference internal" href="#dair_pll.experiment.LossCallbackCallable" title="dair_pll.experiment.LossCallbackCallable"><code class="xref py py-data docutils literal notranslate"><span class="pre">LossCallbackCallable</span></code></a> for additional type signature info.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.batch_loss">
+<span class="sig-name descname"><span class="pre">batch_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_past</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_future</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_batch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.batch_loss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.batch_loss" title="Permalink to this definition"></a></dt>
+<dd><p>Runs <a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment.loss_callback" title="dair_pll.experiment.SupervisedLearningExperiment.loss_callback"><code class="xref py py-attr docutils literal notranslate"><span class="pre">loss_callback</span></code></a> (a
+<a class="reference internal" href="#dair_pll.experiment.LossCallbackCallable" title="dair_pll.experiment.LossCallbackCallable"><code class="xref py py-data docutils literal notranslate"><span class="pre">LossCallbackCallable</span></code></a>) on the given batch.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.train_epoch">
+<span class="sig-name descname"><span class="pre">train_epoch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.train_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.train_epoch" title="Permalink to this definition"></a></dt>
+<dd><p>Train learned model for a single epoch.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">DataLoader</span></code>) – Training dataset.</p></li>
+<li><p><strong>system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – System to be trained.</p></li>
+<li><p><strong>optimizer</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code>) – Optimizer which trains system.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Scalar average training loss observed during epoch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.write_to_tensorboard">
+<span class="sig-name descname"><span class="pre">write_to_tensorboard</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learned_system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">statistics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.write_to_tensorboard"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.write_to_tensorboard" title="Permalink to this definition"></a></dt>
+<dd><p>Extracts and writes summary of training progress to Tensorboard.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epoch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Current epoch.</p></li>
+<li><p><strong>learned_system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – System being trained.</p></li>
+<li><p><strong>statistics</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>) – Summary statistics for learning process.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.per_epoch_evaluation">
+<span class="sig-name descname"><span class="pre">per_epoch_evaluation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learned_system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">training_duration</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.per_epoch_evaluation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.per_epoch_evaluation" title="Permalink to this definition"></a></dt>
+<dd><p>Evaluates and logs training progress at end of an epoch.</p>
+<p>Runs evaluation on full slice datasets, as well as a handful of
+trajectories.</p>
+<p>Optionally logs the results on tensorboard via
+<a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment.write_to_tensorboard" title="dair_pll.experiment.SupervisedLearningExperiment.write_to_tensorboard"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_to_tensorboard()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epoch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Current epoch.</p></li>
+<li><p><strong>learned_system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – System being trained.</p></li>
+<li><p><strong>train_loss</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – Scalar training loss of epoch.</p></li>
+<li><p><strong>training_duration</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Duration of epoch training in seconds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Scalar validation set loss.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch_callback=&lt;function</span> <span class="pre">'default_epoch_callback'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.train" title="Permalink to this definition"></a></dt>
+<dd><p>Run training process for experiment.</p>
+<p>Terminates training with early stopping, parameters for which are set in
+<a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment.config" title="dair_pll.experiment.SupervisedLearningExperiment.config"><code class="xref py py-attr docutils literal notranslate"><span class="pre">config</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>epoch_callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>[[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]) – Callback function at end of each epoch.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><p>Final-epoch training loss.</p>
+<p>Best-seen validation set loss.</p>
+<p>Fully-trained system, with parameters corresponding to</p>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.evaluate_systems_on_sets">
+<span class="sig-name descname"><span class="pre">evaluate_systems_on_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">systems</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sets</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.evaluate_systems_on_sets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.evaluate_systems_on_sets" title="Permalink to this definition"></a></dt>
+<dd><p>Evaluate given systems on trajectory sets.</p>
+<p>Builds a “statistics” dictionary containing a thorough evaluation
+each system on each set, containing the following:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Single step and trajectory prediction losses.</p></li>
+<li><p>Squared norms of velocity and delta-velocity (for normalization).</p></li>
+<li><p>Sample target and prediction trajectories.</p></li>
+<li><p>Auxiliary trajectory comparisons defined in
+<a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.StateSpace.auxiliary_comparisons" title="dair_pll.state_space.StateSpace.auxiliary_comparisons"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dair_pll.state_space.StateSpace.auxiliary_comparisons()</span></code></a></p></li>
+<li><p>Summary statistics of the above where applicable.</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>systems</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>]) – Named dictionary of systems to evaluate.</p></li>
+<li><p><strong>sets</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="dair_pll.dataset_management.html#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a>]) – Named dictionary of sets to evaluate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>, <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Statistics dictionary.</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently assumes prediction horizon of 1.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.experiment.SupervisedLearningExperiment.evaluation">
+<span class="sig-name descname"><span class="pre">evaluation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">learned_system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/experiment.html#SupervisedLearningExperiment.evaluation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.experiment.SupervisedLearningExperiment.evaluation" title="Permalink to this definition"></a></dt>
+<dd><p>Evaluate both oracle and learned system on training, validation,
+and testing data.</p>
+<p>Implemented as a wrapper for <a class="reference internal" href="#dair_pll.experiment.SupervisedLearningExperiment.evaluate_systems_on_sets" title="dair_pll.experiment.SupervisedLearningExperiment.evaluate_systems_on_sets"><code class="xref py py-meth docutils literal notranslate"><span class="pre">evaluate_systems_on_sets()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>learned_system</strong> (<a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a>) – Trained system.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>, <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Statistics dictionary.</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently assumes prediction horizon of 1.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.dataset_management.html" class="btn btn-neutral float-left" title="dair_pll.dataset_management" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.deep_learnable_system.html" class="btn btn-neutral float-right" title="dair_pll.deep_learnable_system" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

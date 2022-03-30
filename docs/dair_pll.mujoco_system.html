@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.mujoco_system &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.mujoco_system</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.mujoco_system.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.mujoco_system">
+<span id="dair-pll-mujoco-system"></span><h1>dair_pll.mujoco_system<a class="headerlink" href="#module-dair_pll.mujoco_system" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoStateConverter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.mujoco_system.</span></span><span class="sig-name descname"><span class="pre">MuJoCoStateConverter</span></span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoStateConverter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoStateConverter" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoStateConverter.mujoco_to_state">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mujoco_to_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_mujoco</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoStateConverter.mujoco_to_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoStateConverter.mujoco_to_state" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoStateConverter.state_to_mujoco">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">state_to_mujoco</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_mujoco</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoStateConverter.state_to_mujoco"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoStateConverter.state_to_mujoco" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoSystem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.mujoco_system.</span></span><span class="sig-name descname"><span class="pre">MuJoCoSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mjcf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stiffness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping_rato</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v200</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoSystem" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.system.System</span></code></a></p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">System</span></code> with prescribed integration properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> – State space of underlying dynamics</p></li>
+<li><p><strong>integrator</strong> – Integrator of underlying dynamics</p></li>
+<li><p><strong>max_batch_dim</strong> – Maximum number of batch dimensions supported by</p></li>
+<li><p><strong>integrator.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoSystem.sim">
+<span class="sig-name descname"><span class="pre">sim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">mujoco_py.cymj.MjSim</span></em><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoSystem.sim" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoSystem.preprocess_initial_condition">
+<span class="sig-name descname"><span class="pre">preprocess_initial_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carry_0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoSystem.preprocess_initial_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoSystem.preprocess_initial_condition" title="Permalink to this definition"></a></dt>
+<dd><p>Preprocesses initial condition state sequence into single state
+initial condition for integration.</p>
+<p>For example, an RNN would use the state sequence to “preload” hidden
+states in the RNN, where <code class="docutils literal notranslate"><span class="pre">carry_0</span></code> would provide an initial hidden
+state, and the output would be the hidden state after the RNN
+receives the state sequence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_0</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (<a href="#id1"><span class="problematic" id="id2">*</span></a>, T_0, space.n_x) initial state sequence.</p></li>
+<li><p><strong>carry_0</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (<a href="#id3"><span class="problematic" id="id4">*</span></a>, 1, ?) initial hidden state.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>(<em>, 1, space.n_x) processed initial state.
+(</em>, 1, ?) processed initial hidden state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoSystem.sim_step">
+<span class="sig-name descname"><span class="pre">sim_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoSystem.sim_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoSystem.sim_step" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.mujoco_system.</span></span><span class="sig-name descname"><span class="pre">MuJoCoUKFSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mjcf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stiffness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping_rato</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v200</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">P0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoUKFSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.mujoco_system.MuJoCoSystem" title="dair_pll.mujoco_system.MuJoCoSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.mujoco_system.MuJoCoSystem</span></code></a></p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">System</span></code> with prescribed integration properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> – State space of underlying dynamics</p></li>
+<li><p><strong>integrator</strong> – Integrator of underlying dynamics</p></li>
+<li><p><strong>max_batch_dim</strong> – Maximum number of batch dimensions supported by</p></li>
+<li><p><strong>integrator.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.noise_stds_to_P0_R_stds">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">noise_stds_to_P0_R_stds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">static_stds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dynamic_std</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoUKFSystem.noise_stds_to_P0_R_stds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.noise_stds_to_P0_R_stds" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.P0">
+<span class="sig-name descname"><span class="pre">P0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><span class="pre">torch.Tensor</span></a></em><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.P0" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.R">
+<span class="sig-name descname"><span class="pre">R</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><span class="pre">torch.Tensor</span></a></em><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.R" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.ukf_estimate">
+<span class="sig-name descname"><span class="pre">ukf_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoUKFSystem.ukf_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.ukf_estimate" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.ukf_bias_estimate">
+<span class="sig-name descname"><span class="pre">ukf_bias_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoUKFSystem.ukf_bias_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.ukf_bias_estimate" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.mll_estimate">
+<span class="sig-name descname"><span class="pre">mll_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoUKFSystem.mll_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.mll_estimate" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.mujoco_system.MuJoCoUKFSystem.preprocess_initial_condition">
+<span class="sig-name descname"><span class="pre">preprocess_initial_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carry_0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/mujoco_system.html#MuJoCoUKFSystem.preprocess_initial_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.mujoco_system.MuJoCoUKFSystem.preprocess_initial_condition" title="Permalink to this definition"></a></dt>
+<dd><p>Preprocesses initial condition state sequence into single state
+initial condition for integration.</p>
+<p>For example, an RNN would use the state sequence to “preload” hidden
+states in the RNN, where <code class="docutils literal notranslate"><span class="pre">carry_0</span></code> would provide an initial hidden
+state, and the output would be the hidden state after the RNN
+receives the state sequence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_0</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (<a href="#id5"><span class="problematic" id="id6">*</span></a>, T_0, space.n_x) initial state sequence.</p></li>
+<li><p><strong>carry_0</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (<a href="#id7"><span class="problematic" id="id8">*</span></a>, 1, ?) initial hidden state.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>(<em>, 1, space.n_x) processed initial state.
+(</em>, 1, ?) processed initial hidden state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

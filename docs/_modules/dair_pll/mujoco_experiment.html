@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.mujoco_experiment &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>dair_pll.mujoco_experiment</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.mujoco_experiment</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">cast</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll.deep_learnable_system</span> <span class="kn">import</span> \
+    <span class="n">DeepLearnableSystemConfig</span><span class="p">,</span> <span class="n">DeepLearnableExperiment</span>
+<span class="kn">from</span> <span class="nn">dair_pll.experiment</span> <span class="kn">import</span> <span class="n">SupervisedLearningExperimentConfig</span><span class="p">,</span> \
+    <span class="n">OptimizerConfig</span><span class="p">,</span> <span class="n">DataConfig</span><span class="p">,</span> <span class="n">TrajectorySliceDataset</span>
+<span class="kn">from</span> <span class="nn">dair_pll.mujoco_system</span> <span class="kn">import</span> <span class="n">MuJoCoSystem</span><span class="p">,</span> <span class="n">MuJoCoUKFSystem</span>
+
+
+<div class="viewcode-block" id="MuJoCoExperimentConfig"><a class="viewcode-back" href="../../dair_pll.mujoco_experiment.html#dair_pll.mujoco_experiment.MuJoCoExperimentConfig">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">MuJoCoExperimentConfig</span><span class="p">(</span><span class="n">SupervisedLearningExperimentConfig</span><span class="p">):</span>
+    <span class="n">xml</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;assets/cube_mujoco.xml&#39;</span>
+    <span class="n">stiffness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.</span>
+    <span class="n">damping_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.00</span>
+    <span class="n">v200</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="MuJoCoExperiment"><a class="viewcode-back" href="../../dair_pll.mujoco_experiment.html#dair_pll.mujoco_experiment.MuJoCoExperiment">[docs]</a><span class="k">class</span> <span class="nc">MuJoCoExperiment</span><span class="p">(</span><span class="n">DeepLearnableExperiment</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">MuJoCoExperimentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MuJoCoExperiment.get_base_system"><a class="viewcode-back" href="../../dair_pll.mujoco_experiment.html#dair_pll.mujoco_experiment.MuJoCoExperiment.get_base_system">[docs]</a>    <span class="k">def</span> <span class="nf">get_base_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MuJoCoSystem</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">MuJoCoExperimentConfig</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">data_config</span><span class="o">.</span><span class="n">dt</span>
+        <span class="k">return</span> <span class="n">MuJoCoSystem</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">xml</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">stiffness</span><span class="p">,</span>
+                            <span class="n">config</span><span class="o">.</span><span class="n">damping_ratio</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">v200</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MuJoCoExperiment.get_oracle_system"><a class="viewcode-back" href="../../dair_pll.mujoco_experiment.html#dair_pll.mujoco_experiment.MuJoCoExperiment.get_oracle_system">[docs]</a>    <span class="k">def</span> <span class="nf">get_oracle_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MuJoCoSystem</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">MuJoCoExperimentConfig</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">data_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">data_config</span>
+        <span class="n">noiser</span> <span class="o">=</span> <span class="n">data_config</span><span class="o">.</span><span class="n">noiser_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">)</span>
+        <span class="n">P0_diag</span><span class="p">,</span> <span class="n">R_diag</span> <span class="o">=</span> <span class="n">MuJoCoUKFSystem</span><span class="o">.</span><span class="n">noise_stds_to_P0_R_stds</span><span class="p">(</span>
+            <span class="n">data_config</span><span class="o">.</span><span class="n">static_noise</span><span class="p">,</span> <span class="n">data_config</span><span class="o">.</span><span class="n">dynamic_noise</span><span class="p">,</span> <span class="n">data_config</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span>
+        <span class="n">P0</span> <span class="o">=</span> <span class="n">noiser</span><span class="o">.</span><span class="n">covariance</span><span class="p">(</span><span class="n">P0_diag</span><span class="p">)</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="n">noiser</span><span class="o">.</span><span class="n">covariance</span><span class="p">(</span><span class="n">R_diag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">MuJoCoUKFSystem</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">xml</span><span class="p">,</span> <span class="n">data_config</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">stiffness</span><span class="p">,</span>
+                               <span class="n">config</span><span class="o">.</span><span class="n">damping_ratio</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">v200</span><span class="p">,</span> <span class="n">P0</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    stiffness = 2500</span>
+<span class="sd">    study_name = f&#39;mujoco_cube_{stiffness}_experiment_test&#39;</span>
+<span class="sd">    if stiffness == 2500:</span>
+<span class="sd">        optimizer_config = OptimizerConfig(</span>
+<span class="sd">            lr = 1e-4,</span>
+<span class="sd">            wd = 0.</span>
+<span class="sd">            )</span>
+
+<span class="sd">    elif stiffness == 100:</span>
+<span class="sd">        optimizer_config = OptimizerConfig()</span>
+<span class="sd">    experiment_config = MuJoCoDataExperimentConfig(</span>
+<span class="sd">        optimizer_config = optimizer_config,</span>
+<span class="sd">        stiffness = stiffness,</span>
+<span class="sd">        study = study_name,</span>
+<span class="sd">        N_pop = 1024</span>
+<span class="sd">        )</span>
+<span class="sd">    experiment = MuJoCoDataExperiment(experiment_config)</span>
+<span class="sd">    experiment.train()</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">eval_test</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">ukf_test</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">eval_test</span><span class="p">:</span>
+        <span class="n">stiffness</span> <span class="o">=</span> <span class="mi">2500</span>
+        <span class="n">POP</span> <span class="o">=</span> <span class="mi">1024</span>
+        <span class="n">T_SKIP</span> <span class="o">=</span> <span class="mi">16</span>
+        <span class="n">V200</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">CUBE_XML</span> <span class="o">=</span> <span class="s1">&#39;assets/cube_mujoco.xml&#39;</span>
+
+        <span class="n">study_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;mujoco_cube_</span><span class="si">{</span><span class="n">stiffness</span><span class="si">}</span><span class="s1">_eval_test&#39;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;rm -r results/</span><span class="si">{</span><span class="n">study_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">optimizer_config</span> <span class="o">=</span> <span class="n">OptimizerConfig</span><span class="p">(</span><span class="n">lr</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">wd</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">learnable_config</span> <span class="o">=</span> <span class="n">DeepLearnableSystemConfig</span><span class="p">()</span>
+        <span class="n">data_config</span> <span class="o">=</span> <span class="n">DataConfig</span><span class="p">(</span>
+            <span class="n">n_pop</span><span class="o">=</span><span class="n">POP</span><span class="p">,</span>
+            <span class="n">n_train</span><span class="o">=</span><span class="n">POP</span> <span class="o">-</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="n">n_valid</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">n_test</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">t_skip</span><span class="o">=</span><span class="n">T_SKIP</span><span class="p">,</span>
+            <span class="n">t_history</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">storage</span><span class="o">=</span><span class="n">study_name</span>  <span class="c1"># ,</span>
+            <span class="c1"># static_noise = torch.zeros(12),</span>
+            <span class="c1"># dynamic_noise = torch.zeros(12)</span>
+        <span class="p">)</span>
+
+        <span class="n">experiment_config</span> <span class="o">=</span> <span class="n">MuJoCoExperimentConfig</span><span class="p">(</span>
+            <span class="n">xml</span><span class="o">=</span><span class="n">CUBE_XML</span><span class="p">,</span>
+            <span class="n">learnable_config</span><span class="o">=</span><span class="n">learnable_config</span><span class="p">,</span>
+            <span class="n">optimizer_config</span><span class="o">=</span><span class="n">optimizer_config</span><span class="p">,</span>
+            <span class="n">data_config</span><span class="o">=</span><span class="n">data_config</span><span class="p">,</span>
+            <span class="n">stiffness</span><span class="o">=</span><span class="n">stiffness</span><span class="p">,</span>
+            <span class="n">v200</span><span class="o">=</span><span class="n">V200</span><span class="p">)</span>
+
+        <span class="n">experiment</span> <span class="o">=</span> <span class="n">MuJoCoExperiment</span><span class="p">(</span><span class="n">experiment_config</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">best_valid_loss</span><span class="p">,</span> <span class="n">learned_system</span><span class="p">,</span> <span class="n">train_traj</span><span class="p">,</span> <span class="n">valid_traj</span><span class="p">,</span> <span class="n">test_traj</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+        <span class="p">)</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">evaluation</span><span class="p">(</span><span class="n">learned_system</span><span class="p">,</span> <span class="n">train_traj</span><span class="p">,</span> <span class="n">valid_traj</span><span class="p">,</span>
+                                      <span class="n">test_traj</span><span class="p">,</span>
+                                      <span class="n">TrajectorySliceDataset</span><span class="p">(</span><span class="n">train_traj</span><span class="p">),</span>
+                                      <span class="n">TrajectorySliceDataset</span><span class="p">(</span><span class="n">valid_traj</span><span class="p">),</span>
+                                      <span class="n">TrajectorySliceDataset</span><span class="p">(</span><span class="n">test_traj</span><span class="p">))</span>
+        <span class="c1"># print(stats[&#39;train_oracle_loss_mean&#39;])</span>
+        <span class="n">oracle_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;train_oracle_loss&#39;</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;oracle: loss &#39;</span><span class="p">,</span> <span class="n">oracle_tensor</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;rot err degrees&#39;</span><span class="p">,</span>
+              <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;train_oracle_rot_err&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">180</span> <span class="o">/</span> <span class="mf">3.1415</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;pos err percent&#39;</span><span class="p">,</span>
+              <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;train_oracle_pos_err&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="mf">0.1</span><span class="p">)</span>
+        <span class="c1"># print(oracle_tensor.std() / np.sqrt(len(stats[&#39;train_oracle_loss&#39;])))</span>
+        <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">ukf_test</span><span class="p">:</span>
+        <span class="n">stiffness</span> <span class="o">=</span> <span class="mi">2500</span>
+        <span class="n">POP</span> <span class="o">=</span> <span class="mi">16</span>
+        <span class="n">V200</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">CUBE_XML</span> <span class="o">=</span> <span class="s1">&#39;assets/cube_mujoco.xml&#39;</span>
+
+        <span class="n">study_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;mujoco_cube_</span><span class="si">{</span><span class="n">stiffness</span><span class="si">}</span><span class="s1">_ukf_test&#39;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;rm -r results/</span><span class="si">{</span><span class="n">study_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">optimizer_config</span> <span class="o">=</span> <span class="n">OptimizerConfig</span><span class="p">(</span><span class="n">lr</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">wd</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">learnable_config</span> <span class="o">=</span> <span class="n">DeepLearnableSystemConfig</span><span class="p">()</span>
+        <span class="n">data_config</span> <span class="o">=</span> <span class="n">DataConfig</span><span class="p">(</span>
+            <span class="n">n_pop</span><span class="o">=</span><span class="n">POP</span><span class="p">,</span>
+            <span class="n">n_train</span><span class="o">=</span><span class="n">POP</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">n_valid</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">n_test</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">t_history</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+            <span class="n">storage</span><span class="o">=</span><span class="n">study_name</span>
+            <span class="c1"># T_skip = TSKIP,</span>
+            <span class="c1"># static_noise = torch.zeros(12)#,</span>
+            <span class="c1"># dynamic_noise = torch.zeros(12)</span>
+            <span class="c1"># noiser_type = GaussianWhiteNoiser</span>
+        <span class="p">)</span>
+
+        <span class="n">experiment_config</span> <span class="o">=</span> <span class="n">MuJoCoExperimentConfig</span><span class="p">(</span>
+            <span class="n">xml</span><span class="o">=</span><span class="n">CUBE_XML</span><span class="p">,</span>
+            <span class="n">learnable_config</span><span class="o">=</span><span class="n">learnable_config</span><span class="p">,</span>
+            <span class="n">optimizer_config</span><span class="o">=</span><span class="n">optimizer_config</span><span class="p">,</span>
+            <span class="n">data_config</span><span class="o">=</span><span class="n">data_config</span><span class="p">,</span>
+            <span class="n">stiffness</span><span class="o">=</span><span class="n">stiffness</span><span class="p">,</span>
+            <span class="n">v200</span><span class="o">=</span><span class="n">V200</span><span class="p">)</span>
+
+        <span class="n">experiment</span> <span class="o">=</span> <span class="n">MuJoCoExperiment</span><span class="p">(</span><span class="n">experiment_config</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">best_valid_loss</span><span class="p">,</span> <span class="n">learned_system</span><span class="p">,</span> <span class="n">train_traj</span><span class="p">,</span> <span class="n">valid_traj</span><span class="p">,</span> <span class="n">test_traj</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+        <span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">data_manager</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="n">train_traj</span><span class="p">)</span>
+        <span class="n">base_system</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">get_base_system</span><span class="p">()</span>
+        <span class="n">oracle_system</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">get_oracle_system</span><span class="p">()</span>
+        <span class="n">oracle_loss</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">base_loss</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">BL_MIN</span> <span class="o">=</span> <span class="mf">1e-3</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">:</span>
+            <span class="n">M</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">bl</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">evaluation_loss</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                                            <span class="n">y</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">base_system</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bl</span> <span class="o">&gt;</span> <span class="n">BL_MIN</span><span class="p">:</span>
+                <span class="n">N</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">base_loss</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bl</span><span class="p">)</span>
+                <span class="n">oracle_loss</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">experiment</span><span class="o">.</span><span class="n">evaluation_loss</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                                               <span class="n">y</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">oracle_system</span><span class="p">))</span>
+        <span class="n">dur</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">dur</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">dur</span> <span class="o">/</span> <span class="n">N</span><span class="p">,</span> <span class="n">M</span><span class="p">)</span>
+        <span class="n">itemize</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">l</span><span class="p">:</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">l</span><span class="p">]</span>
+        <span class="n">base_loss</span> <span class="o">=</span> <span class="n">itemize</span><span class="p">(</span><span class="n">base_loss</span><span class="p">)</span>
+        <span class="n">oracle_loss</span> <span class="o">=</span> <span class="n">itemize</span><span class="p">(</span><span class="n">oracle_loss</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">base_loss</span><span class="p">)</span> <span class="o">/</span> <span class="n">N</span><span class="p">,</span> <span class="nb">sum</span><span class="p">(</span><span class="n">oracle_loss</span><span class="p">)</span> <span class="o">/</span> <span class="n">N</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+        <span class="c1"># pdb.set_trace()</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">base_loss</span><span class="p">,</span> <span class="n">oracle_loss</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">min_loss</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">base_loss</span> <span class="o">+</span> <span class="n">oracle_loss</span><span class="p">)</span>
+        <span class="n">max_loss</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">base_loss</span> <span class="o">+</span> <span class="n">oracle_loss</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">min_loss</span><span class="p">,</span> <span class="n">max_loss</span><span class="p">]</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">bounds</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

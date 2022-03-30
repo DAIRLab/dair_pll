@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.geometry &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>dair_pll.geometry</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.geometry</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Collision geometry representation for multibody systems.</span>
+
+<span class="sd">Each type of collision geometry is modeled as a class inheriting from the</span>
+<span class="sd">``CollisionGeometry`` abstract type. Different types of inheriting geometries</span>
+<span class="sd">will need to resolve collisions in unique ways, but one interface is always</span>
+<span class="sd">expected: a list of scalars to track during training.</span>
+
+<span class="sd">Many collision geometries, such as boxes and cylinders, fall into the class</span>
+<span class="sd">of bounded (compact) convex shapes. A general interface is defined in the</span>
+<span class="sd">abstract ``BoundedConvexCollisionGeometry`` type, which returns a set of</span>
+<span class="sd">witness points given support hyperplane directions. One implementation is</span>
+<span class="sd">the ``SparseVertexConvexCollisionGeometry`` type, which finds these points</span>
+<span class="sd">via brute force optimization over a short list of vertices.</span>
+
+<span class="sd">All collision geometries implemented here mirror a Drake ``Shape`` object. A</span>
+<span class="sd">general purpose converter is implemented in</span>
+<span class="sd">``PydrakeToCollisionGeometryFactory``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">pydrake.geometry</span> <span class="kn">import</span> <span class="n">Box</span> <span class="k">as</span> <span class="n">DrakeBox</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.geometry</span> <span class="kn">import</span> <span class="n">HalfSpace</span> <span class="k">as</span> <span class="n">DrakeHalfSpace</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.geometry</span> <span class="kn">import</span> <span class="n">Shape</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span><span class="p">,</span> <span class="n">Parameter</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll.tensor_utils</span> <span class="kn">import</span> <span class="n">pbmm</span>
+
+<span class="n">_UNIT_BOX_VERTICES</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span> <span class="p">[</span>
+    <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.</span>
+<span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]])</span><span class="o">.</span><span class="n">t</span><span class="p">()</span> <span class="o">*</span> <span class="mf">2.</span> <span class="o">-</span> <span class="mf">1.</span>
+
+<span class="n">_ROT_Z_45</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span>
+    <span class="p">[[</span><span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">),</span> <span class="o">-</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)),</span> <span class="mf">0.</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">),</span> <span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">),</span> <span class="mf">0.</span><span class="p">],</span>
+     <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]])</span>
+
+<span class="n">_total_ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Plane&#39;</span><span class="p">,</span> <span class="s1">&#39;Polygon&#39;</span><span class="p">,</span> <span class="s1">&#39;Box&#39;</span><span class="p">,</span> <span class="s1">&#39;Sphere&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="CollisionGeometry"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.CollisionGeometry">[docs]</a><span class="k">class</span> <span class="nc">CollisionGeometry</span><span class="p">(</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Abstract interface for collision geometries.</span>
+
+<span class="sd">    Collision geometries have heterogeneous implementation depending on the</span>
+<span class="sd">    type of shape. This class mainly enforces the implementation of</span>
+<span class="sd">    bookkeeping interfaces.</span>
+
+<span class="sd">    When two collision geometries are evaluated for collision with</span>
+<span class="sd">    ``GeometryCollider``, their ordering is constrained via a total order on</span>
+<span class="sd">    collision geometry types, enforced with an overload of the ``&gt;`` operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate total ordering of two geometries based on their types.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_total_ordering</span><span class="o">.</span><span class="n">index</span><span class="p">(</span>
+            <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">_total_ordering</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate total ordering of two geometries via passthrough to</span>
+<span class="sd">        ``CollisionGeometry.__ge__()``.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="fm">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CollisionGeometry.scalars"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.CollisionGeometry.scalars">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">scalars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Describes object via Tensorboard scalars.</span>
+
+<span class="sd">        Any namespace for the object (e.g. &quot;object_5&quot;) is assumed to be added by</span>
+<span class="sd">        external code before adding to Tensorboard, so the names of the</span>
+<span class="sd">        scalars can be natural descriptions of the geometry&#39;s parameters.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            A cylinder might be represented with the following output::</span>
+
+<span class="sd">                {&#39;radius&#39;: 5.2, &#39;height&#39;: 4.1}</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A dictionary of named parameters describing the geometry.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+
+
+<div class="viewcode-block" id="Plane"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Plane">[docs]</a><span class="k">class</span> <span class="nc">Plane</span><span class="p">(</span><span class="n">CollisionGeometry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Half-space/plane collision geometry.</span>
+
+<span class="sd">    ``Plane`` geometries are assumed to be the plane z=0 in local (i.e.</span>
+<span class="sd">    &quot;body-axes&quot; coordinates). Any tilted/raised/lowered half spaces are expected</span>
+<span class="sd">    to be derived by placing the ``z=0`` plane in a rigidly-transformed</span>
+<span class="sd">    frame.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Plane.scalars"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Plane.scalars">[docs]</a>    <span class="k">def</span> <span class="nf">scalars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;As the plane is fixed to be z=0, there are no parameters.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{}</span></div></div>
+
+
+<div class="viewcode-block" id="BoundedConvexCollisionGeometry"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.BoundedConvexCollisionGeometry">[docs]</a><span class="k">class</span> <span class="nc">BoundedConvexCollisionGeometry</span><span class="p">(</span><span class="n">CollisionGeometry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Interface for compact-convex collision geometries.</span>
+
+<span class="sd">    Such shapes have a representation via a &quot;support function&quot; h(d),</span>
+<span class="sd">    which takes in a hyperplane direction and returns how far the shape S</span>
+<span class="sd">    extends in that direction, i.e.::</span>
+
+<span class="sd">        h(d) = max_{s \\in S} s \\cdot d.</span>
+
+<span class="sd">    This representation can be leveraged to derive &quot;witness points&quot; -- i.e.</span>
+<span class="sd">    the closest point(s) between the ``BoundedConvexCollisionGeometry`` and</span>
+<span class="sd">    another convex shape, such as another ``BoundedConvexCollisionGeometry``</span>
+<span class="sd">    or a ``Plane``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BoundedConvexCollisionGeometry.support_points"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.BoundedConvexCollisionGeometry.support_points">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">support_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns a set of witness points representing contact with another</span>
+<span class="sd">        shape off in the direction(s) ``directions``.</span>
+
+<span class="sd">        This method will return a set of points ``S&#39; \\subset S`` such that::</span>
+
+<span class="sd">            argmax_{s \\in S} s \\cdot directions \\subset convexHull(S&#39;).</span>
+
+
+<span class="sd">        In theory, returning exactly the argmax set would be sufficient.</span>
+<span class="sd">        However,</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directions: (*, 3) batch of unit-length directions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, N, 3) sets of corresponding witness points of cardinality N.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+
+
+<div class="viewcode-block" id="SparseVertexConvexCollisionGeometry"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.SparseVertexConvexCollisionGeometry">[docs]</a><span class="k">class</span> <span class="nc">SparseVertexConvexCollisionGeometry</span><span class="p">(</span><span class="n">BoundedConvexCollisionGeometry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Partial implementation of ``BoundedConvexCollisionGeometry`` when</span>
+<span class="sd">    witness points are guaranteed to be contained in a small set of vertices.</span>
+
+<span class="sd">    An obvious subtype is any sort of Polytope, such as a ``Box``. A less</span>
+<span class="sd">    obvious subtype are shapes in which a direction-dependent set of vertices</span>
+<span class="sd">    can be easily calculated. See ``Cylinder``, for instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_query</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``SparseVertexConvexCollisionGeometry`` with prescribed</span>
+<span class="sd">        query interface.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n_query: number of vertices to return in witness point set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_query</span> <span class="o">=</span> <span class="n">n_query</span>
+
+<div class="viewcode-block" id="SparseVertexConvexCollisionGeometry.support_points"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.SparseVertexConvexCollisionGeometry.support_points">[docs]</a>    <span class="k">def</span> <span class="nf">support_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Implements ``BoundedConvexCollisionGeometry.support_points()`` via</span>
+<span class="sd">        brute force optimization over the witness vertex set.</span>
+
+<span class="sd">        Specifically, if S_v is the vertex set, this function returns</span>
+<span class="sd">        ``n_query`` elements s of S_v for which ``s \\cdot directions`` is</span>
+<span class="sd">        highest. This set is not guaranteed to be sorted.</span>
+
+<span class="sd">        Given the prescribed behavior of</span>
+<span class="sd">        ``BoundedConvexCollisionGeometry.support_points()``, an implicit</span>
+<span class="sd">        assumption of this implementation is that the convex hull of the top</span>
+<span class="sd">        ``n_query`` points in S_v contains ``argmax_{s \\in S} s \\cdot</span>
+<span class="sd">        directions``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directions: (*, 3) batch of directions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, n_query, 3) sets of corresponding witness points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">directions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span>
+        <span class="n">original_shape</span> <span class="o">=</span> <span class="n">directions</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># reshape to (product(*),3)</span>
+        <span class="n">directions</span> <span class="o">=</span> <span class="n">directions</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">batch_range</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">directions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vertices</span><span class="p">(</span><span class="n">directions</span><span class="p">)</span>
+        <span class="n">dots</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">directions</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span>
+                    <span class="n">vertices</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># top dot product indices in shape (product(*), n_query)</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">selections</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="n">dots</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_query</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                                <span class="nb">sorted</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">t</span><span class="p">()</span>
+        <span class="n">top_vertices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">vertices</span><span class="p">[</span><span class="n">batch_range</span><span class="p">,</span> <span class="n">selection</span><span class="p">]</span> <span class="k">for</span> <span class="n">selection</span> <span class="ow">in</span> <span class="n">selections</span><span class="p">],</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># reshape to (*, n_query, 3)</span>
+        <span class="k">return</span> <span class="n">top_vertices</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">original_shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_query</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="SparseVertexConvexCollisionGeometry.get_vertices"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.SparseVertexConvexCollisionGeometry.get_vertices">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">get_vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns sparse witness point set as collection of vertices.</span>
+
+<span class="sd">        Specifically, given search directions, returns a set of points</span>
+<span class="sd">        ``S_v`` for which::</span>
+
+<span class="sd">            argmax_{s \\in S} s \\cdot directions \\subset convexHull(S_v).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directions: (*, 3) batch of unit-length directions.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, N, 3) witness point convex hull vertices.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+
+
+<div class="viewcode-block" id="Polygon"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Polygon">[docs]</a><span class="k">class</span> <span class="nc">Polygon</span><span class="p">(</span><span class="n">SparseVertexConvexCollisionGeometry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Concrete implementation of a convex polytope.</span>
+
+<span class="sd">    Implemented via ``SparseVertexConvexCollisionGeometry`` as a static set</span>
+<span class="sd">    of vertices, where models the underlying shape as all convex combinations</span>
+<span class="sd">    of the vertices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vertices</span><span class="p">:</span> <span class="n">Parameter</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vertices</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">n_query</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``Polygon`` object with initial vertex set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            vertices: (N, 3) static vertex set.</span>
+<span class="sd">            n_query: number of vertices to return in witness point set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_query</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">vertices</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Polygon.get_vertices"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Polygon.get_vertices">[docs]</a>    <span class="k">def</span> <span class="nf">get_vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Return batched view of static vertex set&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">directions</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Polygon.scalars"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Polygon.scalars">[docs]</a>    <span class="k">def</span> <span class="nf">scalars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Return one scalar for each vertex index.&quot;&quot;&quot;</span>
+        <span class="n">scalars</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">axis</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">t</span><span class="p">()):</span>
+            <span class="k">for</span> <span class="n">vertex_index</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+                <span class="n">scalars</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;v</span><span class="si">{</span><span class="n">vertex_index</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">scalars</span></div></div>
+
+
+<div class="viewcode-block" id="Box"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Box">[docs]</a><span class="k">class</span> <span class="nc">Box</span><span class="p">(</span><span class="n">SparseVertexConvexCollisionGeometry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Implementation of cuboid geometry as a sparse vertex convex hull.&quot;&quot;&quot;</span>
+    <span class="n">half_lengths</span><span class="p">:</span> <span class="n">Parameter</span>
+    <span class="n">unit_vertices</span><span class="p">:</span> <span class="n">Tensor</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">half_lengths</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">n_query</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``Box`` object with initial size.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            half_lengths: (3,) half-length dimensions of box on x, y,</span>
+<span class="sd">            and z axes.</span>
+<span class="sd">            n_query: number of vertices to return in witness point set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_query</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">half_lengths</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">==</span> <span class="mi">3</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">half_lengths</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">half_lengths</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                                      <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unit_vertices</span> <span class="o">=</span> <span class="n">_UNIT_BOX_VERTICES</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Box.get_vertices"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Box.get_vertices">[docs]</a>    <span class="k">def</span> <span class="nf">get_vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns view of cuboid&#39;s static vertex set.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit_vertices</span> <span class="o">*</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">half_lengths</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">directions</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">unit_vertices</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Box.scalars"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Box.scalars">[docs]</a>    <span class="k">def</span> <span class="nf">scalars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Returns each axis&#39;s full length as a scalar.&quot;&quot;&quot;</span>
+        <span class="n">scalars</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="sa">f</span><span class="s1">&#39;len_</span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">value</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">axis</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">([</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">half_lengths</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">scalars</span></div></div>
+
+
+<div class="viewcode-block" id="Sphere"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Sphere">[docs]</a><span class="k">class</span> <span class="nc">Sphere</span><span class="p">(</span><span class="n">BoundedConvexCollisionGeometry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Implements sphere geometry via its support function.</span>
+
+<span class="sd">    It is trivial to calculate the witness point for a sphere contact as</span>
+<span class="sd">    simply the product of the sphere&#39;s radius and the support direction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">radius</span><span class="o">.</span><span class="n">numel</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">radius</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(()),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Sphere.support_points"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Sphere.support_points">[docs]</a>    <span class="k">def</span> <span class="nf">support_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Implements ``BoundedConvexCollisionGeometry.support_points()``</span>
+<span class="sd">        via analytic expression::</span>
+
+<span class="sd">            argmax_{s \\in S} s \\cdot directions = directions * radius.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directions: (*, 3) batch of directions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, 1, 3) corresponding witness point sets of cardinality 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">directions</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Sphere.scalars"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.Sphere.scalars">[docs]</a>    <span class="k">def</span> <span class="nf">scalars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Logs radius as a scalar.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">.</span><span class="n">item</span><span class="p">()}</span></div></div>
+
+
+<span class="n">CYLINDER_IMPLEMENTATION</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Todo: Stable implementation of ``Cylinder`` class w.r.t. vertical.</span>
+<span class="s2">class Cylinder(SparseVertexConvexCollisionGeometry):</span>
+<span class="s2">    def __init__(self, radius: Tensor, length: Tensor) -&gt; None:</span>
+<span class="s2">        # Hardcoded n_query</span>
+<span class="s2">        super().__init__(4)</span>
+
+<span class="s2">        assert radius.numel == 1</span>
+<span class="s2">        assert length.numel == 1</span>
+
+<span class="s2">        radius = radius.clone().view(())</span>
+<span class="s2">        length = length.clone().view(())</span>
+
+<span class="s2">        self.radius = Parameter(radius, requires_grad=True)</span>
+<span class="s2">        self.length = Parameter(length, requires_grad=True)</span>
+
+<span class="s2">        # (8 x 3) x (3 x 3) = (8 x 3) xy-diagonally-aligned vertices</span>
+<span class="s2">        self.unit_vertices = _UNIT_BOX_VERTICES.clone().mm(_ROT_Z_45.clone(</span>
+<span class="s2">        ).t())</span>
+
+<span class="s2">    def get_vertices(self, directions: Tensor) -&gt; Tensor:</span>
+<span class="s2">        # construct inscribed box based on angle</span>
+<span class="s2">        # want the [x, y] vectors of directions to be a diagonal</span>
+<span class="s2">        # so we make an x, y aligned box, then rotate 45 degrees</span>
+<span class="s2">        # x/y side length is radius * sqrt(2), so half_length is radius/sqrt(2)</span>
+
+<span class="s2">        sqrt2 = 2 ** 0.5</span>
+<span class="s2">        half_lengths = torch.stack((self.radius / sqrt2, self.radius / sqrt2,</span>
+<span class="s2">                                    self.length / 2)).unsqueeze(0)</span>
+<span class="s2">        nominal_vertices = self.unit_vertices * half_lengths</span>
+
+<span class="s2">        # get unit vectors in xy_directions</span>
+<span class="s2">        # batch x 2</span>
+<span class="s2">        xy = directions[..., :2]</span>
+<span class="s2">        unit_xy = xy / xy.norm(dim=-1, keepdim=True)</span>
+
+<span class="s2">        ux, uy = deal(unit_xy, -1)</span>
+<span class="s2">        zero = torch.zeros_like(ux)</span>
+<span class="s2">        one = torch.ones_like(ux)</span>
+
+<span class="s2">        # if nominal vertex is [1 0 0],</span>
+<span class="s2">        # we would want to return [unit_xy 0].</span>
+<span class="s2">        # accomplish as pre-multiply by R =[[ux, -uy, 0],[uy, ux, 0],[0, 0 1]]</span>
+<span class="s2">        # row vector representation necessitates post-multiply by R^T</span>
+
+<span class="s2">        # rotation is batch x 3 x 3</span>
+<span class="s2">        rotation = torch.stack((</span>
+<span class="s2">            torch.stack((ux, -uy, zero), -1),</span>
+<span class="s2">            torch.stack((uy, ux, zero), -1),</span>
+<span class="s2">            torch.stack((zero, zero, one), -1),</span>
+<span class="s2">        ), -2)</span>
+
+<span class="s2">        # [batched(8 x 3)] x [batch x 3 x 3] = batch x 8 x 3</span>
+<span class="s2">        vertices = pbmm(nominal_vertices, rotation.transpose(-1, -2))</span>
+
+<span class="s2">        return vertices</span>
+<span class="s2">        # numerical stability about the vertical</span>
+
+<span class="s2">    def scalars(self) -&gt; Dict[str, float]:</span>
+<span class="s2">        return {&#39;radius&#39;: self.radius.item(), &#39;length&#39;: self.length.item()}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="PydrakeToCollisionGeometryFactory"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.PydrakeToCollisionGeometryFactory">[docs]</a><span class="k">class</span> <span class="nc">PydrakeToCollisionGeometryFactory</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Utility class for converting Drake ``Shape`` instances to</span>
+<span class="sd">    ``CollisionGeometry`` instances.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PydrakeToCollisionGeometryFactory.convert"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">drake_shape</span><span class="p">:</span> <span class="n">Shape</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CollisionGeometry</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Converts abstract ``pydrake.geometry.shape`` to</span>
+<span class="sd">        ``CollisionGeometry``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            drake_shape: drake shape type to convert.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Collision geometry representation of shape.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            TypeError: When provided object is not a supported Drake shape type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">drake_shape</span><span class="p">,</span> <span class="n">DrakeBox</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">PydrakeToCollisionGeometryFactory</span><span class="o">.</span><span class="n">convert_box</span><span class="p">(</span><span class="n">drake_shape</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">drake_shape</span><span class="p">,</span> <span class="n">DrakeHalfSpace</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">PydrakeToCollisionGeometryFactory</span><span class="o">.</span><span class="n">convert_plane</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s2">&quot;Unsupported type for drake Shape() to&quot;</span>
+            <span class="s2">&quot;CollisionGeometry() conversion:&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">drake_shape</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="PydrakeToCollisionGeometryFactory.convert_box"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_box">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">convert_box</span><span class="p">(</span><span class="n">drake_box</span><span class="p">:</span> <span class="n">DrakeBox</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Box</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Converts ``pydrake.geometry.Box`` to ``Box``&quot;&quot;&quot;</span>
+        <span class="n">half_widths</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">drake_box</span><span class="o">.</span><span class="n">size</span><span class="p">()))</span>
+        <span class="k">return</span> <span class="n">Box</span><span class="p">(</span><span class="n">half_widths</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PydrakeToCollisionGeometryFactory.convert_plane"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_plane">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">convert_plane</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Plane</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Converts ``pydrake.geometry.HalfSpace`` to ``Plane``&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Plane</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="GeometryCollider"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.GeometryCollider">[docs]</a><span class="k">class</span> <span class="nc">GeometryCollider</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Utility class for colliding two ``CollisionGeometry`` instances.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GeometryCollider.collide"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.GeometryCollider.collide">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">collide</span><span class="p">(</span><span class="n">geometry_a</span><span class="p">:</span> <span class="n">CollisionGeometry</span><span class="p">,</span> <span class="n">geometry_b</span><span class="p">:</span> <span class="n">CollisionGeometry</span><span class="p">,</span>
+                <span class="n">R_AB</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">p_AoBo_A</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> \
+            <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Collides two collision geometries.</span>
+
+<span class="sd">        Takes in the two geometries as well as a relative transform between</span>
+<span class="sd">        them. This function is a thin shell for other static methods of</span>
+<span class="sd">        ``GeometryCollider`` where the given geometries are guaranteed to</span>
+<span class="sd">        have specific types.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            geometry_a: first collision geometry</span>
+<span class="sd">            geometry_b: second collision geometry, with type</span>
+<span class="sd">            ordering ``not geometry_A &gt; geometry_B``.</span>
+<span class="sd">            R_AB: (*,3,3) rotation between geometry frames</span>
+<span class="sd">            p_AoBo_A: (*, 3) offset of geometry frame origins</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, N) batch of witness point pair distances</span>
+<span class="sd">            (*, N, 3, 3) contact frame C rotation in A, R_AC, where the z</span>
+<span class="sd">            axis of C is contained in the normal cone of body A at contact</span>
+<span class="sd">            point Ac and is parallel (or antiparallel) to AcBc.</span>
+<span class="sd">            (*, N, 3) witness points Ac on A, p_AoAc_A</span>
+<span class="sd">            (*, N, 3) witness points Bc on B, p_BoBc_B</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">geometry_a</span> <span class="o">&gt;</span> <span class="n">geometry_b</span>
+
+        <span class="c1"># case 1: half-space to compact-convex collision</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geometry_a</span><span class="p">,</span> <span class="n">Plane</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">geometry_b</span><span class="p">,</span> <span class="n">BoundedConvexCollisionGeometry</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">GeometryCollider</span><span class="o">.</span><span class="n">collide_plane_convex</span><span class="p">(</span>
+                <span class="n">geometry_b</span><span class="p">,</span> <span class="n">R_AB</span><span class="p">,</span> <span class="n">p_AoBo_A</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s2">&quot;No type-specific implementation for geometry &quot;</span>
+            <span class="s2">&quot;pair of following types:&quot;</span><span class="p">,</span>
+            <span class="nb">type</span><span class="p">(</span><span class="n">geometry_a</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="nb">type</span><span class="p">(</span><span class="n">geometry_b</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GeometryCollider.collide_plane_convex"><a class="viewcode-back" href="../../dair_pll.geometry.html#dair_pll.geometry.GeometryCollider.collide_plane_convex">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">collide_plane_convex</span><span class="p">(</span><span class="n">geometry_b</span><span class="p">:</span> <span class="n">BoundedConvexCollisionGeometry</span><span class="p">,</span>
+                             <span class="n">R_AB</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">p_AoBo_A</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> \
+            <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Implementation of ``GeometryCollider.collide()`` when</span>
+<span class="sd">        ``geometry_a`` is a ``Plane`` and ``geometry_b`` is a</span>
+<span class="sd">        ``BoundedConvexCollisionGeometry``.&quot;&quot;&quot;</span>
+        <span class="n">R_BA</span> <span class="o">=</span> <span class="n">R_AB</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># support direction on body B is negative z axis of A frame,</span>
+        <span class="c1"># in B frame coordinates, i.e. the final column of ``R_BA``.</span>
+        <span class="n">directions_b</span> <span class="o">=</span> <span class="o">-</span><span class="n">R_BA</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># B support points of shape (*, N, 3)</span>
+        <span class="n">p_BoBc_B</span> <span class="o">=</span> <span class="n">geometry_b</span><span class="o">.</span><span class="n">support_points</span><span class="p">(</span><span class="n">directions_b</span><span class="p">)</span>
+        <span class="n">p_AoBc_A</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">p_BoBc_B</span><span class="p">,</span> <span class="n">R_BA</span><span class="p">)</span> <span class="o">+</span> <span class="n">p_AoBo_A</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># phi is the A-axes z coordinate of Bc</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">p_AoBc_A</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Ac is the projection of Bc onto the z=0 plane in frame A.</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">p_AoAc_A</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">p_AoBc_A</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">p_AoBc_A</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">:])),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># ``R_AC`` (*, N, 3, 3) is simply a batch of identities, as the z</span>
+        <span class="c1"># axis of A points out of the plane.</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">R_AC</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">p_AoAc_A</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span>
+        <span class="k">return</span> <span class="n">phi</span><span class="p">,</span> <span class="n">R_AC</span><span class="p">,</span> <span class="n">p_AoAc_A</span><span class="p">,</span> <span class="n">p_BoBc_B</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
