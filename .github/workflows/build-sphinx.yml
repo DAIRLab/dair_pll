@@ -17,6 +17,11 @@ jobs:
     container: debian:buster-slim
 
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with: 
+          python-version: '3.9'
+          architecture: 'x64'
       - name: Get prerequisites and clone repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -24,13 +29,9 @@ jobs:
           set -x
           apt-get update
           apt-get install -y git
+          ls
           git clone "https://token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" .
         shell: bash
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
-        with: 
-          python-version: '3.9'
-          architecture: 'x64'
       - name: Run build script for Sphinx pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
