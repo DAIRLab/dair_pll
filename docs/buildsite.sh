@@ -13,6 +13,9 @@ export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 # BUILD DOCS #
 ##############
  
+# build tools
+pip install --upgrade pip setuptools wheel
+
 # install package to get deps
 pip install -e .
 

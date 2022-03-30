@@ -43,7 +43,7 @@ dependency_links = [
 ]
 
 setup(
-    name='DAIR Physics-based Learning Library',
+    name='dair_pll',
     version='0.0.1',
     packages=['dair_pll'],
     install_requires=install_reqs,
