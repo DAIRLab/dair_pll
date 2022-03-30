@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.inertia &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.geometry" href="dair_pll.geometry.html" />
+    <link rel="prev" title="dair_pll.drake_utils" href="dair_pll.drake_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.inertia</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.inertia.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.inertia">
+<span id="dair-pll-inertia"></span><h1>dair_pll.inertia<a class="headerlink" href="#module-dair_pll.inertia" title="Permalink to this headline"></a></h1>
+<p>Utilities for transforming representations of rigid body inertia.</p>
+<p>The inertial parameterization of a body <span class="math notranslate nohighlight">\(B\)</span> is given by 10 degrees of
+freedom:</p>
+<blockquote>
+<div><ul>
+<li><p><span class="math notranslate nohighlight">\(m\)</span> (1 DoF), the mass.</p></li>
+<li><p><span class="math notranslate nohighlight">\(^{Bo}p^{Bcm}\)</span> (3 DoF), the position of the center of mass
+<span class="math notranslate nohighlight">\(Bcm\)</span> relative to the body’s origin:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">p_BoBcm_B</span> <span class="o">==</span> <span class="p">[</span><span class="n">p_x</span><span class="p">,</span> <span class="n">p_y</span><span class="p">,</span> <span class="n">p_z</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+<li><p><span class="math notranslate nohighlight">\(I^{B/Bcm}\)</span> (6 DoF), the symmetric 3x3 inertia dyadic about
+the body’s center of mass <span class="math notranslate nohighlight">\(Bcm\)</span>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">I_BBcm_B</span> <span class="o">==</span> <span class="p">[[</span><span class="n">I_xx</span><span class="p">,</span> <span class="n">I_xy</span><span class="p">,</span> <span class="n">I_xz</span><span class="p">],[</span><span class="n">I_xy</span><span class="p">,</span> <span class="n">I_yy</span><span class="p">,</span> <span class="n">I_yz</span><span class="p">],[</span><span class="n">I_xz</span><span class="p">,</span> <span class="n">I_yz</span><span class="p">,</span> <span class="n">I_zz</span><span class="p">]]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<p>Here we list and several formats that can be converted between each other
+freely, under the assumption that their values are non-degenerate and valid (
+i.e. <span class="math notranslate nohighlight">\(m &gt; 0\)</span>).</p>
+<blockquote>
+<div><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">pi</span></code> is an intuitive formatting of these 10 Dof as a standard vector in
+<span class="math notranslate nohighlight">\(\mathbb{R}^{10}\)</span> as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">m</span> <span class="o">*</span> <span class="n">p_x</span><span class="p">,</span> <span class="n">m</span> <span class="o">*</span> <span class="n">p_y</span><span class="p">,</span> <span class="n">m</span> <span class="o">*</span> <span class="n">p_z</span><span class="p">,</span> <span class="n">I_xx</span><span class="p">,</span> <span class="n">I_yy</span><span class="p">,</span> <span class="n">I_zz</span><span class="p">,</span> <span class="n">I_xy</span><span class="p">,</span> <span class="n">I_xz</span><span class="p">,</span> <span class="n">I_yz</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drake_spatial_inertia</span></code> is a scaling that can be used to construct a
+new Drake <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.SpatialInertia" title="(in pydrake)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SpatialInertia</span></code></a>, where the
+inertial tensor is normalized by mass (see
+<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.UnitInertia" title="(in pydrake)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">UnitInertia</span></code></a>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">p_x</span><span class="p">,</span> <span class="n">p_y</span><span class="p">,</span> <span class="n">p_z</span><span class="p">,</span> <span class="o">...</span>
+    <span class="n">I_xx</span> <span class="o">/</span> <span class="n">m</span><span class="p">,</span> <span class="n">I_yy</span> <span class="o">/</span> <span class="n">m</span><span class="p">,</span> <span class="n">I_zz</span> <span class="o">/</span> <span class="n">m</span><span class="p">,</span> <span class="n">I_xy</span> <span class="o">/</span> <span class="n">m</span><span class="p">,</span> <span class="n">I_xz</span> <span class="o">/</span> <span class="n">m</span><span class="p">,</span> <span class="n">I_yz</span> <span class="o">/</span> <span class="n">m</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drake</span></code> is a packaging of <code class="docutils literal notranslate"><span class="pre">drake_spatial_inertia</span></code> into
+a Drake <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.SpatialInertia" title="(in pydrake)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SpatialInertia</span></code></a> object,
+with member callbacks to access the terms:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SpatialInertia</span><span class="o">.</span><span class="n">get_mass</span><span class="p">()</span> <span class="o">==</span> <span class="n">m</span>
+<span class="n">SpatialInertia</span><span class="o">.</span><span class="n">get_com</span><span class="p">()</span> <span class="o">==</span> <span class="n">p_BoBcm_B</span>
+<span class="n">SpatialInertia</span><span class="o">.</span><span class="n">CalcRotationalInertia</span><span class="p">()</span> <span class="o">==</span> <span class="n">I_BBcm_B</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">theta</span></code> is a format designed for underlying smooth, unconstrained,
+and non-degenerate parameterization of rigid body inertia. For a body,
+any value in <span class="math notranslate nohighlight">\(\mathbb{R}^{10}\)</span> for <code class="docutils literal notranslate"><span class="pre">theta</span></code> can be mapped to a
+valid and non-degenerate set of inertial terms as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">theta</span> <span class="o">==</span> <span class="p">[</span><span class="n">alpha</span><span class="p">,</span> <span class="n">d_1</span><span class="p">,</span> <span class="n">d_2</span><span class="p">,</span> <span class="n">d_3</span><span class="p">,</span> <span class="n">s_12</span><span class="p">,</span> <span class="n">s_23</span><span class="p">,</span> <span class="n">s_13</span><span class="p">,</span> <span class="n">t_1</span><span class="p">,</span> <span class="n">t_2</span><span class="p">,</span> <span class="n">t_3</span><span class="p">]</span>
+<span class="n">s</span> <span class="o">==</span> <span class="p">[</span><span class="n">s_12</span><span class="p">,</span> <span class="n">s_23</span><span class="p">,</span> <span class="n">s_13</span><span class="p">]</span>
+<span class="n">t</span> <span class="o">==</span> <span class="p">[</span><span class="n">t_1</span><span class="p">,</span> <span class="n">t_2</span><span class="p">,</span> <span class="n">t_3</span><span class="p">]</span>
+<span class="n">pi</span> <span class="o">==</span> <span class="p">[</span>
+    <span class="n">t</span> \<span class="n">cdot</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">t_1</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">d_1</span><span class="p">),</span>
+    <span class="n">t_1</span> <span class="o">*</span> <span class="n">s_12</span> <span class="o">+</span> <span class="n">t_2</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">d_2</span><span class="p">),</span>
+    <span class="n">t_1</span> <span class="o">*</span> <span class="n">s_13</span> <span class="o">+</span> <span class="n">t_2</span> <span class="o">*</span> <span class="n">s_23</span> <span class="o">+</span> <span class="n">t_3</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">d_3</span><span class="p">),</span>
+    <span class="n">s</span> \<span class="n">cdot</span> <span class="n">s</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">d_2</span><span class="p">)</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">d_3</span><span class="p">),</span>
+    <span class="n">s_13</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">s_23</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">d_1</span><span class="p">)</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">d_3</span><span class="p">),</span>
+    <span class="n">s_12</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">d_1</span><span class="p">)</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">d_2</span><span class="p">),</span>
+    <span class="o">-</span><span class="n">s_12</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">d_1</span><span class="p">),</span>
+    <span class="o">-</span><span class="n">s_13</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">d_1</span><span class="p">),</span>
+    <span class="o">-</span><span class="n">s_12</span> <span class="o">*</span> <span class="n">s_13</span> <span class="o">-</span> <span class="n">s_23</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="n">d_2</span><span class="p">)</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>An original derivation and characterization of <code class="docutils literal notranslate"><span class="pre">theta</span></code> can be found in
+Rucker and Wensing <a class="footnote-reference brackets" href="#id3" id="id1">1</a>. Note that Drake orders the inertial off-diagonal
+terms as <code class="docutils literal notranslate"><span class="pre">[Ixy</span> <span class="pre">Ixz</span> <span class="pre">Iyz]</span></code>, whereas the original paper <a class="footnote-reference brackets" href="#id3" id="id2">1</a> uses
+<code class="docutils literal notranslate"><span class="pre">[Ixy</span> <span class="pre">Iyz</span> <span class="pre">Ixz]</span></code>; thus the index ordering here is slightly different.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">urdf</span></code> is the string format in which inertial parameters are stored,
+represented as the tuple:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;p_x p_y p_z&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;I_xx&quot;</span><span class="p">,</span> <span class="s2">&quot;I_yy&quot;</span><span class="p">,</span> <span class="s2">&quot;I_zz&quot;</span><span class="p">,</span> <span class="s2">&quot;I_xy&quot;</span><span class="p">,</span> <span class="s2">&quot;I_xz&quot;</span><span class="p">,</span> <span class="s2">&quot;I_yz&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scalars</span></code> is the string dictionary format for printing on tensorboard:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;m&quot;</span><span class="p">:</span> <span class="n">m</span><span class="p">,</span> <span class="s2">&quot;p_x&quot;</span><span class="p">:</span> <span class="n">p_x</span><span class="p">,</span> <span class="o">...</span> <span class="s2">&quot;I_yz&quot;</span><span class="p">:</span> <span class="n">I_yz</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<p>Various transforms between these types are implemented in this module through
+the <a class="reference internal" href="#dair_pll.inertia.InertialParameterConverter" title="dair_pll.inertia.InertialParameterConverter"><code class="xref py py-class docutils literal notranslate"><span class="pre">InertialParameterConverter</span></code></a> class.</p>
+<dl class="footnote brackets">
+<dt class="label" id="id3"><span class="brackets">1</span><span class="fn-backref">(<a href="#id1">1</a>,<a href="#id2">2</a>)</span></dt>
+<dd><p>C. Rucker and P. M. Wensing, “Smooth Parameterization of Rigid-Body
+Inertia”, IEEE RA-L 2020, <a class="reference external" href="https://doi.org/10.1109/LRA.2022.3144517">https://doi.org/10.1109/LRA.2022.3144517</a></p>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.inertia.number_to_float">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.inertia.</span></span><span class="sig-name descname"><span class="pre">number_to_float</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#number_to_float"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.number_to_float" title="Permalink to this definition"></a></dt>
+<dd><p>Converts a number to float via intermediate string representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.inertia.</span></span><span class="sig-name descname"><span class="pre">InertialParameterConverter</span></span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Utility class for transforming between inertial parameterizations.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.theta_to_pi">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">theta_to_pi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.theta_to_pi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.theta_to_pi" title="Permalink to this definition"></a></dt>
+<dd><p>Converts batch of <code class="docutils literal notranslate"><span class="pre">theta</span></code> parameters to <code class="docutils literal notranslate"><span class="pre">pi</span></code> parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>theta</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">10)</span></code> <code class="docutils literal notranslate"><span class="pre">theta</span></code>-type parameterization.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">10)</span></code> <code class="docutils literal notranslate"><span class="pre">pi</span></code>-type parameterization.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.pi_to_theta">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pi_to_theta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.pi_to_theta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.pi_to_theta" title="Permalink to this definition"></a></dt>
+<dd><p>Converts batch of <code class="docutils literal notranslate"><span class="pre">pi</span></code> parameters to <code class="docutils literal notranslate"><span class="pre">theta</span></code> parameters.</p>
+<p>Implements hand-derived local inverse of standard mapping from Rucker
+and Wensing.</p>
+<p>This function inverts :py:meth:<code class="docutils literal notranslate"><span class="pre">theta_to_pi</span></code> for
+valid <code class="docutils literal notranslate"><span class="pre">pi</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>pi</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">10)</span></code> <code class="docutils literal notranslate"><span class="pre">pi</span></code>-type parameterization.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">10)</span></code> <code class="docutils literal notranslate"><span class="pre">theta</span></code>-type parameterization.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.pi_to_drake_spatial_inertia">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pi_to_drake_spatial_inertia</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.pi_to_drake_spatial_inertia"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.pi_to_drake_spatial_inertia" title="Permalink to this definition"></a></dt>
+<dd><p>Converts batch of <code class="docutils literal notranslate"><span class="pre">pi</span></code> parameters to <code class="docutils literal notranslate"><span class="pre">drake_spatial_inertia</span></code>
+parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.pi_to_urdf">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pi_to_urdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.pi_to_urdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.pi_to_urdf" title="Permalink to this definition"></a></dt>
+<dd><p>Converts a single <code class="docutils literal notranslate"><span class="pre">(10,)</span></code> <code class="docutils literal notranslate"><span class="pre">pi</span></code> vector into the <code class="docutils literal notranslate"><span class="pre">urdf</span></code> string
+format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.drake_to_pi">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">drake_to_pi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spatial_inertia</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.drake_to_pi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.drake_to_pi" title="Permalink to this definition"></a></dt>
+<dd><p>Extracts a <code class="docutils literal notranslate"><span class="pre">pi</span></code> parameterization from a Drake
+<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.SpatialInertia" title="(in pydrake)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SpatialInertia</span></code></a> object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.drake_to_theta">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">drake_to_theta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spatial_inertia</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.drake_to_theta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.drake_to_theta" title="Permalink to this definition"></a></dt>
+<dd><p>Passthrough chain of <a class="reference internal" href="#dair_pll.inertia.InertialParameterConverter.drake_to_pi" title="dair_pll.inertia.InertialParameterConverter.drake_to_pi"><code class="xref py py-meth docutils literal notranslate"><span class="pre">drake_to_pi()</span></code></a> and
+<a class="reference internal" href="#dair_pll.inertia.InertialParameterConverter.pi_to_theta" title="dair_pll.inertia.InertialParameterConverter.pi_to_theta"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pi_to_theta()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.inertia.InertialParameterConverter.pi_to_scalars">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pi_to_scalars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/inertia.html#InertialParameterConverter.pi_to_scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.inertia.InertialParameterConverter.pi_to_scalars" title="Permalink to this definition"></a></dt>
+<dd><p>Converts <code class="docutils literal notranslate"><span class="pre">pi</span></code> parameterization to <code class="docutils literal notranslate"><span class="pre">scalars</span></code> dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.drake_utils.html" class="btn btn-neutral float-left" title="dair_pll.drake_utils" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.geometry.html" class="btn btn-neutral float-right" title="dair_pll.geometry" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

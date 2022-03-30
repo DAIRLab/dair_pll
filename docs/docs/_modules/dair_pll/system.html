@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.system &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>dair_pll.system</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.system</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;System abstract type definition.</span>
+
+<span class="sd">This file contains the fundamental ``System`` interface for dynamical</span>
+<span class="sd">systems. Systems are defined by their underlying dynamics; integration</span>
+<span class="sd">scheme; and an initial condition sampler for both states and hidden</span>
+<span class="sd">states/``carry``.</span>
+
+<span class="sd">Unlike ``Integrator``, ``System`` requires a temporal sequence of initial</span>
+<span class="sd">condition states; this is done to accommodate systems with hidden states that</span>
+<span class="sd">behave differently when &quot;preloaded&quot; with an initialization trajectory,</span>
+<span class="sd">such as a UKF estimator or an RNN.</span>
+
+<span class="sd">``System`` is used to interface with external simulators, e.g. Drake and MuJoCo.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">state_space</span>
+<span class="kn">from</span> <span class="nn">dair_pll.integrator</span> <span class="kn">import</span> <span class="n">Integrator</span>
+<span class="kn">from</span> <span class="nn">dair_pll.state_space</span> <span class="kn">import</span> <span class="n">StateSpace</span><span class="p">,</span> <span class="n">StateSpaceSampler</span>
+
+
+<div class="viewcode-block" id="SystemSummary"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.SystemSummary">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">SystemSummary</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;``dataclass`` for reporting information about the progress of a</span>
+<span class="sd">    training run.&quot;&quot;&quot;</span>
+    <span class="n">scalars</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">videos</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="System"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System">[docs]</a><span class="k">class</span> <span class="nc">System</span><span class="p">(</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for encapsulating a dynamical system.</span>
+
+<span class="sd">    Primarily implemented as a thin shell of ``Integrator`` with various</span>
+<span class="sd">    sampling interfaces defined.</span>
+
+<span class="sd">    A major difference from the ``Integrator`` interface is that ``System``</span>
+<span class="sd">    accepts a sequence of states, along with a single ``carry``/hidden state, as</span>
+<span class="sd">    an initial condition to accommodate proper initialization of some types</span>
+<span class="sd">    of recurrent dynamics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span>
+    <span class="n">integrator</span><span class="p">:</span> <span class="n">Integrator</span>
+    <span class="n">state_sampler</span><span class="p">:</span> <span class="n">StateSpaceSampler</span>
+    <span class="n">carry_callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[],</span> <span class="n">Tensor</span><span class="p">]]</span>
+    <span class="n">max_batch_dim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">,</span>
+                 <span class="n">integrator</span><span class="p">:</span> <span class="n">Integrator</span><span class="p">,</span>
+                 <span class="n">max_batch_dim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``System`` with prescribed integration properties.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space: State space of underlying dynamics</span>
+<span class="sd">            integrator: Integrator of underlying dynamics</span>
+<span class="sd">            max_batch_dim: Maximum number of batch dimensions supported by</span>
+<span class="sd">            ``integrator``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">space</span> <span class="o">=</span> <span class="n">space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">integrator</span> <span class="o">=</span> <span class="n">integrator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_sampler</span> <span class="o">=</span> <span class="n">state_space</span><span class="o">.</span><span class="n">ZeroSampler</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_callback</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span> <span class="o">=</span> <span class="n">max_batch_dim</span>
+
+<div class="viewcode-block" id="System.sample_trajectory"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.sample_trajectory">[docs]</a>    <span class="k">def</span> <span class="nf">sample_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Sample</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            length: duration of trajectory in number of time steps</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (length, space.nx) state trajectory</span>
+<span class="sd">            (length, ?) carry trajectory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_0</span><span class="p">,</span> <span class="n">carry_0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_initial_condition</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">x_0</span><span class="p">,</span> <span class="n">carry_0</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.simulate"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.simulate">[docs]</a>    <span class="k">def</span> <span class="nf">simulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                 <span class="n">carry_0</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                 <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Simulate forward in time from initial condition.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_0: (*, T_0, space.n_x) initial state sequence</span>
+<span class="sd">            carry_0: (*, 1, ?) initial hidden state</span>
+<span class="sd">            steps: number of steps to take beyond initial condition</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, steps + 1, space.n_x) state trajectory</span>
+<span class="sd">            (*, steps + 1, ?) hidden state trajectory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># If batching is more dimensions than allowed, iterate over outer</span>
+        <span class="c1"># dimension.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span> <span class="ow">and</span> <span class="p">(</span><span class="n">x_0</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span><span class="p">:</span>
+            <span class="n">x_carry_list</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">x0i</span><span class="p">,</span> <span class="n">c0i</span><span class="p">)</span> <span class="k">for</span> <span class="n">x0i</span><span class="p">,</span> <span class="n">c0i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x_0</span><span class="p">,</span> <span class="n">carry_0</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="c1"># pylint: disable=E1103</span>
+            <span class="n">x_trajectory</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x_carry</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x_carry</span> <span class="ow">in</span> <span class="n">x_carry_list</span><span class="p">])</span>
+            <span class="n">carry_trajectory</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">x_carry</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x_carry</span> <span class="ow">in</span> <span class="n">x_carry_list</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">carry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess_initial_condition</span><span class="p">(</span><span class="n">x_0</span><span class="p">,</span> <span class="n">carry_0</span><span class="p">)</span>
+            <span class="n">x_trajectory</span><span class="p">,</span> <span class="n">carry_trajectory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">carry</span><span class="p">,</span> <span class="n">steps</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_trajectory</span><span class="p">,</span> <span class="n">carry_trajectory</span></div>
+
+<div class="viewcode-block" id="System.sample_initial_condition"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.sample_initial_condition">[docs]</a>    <span class="k">def</span> <span class="nf">sample_initial_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Queries state and hidden state samplers for initial condition.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">carry_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Reshapes (space.n_x,) sample into duration-1 sequence.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_sampler</span><span class="o">.</span><span class="n">get_sample</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">n_x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">carry_callback</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="System.set_state_sampler"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.set_state_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">set_state_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sampler</span><span class="p">:</span> <span class="n">StateSpaceSampler</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Setter for state initial condition sampler.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_sampler</span> <span class="o">=</span> <span class="n">sampler</span></div>
+
+<div class="viewcode-block" id="System.set_carry_sampler"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.set_carry_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">set_carry_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Setter for hidden state initial condition sampler.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_callback</span> <span class="o">=</span> <span class="n">callback</span></div>
+
+<div class="viewcode-block" id="System.preprocess_initial_condition"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.preprocess_initial_condition">[docs]</a>    <span class="k">def</span> <span class="nf">preprocess_initial_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                                     <span class="n">carry_0</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Preprocesses initial condition state sequence into single state</span>
+<span class="sd">        initial condition for integration.</span>
+
+<span class="sd">        For example, an RNN would use the state sequence to &quot;preload&quot; hidden</span>
+<span class="sd">        states in the RNN, where ``carry_0`` would provide an initial hidden</span>
+<span class="sd">        state, and the output would be the hidden state after the RNN</span>
+<span class="sd">        receives the state sequence.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_0: (*, T_0, space.n_x) initial state sequence.</span>
+<span class="sd">            carry_0: (*, 1, ?) initial hidden state.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, 1, space.n_x) processed initial state.</span>
+<span class="sd">            (*, 1, ?) processed initial hidden state.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">carry_0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">carry_0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span>
+        <span class="k">assert</span> <span class="n">x_0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">carry_0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="c1"># Just return most recent state, don&#39;t do anything to hidden state</span>
+        <span class="k">return</span> <span class="n">x_0</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">):,</span> <span class="p">:],</span> <span class="n">carry_0</span></div>
+
+<div class="viewcode-block" id="System.summary"><a class="viewcode-back" href="../../dair_pll.system.html#dair_pll.system.System.summary">[docs]</a>    <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">statistics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SystemSummary</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Summarizes the current behavior and properties of the system.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            statistics: dictionary of training statistics</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Summary of system.</span>
+
+<span class="sd">        Todo:</span>
+<span class="sd">            Update for structured statistics object.</span>
+<span class="sd">            Fix ``pylint`` warning elegantly.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># no-ops to prevent pesky pylint errors</span>
+        <span class="k">assert</span> <span class="n">statistics</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="bp">self</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">SystemSummary</span><span class="p">()</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

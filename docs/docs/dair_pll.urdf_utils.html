@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.urdf_utils &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.integrator" href="dair_pll.integrator.html" />
+    <link rel="prev" title="dair_pll.multibody_terms" href="dair_pll.multibody_terms.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.urdf_utils</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.urdf_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.urdf_utils">
+<span id="dair-pll-urdf-utils"></span><h1>dair_pll.urdf_utils<a class="headerlink" href="#module-dair_pll.urdf_utils" title="Permalink to this headline"></a></h1>
+<p>Utility functions for generating URDF’s for a given multibody system.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">URDFFindOrDefault</span></code> class searches for elements in an urdf’s xml tree,
+and places a default in the event that the element does not exist. Many
+string literals are instantiated here for convenience.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">UrdfGeometryRepresentationFactory</span></code> generates URDF XML representations
+of a <code class="docutils literal notranslate"><span class="pre">CollisionGeometry</span></code>, and <code class="docutils literal notranslate"><span class="pre">fill_link_with_parameterization</span></code> dumps
+these representations into a URDF “link” tag.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfFindOrDefault">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.urdf_utils.</span></span><span class="sig-name descname"><span class="pre">UrdfFindOrDefault</span></span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfFindOrDefault"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfFindOrDefault" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>URDF XML tool to automatically fill in default element tree structures.</p>
+<p>URDF’s often represent an identifiable unit (e.g. a body’s spatial
+inertia) as a subtree of XML elements. <code class="docutils literal notranslate"><span class="pre">URDFFindOrDefault</span></code> implements a
+generalization of the <code class="docutils literal notranslate"><span class="pre">xml.etree.ElementTree.find()</span></code> method, which fills
+in a default subtree according to the tree structure given in
+<code class="docutils literal notranslate"><span class="pre">_URDF_DEFAULT_TREE</span></code>, with each element given tags according to
+<code class="docutils literal notranslate"><span class="pre">_URDF_DEFAULT_ATTRIBUTES</span></code>.</p>
+<p>Typical usage example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># element is an empty &lt;inertial&gt;&lt;/inertial&gt;</span>
+<span class="c1"># obtain default mass</span>
+<span class="n">mass_element</span> <span class="o">=</span> <span class="n">URDFFindOrDefault</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="s2">&quot;mass&quot;</span><span class="p">)</span>
+
+<span class="c1"># element is now &lt;inertial&gt;&lt;mass value=&quot;0.&quot; /&gt;&lt;/inertial&gt;</span>
+<span class="c1"># mass_element is now the child of element, &lt;mass value=&quot;0.&quot; /&gt;</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfFindOrDefault.find">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_element_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfFindOrDefault.find"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfFindOrDefault.find" title="Permalink to this definition"></a></dt>
+<dd><p>Finds an XML sub-element of specified type, adding a default
+element of that type if necessary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>element</strong> (<a class="reference external" href="https://docs.python.org/3/library/xml.etree.elementtree.html#xml.etree.ElementTree.Element" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Element</span></code></a>) – Element containing the sub-element.</p></li>
+<li><p><strong>sub_element_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Name of the sub-element type.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/xml.etree.elementtree.html#xml.etree.ElementTree.Element" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Element</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An <code class="docutils literal notranslate"><span class="pre">ElementTree.Element</span></code>, of type <code class="docutils literal notranslate"><span class="pre">sub_element_type</span></code>, which is a
+child of the argument element that either (a) one which existed
+before the function call or (b) the root of a new, default subtree.</p>
+</dd>
+</dl>
+<p>sub-elements of given type.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfFindOrDefault.generate_default_element">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_default_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfFindOrDefault.generate_default_element"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfFindOrDefault.generate_default_element" title="Permalink to this definition"></a></dt>
+<dd><p>Generates a default <code class="docutils literal notranslate"><span class="pre">ElementTree.Element</span></code> subtree of given type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>element_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Name of the new default element type.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/xml.etree.elementtree.html#xml.etree.ElementTree.Element" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Element</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A default <code class="docutils literal notranslate"><span class="pre">ElementTree.Element</span></code> of type <code class="docutils literal notranslate"><span class="pre">element_type</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfGeometryRepresentationFactory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.urdf_utils.</span></span><span class="sig-name descname"><span class="pre">UrdfGeometryRepresentationFactory</span></span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfGeometryRepresentationFactory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfGeometryRepresentationFactory" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Utility class for generating URDF representations of
+<code class="docutils literal notranslate"><span class="pre">CollisionGeometry</span></code> instances.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.representation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">representation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfGeometryRepresentationFactory.representation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.representation" title="Permalink to this definition"></a></dt>
+<dd><p>Representation of an associated URDF tag that describes the
+properties of this geometry.</p>
+<p>Tags are expected to be put inside a <code class="docutils literal notranslate"><span class="pre">&lt;collision&gt;</span></code> tag in the URDF
+file.</p>
+<p class="rubric">Example</p>
+<p>To output <code class="docutils literal notranslate"><span class="pre">&lt;sphere</span> <span class="pre">radius=&quot;5.1&quot;&gt;</span></code> for a <code class="docutils literal notranslate"><span class="pre">Sphere</span></code>, return the
+following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="s1">&#39;sphere&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="s1">&#39;5.1&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>geometry</strong> (<a class="reference internal" href="dair_pll.geometry.html#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a>) – collision geometry to be represented</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>URDF tag and attributes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.polygon_representation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">polygon_representation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfGeometryRepresentationFactory.polygon_representation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.polygon_representation" title="Permalink to this definition"></a></dt>
+<dd><p>Todo: implement representation for <code class="docutils literal notranslate"><span class="pre">Polygon</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.box_representation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">box_representation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">box</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfGeometryRepresentationFactory.box_representation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.box_representation" title="Permalink to this definition"></a></dt>
+<dd><p>Returns URDF representation as <code class="docutils literal notranslate"><span class="pre">box</span></code> tag with full-length sizes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.sphere_representation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sphere_representation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sphere</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#UrdfGeometryRepresentationFactory.sphere_representation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.UrdfGeometryRepresentationFactory.sphere_representation" title="Permalink to this definition"></a></dt>
+<dd><p>Returns URDF representation as <code class="docutils literal notranslate"><span class="pre">sphere</span></code> tag with radius
+attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.fill_link_with_parameterization">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.urdf_utils.</span></span><span class="sig-name descname"><span class="pre">fill_link_with_parameterization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometries</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#fill_link_with_parameterization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.fill_link_with_parameterization" title="Permalink to this definition"></a></dt>
+<dd><p>Convert pytorch inertial and geometric representations to URDF elements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>element</strong> (<a class="reference external" href="https://docs.python.org/3/library/xml.etree.elementtree.html#xml.etree.ElementTree.Element" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Element</span></code></a>) – XML “link” tag in which representation is stored.</p></li>
+<li><p><strong>pi</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v1.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (10,) inertial representation of link in <code class="docutils literal notranslate"><span class="pre">pi</span></code> parameterization.</p></li>
+<li><p><strong>geometries</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference internal" href="dair_pll.geometry.html#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a>]) – All geometries attached to body.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Does not handle multiple geometries.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.10)"><strong>NotImplementedError</strong></a> – when multiple geometries are provided.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.urdf_utils.represent_multibody_terms_as_urdfs">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.urdf_utils.</span></span><span class="sig-name descname"><span class="pre">represent_multibody_terms_as_urdfs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">multibody_terms</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/urdf_utils.html#represent_multibody_terms_as_urdfs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.urdf_utils.represent_multibody_terms_as_urdfs" title="Permalink to this definition"></a></dt>
+<dd><p>Renders the current parameterization of multibody terms as a
+set of urdfs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>multibody_terms</strong> (<a class="reference internal" href="dair_pll.multibody_terms.html#dair_pll.multibody_terms.MultibodyTerms" title="dair_pll.multibody_terms.MultibodyTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code></a>) – Multibody dynamics representation to convert.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Dictionary of (urdf name, urdf XML string) pairs.</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>For now, assumes that each URDF link element <code class="docutils literal notranslate"><span class="pre">e</span></code> gets modeled as a
+corresponding body <code class="docutils literal notranslate"><span class="pre">b</span></code> with <code class="docutils literal notranslate"><span class="pre">b.name()</span> <span class="pre">==</span> <span class="pre">e.get(&quot;name&quot;)</span></code>.
+Drake however does not guarantee this relationship. A more stable
+implementation would be to directly edit the MultibodyPlant, but this
+would make the representation less portable.</p>
+</div>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.multibody_terms.html" class="btn btn-neutral float-left" title="dair_pll.multibody_terms" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.integrator.html" class="btn btn-neutral float-right" title="dair_pll.integrator" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

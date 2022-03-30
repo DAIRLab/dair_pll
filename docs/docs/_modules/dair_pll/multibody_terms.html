@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.multibody_terms &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>dair_pll.multibody_terms</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.multibody_terms</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Mathematical implementation of multibody dynamics terms calculations.</span>
+
+<span class="sd">This file implements the ``MultibodyTerms`` type, which interprets a list of</span>
+<span class="sd">urdfs as a learnable Lagrangian system with contact, taking the state space</span>
+<span class="sd">from the corresponding ``MultibodyPlantDiagram`` as a given, and interpreting</span>
+<span class="sd">the various inertial and geometric terms stored within it as initial</span>
+<span class="sd">conditions of learnable parameters.</span>
+
+<span class="sd">Multibody dynamics can be derived from four functions of state [q,v]:</span>
+
+<span class="sd">    * M(q), the generalized mass-matrix</span>
+<span class="sd">    * F(q), the non-contact/Lagrangian force terms.</span>
+<span class="sd">    * phi(q), the signed distance between collision candidates.</span>
+<span class="sd">    * J(q), the contact-frame velocity Jacobian between collision candidates.</span>
+
+<span class="sd">The first two terms depend solely on state and inertial properties,</span>
+<span class="sd">and parameterize the contact-free Lagrangian dynamics as::</span>
+
+<span class="sd">    dv/dt = (M(q) ** (-1)) * F(q)</span>
+
+<span class="sd">These terms are accordingly encapsulated in a ``LagrangianTerms`` instance.</span>
+
+<span class="sd">The latter two terms depend solely on the geometry of bodies coming into</span>
+<span class="sd">contact, and are encapsulated in a ``ContactTerms`` instance.</span>
+
+<span class="sd">For both sets of terms, we derive their functional form either directly or in</span>
+<span class="sd">part through symbolic analysis of the ``MultibodyPlant`` of the associated</span>
+<span class="sd">``MultibodyPlantDiagram``. The ``MultibodyTerms`` object manages the symbolic</span>
+<span class="sd">calculation and has corresponding ``LagrangianTerms`` and ``ContactTerms``</span>
+<span class="sd">members.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">drake_pytorch</span>  <span class="c1"># type: ignore</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">pydrake.geometry</span> <span class="kn">import</span> <span class="n">SceneGraphInspector</span><span class="p">,</span> <span class="n">GeometryId</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.multibody.plant</span> <span class="kn">import</span> <span class="n">MultibodyPlant_</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.multibody.tree</span> <span class="kn">import</span> <span class="n">JacobianWrtVariable</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.multibody.tree</span> <span class="kn">import</span> <span class="n">ModelInstanceIndex</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.multibody.tree</span> <span class="kn">import</span> <span class="n">SpatialInertia_</span><span class="p">,</span> <span class="n">UnitInertia_</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.symbolic</span> <span class="kn">import</span> <span class="n">Expression</span><span class="p">,</span> <span class="n">Variable</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.symbolic</span> <span class="kn">import</span> <span class="n">MakeVectorVariable</span><span class="p">,</span> <span class="n">Jacobian</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">pydrake.systems.framework</span> <span class="kn">import</span> <span class="n">Context</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span><span class="p">,</span> <span class="n">ModuleList</span><span class="p">,</span> <span class="n">Parameter</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">drake_utils</span>
+<span class="kn">from</span> <span class="nn">dair_pll.drake_state_converter</span> <span class="kn">import</span> <span class="n">DrakeStateConverter</span>
+<span class="kn">from</span> <span class="nn">dair_pll.drake_utils</span> <span class="kn">import</span> <span class="n">MultibodyPlantDiagram</span>
+<span class="kn">from</span> <span class="nn">dair_pll.geometry</span> <span class="kn">import</span> <span class="n">GeometryCollider</span><span class="p">,</span> \
+    <span class="n">PydrakeToCollisionGeometryFactory</span><span class="p">,</span> \
+    <span class="n">CollisionGeometry</span>
+<span class="kn">from</span> <span class="nn">dair_pll.inertia</span> <span class="kn">import</span> <span class="n">InertialParameterConverter</span>
+<span class="kn">from</span> <span class="nn">dair_pll.tensor_utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">pbmm</span><span class="p">,</span> <span class="n">deal</span><span class="p">,</span>
+                                   <span class="n">spatial_to_point_jacobian</span><span class="p">)</span>
+
+<span class="n">ConfigurationInertialCallback</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]</span>
+<span class="n">StateInputInertialCallback</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]</span>
+
+<span class="n">CENTER_OF_MASS_DOF</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">INERTIA_TENSOR_DOF</span> <span class="o">=</span> <span class="mi">6</span>
+
+
+<span class="c1"># noinspection PyUnresolvedReferences</span>
+<div class="viewcode-block" id="init_symbolic_plant_context_and_state"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.init_symbolic_plant_context_and_state">[docs]</a><span class="k">def</span> <span class="nf">init_symbolic_plant_context_and_state</span><span class="p">(</span>
+        <span class="n">plant_diagram</span><span class="p">:</span> <span class="n">MultibodyPlantDiagram</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">MultibodyPlant_</span><span class="p">[</span><span class="n">Expression</span><span class="p">],</span> <span class="n">Context</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Generates a symbolic interface for a ``MultibodyPlantDiagram``.</span>
+
+<span class="sd">    Generates a new Drake ``Expression`` data type state in ``StateSpace``</span>
+<span class="sd">    format, and sets this state inside a new context for a symbolic version</span>
+<span class="sd">    of the diagram&#39;s ``MultibodyPlant``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        plant_diagram: Drake MultibodyPlant diagram to convert to symbolic.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        New symbolic plant.</span>
+<span class="sd">        New plant&#39;s context, with symbolic states set.</span>
+<span class="sd">        (n_q,) symbolic ``StateSpace`` configuration.</span>
+<span class="sd">        (n_v,) symbolic ``StateSpace`` velocity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">plant</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">ToSymbolic</span><span class="p">()</span>
+    <span class="n">space</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">space</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">CreateDefaultContext</span><span class="p">()</span>
+
+    <span class="c1"># ``StateSpace`` representation of Plant&#39;s state.</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">MakeVectorVariable</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">num_positions</span><span class="p">(),</span> <span class="s1">&#39;q&#39;</span><span class="p">,</span> <span class="n">Variable</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">MakeVectorVariable</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">num_velocities</span><span class="p">(),</span> <span class="s1">&#39;v&#39;</span><span class="p">,</span>
+                           <span class="n">Variable</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Set ``StateSpace`` symbolic state inside</span>
+    <span class="n">DrakeStateConverter</span><span class="o">.</span><span class="n">state_to_context</span><span class="p">(</span><span class="n">plant</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span>
+                                         <span class="n">plant_diagram</span><span class="o">.</span><span class="n">model_ids</span><span class="p">,</span> <span class="n">space</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">plant</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span></div>
+
+
+<div class="viewcode-block" id="LagrangianTerms"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.LagrangianTerms">[docs]</a><span class="k">class</span> <span class="nc">LagrangianTerms</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Container class for non-contact/Lagrangian dynamics terms.</span>
+
+<span class="sd">    Accepts batched pytorch callback functions for M(q) and F(q) and related</span>
+<span class="sd">    contact terms in ``theta`` format (see ``inertia.py``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mass_matrix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ConfigurationInertialCallback</span><span class="p">]</span>
+    <span class="n">lagrangian_forces</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StateInputInertialCallback</span><span class="p">]</span>
+    <span class="n">inertial_parameters</span><span class="p">:</span> <span class="n">Parameter</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plant_diagram</span><span class="p">:</span> <span class="n">MultibodyPlantDiagram</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``LagrangianTerms`` with prescribed parameters and</span>
+<span class="sd">        functional forms.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plant_diagram: Drake MultibodyPlant diagram to extract terms from.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="n">plant</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">init_symbolic_plant_context_and_state</span><span class="p">(</span>
+            <span class="n">plant_diagram</span><span class="p">)</span>
+        <span class="n">gamma</span> <span class="o">=</span> <span class="n">Jacobian</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">GetVelocities</span><span class="p">(</span><span class="n">context</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
+
+        <span class="n">body_parameters</span><span class="p">,</span> <span class="n">body_variables</span> <span class="o">=</span> \
+            <span class="n">LagrangianTerms</span><span class="o">.</span><span class="n">extract_body_parameters_and_variables</span><span class="p">(</span>
+                <span class="n">plant</span><span class="p">,</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">model_ids</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+
+        <span class="n">mass_matrix_expression</span> <span class="o">=</span> \
+            <span class="n">gamma</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">plant</span><span class="o">.</span><span class="n">CalcMassMatrixViaInverseDynamics</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="o">@</span> <span class="n">gamma</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mass_matrix</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">drake_pytorch</span><span class="o">.</span><span class="n">sym_to_pytorch</span><span class="p">(</span>
+            <span class="n">mass_matrix_expression</span><span class="p">,</span>
+            <span class="n">q</span><span class="p">,</span>
+            <span class="n">body_variables</span><span class="p">,</span>
+            <span class="n">simplify_computation</span><span class="o">=</span><span class="n">drake_pytorch</span><span class="o">.</span><span class="n">Simplifier</span><span class="o">.</span><span class="n">QUICKTRIG</span><span class="p">)</span>
+
+        <span class="n">u</span> <span class="o">=</span> <span class="n">MakeVectorVariable</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">num_actuated_dofs</span><span class="p">(),</span> <span class="s1">&#39;u&#39;</span><span class="p">,</span>
+                               <span class="n">Variable</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">)</span>
+        <span class="n">drake_forces_expression</span> <span class="o">=</span> <span class="o">-</span><span class="n">plant</span><span class="o">.</span><span class="n">CalcBiasTerm</span><span class="p">(</span>
+            <span class="n">context</span><span class="p">)</span> <span class="o">+</span> <span class="n">plant</span><span class="o">.</span><span class="n">MakeActuationMatrix</span><span class="p">(</span>
+        <span class="p">)</span> <span class="o">@</span> <span class="n">u</span> <span class="o">+</span> <span class="n">plant</span><span class="o">.</span><span class="n">CalcGravityGeneralizedForces</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+
+        <span class="n">lagrangian_forces_expression</span> <span class="o">=</span> <span class="n">gamma</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">drake_forces_expression</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lagrangian_forces</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">drake_pytorch</span><span class="o">.</span><span class="n">sym_to_pytorch</span><span class="p">(</span>
+            <span class="n">lagrangian_forces_expression</span><span class="p">,</span>
+            <span class="n">q</span><span class="p">,</span>
+            <span class="n">v</span><span class="p">,</span>
+            <span class="n">u</span><span class="p">,</span>
+            <span class="n">body_variables</span><span class="p">,</span>
+            <span class="n">simplify_computation</span><span class="o">=</span><span class="n">drake_pytorch</span><span class="o">.</span><span class="n">Simplifier</span><span class="o">.</span><span class="n">QUICKTRIG</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inertial_parameters</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">body_parameters</span><span class="p">,</span>
+                                             <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># noinspection PyUnresolvedReferences</span>
+<div class="viewcode-block" id="LagrangianTerms.extract_body_parameters_and_variables"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.LagrangianTerms.extract_body_parameters_and_variables">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">extract_body_parameters_and_variables</span><span class="p">(</span>
+            <span class="n">plant</span><span class="p">:</span> <span class="n">MultibodyPlant_</span><span class="p">[</span><span class="n">Expression</span><span class="p">],</span>
+            <span class="n">model_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ModelInstanceIndex</span><span class="p">],</span>
+            <span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Generates parameterization and symbolic variables for all bodies.</span>
+
+<span class="sd">        For a multibody plant, finds all bodies that should have inertial</span>
+<span class="sd">        properties; extracts the current values as an initial condition for</span>
+<span class="sd">        ``theta``-format learnable parameters, and sets new symbolic versions of</span>
+<span class="sd">        these variables.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plant: Symbolic plant from which to extract parameterization.</span>
+<span class="sd">            model_ids: List of models in plant.</span>
+<span class="sd">            context: Plant&#39;s symbolic context.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (n_bodies, 10) ``theta`` parameters initial conditions.</span>
+<span class="sd">            (n_bodies, 10) symbolic inertial variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">all_bodies</span><span class="p">,</span> <span class="n">all_body_ids</span> <span class="o">=</span> <span class="n">drake_utils</span><span class="o">.</span><span class="n">get_all_inertial_bodies</span><span class="p">(</span>
+            <span class="n">plant</span><span class="p">,</span> <span class="n">model_ids</span><span class="p">)</span>
+
+        <span class="n">body_parameter_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">body_variable_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">body</span><span class="p">,</span> <span class="n">body_id</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">all_bodies</span><span class="p">,</span> <span class="n">all_body_ids</span><span class="p">):</span>
+            <span class="n">mass</span> <span class="o">=</span> <span class="n">Variable</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">body_id</span><span class="si">}</span><span class="s1">_m&#39;</span><span class="p">,</span> <span class="n">Variable</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">)</span>
+            <span class="n">p_BoBcm_B</span> <span class="o">=</span> <span class="n">MakeVectorVariable</span><span class="p">(</span><span class="n">CENTER_OF_MASS_DOF</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">body_id</span><span class="si">}</span><span class="s1">_com&#39;</span><span class="p">,</span>
+                                           <span class="n">Variable</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">)</span>
+            <span class="n">I_BBcm_B</span> <span class="o">=</span> <span class="n">MakeVectorVariable</span><span class="p">(</span><span class="n">INERTIA_TENSOR_DOF</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">body_id</span><span class="si">}</span><span class="s1">_I&#39;</span><span class="p">,</span>
+                                          <span class="n">Variable</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">)</span>
+
+            <span class="c1"># get original values</span>
+            <span class="n">body_parameter_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">InertialParameterConverter</span><span class="o">.</span><span class="n">drake_to_theta</span><span class="p">(</span>
+                    <span class="n">body</span><span class="o">.</span><span class="n">CalcSpatialInertiaInBodyFrame</span><span class="p">(</span><span class="n">context</span><span class="p">)))</span>
+
+            <span class="n">body_spatial_inertia</span> <span class="o">=</span> <span class="n">SpatialInertia_</span><span class="p">[</span><span class="n">Expression</span><span class="p">](</span>
+                <span class="n">mass</span><span class="p">,</span> <span class="n">p_BoBcm_B</span><span class="p">,</span> <span class="n">UnitInertia_</span><span class="p">[</span><span class="n">Expression</span><span class="p">](</span><span class="o">*</span><span class="n">I_BBcm_B</span><span class="p">))</span>
+
+            <span class="n">body</span><span class="o">.</span><span class="n">SetMass</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">mass</span><span class="p">)</span>
+            <span class="n">body</span><span class="o">.</span><span class="n">SetSpatialInertiaInBodyFrame</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">body_spatial_inertia</span><span class="p">)</span>
+            <span class="n">body_variable_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">mass</span><span class="p">,</span> <span class="n">p_BoBcm_B</span><span class="p">,</span> <span class="n">I_BBcm_B</span><span class="p">)))</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">body_parameter_list</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">body_variable_list</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LagrangianTerms.pi"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.LagrangianTerms.pi">[docs]</a>    <span class="k">def</span> <span class="nf">pi</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Returns inertial parameters in human-understandable ``pi``-format&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">InertialParameterConverter</span><span class="o">.</span><span class="n">theta_to_pi</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inertial_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LagrangianTerms.forward"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.LagrangianTerms.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Evaluates Lagrangian dynamics terms at given state and input.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: (*, n_q) configuration batch.</span>
+<span class="sd">            v: (*, n_v) velocity batch.</span>
+<span class="sd">            u: (*, n_u) input batch.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, n_v, n_v) mass matrix batch M(q)</span>
+<span class="sd">            (*, n_v) Lagrangian contact-free acceleration inv(M(q)) F(q)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Pylint cannot recognize instance attributes as Callable.</span>
+        <span class="c1"># pylint: disable=not-callable</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">lagrangian_forces</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">inertia</span> <span class="o">=</span> <span class="n">InertialParameterConverter</span><span class="o">.</span><span class="n">pi_to_drake_spatial_inertia</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pi</span><span class="p">())</span>
+        <span class="n">inertia</span> <span class="o">=</span> <span class="n">inertia</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">inertia</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mass_matrix</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">inertia</span><span class="p">)</span>
+        <span class="n">non_contact_acceleration</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span>
+            <span class="n">M</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lagrangian_forces</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">inertia</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">M</span><span class="p">,</span> <span class="n">non_contact_acceleration</span></div></div>
+
+
+<span class="n">ConfigurationCallback</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="make_configuration_callback"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.make_configuration_callback">[docs]</a><span class="k">def</span> <span class="nf">make_configuration_callback</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Converts drake symbolic expression to pytorch function via</span>
+<span class="sd">    ``drake_pytorch``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span>
+        <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">drake_pytorch</span><span class="o">.</span><span class="n">sym_to_pytorch</span><span class="p">(</span>
+            <span class="n">expression</span><span class="p">,</span>
+            <span class="n">q</span><span class="p">,</span>
+            <span class="n">simplify_computation</span><span class="o">=</span><span class="n">drake_pytorch</span><span class="o">.</span><span class="n">Simplifier</span><span class="o">.</span><span class="n">QUICKTRIG</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="ContactTerms"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.ContactTerms">[docs]</a><span class="k">class</span> <span class="nc">ContactTerms</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Container class for contact-related dynamics terms.</span>
+
+<span class="sd">    Derives batched pytorch callback functions for collision geometry</span>
+<span class="sd">    position and velocity kinematics from a</span>
+<span class="sd">    :class:`~dair_pll.drake_utils.MultibodyPlantDiagram`.&quot;&quot;&quot;</span>
+    <span class="n">geometry_rotations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ConfigurationCallback</span><span class="p">]</span>
+    <span class="n">geometry_translations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ConfigurationCallback</span><span class="p">]</span>
+    <span class="n">geometry_spatial_jacobians</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ConfigurationCallback</span><span class="p">]</span>
+    <span class="n">geometries</span><span class="p">:</span> <span class="n">ModuleList</span>
+    <span class="n">friction_coefficients</span><span class="p">:</span> <span class="n">Parameter</span>
+    <span class="n">collision_candidates</span><span class="p">:</span> <span class="n">Tensor</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plant_diagram</span><span class="p">:</span> <span class="n">MultibodyPlantDiagram</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``ContactTerms`` with prescribed kinematics and geometries.</span>
+
+<span class="sd">        phi(q) and J(q) are calculated implicitly from kinematics and ``n_g ==</span>
+<span class="sd">        len(geometries)`` collision geometries C.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plant_diagram: Drake MultibodyPlant diagram to extract terms from.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># pylint: disable=too-many-locals</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">plant</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">init_symbolic_plant_context_and_state</span><span class="p">(</span>
+            <span class="n">plant_diagram</span><span class="p">)</span>
+        <span class="n">inspector</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">scene_graph</span><span class="o">.</span><span class="n">model_inspector</span><span class="p">()</span>
+
+        <span class="n">geometry_ids</span><span class="p">,</span> <span class="n">coulomb_frictions</span><span class="p">,</span> <span class="n">collision_candidates</span> <span class="o">=</span> \
+            <span class="n">drake_utils</span><span class="o">.</span><span class="n">get_collision_geometry_set</span><span class="p">(</span><span class="n">inspector</span><span class="p">)</span>
+
+        <span class="c1"># sweep over collision elements</span>
+        <span class="n">geometries</span><span class="p">,</span> <span class="n">rotations</span><span class="p">,</span> <span class="n">translations</span><span class="p">,</span> <span class="n">drake_spatial_jacobians</span> <span class="o">=</span> \
+            <span class="n">ContactTerms</span><span class="o">.</span><span class="n">extract_geometries_and_kinematics</span><span class="p">(</span><span class="n">plant</span><span class="p">,</span> <span class="n">inspector</span><span class="p">,</span>
+                                                           <span class="n">geometry_ids</span><span class="p">,</span>
+                                                           <span class="n">context</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">geometry_index</span><span class="p">,</span> <span class="n">geometry_pair</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">collision_candidates</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">geometries</span><span class="p">[</span><span class="n">geometry_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&gt;</span> <span class="n">geometries</span><span class="p">[</span><span class="n">geometry_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]]:</span>
+                <span class="n">collision_candidates</span><span class="p">[</span><span class="n">geometry_index</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">geometry_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                                        <span class="n">geometry_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">geometry_rotations</span> <span class="o">=</span> <span class="n">make_configuration_callback</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">rotations</span><span class="p">),</span> <span class="n">q</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">geometry_translations</span> <span class="o">=</span> <span class="n">make_configuration_callback</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">translations</span><span class="p">),</span> <span class="n">q</span><span class="p">)</span>
+
+        <span class="n">drake_velocity_jacobian</span> <span class="o">=</span> <span class="n">Jacobian</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">GetVelocities</span><span class="p">(</span><span class="n">context</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">geometry_spatial_jacobians</span> <span class="o">=</span> <span class="n">make_configuration_callback</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span>
+            <span class="n">jacobian</span> <span class="o">@</span> <span class="n">drake_velocity_jacobian</span>
+            <span class="k">for</span> <span class="n">jacobian</span> <span class="ow">in</span> <span class="n">drake_spatial_jacobians</span>
+        <span class="p">]),</span> <span class="n">q</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">geometries</span> <span class="o">=</span> <span class="n">ModuleList</span><span class="p">(</span><span class="n">geometries</span><span class="p">)</span>
+
+        <span class="n">mu_static</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">([</span><span class="n">friction</span><span class="o">.</span><span class="n">static_friction</span><span class="p">()</span> <span class="k">for</span> <span class="n">friction</span> <span class="ow">in</span>
+                            <span class="n">coulomb_frictions</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">friction_coefficients</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">mu_static</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">collision_candidates</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">collision_candidates</span><span class="p">)</span><span class="o">.</span><span class="n">t</span><span class="p">()</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
+
+    <span class="c1"># noinspection PyUnresolvedReferences</span>
+<div class="viewcode-block" id="ContactTerms.extract_geometries_and_kinematics"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.ContactTerms.extract_geometries_and_kinematics">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">extract_geometries_and_kinematics</span><span class="p">(</span>
+            <span class="n">plant</span><span class="p">:</span> <span class="n">MultibodyPlant_</span><span class="p">[</span><span class="n">Expression</span><span class="p">],</span> <span class="n">inspector</span><span class="p">:</span> <span class="n">SceneGraphInspector</span><span class="p">,</span>
+            <span class="n">geometry_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">GeometryId</span><span class="p">],</span> <span class="n">context</span><span class="p">:</span> <span class="n">Context</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">CollisionGeometry</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+               <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+        <span class="sd">&quot;&quot;&quot;Extracts modules and kinematics of list of geometries G.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plant: Multibody plant from which terms are extracted.</span>
+<span class="sd">            inspector: Scene graph inspector associated with plant.</span>
+<span class="sd">            geometry_ids: List of geometries to model.</span>
+<span class="sd">            context: Plant&#39;s context with symbolic state.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of ``CollisionGeometry`` models with one-to-one</span>
+<span class="sd">            correspondence with provided geometries.</span>
+<span class="sd">            List[(3,3)] of corresponding rotation matrices R_WG</span>
+<span class="sd">            List[(3,)] of corresponding geometry frame origins p_WoGo_W</span>
+<span class="sd">            List[(6,n_v)] of geometry spatial jacobians w.r.t. drake velocity</span>
+<span class="sd">            coordinates, J(v_drake)_V_WG_W</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">world_frame</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">world_frame</span><span class="p">()</span>
+        <span class="n">geometries</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rotations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">translations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">drake_spatial_jacobians</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">geometry_id</span> <span class="ow">in</span> <span class="n">geometry_ids</span><span class="p">:</span>
+            <span class="n">geometry_frame</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">GetBodyFromFrameId</span><span class="p">(</span>
+                <span class="n">inspector</span><span class="o">.</span><span class="n">GetFrameId</span><span class="p">(</span><span class="n">geometry_id</span><span class="p">))</span><span class="o">.</span><span class="n">body_frame</span><span class="p">()</span>
+
+            <span class="n">geometry_transform</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">CalcRelativeTransform</span><span class="p">(</span>
+                <span class="n">context</span><span class="p">,</span> <span class="n">world_frame</span><span class="p">,</span> <span class="n">geometry_frame</span><span class="p">)</span>
+
+            <span class="n">rotations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geometry_transform</span><span class="o">.</span><span class="n">rotation</span><span class="p">()</span><span class="o">.</span><span class="n">matrix</span><span class="p">())</span>
+
+            <span class="n">translations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geometry_transform</span><span class="o">.</span><span class="n">translation</span><span class="p">())</span>
+
+            <span class="n">drake_spatial_jacobian</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">CalcJacobianSpatialVelocity</span><span class="p">(</span>
+                <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+                <span class="n">with_respect_to</span><span class="o">=</span><span class="n">JacobianWrtVariable</span><span class="o">.</span><span class="n">kV</span><span class="p">,</span>
+                <span class="n">frame_B</span><span class="o">=</span><span class="n">geometry_frame</span><span class="p">,</span>
+                <span class="n">p_BP</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                <span class="n">frame_A</span><span class="o">=</span><span class="n">world_frame</span><span class="p">,</span>
+                <span class="n">frame_E</span><span class="o">=</span><span class="n">world_frame</span><span class="p">)</span>
+            <span class="n">drake_spatial_jacobians</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drake_spatial_jacobian</span><span class="p">)</span>
+
+            <span class="n">geometries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">PydrakeToCollisionGeometryFactory</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span>
+                    <span class="n">inspector</span><span class="o">.</span><span class="n">GetShape</span><span class="p">(</span><span class="n">geometry_id</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="n">geometries</span><span class="p">,</span> <span class="n">rotations</span><span class="p">,</span> <span class="n">translations</span><span class="p">,</span> <span class="n">drake_spatial_jacobians</span></div>
+
+<div class="viewcode-block" id="ContactTerms.assemble_velocity_jacobian"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.ContactTerms.assemble_velocity_jacobian">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">assemble_velocity_jacobian</span><span class="p">(</span><span class="n">R_CW</span><span class="p">,</span> <span class="n">Jv_V_WC_W</span><span class="p">,</span> <span class="n">p_CoCc_C</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Helper method to generate velocity jacobian from contact information.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            R_CW: (*, n_c, 3, 3) Rotation of world frame w.r.t. geometry frame.</span>
+<span class="sd">            Jv_V_WC_W: (*, 1, 6, n_v) Geometry spatial velocity Jacobian.</span>
+<span class="sd">            p_CoCc_C: (*, n_c, 3) Geometry-frame contact points.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, n_c, 3, n_v) World-frame contact point translational velocity</span>
+<span class="sd">            Jacobian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p_CoCc_W</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">p_CoCc_C</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">R_CW</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">Jv_v_WCc_W</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">spatial_to_point_jacobian</span><span class="p">(</span><span class="n">p_CoCc_W</span><span class="p">),</span> <span class="n">Jv_V_WC_W</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Jv_v_WCc_W</span></div>
+
+<div class="viewcode-block" id="ContactTerms.relative_velocity_to_contact_jacobian"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.ContactTerms.relative_velocity_to_contact_jacobian">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">relative_velocity_to_contact_jacobian</span><span class="p">(</span><span class="n">Jv_v_W_BcAc_F</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                                              <span class="n">mu</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Helper method to reorder contact Jacobian columns.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            Jv_v_W_BcAc_F: (*, n_collisions, 3, n_v) collection of</span>
+<span class="sd">            contact-frame relative velocity Jacobians.</span>
+<span class="sd">            mu: (n_collisions,) list of</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, 3 * n_collisions, n_v) contact jacobian J(q) in [J_n; mu * J_t]</span>
+<span class="sd">            ordering.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Tuple of (*, n_collisions, n_v)</span>
+        <span class="n">J_x</span><span class="p">,</span> <span class="n">J_y</span><span class="p">,</span> <span class="n">J_z</span> <span class="o">=</span> <span class="n">deal</span><span class="p">(</span><span class="n">Jv_v_W_BcAc_F</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">J_n</span> <span class="o">=</span> <span class="n">J_z</span>
+
+        <span class="c1"># Reshape (*, n_collisions, 2 * n_v) -&gt; (*, 2 * n_collisions, n_v)</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">mu_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">((</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="p">(</span><span class="n">J_x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">mu</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="n">friction_jacobian_shape</span> <span class="o">=</span> <span class="n">J_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">J_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">J_t</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mu_shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">J_x</span><span class="p">,</span> <span class="n">J_y</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span> \
+            <span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">friction_jacobian_shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">J_n</span><span class="p">,</span> <span class="n">J_t</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ContactTerms.forward"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.ContactTerms.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Evaluates Lagrangian dynamics terms at given state and input.</span>
+
+<span class="sd">        Uses ``GeometryCollider`` and kinematics to construct signed</span>
+<span class="sd">        distance phi(q) and the corresponding Jacobian J(q).</span>
+
+<span class="sd">        phi(q) and J(q) are calculated implicitly from kinematics and collision</span>
+<span class="sd">        geometries.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: (*, n_q) configuration batch.</span>
+<span class="sd">            indices that can collide.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, n_collisions) signed distance phi(q).</span>
+<span class="sd">            (*, 3 * n_collisions, n_v) contact Jacobian J(q).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># pylint: disable=too-many-locals,not-callable</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_rotations</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_translations</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_spatial_jacobians</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">R_WC</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_rotations</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+        <span class="n">p_WoCo_W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_translations</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+        <span class="n">Jv_V_WC_W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_spatial_jacobians</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+
+        <span class="n">indices_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">indices_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_candidates</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="n">geometries_a</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">cast</span><span class="p">(</span><span class="n">CollisionGeometry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometries</span><span class="p">[</span><span class="n">element_index</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">element_index</span> <span class="ow">in</span> <span class="n">indices_a</span>
+        <span class="p">]</span>
+        <span class="n">geometries_b</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">cast</span><span class="p">(</span><span class="n">CollisionGeometry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometries</span><span class="p">[</span><span class="n">element_index</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">element_index</span> <span class="ow">in</span> <span class="n">indices_b</span>
+        <span class="p">]</span>
+
+        <span class="n">mu_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">friction_coefficients</span><span class="p">[</span><span class="n">indices_a</span><span class="p">]</span>
+        <span class="n">mu_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">friction_coefficients</span><span class="p">[</span><span class="n">indices_b</span><span class="p">]</span>
+
+        <span class="c1"># combine friction coefficients as in Drake.</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">mu_a</span> <span class="o">*</span> <span class="n">mu_b</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">mu_a</span> <span class="o">+</span> <span class="n">mu_b</span><span class="p">)</span>
+
+        <span class="n">R_WA</span> <span class="o">=</span> <span class="n">R_WC</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">indices_a</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">R_AW</span> <span class="o">=</span> <span class="n">deal</span><span class="p">(</span><span class="n">R_WA</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">R_BW</span> <span class="o">=</span> <span class="n">deal</span><span class="p">(</span><span class="n">R_WC</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">indices_b</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="n">Jv_V_WA_W</span> <span class="o">=</span> <span class="n">deal</span><span class="p">(</span><span class="n">Jv_V_WC_W</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">indices_a</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="n">keep_dim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">Jv_V_WB_W</span> <span class="o">=</span> <span class="n">deal</span><span class="p">(</span><span class="n">Jv_V_WC_W</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">indices_b</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="n">keep_dim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Interbody translation in A frame, shape (*, n_g, 3)</span>
+        <span class="n">p_AoBo_W</span> <span class="o">=</span> <span class="n">p_WoCo_W</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">indices_b</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">p_WoCo_W</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">indices_a</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">p_AoBo_A</span> <span class="o">=</span> <span class="n">deal</span><span class="p">(</span><span class="n">pbmm</span><span class="p">(</span><span class="n">p_AoBo_W</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">R_WA</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">Jv_v_W_BcAc_F</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">phi_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># bundle all modules and kinematics into a tuple iterator</span>
+        <span class="n">a_b</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">geometries_a</span><span class="p">,</span> <span class="n">geometries_b</span><span class="p">,</span> <span class="n">R_AW</span><span class="p">,</span> <span class="n">R_BW</span><span class="p">,</span> <span class="n">p_AoBo_A</span><span class="p">,</span> <span class="n">Jv_V_WA_W</span><span class="p">,</span>
+                  <span class="n">Jv_V_WB_W</span><span class="p">)</span>
+
+        <span class="c1"># iterate over body pairs (Ai, Bi)</span>
+        <span class="k">for</span> <span class="n">geo_a</span><span class="p">,</span> <span class="n">geo_b</span><span class="p">,</span> <span class="n">R_AiW</span><span class="p">,</span> <span class="n">R_BiW</span><span class="p">,</span> <span class="n">p_AiBi_A</span><span class="p">,</span> <span class="n">Jv_V_WAi_W</span><span class="p">,</span> <span class="n">Jv_V_WBi_W</span> <span class="ow">in</span> <span class="n">a_b</span><span class="p">:</span>
+            <span class="c1"># relative rotation between Ai and Bi, (*, 3, 3)</span>
+            <span class="n">R_AiBi</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">R_AiW</span><span class="p">,</span> <span class="n">R_BiW</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+
+            <span class="c1"># collision result,</span>
+            <span class="c1"># Tuple[(*, n_c), (*, n_c, 3, 3), (*, n_c, 3), (*, n_c, 3)]</span>
+            <span class="n">phi_i</span><span class="p">,</span> <span class="n">R_AiF</span><span class="p">,</span> <span class="n">p_AiAc_A</span><span class="p">,</span> <span class="n">p_BiBc_B</span> <span class="o">=</span> <span class="n">GeometryCollider</span><span class="o">.</span><span class="n">collide</span><span class="p">(</span>
+                <span class="n">geo_a</span><span class="p">,</span> <span class="n">geo_b</span><span class="p">,</span> <span class="n">R_AiBi</span><span class="p">,</span> <span class="n">p_AiBi_A</span><span class="p">)</span>
+
+            <span class="c1"># contact frame rotation, (*, n_c, 3, 3)</span>
+            <span class="n">R_FW</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">R_AiF</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">R_AiW</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">))</span>
+
+            <span class="c1"># contact point velocity jacobians, (*, n_c, 3, n_v)</span>
+            <span class="n">Jv_v_WAc_W</span> <span class="o">=</span> <span class="n">ContactTerms</span><span class="o">.</span><span class="n">assemble_velocity_jacobian</span><span class="p">(</span>
+                <span class="n">R_AiW</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">),</span> <span class="n">Jv_V_WAi_W</span><span class="p">,</span> <span class="n">p_AiAc_A</span><span class="p">)</span>
+            <span class="n">Jv_v_WBc_W</span> <span class="o">=</span> <span class="n">ContactTerms</span><span class="o">.</span><span class="n">assemble_velocity_jacobian</span><span class="p">(</span>
+                <span class="n">R_BiW</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">),</span> <span class="n">Jv_V_WBi_W</span><span class="p">,</span> <span class="n">p_BiBc_B</span><span class="p">)</span>
+
+            <span class="c1"># contact relative velocity, (*, n_c, 3, 3)</span>
+            <span class="n">Jv_v_W_BcAc_F</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pbmm</span><span class="p">(</span><span class="n">R_FW</span><span class="p">,</span> <span class="n">Jv_v_WBc_W</span> <span class="o">-</span> <span class="n">Jv_v_WAc_W</span><span class="p">))</span>
+            <span class="n">phi_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">phi_i</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">mu_repeated</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">mu</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">phi_i</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                                 <span class="k">for</span> <span class="n">phi_i</span> <span class="ow">in</span> <span class="n">phi_list</span><span class="p">])</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">phi_list</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># type: Tensor</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="n">ContactTerms</span><span class="o">.</span><span class="n">relative_velocity_to_contact_jacobian</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">Jv_v_W_BcAc_F</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">3</span><span class="p">),</span> <span class="n">mu_repeated</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">phi</span><span class="p">,</span> <span class="n">J</span></div></div>
+
+
+<div class="viewcode-block" id="MultibodyTerms"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.MultibodyTerms">[docs]</a><span class="k">class</span> <span class="nc">MultibodyTerms</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Derives and manages computation of terms of multibody dynamics with</span>
+<span class="sd">    contact.</span>
+
+<span class="sd">    Primarily</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lagrangian_terms</span><span class="p">:</span> <span class="n">LagrangianTerms</span>
+    <span class="n">contact_terms</span><span class="p">:</span> <span class="n">ContactTerms</span>
+    <span class="n">geometry_body_assignment</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
+    <span class="n">plant_diagram</span><span class="p">:</span> <span class="n">MultibodyPlantDiagram</span>
+    <span class="n">urdfs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+
+<div class="viewcode-block" id="MultibodyTerms.scalars"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.MultibodyTerms.scalars">[docs]</a>    <span class="k">def</span> <span class="nf">scalars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Generates summary statistics for inertial and geometric</span>
+<span class="sd">        quantities.&quot;&quot;&quot;</span>
+        <span class="n">scalars</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">all_body_ids</span> <span class="o">=</span> \
+            <span class="n">drake_utils</span><span class="o">.</span><span class="n">get_all_inertial_bodies</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">plant_diagram</span><span class="o">.</span><span class="n">plant</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">plant_diagram</span><span class="o">.</span><span class="n">model_ids</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">body_pi</span><span class="p">,</span> <span class="n">body_id</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lagrangian_terms</span><span class="o">.</span><span class="n">pi</span><span class="p">(),</span> <span class="n">all_body_ids</span><span class="p">):</span>
+            <span class="n">body_scalars</span> <span class="o">=</span> <span class="n">InertialParameterConverter</span><span class="o">.</span><span class="n">pi_to_scalars</span><span class="p">(</span><span class="n">body_pi</span><span class="p">)</span>
+            <span class="n">scalars</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">body_id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">scalar_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">scalar</span>
+                <span class="k">for</span> <span class="n">scalar_name</span><span class="p">,</span> <span class="n">scalar</span> <span class="ow">in</span> <span class="n">body_scalars</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">})</span>
+            <span class="k">for</span> <span class="n">geometry_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">geometry_body_assignment</span><span class="p">[</span><span class="n">body_id</span><span class="p">]:</span>
+                <span class="n">geometry_scalars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact_terms</span><span class="o">.</span><span class="n">geometries</span><span class="p">[</span>
+                    <span class="n">geometry_index</span><span class="p">]</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span>
+                <span class="n">scalars</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">body_id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">scalar_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">scalar</span>
+                    <span class="k">for</span> <span class="n">scalar_name</span><span class="p">,</span> <span class="n">scalar</span> <span class="ow">in</span> <span class="n">geometry_scalars</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">})</span>
+                <span class="n">scalars</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">body_id</span><span class="si">}</span><span class="s1">_mu&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="bp">self</span><span class="o">.</span><span class="n">contact_terms</span><span class="o">.</span><span class="n">friction_coefficients</span><span class="p">[</span>
+                        <span class="n">geometry_index</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">scalars</span></div>
+
+<div class="viewcode-block" id="MultibodyTerms.forward"><a class="viewcode-back" href="../../dair_pll.multibody_terms.html#dair_pll.multibody_terms.MultibodyTerms.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                <span class="n">u</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Evaluates multibody system dynamics terms at given state and input.</span>
+
+<span class="sd">        Calculation is performed as a thin wrapper around ``LagrangianTerms``</span>
+<span class="sd">        and ``ContactTerms``. For convenience, this function also returns the</span>
+<span class="sd">        Delassus operator D(q) = J(q)^T inv(M(q)) J(q).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: (*, n_q) configuration batch.</span>
+<span class="sd">            v: (*, n_v) velocity batch.</span>
+<span class="sd">            u: (*, n_u) input batch.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (*, 3 * n_collisions, 3 * n_collisions) Delassus operator D(q).</span>
+<span class="sd">            (*, n_v, n_v) mass matrix batch M(q).</span>
+<span class="sd">            (*, 3 * n_collisions, n_v) contact Jacobian J(q).</span>
+<span class="sd">            (*, n_collisions) signed distance phi(q).</span>
+<span class="sd">            (*, n_v) Contact-free acceleration inv(M(q)) * F(q).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">M</span><span class="p">,</span> <span class="n">non_contact_acceleration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lagrangian_terms</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+        <span class="n">phi</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact_terms</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+
+        <span class="n">delassus</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">J</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="n">delassus</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">J</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">non_contact_acceleration</span></div>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">urdfs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inits ``MultibodyTerms`` for system described in URDFs</span>
+
+<span class="sd">        Interpretation is performed as a thin wrapper around ``LagrangianTerms``</span>
+<span class="sd">        and ``ContactTerms``.</span>
+
+<span class="sd">        As this module is also responsible for evaluating updated URDF</span>
+<span class="sd">        representations, the associations between bodies and geometries is</span>
+<span class="sd">        also tracked to enable URDF rendering in</span>
+<span class="sd">        ``MultibodyTerms.EvalUrdfRepresentation`` and Tensorboard logging in</span>
+<span class="sd">        ``MultibodyTerms.scalars``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            urdfs: Dictionary of named URDF XML file names, containing</span>
+<span class="sd">            description of multibody system.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="n">plant_diagram</span> <span class="o">=</span> <span class="n">MultibodyPlantDiagram</span><span class="p">(</span><span class="n">urdfs</span><span class="p">)</span>
+        <span class="n">plant</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">ToSymbolic</span><span class="p">()</span>
+        <span class="n">inspector</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">scene_graph</span><span class="o">.</span><span class="n">model_inspector</span><span class="p">()</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">all_body_ids</span> <span class="o">=</span> <span class="n">drake_utils</span><span class="o">.</span><span class="n">get_all_bodies</span><span class="p">(</span><span class="n">plant</span><span class="p">,</span>
+                                                     <span class="n">plant_diagram</span><span class="o">.</span><span class="n">model_ids</span><span class="p">)</span>
+
+        <span class="c1"># sweep over collision elements</span>
+        <span class="n">geometry_body_assignment</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">body_id</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">body_id</span> <span class="ow">in</span> <span class="n">all_body_ids</span>
+        <span class="p">}</span>
+
+        <span class="n">geometry_ids</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">drake_utils</span><span class="o">.</span><span class="n">get_collision_geometry_set</span><span class="p">(</span><span class="n">inspector</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">geometry_index</span><span class="p">,</span> <span class="n">geometry_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">geometry_ids</span><span class="p">):</span>
+            <span class="n">geometry_frame_id</span> <span class="o">=</span> <span class="n">inspector</span><span class="o">.</span><span class="n">GetFrameId</span><span class="p">(</span><span class="n">geometry_id</span><span class="p">)</span>
+            <span class="n">geometry_body</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">GetBodyFromFrameId</span><span class="p">(</span><span class="n">geometry_frame_id</span><span class="p">)</span>
+            <span class="n">geometry_body_identifier</span> <span class="o">=</span> <span class="n">drake_utils</span><span class="o">.</span><span class="n">unique_body_identifier</span><span class="p">(</span>
+                <span class="n">plant</span><span class="p">,</span> <span class="n">geometry_body</span><span class="p">)</span>
+            <span class="n">geometry_body_assignment</span><span class="p">[</span><span class="n">geometry_body_identifier</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">geometry_index</span><span class="p">)</span>
+
+        <span class="c1"># setup parameterization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lagrangian_terms</span> <span class="o">=</span> <span class="n">LagrangianTerms</span><span class="p">(</span><span class="n">plant_diagram</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contact_terms</span> <span class="o">=</span> <span class="n">ContactTerms</span><span class="p">(</span><span class="n">plant_diagram</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">geometry_body_assignment</span> <span class="o">=</span> <span class="n">geometry_body_assignment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plant_diagram</span> <span class="o">=</span> <span class="n">plant_diagram</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">urdfs</span> <span class="o">=</span> <span class="n">urdfs</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

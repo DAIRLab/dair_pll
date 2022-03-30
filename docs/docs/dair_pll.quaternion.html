@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.quaternion &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.quaternion</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.quaternion.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.quaternion">
+<span id="dair-pll-quaternion"></span><h1>dair_pll.quaternion<a class="headerlink" href="#module-dair_pll.quaternion" title="Permalink to this headline"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.inv_mat">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">inv_mat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#inv_mat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.inv_mat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qinv">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qinv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qinv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qinv" title="Permalink to this definition"></a></dt>
+<dd><p>Form q’ from q (negative imaginary part)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qmat">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qmat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qmat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qmat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.pmat">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">pmat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#pmat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.pmat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qjac">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qjac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qjac"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qjac" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qmul">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qmul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qmul"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qmul" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qrot">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qrot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qrot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qrot" title="Permalink to this definition"></a></dt>
+<dd><p>Rotate vector(s) v about the rotation described by quaternion(s) q.
+Expects a tensor of shape (<em>, 4) for q and a tensor of shape (</em>, 3) for v,
+where * denotes any number of dimensions.
+Returns a tensor of shape (<a href="#id1"><span class="problematic" id="id2">*</span></a>, 3).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qdiff">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qdiff</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qdiff"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qdiff" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qeuler">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qeuler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qeuler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qeuler" title="Permalink to this definition"></a></dt>
+<dd><p>Convert quaternion(s) q to Euler angles.
+Expects a tensor of shape (<em>, 4), where * denotes any number of dimensions.
+Returns a tensor of shape (</em>, 3).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qmul_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qmul_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qmul_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qmul_np" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qinv_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qinv_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qinv_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qinv_np" title="Permalink to this definition"></a></dt>
+<dd><p>Form q’ from q (negative imaginary part)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qrot_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qrot_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qrot_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qrot_np" title="Permalink to this definition"></a></dt>
+<dd><p>Rotate vector(s) v about the rotation described by quaternion(s) q.
+Expects a tensor of shape (<em>, 4) for q and a tensor of shape (</em>, 3) for v,
+where * denotes any number of dimensions.
+Returns a tensor of shape (<a href="#id3"><span class="problematic" id="id4">*</span></a>, 3).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qeuler_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qeuler_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsilon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_gpu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qeuler_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qeuler_np" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qfix">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qfix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qfix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qfix" title="Permalink to this definition"></a></dt>
+<dd><p>Enforce quaternion continuity across the time dimension by selecting
+the representation (q or -q) with minimal distance (or, equivalently, maximal dot product)
+between two consecutive frames.</p>
+<p>Expects a tensor of shape (L, J, 4), where L is the seq length and J is the joint number.
+Returns a tensor of the same shape.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.qfix_torch">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">qfix_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#qfix_torch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.qfix_torch" title="Permalink to this definition"></a></dt>
+<dd><p>Enforce quaternion continuity across the time dimension by selecting
+the representation (q or -q) with minimal distance (or, equivalently, maximal dot product)
+between two consecutive frames.</p>
+<p>Expects a tensor of shape (L, J, 4), where L is the seq length and J is the joint number.
+Returns a tensor of the same shape.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.expmap_to_quaternion">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">expmap_to_quaternion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#expmap_to_quaternion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.expmap_to_quaternion" title="Permalink to this definition"></a></dt>
+<dd><p>Convert axis-angle rotations (aka exponential maps) to quaternions.
+Stable formula from “Practical Parameterization of Rotations Using the Exponential Map”.
+Expects a tensor of shape (<em>, 3), where * denotes any number of dimensions.
+Returns a tensor of shape (</em>, 4).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.euler_to_quaternion">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">euler_to_quaternion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#euler_to_quaternion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.euler_to_quaternion" title="Permalink to this definition"></a></dt>
+<dd><p>Convert Euler angles to quaternions.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.quaternion_to_rotmat_vec">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">quaternion_to_rotmat_vec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#quaternion_to_rotmat_vec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.quaternion_to_rotmat_vec" title="Permalink to this definition"></a></dt>
+<dd><p>Converts batched quaternions of shape (batch, 4)
+to vectorized rotation matrices of shape (batch, 9)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.quaternion_to_rotmat_jac">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">quaternion_to_rotmat_jac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#quaternion_to_rotmat_jac"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.quaternion_to_rotmat_jac" title="Permalink to this definition"></a></dt>
+<dd><p>Converts batched quaternions q of shape (batch, 4) to the jacobian of the
+corresponding rotation matrix w.r.t. q of shape (batch, 9, 4)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.quaternion_to_rotmat">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">quaternion_to_rotmat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#quaternion_to_rotmat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.quaternion_to_rotmat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.quat_to_rvec">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">quat_to_rvec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#quat_to_rvec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.quat_to_rvec" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.quat_to_rvec_gradsafe">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">quat_to_rvec_gradsafe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#quat_to_rvec_gradsafe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.quat_to_rvec_gradsafe" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.rvec_to_quat">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">rvec_to_quat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#rvec_to_quat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.rvec_to_quat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.sinc">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">sinc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#sinc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.sinc" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

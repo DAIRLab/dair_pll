@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.drake_utils &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.inertia" href="dair_pll.inertia.html" />
+    <link rel="prev" title="dair_pll.state_space" href="dair_pll.state_space.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.meshcat_utils.html">dair_pll.meshcat_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensorboard_manager.html">dair_pll.tensorboard_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.model.html">dair_pll.model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>dair_pll.drake_utils</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.drake_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-dair_pll.drake_utils">
+<span id="dair-pll-drake-utils"></span><h1>dair_pll.drake_utils<a class="headerlink" href="#module-dair_pll.drake_utils" title="Permalink to this headline"></a></h1>
+<p>Drake simulation setup for multibody systems.</p>
+<p>This file implements <a class="reference internal" href="#dair_pll.drake_utils.MultibodyPlantDiagram" title="dair_pll.drake_utils.MultibodyPlantDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code></a>, which instantiates
+Drake simulation and visualization system for a given group of URDF files.</p>
+<p>Visualization is done via meshcat. Details on using meshcat are available
+in the documentation for <a class="reference internal" href="dair_pll.meshcat_utils.html#module-dair_pll.meshcat_utils" title="dair_pll.meshcat_utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">dair_pll.meshcat_utils</span></code></a>.</p>
+<p>In order to make the Drake states compatible with available
+<a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.StateSpace" title="dair_pll.state_space.StateSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">StateSpace</span></code></a> inheriting classes,
+users must define the drake system by a collection of URDF files, each of
+which contains a model for exactly one floating- or fixed-base rigid
+multibody chain. This allows for the system to be modeled as having a
+<a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.ProductSpace" title="dair_pll.state_space.ProductSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProductSpace</span></code></a> state space, where each
+factor space is a
+<a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace" title="dair_pll.state_space.FloatingBaseSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">FloatingBaseSpace</span></code></a>
+or <a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.FixedBaseSpace" title="dair_pll.state_space.FixedBaseSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">FixedBaseSpace</span></code></a>.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.DrakeMultibodyPlant">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">DrakeMultibodyPlant</span></span><a class="headerlink" href="#dair_pll.drake_utils.DrakeMultibodyPlant" title="Permalink to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.plant.MultibodyPlant_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.plant.MultibodyPlant_[AutoDiffXd]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[Expression]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.plant.MultibodyPlant_[Expression]</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.DrakeBody">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">DrakeBody</span></span><a class="headerlink" href="#dair_pll.drake_utils.DrakeBody" title="Permalink to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.tree.Body_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.tree.Body_[AutoDiffXd]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[Expression]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.tree.Body_[Expression]</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.DrakeSceneGraphInspector">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">DrakeSceneGraphInspector</span></span><a class="headerlink" href="#dair_pll.drake_utils.DrakeSceneGraphInspector" title="Permalink to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.SceneGraphInspector_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.geometry.SceneGraphInspector_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.SceneGraphInspector_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.geometry.SceneGraphInspector_[AutoDiffXd]</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.DrakeSpatialInertia">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">DrakeSpatialInertia</span></span><a class="headerlink" href="#dair_pll.drake_utils.DrakeSpatialInertia" title="Permalink to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.SpatialInertia_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.tree.SpatialInertia_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.SpatialInertia_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.tree.SpatialInertia_[AutoDiffXd]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.SpatialInertia_[Expression]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydrake.multibody.tree.SpatialInertia_[Expression]</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.UniqueBodyIdentifier">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">UniqueBodyIdentifier</span></span><a class="headerlink" href="#dair_pll.drake_utils.UniqueBodyIdentifier" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.get_bodies_in_model_instance">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">get_bodies_in_model_instance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_instance_index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#get_bodies_in_model_instance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.get_bodies_in_model_instance" title="Permalink to this definition"></a></dt>
+<dd><p>Get list of body names associated with model instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plant</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_[AutoDiffXd]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[Expression]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_[Expression]</span></code></a>]) – </p></li>
+<li><p><strong>model_instance_index</strong> (<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.ModelInstanceIndex" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelInstanceIndex</span></code></a>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Body_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Body_[AutoDiffXd]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[Expression]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Body_[Expression]</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.get_body_names_in_model_instance">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">get_body_names_in_model_instance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_instance_index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#get_body_names_in_model_instance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.get_body_names_in_model_instance" title="Permalink to this definition"></a></dt>
+<dd><p>Get list of body names associated with model instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.unique_body_identifier">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">unique_body_identifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#unique_body_identifier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.unique_body_identifier" title="Permalink to this definition"></a></dt>
+<dd><p>Unique string identifier for given <code class="docutils literal notranslate"><span class="pre">Body_</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.get_all_bodies">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">get_all_bodies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_instance_indices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#get_all_bodies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.get_all_bodies" title="Permalink to this definition"></a></dt>
+<dd><p>Get all bodies in plant’s models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.common.cpp_template.html#pydrake.common.cpp_template.TemplateClass" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TemplateClass</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.get_all_inertial_bodies">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">get_all_inertial_bodies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_instance_indices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#get_all_inertial_bodies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.get_all_inertial_bodies" title="Permalink to this definition"></a></dt>
+<dd><p>Get all bodies that should have inertial parameters in plant.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Body_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Body_[AutoDiffXd]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.Body_[Expression]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Body_[Expression]</span></code></a>]], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.get_collision_geometry_set">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">get_collision_geometry_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inspector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#get_collision_geometry_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.get_collision_geometry_set" title="Permalink to this definition"></a></dt>
+<dd><p>Get colliding geometries, frictional properties, and corresponding
+collision pairs in a scene.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>inspector</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.SceneGraphInspector_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">SceneGraphInspector_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.SceneGraphInspector_[AutoDiffXd]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">SceneGraphInspector_[AutoDiffXd]</span></code></a>]) – Inspector of scene graph.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.GeometryId" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryId</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.CoulombFriction_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">CoulombFriction_[float]</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>]]]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>List of geometries that are candidates for at least one collision.
+Pairs of indices in geometry list that potentially collide.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.drake_utils.</span></span><span class="sig-name descname"><span class="pre">MultibodyPlantDiagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">urdfs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_visualizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#MultibodyPlantDiagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Constructs and manages a diagram, simulator, and optionally a meshcat
+visualizer for a multibody system described in a list of URDF’s.</p>
+<p>This minimal diagram consists on of a <code class="docutils literal notranslate"><span class="pre">MultibodyPlant</span></code>, <code class="docutils literal notranslate"><span class="pre">SceneGraph</span></code>,
+and optionally a MeshcatVisualizer hooked up in the typical fashion.</p>
+<p>From the <code class="docutils literal notranslate"><span class="pre">MultibodyPlant</span></code>, <code class="docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code> can infer the
+corresponding <code class="docutils literal notranslate"><span class="pre">StateSpace</span></code> from the dimension of the associated
+velocity vectors in the plant’s context, via the one-chain-per-file
+assumption.</p>
+<p>Inits a <code class="docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code> from given URDF’s.</p>
+<p>Generates a world containing each given URDF as a model instance,
+and a corresponding Drake <code class="docutils literal notranslate"><span class="pre">Simulator</span></code> set up to trigger a state
+update every <code class="docutils literal notranslate"><span class="pre">dt</span></code>.</p>
+<p>By default, a ground plane is added at world height <code class="docutils literal notranslate"><span class="pre">z</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p>
+<p>If a visualizer is added, it listens on the default meshcat server
+address, <code class="docutils literal notranslate"><span class="pre">tcp://127.0.0.1:6000</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>urdfs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]) – Names and corresponding URDFs to add as models to plant.</p></li>
+<li><p><strong>dt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Time step of plant in seconds.</p></li>
+<li><p><strong>enable_visualizer</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether to add visualization system to diagram.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.add_plant_from_urdfs">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">add_plant_from_urdfs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">urdfs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#MultibodyPlantDiagram.add_plant_from_urdfs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.add_plant_from_urdfs" title="Permalink to this definition"></a></dt>
+<dd><p>Add plant to builder with prescribed URDF models.</p>
+<p>Generates a world containing each given URDF as a model instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> (<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.systems.framework.html#pydrake.systems.framework.DiagramBuilder_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiagramBuilder_[float]</span></code></a>) – Diagram builder to add plant to</p></li>
+<li><p><strong>urdfs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]) – Names and corresponding URDFs to add as models to plant.</p></li>
+<li><p><strong>dt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Time step of plant in seconds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.ModelInstanceIndex" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelInstanceIndex</span></code></a>], <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.plant.html#pydrake.multibody.plant.MultibodyPlant_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_[float]</span></code></a>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.SceneGraph_[float]" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">SceneGraph_[float]</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Named dictionary of model instances returned by
+<code class="docutils literal notranslate"><span class="pre">AddModelFromFile</span></code>.
+New plant, which has been added to builder.
+Scene graph associated with new plant.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.sim">
+<span class="sig-name descname"><span class="pre">sim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">pydrake.systems.analysis.Simulator_</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.sim" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.plant">
+<span class="sig-name descname"><span class="pre">plant</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">pydrake.multibody.plant.MultibodyPlant_</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.plant" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.scene_graph">
+<span class="sig-name descname"><span class="pre">scene_graph</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">pydrake.geometry.SceneGraph_</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.scene_graph" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.visualizer">
+<span class="sig-name descname"><span class="pre">visualizer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.systems.meshcat_visualizer.html#pydrake.systems.meshcat_visualizer.MeshcatVisualizer" title="(in pydrake)"><span class="pre">pydrake.systems.meshcat_visualizer.MeshcatVisualizer</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.visualizer" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.model_ids">
+<span class="sig-name descname"><span class="pre">model_ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.ModelInstanceIndex" title="(in pydrake)"><span class="pre">pydrake.multibody.tree.ModelInstanceIndex</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.model_ids" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.space">
+<span class="sig-name descname"><span class="pre">space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.ProductSpace" title="dair_pll.state_space.ProductSpace"><span class="pre">dair_pll.state_space.ProductSpace</span></a></em><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.space" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.drake_utils.MultibodyPlantDiagram.generate_state_space">
+<span class="sig-name descname"><span class="pre">generate_state_space</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/drake_utils.html#MultibodyPlantDiagram.generate_state_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.drake_utils.MultibodyPlantDiagram.generate_state_space" title="Permalink to this definition"></a></dt>
+<dd><p>Generate <code class="docutils literal notranslate"><span class="pre">StateSpace</span></code> object for plant.</p>
+<p>Under the one-chain-per-model assumption, iteratively constructs a
+<code class="docutils literal notranslate"><span class="pre">ProductSpace</span></code> representation for the state of the <code class="docutils literal notranslate"><span class="pre">MultibodyPlant</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="dair_pll.state_space.html#dair_pll.state_space.ProductSpace" title="dair_pll.state_space.ProductSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProductSpace</span></code></a></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>State space of the diagram’s underlying multibody system.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.state_space.html" class="btn btn-neutral float-left" title="dair_pll.state_space" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.inertia.html" class="btn btn-neutral float-right" title="dair_pll.inertia" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
