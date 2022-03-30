@@ -10,6 +10,7 @@ DOCS_DIR = path.dirname(__file__)
 PROJECT_DIR = path.dirname(DOCS_DIR)
 SOURCE_DIR = path.join(DOCS_DIR, 'source')
 BUILD_DIR = path.join(DOCS_DIR, 'docs')
+PUBLISH_DIR = path.join(PROJECT_DIR, 'docs')
 MODULE_DIR = path.join(PROJECT_DIR, MODULE_NAME)
 TEMPLATE_DIR = path.join(DOCS_DIR, 'templates')
 INDEX_RST = path.join(SOURCE_DIR, 'index.rst')
@@ -99,7 +100,7 @@ def build(regenerate_deps: bool = False):
         index_file.write(''.join(index_text))
 
     # build html
-    os.system(f'sphinx-build -b html {SOURCE_DIR} {BUILD_DIR}')
+    os.system(f'sphinx-build -b html {SOURCE_DIR} {PUBLISH_DIR}')
 
 
 @click.group()
