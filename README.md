@@ -1,5 +1,8 @@
 # DAIRLab Physics-based Learning Library
 
+## Documentation
+https://dairlab.github.io/dair_pll
+
 ## Attribution notes
 * The file `contactnets/utils/quaternion.py` contains code extended from the Facebook research [`QuaterNet`](https://github.com/facebookresearch/QuaterNet)  project, protected under Creative Commons Attribution-NonCommercial license & described in the following publication:
   
