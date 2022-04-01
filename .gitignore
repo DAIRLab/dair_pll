@@ -1,5 +1,6 @@
 # results
 results/*
+examples/storage/*
 logs/*
 plots/*
 

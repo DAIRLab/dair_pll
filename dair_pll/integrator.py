@@ -86,14 +86,16 @@ class Integrator(ABC, Module):
         """
         assert steps >= 0
         assert x_0.shape[-1] == self.space.n_x
-        x_trajectory = tensor_utils.tile_penultimate_dim(x_0, steps + 1)
-        carry_trajectory = tensor_utils.tile_penultimate_dim(carry_0, steps + 1)
+        x_trajectory = tensor_utils.tile_penultimate_dim(
+            x_0.unsqueeze(-2), steps + 1)
+        carry_trajectory = tensor_utils.tile_penultimate_dim(
+            carry_0.unsqueeze(-2), steps + 1)
         x = x_0
         carry = carry_0
         for step in range(steps):
             x, carry = self.step(x, carry)
-            x_trajectory[..., (step + 1):(step + 2), :] = x
-            carry_trajectory[..., (step + 1):(step + 2), :] = carry
+            x_trajectory[..., step + 1, :] = x
+            carry_trajectory[..., step + 1, :] = carry
         return x_trajectory, carry_trajectory
 
     @abstractmethod

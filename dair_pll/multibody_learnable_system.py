@@ -92,7 +92,7 @@ class MultibodyLearnableSystem(System):
         self.visualization_system = None
         self.solver = LCQPFn2()
         self.dt = dt
-        self.set_carry_sampler(lambda: Tensor([[False]]))
+        self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
 
     def get_updated_drake_system(self, storage_name: str) -> DrakeSystem:
@@ -346,8 +346,7 @@ class MultibodyLearnableSystem(System):
         """``Integrator.partial_step`` wrapper for ``forward_dynamics``."""
         q, v = self.space.q_v(x)
         u = torch.zeros(q.shape[:-1] + (0,))
-        v_plus = self.forward_dynamics(q.squeeze(-2), v.squeeze(-2),
-                                       u.squeeze(-2)).unsqueeze(-2)
+        v_plus = self.forward_dynamics(q, v, u)
         return v_plus, carry
 
     def summary(self, statistics: Dict) -> SystemSummary:

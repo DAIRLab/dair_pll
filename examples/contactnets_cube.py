@@ -27,18 +27,18 @@ STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
 DT = 1 / 148.
 
 # Generation configuration.
-POP = 64
-X_0 = torch.tensor([[
+N_POP = 64
+X_0 = torch.tensor([
     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
     0.014, 1.291, -0.212
-]])
+])
 SAMPLER_RANGE = 0.1
 
 # Optimization configuration.
 LR = 1e-6
 WD = 0
 PATIENCE = 100
-EPOCHS = 100
+EPOCHS = 3
 
 
 def main(simulation: bool = True, contactnets: bool = True):
@@ -76,9 +76,9 @@ def main(simulation: bool = True, contactnets: bool = True):
     data_generation_config = None
     import_directory = None
     if simulation:
-        # For simuylation, specify the following:
+        # For simulation, specify the following:
         data_generation_config = DataGenerationConfig(
-            n_pop=POP,
+            n_pop=N_POP,
             # How many trajectories to simulate
             x_0=X_0,
             # A nominal initial state
@@ -99,9 +99,9 @@ def main(simulation: bool = True, contactnets: bool = True):
     data_config = DataConfig(storage=STORAGE_NAME,
                              # where to store data
                              dt=DT,
-                             n_train=POP // 2,
-                             n_valid=POP // 4,
-                             n_test=POP // 4,
+                             n_train=N_POP // 2,
+                             n_valid=N_POP // 4,
+                             n_test=N_POP // 4,
                              generation_config=data_generation_config,
                              import_directory=import_directory)
 

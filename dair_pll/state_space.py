@@ -1,4 +1,4 @@
-"""Classes and utilities for operation on Lie group/algebra state spaces.
+r"""Classes and utilities for operation on Lie group/algebra state spaces.
 
 This module implements a :py:class:`StateSpace` abstract type which defines
 fundamental operations on states in spaces that are not necessarily
@@ -214,7 +214,7 @@ class StateSpace(ABC):
         assert q_1.shape[-1] == self.n_q
         assert q_2.shape[-1] == self.n_q
         return partial_sum_batch(
-            self.configuration_difference(q_1, q_2) ** 2, keep_batch)
+            self.configuration_difference(q_1, q_2)**2, keep_batch)
 
     def velocity_square_error(self,
                               v_1: Tensor,
@@ -236,7 +236,7 @@ class StateSpace(ABC):
         """
         assert v_1.shape[-1] == self.n_v
         assert v_2.shape[-1] == self.n_v
-        return partial_sum_batch((v_2 - v_1) ** 2, keep_batch)
+        return partial_sum_batch((v_2 - v_1)**2, keep_batch)
 
     def state_square_error(self,
                            x_1: Tensor,
@@ -265,7 +265,7 @@ class StateSpace(ABC):
         q_2, v_2 = self.q_v(x_2)
         return self.config_square_error(
             q_1, q_2, keep_batch) + self.velocity_square_error(
-            v_1, v_2, keep_batch)
+                v_1, v_2, keep_batch)
 
     def auxiliary_comparisons(
             self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
@@ -543,7 +543,7 @@ class FloatingBaseSpace(StateSpace):
         rot = quaternion.quat_to_rvec_gradsafe(quat_shift)
 
         # pylint: disable=E1103
-        return torch.sqrt((rot ** 2).sum(dim=-1)).sum() / x_1.shape[0]
+        return torch.sqrt((rot**2).sum(dim=-1)).sum() / x_1.shape[0]
 
     def base_error(self, x_1: Tensor, x_2: Tensor) -> Tensor:
         """Auxiliary comparison that returns floating base translation geodesic
@@ -570,7 +570,7 @@ class FloatingBaseSpace(StateSpace):
         pos = base1 - base2
 
         # pylint: disable=E1103
-        return torch.sqrt((pos ** 2).sum(dim=-1)).sum() / x_1.shape[0]
+        return torch.sqrt((pos**2).sum(dim=-1)).sum() / x_1.shape[0]
 
 
 class FixedBaseSpace(StateSpace):
@@ -814,7 +814,7 @@ class WhiteNoiser:
             (2 * space.n_v, 2 * space.n_v) covariance matrix on state space
             Lie algebra.
         """
-        return torch.diag(self.variance_factor * (ranges ** 2))
+        return torch.diag(self.variance_factor * (ranges**2))
 
 
 class UniformWhiteNoiser(WhiteNoiser):
@@ -929,9 +929,6 @@ class CenteredSampler(StateSpaceSampler):
         self.x_0 = space.project_state(x_0)
 
         self.noiser = WhiteNoiser(space, unit_noise)
-
-        if len(ranges.shape) == 1:
-            ranges = ranges.unsqueeze(0)
         self.ranges = ranges
 
     def get_sample(self) -> Tensor:

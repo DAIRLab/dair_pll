@@ -215,7 +215,7 @@ class LagrangianTerms(Module):
             (*, n_v, n_v) mass matrix batch M(q)
             (*, n_v) Lagrangian contact-free acceleration inv(M(q)) F(q)
         """
-        # Pylint cannot recognize instance attributes as Callable.
+        # Pylint bug: cannot recognize instance attributes as Callable.
         # pylint: disable=not-callable
         assert self.mass_matrix is not None
         assert self.lagrangian_forces is not None
@@ -418,10 +418,12 @@ class ContactTerms(Module):
         Args:
             q: (*, n_q) configuration batch.
             indices that can collide.
+
         Returns:
             (*, n_collisions) signed distance phi(q).
             (*, 3 * n_collisions, n_v) contact Jacobian J(q).
         """
+        # Pylint bug: cannot recognize instance attributes as Callable.
         # pylint: disable=too-many-locals,not-callable
         assert self.geometry_rotations is not None
         assert self.geometry_translations is not None
@@ -563,7 +565,6 @@ class MultibodyTerms(Module):
         phi, J = self.contact_terms(q)
 
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
-
         return delassus, M, J, phi, non_contact_acceleration
 
     def __init__(self, urdfs: Dict[str, str]) -> None:

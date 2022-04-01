@@ -92,7 +92,7 @@ class System(ABC, Module):
 
         Args:
             x_0: (*, T_0, space.n_x) initial state sequence
-            carry_0: (*, 1, ?) initial hidden state
+            carry_0: (*, ?) initial hidden state
             steps: number of steps to take beyond initial condition
 
         Returns:
@@ -144,22 +144,21 @@ class System(ABC, Module):
 
         Args:
             x_0: (*, T_0, space.n_x) initial state sequence.
-            carry_0: (*, 1, ?) initial hidden state.
+            carry_0: (*, ?) initial hidden state.
 
         Returns:
-            (*, 1, space.n_x) processed initial state.
-            (*, 1, ?) processed initial hidden state.
+            (*, space.n_x) processed initial state.
+            (*, ?) processed initial hidden state.
         """
         assert len(x_0.shape) >= 2
-        assert len(carry_0.shape) >= 2
+        assert len(carry_0.shape) >= 1
         if self.max_batch_dim is not None:
             assert len(x_0.shape) <= 2 + self.max_batch_dim
-            assert len(carry_0.shape) <= 2 + self.max_batch_dim
+            assert len(carry_0.shape) <= 1 + self.max_batch_dim
         assert x_0.shape[-1] == self.space.n_x
-        assert carry_0.shape[-2] == 1
 
         # Just return most recent state, don't do anything to hidden state
-        return x_0[..., (-1):, :], carry_0
+        return x_0[..., -1, :], carry_0
 
     def summary(self, statistics: Dict) -> SystemSummary:
         """Summarizes the current behavior and properties of the system.

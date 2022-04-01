@@ -52,7 +52,7 @@ class DrakeSystem(System):
         self.plant_diagram = plant_diagram
         self.dt = dt
         self.urdfs = urdfs
-        self.set_carry_sampler(lambda: Tensor([[False]]))
+        self.set_carry_sampler(lambda: Tensor([False]))
 
         # Drake simulations cannot be batched
         self.max_batch_dim = 0
@@ -78,7 +78,7 @@ class DrakeSystem(System):
         plant = self.plant_diagram.plant
         sim = self.plant_diagram.sim
         sim_context = sim.get_mutable_context()
-        sim_context.SetTime(0.0)
+        sim_context.SetTime(self.get_quantized_start_time(0.0))
         plant_context = plant.GetMyMutableContextFromRoot(
             sim.get_mutable_context())
 
@@ -90,8 +90,8 @@ class DrakeSystem(System):
 
         return x_0, carry_0
 
-    def get_step_finishing_time(self, start_time: float) -> float:
-        """Get time that Drake ``Simulator must advance to for one step.
+    def get_quantized_start_time(self, start_time: float) -> float:
+        """Get phase-aligned start time for Drake ``Simulator``.
 
         As Drake models time stepping as events in a continuous time domain,
         some special care must be taken to ensure each call to
@@ -103,7 +103,7 @@ class DrakeSystem(System):
             start_time: Time step beginning time.
 
         Returns:
-            Time step ending time.
+            Time step quantized starting time.
         """
         dt = self.dt
         eps = dt / 4
@@ -111,31 +111,30 @@ class DrakeSystem(System):
         time_step_phase = start_time % dt
         offset = (dt if time_step_phase > (dt / 2.) else 0.) - time_step_phase
         cur_time_quantized = start_time + offset + eps
-        new_time = cur_time_quantized + dt
 
-        return new_time
+        return cur_time_quantized
 
     def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         """Simulate forward in time one step.
 
         Args:
-            x: (1, n_x) current state.
-            carry: (1, ?) current hidden state.
+            x: (n_x,) current state.
+            carry: (?,) current hidden state.
 
         Returns:
-            (1, n_x) next state.
-            (1, ?) next hidden state.
+            (n_x,) next state.
+            (?,) next hidden state.
         """
         # pylint: disable=E1103
-        assert x.shape == torch.Size([1, self.space.n_x])
-        assert carry.dim() == 2 and carry.shape[0] == 1
+        assert x.shape == torch.Size([self.space.n_x])
+        assert carry.dim() == 1
 
         sim = self.plant_diagram.sim
         plant = self.plant_diagram.plant
 
         # Advances one time step
-        finishing_time = self.get_step_finishing_time(
-            sim.get_mutable_context().get_time())
+        finishing_time = self.get_quantized_start_time(
+            sim.get_mutable_context().get_time()) + self.dt
         sim.AdvanceTo(finishing_time)
 
         # Retrieves post-step state as numpy ndarray

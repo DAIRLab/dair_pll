@@ -162,7 +162,7 @@ class DrakeStateConverter:
             space: state space of output state.
 
         Returns:
-            (1, space.n_x) current state of plant.
+            (space.n_x,) current state of plant.
         """
         qs = []
         vs = []
@@ -176,7 +176,7 @@ class DrakeStateConverter:
             vs.append(v)
         q = np.concatenate(qs, axis=-1)
         v = np.concatenate(vs, axis=-1)
-        return np.concatenate([q, v], axis=-1)
+        return np.concatenate([q, v], axis=-1).squeeze()
 
     @staticmethod
     def state_to_context(plant: MultibodyPlant, plant_context: Context,
