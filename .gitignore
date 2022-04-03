@@ -10,6 +10,15 @@ plots/*
 # SLURM
 slurm-*
 
+# Sphinx
+docsrc/source/dair_pll.*
+docsrc/source/modules.rst
+docs/*
+
+
+# IDE
+.idea/*
+
 # virtualenv
 *sv2_env*
 

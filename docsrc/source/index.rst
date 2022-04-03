@@ -7,6 +7,7 @@ Physics-based learning tools from DAIR Lab
    :titlesonly:
 
    dair_pll.tensor_utils
+   dair_pll.quaternion
    dair_pll.state_space
    dair_pll.drake_utils
    dair_pll.inertia

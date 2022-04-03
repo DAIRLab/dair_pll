@@ -49,7 +49,7 @@ def build(regenerate_deps: bool = False):
 
     graph = nx.DiGraph()
     edges = []
-    excludes = ['dair_pll.quaternion', 'dair_pll']
+    excludes = ['dair_pll']
     main_document = 'dair_pll.drake_experiment'
     for module, module_details in dep_graph.items():
         if 'imports' not in module_details:

@@ -55,7 +55,7 @@ class DrakeFloatingBaseStateConverter:
         angular velocity into body frame."""
         q = state_ndarray_reformat(q_drake)
         v = state_ndarray_reformat(v_drake)
-        v[..., :3] = quaternion.qrot_np(quaternion.qinv_np(q[..., :4]),
+        v[..., :3] = quaternion.rotate(quaternion.inverse(q[..., :4]),
                                         v[..., :3])
         return q, v
 
@@ -66,7 +66,7 @@ class DrakeFloatingBaseStateConverter:
         and rotates angular velocity into world frame."""
         q_drake = state_ndarray_reformat(q)
         v_drake = state_ndarray_reformat(v)
-        v_drake[..., :3] = quaternion.qrot_np(q[..., :4].reshape(1, -1),
+        v_drake[..., :3] = quaternion.rotate(q[..., :4].reshape(1, -1),
                                               v_drake[..., :3])
         q_drake = q_drake.reshape(q_drake.size)
         v_drake = v_drake.reshape(v_drake.size)

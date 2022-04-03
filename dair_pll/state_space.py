@@ -458,8 +458,8 @@ class FloatingBaseSpace(StateSpace):
         quat1 = self.quat(q_1)
         quat2 = self.quat(q_2)
         linear_shift = q_2[..., N_QUAT:] - q_1[..., N_QUAT:]
-        quat_shift = quaternion.qmul(quaternion.qinv(quat1), quat2)
-        rot = quaternion.quat_to_rvec_gradsafe(quat_shift)
+        quat_shift = quaternion.multiply(quaternion.inverse(quat1), quat2)
+        rot = quaternion.log(quat_shift)
 
         # pylint: disable=E1103
         return torch.cat((rot, linear_shift), dim=-1)
@@ -480,8 +480,8 @@ class FloatingBaseSpace(StateSpace):
         assert q.shape[-1] == self.n_q
         assert dq.shape[-1] == self.n_v
         linear_plus = q[..., N_QUAT:] + dq[..., N_ANG_VEL:]
-        delta_quat = quaternion.rvec_to_quat(dq[..., :N_ANG_VEL])
-        quat_plus = quaternion.qmul(q[..., :N_QUAT], delta_quat)
+        delta_quat = quaternion.exp(dq[..., :N_ANG_VEL])
+        quat_plus = quaternion.multiply(q[..., :N_QUAT], delta_quat)
 
         # pylint: disable=E1103
         return torch.cat((quat_plus, linear_plus), dim=-1)
@@ -539,8 +539,8 @@ class FloatingBaseSpace(StateSpace):
         assert len(x_1.shape) == 2  # hack for now
         quat1 = self.quat(x_1)
         quat2 = self.quat(x_2)
-        quat_shift = quaternion.qmul(quaternion.qinv(quat1), quat2)
-        rot = quaternion.quat_to_rvec_gradsafe(quat_shift)
+        quat_shift = quaternion.multiply(quaternion.inverse(quat1), quat2)
+        rot = quaternion.log(quat_shift)
 
         # pylint: disable=E1103
         return torch.sqrt((rot**2).sum(dim=-1)).sum() / x_1.shape[0]
