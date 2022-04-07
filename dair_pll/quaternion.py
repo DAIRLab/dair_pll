@@ -239,15 +239,17 @@ def log(q: Tensor) -> Tensor:
         q = [\cos(\theta/2), \hat u \sin(\theta/2)] = [q_w, q_{xyz}],
 
     returns the corresponding logarithmic coordinates (rotation vector)
-    :math:`\theta\hat u`\ .
+    :math:`r = \theta\hat u`\ .
 
-    This computation is evaluated via the piecewise function
+    This computation is evaluated via the pertations
 
     .. math::
-
-        q \to \begin{cases} \frac{\theta}{\sin(\theta/2)} q_{xyz} & \sin(
-            \theta/2) \neq 0\\
-            0 & \sin(\theta/2) = 0\end{cases}.
+        \begin{align}
+        \theta(q) &= 2\mathrm{atan2}(||q_{xyz}||_2, q_w), \\
+        r &= \begin{cases} \frac{\theta(q)}{\sin(\theta(q)/2)} q_{xyz} & \sin(
+            \theta(q)/2) \neq 0,\\
+            0 & \sin(\theta(q)/2) = 0.\end{cases}
+        \end{align}
 
     This function inverts :func:`exp`.
 

@@ -20,9 +20,11 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Dict
 
 import numpy as np
+import pywavefront  # type: ignore
 import torch
 from pydrake.geometry import Box as DrakeBox  # type: ignore
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
+from pydrake.geometry import Mesh as DrakeMesh  # type: ignore
 from pydrake.geometry import Shape  # type: ignore
 from torch import Tensor
 from torch.nn import Module, Parameter
@@ -33,11 +35,12 @@ _UNIT_BOX_VERTICES = Tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
     0, 0, 1, 1, 0, 0, 1, 1.
 ], [0, 1, 0, 1, 0, 1, 0, 1.]]).t() * 2. - 1.
 
-_ROT_Z_45 = Tensor(
-    [[2 ** (-0.5), -(2 ** (-0.5)), 0.], [2 ** (-0.5), 2 ** (-0.5), 0.],
-     [0., 0., 1.]])
+_ROT_Z_45 = Tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
+                    [0., 0., 1.]])
 
 _total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere']
+
+_POLYGON_DEFAULT_N_QUERY = 4
 
 
 class CollisionGeometry(ABC, Module):
@@ -213,7 +216,9 @@ class Polygon(SparseVertexConvexCollisionGeometry):
     """
     vertices: Parameter
 
-    def __init__(self, vertices: Tensor, n_query: int) -> None:
+    def __init__(self,
+                 vertices: Tensor,
+                 n_query: int = _POLYGON_DEFAULT_N_QUERY) -> None:
         """Inits ``Polygon`` object with initial vertex set.
 
         Args:
@@ -390,6 +395,8 @@ class PydrakeToCollisionGeometryFactory:
             return PydrakeToCollisionGeometryFactory.convert_box(drake_shape)
         if isinstance(drake_shape, DrakeHalfSpace):
             return PydrakeToCollisionGeometryFactory.convert_plane()
+        if isinstance(drake_shape, DrakeMesh):
+            return PydrakeToCollisionGeometryFactory.convert_mesh(drake_shape)
         raise TypeError(
             "Unsupported type for drake Shape() to"
             "CollisionGeometry() conversion:", type(drake_shape))
@@ -404,6 +411,14 @@ class PydrakeToCollisionGeometryFactory:
     def convert_plane() -> Plane:
         """Converts ``pydrake.geometry.HalfSpace`` to ``Plane``"""
         return Plane()
+
+    @staticmethod
+    def convert_mesh(drake_mesh: DrakeMesh) -> Polygon:
+        """Converts ``pydrake.geometry.Mesh`` to ``Polygon``"""
+        filename = drake_mesh.filename()
+        mesh = pywavefront.Wavefront(filename)
+        vertices = Tensor(mesh.vertices)
+        return Polygon(vertices)
 
 
 class GeometryCollider:

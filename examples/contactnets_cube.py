@@ -1,3 +1,5 @@
+"""Simple ContactNets/differentiable physics learning example for tossing
+cube."""
 import os
 
 import click
@@ -14,11 +16,9 @@ from dair_pll.experiment import SupervisedLearningExperimentConfig, \
 
 # File management.
 CUBE_DATA_ASSET = 'contactnets_cube'
-CUBE_URDF_ASSET = 'contactnets_cube.urdf'
+BOX_URDF_ASSET = 'contactnets_cube.urdf'
+MESH_URDF_ASSET = 'contactnets_cube_mesh.urdf'
 CUBE_MODEL = 'cube'
-
-CUBE_URDF = file_utils.get_asset(CUBE_URDF_ASSET)
-URDFS = {CUBE_MODEL: CUBE_URDF}
 
 STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
                             CUBE_DATA_ASSET)
@@ -41,13 +41,15 @@ PATIENCE = 100
 EPOCHS = 3
 
 
-def main(simulation: bool = True, contactnets: bool = True):
+def main(simulation: bool = True, contactnets: bool = True, box: bool = True):
     """Execute ContactNets basic example on the cube system.
 
     Args:
         simulation: Whether to use simulation or real data.
         contactnets: Whether to use ContactNets or prediction loss
+        box: Whether to represent geometry as box or mesh.
     """
+
     # First step, clear out data on disc for a fresh start.
     os.system(f'rm -r {file_utils.storage_dir(STORAGE_NAME)}')
 
@@ -62,7 +64,11 @@ def main(simulation: bool = True, contactnets: bool = True):
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
-    base_config = DrakeSystemConfig(urdfs=URDFS)
+    # first, select urdfs
+    cube_urdf_asset = BOX_URDF_ASSET if box else MESH_URDF_ASSET
+    cube_urdf = file_utils.get_asset(cube_urdf_asset)
+    urdfs = {CUBE_MODEL: cube_urdf}
+    base_config = DrakeSystemConfig(urdfs=urdfs)
 
     # Describes the learnable system. The MultibodyLearnableSystem type
     # learns a multibody system, which is initialized as the system in the
@@ -70,7 +76,7 @@ def main(simulation: bool = True, contactnets: bool = True):
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=URDFS, loss=loss)
+    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
 
     # Describe data source
     data_generation_config = None
@@ -132,8 +138,11 @@ def cli():
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train/test with ContactNets/prediction loss.")
-def main_command(simulation: bool, contactnets: bool):
-    main(simulation, contactnets)
+@click.option('--box/--mesh',
+              default=True,
+              help="whether to represent geometry as box or mesh.")
+def main_command(simulation: bool, contactnets: bool, box: bool):
+    main(simulation, contactnets, box)
 
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@ install_reqs = [
     'matplotlib',
     'threadpoolctl',
     'click',
+    'pywavefront',
     # documentation
     'pydeps',
     'networkx',
