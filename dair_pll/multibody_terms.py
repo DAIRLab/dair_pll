@@ -339,11 +339,13 @@ class ContactTerms(Module):
         drake_spatial_jacobians = []
 
         for geometry_id in geometry_ids:
+            geometry_pose = inspector.GetPoseInParent(
+                geometry_id).cast[Expression]()
             geometry_frame = plant.GetBodyFromFrameId(
                 inspector.GetFrameId(geometry_id)).body_frame()
 
             geometry_transform = plant.CalcRelativeTransform(
-                context, world_frame, geometry_frame)
+                context, world_frame, geometry_frame) @ geometry_pose
 
             rotations.append(geometry_transform.rotation().matrix())
 
