@@ -271,7 +271,7 @@ def spatial_to_point_jacobian(p_BoP_E: Tensor) -> Tensor:
 
 
 def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
-    """Converts a batch of directions for specified axis, to a
+    r"""Converts a batch of directions for specified axis, to a
     batch of rotation matrices.
 
     Specifically, if the ``i``\ th provided direction is ``d_i``, then the
@@ -332,3 +332,96 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
     columns[(axis + 2) % 3] = column_c
 
     return torch.stack(columns, dim=-1).reshape(original_shape + (3,))
+
+def broadcast_lorentz(vectors: Tensor) -> Tensor:
+    r"""Utility function that broadcasts scalars into Lorentz product cone
+    format.
+
+    This function maps a given vector :math:`v = [v_1, \dots, v_n]` in given
+    batch ``vectors`` to
+
+    .. math::
+
+        \begin{bmatrix} v & v_1 & v_1 & \cdots & v_n & v_n \end{bmatrix}.
+
+    Args:
+        vectors: ``(*, n)`` vectors to be broadcasted.
+    Returns:
+        ``(*, 3 * n)`` broadcasted vectors.
+    """
+    n_cones = vectors.shape[-1]
+    double_vectors_shape = vectors.shape[:-1] + (2 * n_cones,)
+    vectors_tiled = vectors.unsqueeze(-1).repeat([1] * len(vectors.shape) +
+                                             [2]).reshape(double_vectors_shape)
+    # pylint: disable=E1103
+    return torch.cat((vectors, vectors_tiled), dim=-1)
+
+def project_lorentz(vectors: Tensor) -> Tensor:
+    r"""Utility function that projects vectors in Lorentz cone product.
+
+        This function takes in a batch of vectors
+
+        .. math::
+
+            \begin{align}
+            v &= \begin{bmatrix} v_{n1} & \cdots v_{nk} & v_{t1} & \cdots v_{tk}
+            \end{bmatrix},\\
+            v_{ni} &\in \mathbb{R},\\
+            v_{ti} &\in \mathbb{R}^2,\\
+            \end{align}
+
+        and projects each :math:`v_i = [v_{ni} v_{ti}]` into the Lorentz cone
+        :math:`L = \{ v_{ni} \geq ||v_{ti}||_2\}` via the following piecewise
+        formula:
+
+            * if :math:`v_i \in L`, it remains the same.
+            * if :math:`v_i \in L^{\circ} = \{-v_{ni} \geq ||v_{ti}||_2\}` (the
+              polar cone), replace it with :math:`0`.
+            * if :math:`v_i \not\in L \cup L^\circ`, replace it with
+
+              .. math::
+
+                v = \begin{bmatrix} n & \frac{n}{||v_{ti}||_2}v_{ti}
+                \end{bmatrix},
+
+              where :math:`n = \frac{1}{2}(v_{ni} + ||v_{ti}||_2)`.
+
+
+        Args:
+            vectors: ``(*, 3 * n)`` vectors to be projected.
+        Returns:
+            ``(*, 3 * n)`` broadcasted vectors.
+        """
+    assert vectors.shape[-1] % 3 == 0
+    n_cones = vectors.shape[-1] // 3
+
+    normals = vectors[..., :n_cones]
+    tangents = vectors[..., n_cones:]
+    tangent_vectors_shape = tangents.shape[:-1] + (n_cones, 2)
+    tangent_norms = tangents.reshape(tangent_vectors_shape).norm(dim=-1)
+
+    not_in_lorentz_cone = tangent_norms > normals
+    in_polar_cone = tangent_norms <= -normals
+    in_neither_cone = (~in_polar_cone) & not_in_lorentz_cone
+
+    in_polar_mask = broadcast_lorentz(in_polar_cone)
+    in_neither_mask = broadcast_lorentz(in_neither_cone)
+
+    projected_vectors = vectors.clone()
+
+    projected_vectors[in_polar_mask] *= 0.
+
+    normals_rescaled = ((normals + tangent_norms) / 2)
+    tangent_normalizer = normals_rescaled / tangent_norms
+    tangent_rescaled = tangents * tangent_normalizer.unsqueeze(-1).expand(
+        tangent_vectors_shape).reshape(tangents.shape)
+    vectors_rescaled = torch.cat((normals_rescaled,
+                                  tangent_rescaled), dim=-1)
+
+    projected_vectors[in_neither_mask] = vectors_rescaled[in_neither_mask]
+
+if __name__ == '__main__':
+    vectors = torch.rand((100,9)) - 0.5
+    project_lorentz(vectors)
+
+

@@ -29,7 +29,8 @@ from pydrake.geometry import Shape  # type: ignore
 from torch import Tensor
 from torch.nn import Module, Parameter
 
-from dair_pll.tensor_utils import pbmm
+from dair_pll.deep_support_function import HomogeneousICNN
+from dair_pll.tensor_utils import pbmm, tile_dim
 
 _UNIT_BOX_VERTICES = Tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
     0, 0, 1, 1, 0, 0, 1, 1.
@@ -38,9 +39,12 @@ _UNIT_BOX_VERTICES = Tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
 _ROT_Z_45 = Tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
                     [0., 0., 1.]])
 
-_total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere']
+_total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere', 'DeepSupportConvex']
 
 _POLYGON_DEFAULT_N_QUERY = 4
+_DEEP_SUPPORT_DEFAULT_N_QUERY = 4
+_DEEP_SUPPORT_DEFAULT_DEPTH = 2
+_DEEP_SUPPOR_DEFAULTT_WIDTH = 256
 
 
 class CollisionGeometry(ABC, Module):
@@ -186,6 +190,7 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         # pylint: disable=E1103
         selections = torch.topk(dots, self.n_query, dim=-1,
                                 sorted=False).indices.t()
+
         top_vertices = torch.stack(
             [vertices[batch_range, selection] for selection in selections], -2)
         # reshape to (*, n_query, 3)
@@ -242,6 +247,80 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         return scalars
 
 
+class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
+    r"""Deep support function convex shape.
+
+    Any convex shape :math:`S` can be equivalently represented via its support
+    function :math:`f(d)`\ , which returns the extent to which the object
+    extends in the :math:`d` direction:
+
+    .. math::
+
+        f(d) = \max_{s \in S} s \cdot d.
+
+    Given a direction, the set of points that form the :math:`\arg\max` in
+    :math:`f(d)` is exactly the convex subgradient :math:`\partial_d f(d)`\ .
+
+    Furthermore, for every convex shape, :math:`f(d)` is convex and
+    positively homogeneous, and every convex and positively homogeneous
+    :math:`f(d)` is the support function of some convex shape.
+
+    This collision geometry type implements the support function directly as
+    a convex and positively homogeneous neural network (
+    :py:class:`~dair_pll.deep_support_function.HomogeneousICNN`\ )."""
+    vertices: Parameter
+
+    def __init__(self,
+                 vertices: Tensor,
+                 n_query: int = _DEEP_SUPPORT_DEFAULT_N_QUERY,
+                 depth: int = _DEEP_SUPPORT_DEFAULT_DEPTH,
+                 width: int = _DEEP_SUPPOR_DEFAULTT_WIDTH,
+                 perturbation: float = 0.1) -> None:
+        """Inits ``DeepSupportConvex`` object with initial vertex set.
+
+        When calculating a sparse vertex set with :py:meth:`get_vertices`\ ,
+        supplements the support direction with nearby directions randomly.
+
+        Args:
+            vertices: ``(N, 3)`` initial vertex set.
+            n_query: Number of vertices to return in witness point set.
+            depth: Depth of support function network.
+            width: Width of support function network.
+            perturbation: support direction sampling parameter.
+        """
+        super().__init__(n_query)
+        #pdb.set_trace()
+        length_scale = (vertices.max(dim=0).values -
+                        vertices.min(dim=0).values).norm() / 2
+        self.network = HomogeneousICNN(depth, width, scale=length_scale)
+        #self.network = VertexMesh(length_scale, 100)
+        self.perturbations = torch.cat((torch.zeros(
+            (1, 3)), perturbation * (torch.rand((n_query - 1, 3)) - 0.5)))
+
+    def get_vertices(self, directions: Tensor) -> Tensor:
+        """Return batched view of support points of interest.
+
+        Given a direction :batch:`d`, this function finds the support point
+        of the object in that direction, calculated via envelope
+
+        Args:
+            directions: ``(*, 3)`` batch of support directions sample.
+
+        Returns:
+            ``(*, n_query, 3)`` sampled support points.
+        """
+        perturbed = directions.unsqueeze(-2)
+        perturbed = tile_dim(perturbed, self.n_query, -2)
+        perturbed += self.perturbations.expand(perturbed.shape)
+        perturbed /= perturbed.norm(dim=-1, keepdim=True)
+        #pdb.set_trace()
+        return self.network(perturbed)
+
+    def scalars(self) -> Dict[str, float]:
+        """no scalars!"""
+        return {}
+
+
 class Box(SparseVertexConvexCollisionGeometry):
     """Implementation of cuboid geometry as a sparse vertex convex hull."""
     half_lengths: Parameter
@@ -252,7 +331,7 @@ class Box(SparseVertexConvexCollisionGeometry):
 
         Args:
             half_lengths: (3,) half-length dimensions of box on x, y,
-            and z axes.
+              and z axes.
             n_query: number of vertices to return in witness point set.
         """
         super().__init__(n_query)
@@ -310,69 +389,6 @@ class Sphere(BoundedConvexCollisionGeometry):
         return {'radius': self.radius.item()}
 
 
-CYLINDER_IMPLEMENTATION = """
-Todo: Stable implementation of ``Cylinder`` class w.r.t. vertical.
-class Cylinder(SparseVertexConvexCollisionGeometry):
-    def __init__(self, radius: Tensor, length: Tensor) -> None:
-        # Hardcoded n_query
-        super().__init__(4)
-
-        assert radius.numel == 1
-        assert length.numel == 1
-
-        radius = radius.clone().view(())
-        length = length.clone().view(())
-
-        self.radius = Parameter(radius, requires_grad=True)
-        self.length = Parameter(length, requires_grad=True)
-
-        # (8 x 3) x (3 x 3) = (8 x 3) xy-diagonally-aligned vertices
-        self.unit_vertices = _UNIT_BOX_VERTICES.clone().mm(_ROT_Z_45.clone(
-        ).t())
-
-    def get_vertices(self, directions: Tensor) -> Tensor:
-        # construct inscribed box based on angle
-        # want the [x, y] vectors of directions to be a diagonal
-        # so we make an x, y aligned box, then rotate 45 degrees
-        # x/y side length is radius * sqrt(2), so half_length is radius/sqrt(2)
-
-        sqrt2 = 2 ** 0.5
-        half_lengths = torch.stack((self.radius / sqrt2, self.radius / sqrt2,
-                                    self.length / 2)).unsqueeze(0)
-        nominal_vertices = self.unit_vertices * half_lengths
-
-        # get unit vectors in xy_directions
-        # batch x 2
-        xy = directions[..., :2]
-        unit_xy = xy / xy.norm(dim=-1, keepdim=True)
-
-        ux, uy = deal(unit_xy, -1)
-        zero = torch.zeros_like(ux)
-        one = torch.ones_like(ux)
-
-        # if nominal vertex is [1 0 0],
-        # we would want to return [unit_xy 0].
-        # accomplish as pre-multiply by R =[[ux, -uy, 0],[uy, ux, 0],[0, 0 1]]
-        # row vector representation necessitates post-multiply by R^T
-
-        # rotation is batch x 3 x 3
-        rotation = torch.stack((
-            torch.stack((ux, -uy, zero), -1),
-            torch.stack((uy, ux, zero), -1),
-            torch.stack((zero, zero, one), -1),
-        ), -2)
-
-        # [batched(8 x 3)] x [batch x 3 x 3] = batch x 8 x 3
-        vertices = pbmm(nominal_vertices, rotation.transpose(-1, -2))
-
-        return vertices
-        # numerical stability about the vertical
-
-    def scalars(self) -> Dict[str, float]:
-        return {'radius': self.radius.item(), 'length': self.length.item()}
-"""
-
-
 class PydrakeToCollisionGeometryFactory:
     """Utility class for converting Drake ``Shape`` instances to
     ``CollisionGeometry`` instances."""
@@ -413,12 +429,12 @@ class PydrakeToCollisionGeometryFactory:
         return Plane()
 
     @staticmethod
-    def convert_mesh(drake_mesh: DrakeMesh) -> Polygon:
+    def convert_mesh(drake_mesh: DrakeMesh) -> DeepSupportConvex:
         """Converts ``pydrake.geometry.Mesh`` to ``Polygon``"""
         filename = drake_mesh.filename()
         mesh = pywavefront.Wavefront(filename)
         vertices = Tensor(mesh.vertices)
-        return Polygon(vertices)
+        return DeepSupportConvex(vertices)
 
 
 class GeometryCollider:

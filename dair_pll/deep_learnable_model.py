@@ -5,7 +5,7 @@ from torch import Tensor, nn
 from torch.nn import Module, Parameter
 
 
-class LearnableModel(ABC, Module):
+class DeepLearnableModel(ABC, Module):
     mean: Parameter
     std_dev: Parameter
 
@@ -28,7 +28,7 @@ class LearnableModel(ABC, Module):
         return (x - self.mean) / self.std
 
 
-class RecurrentModel(LearnableModel):
+class DeepRecurrentModel(DeepLearnableModel):
 
     def __init__(self, in_size: int, hidden_size: int, out_size: int,
                  layers: int, nonlinearity: Module) -> None:
@@ -75,7 +75,7 @@ def _mlp(in_size: int, hidden_size: int, out_size: int, layers: int,
     return nn.Sequential(*modules)
 
 
-class MLP(LearnableModel):
+class MLP(DeepLearnableModel):
 
     def __init__(self, in_size: int, hidden_size: int, out_size: int,
                  layers: int, nonlinearity: Module) -> None:
@@ -90,7 +90,7 @@ class MLP(LearnableModel):
         return self.net(self.normalize(x[:, -1, :])).unsqueeze(1), carry
 
 
-class ZeroModel(LearnableModel):
+class ZeroModel(DeepLearnableModel):
 
     def __init__(self, in_size: int, hidden_size: int, out_size: int,
                  layers: int, nonlinearity: Module) -> None:

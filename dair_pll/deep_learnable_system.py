@@ -6,10 +6,10 @@ import torch
 from torch import Tensor
 from torch.nn import Module
 
+from dair_pll.deep_learnable_model import DeepLearnableModel, DeepRecurrentModel
 from dair_pll.experiment import SystemConfig, \
     SupervisedLearningExperiment
 from dair_pll.integrator import Integrator, VelocityIntegrator
-from dair_pll.model import LearnableModel, RecurrentModel
 from dair_pll.system import System
 
 
@@ -19,7 +19,7 @@ class DeepLearnableSystemConfig(SystemConfig):
     layers: int = 1
     nonlinearity: Module = torch.nn.ReLU
     hidden_size: int = 128
-    model_constructor: Type[LearnableModel] = RecurrentModel
+    model_constructor: Type[DeepLearnableModel] = DeepRecurrentModel
 
 
 class DeepLearnableSystem(System):

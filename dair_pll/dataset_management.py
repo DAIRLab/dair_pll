@@ -36,7 +36,7 @@ class DataGenerationConfig:
     noiser_type: Union[Type[GaussianWhiteNoiser], Type[UniformWhiteNoiser]] = \
         GaussianWhiteNoiser
     """Type of noise to add to data."""
-    static_noise: Tensor = torch.Tensor()
+    static_noise: Tensor = Tensor()
     """``(2 * n_v)`` sampler ranges for constant-in-time trajectory noise."""
     dynamic_noise: Tensor = Tensor()
     """``(2 * n_v)`` sampler ranges for i.i.d.-in-time trajectory noise."""

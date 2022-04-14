@@ -45,14 +45,15 @@ from torch import Tensor
 from torch.nn import Module, ModuleList, Parameter
 
 from dair_pll import drake_utils
+from dair_pll.deep_support_function import extract_mesh
 from dair_pll.drake_state_converter import DrakeStateConverter
 from dair_pll.drake_utils import MultibodyPlantDiagram
 from dair_pll.geometry import GeometryCollider, \
     PydrakeToCollisionGeometryFactory, \
-    CollisionGeometry
+    CollisionGeometry, DeepSupportConvex
 from dair_pll.inertia import InertialParameterConverter
-from dair_pll.tensor_utils import (pbmm, deal,
-                                   spatial_to_point_jacobian)
+from dair_pll.system import MeshSummary
+from dair_pll.tensor_utils import (pbmm, deal, spatial_to_point_jacobian)
 
 ConfigurationInertialCallback = Callable[[Tensor, Tensor], Tensor]
 StateInputInertialCallback = Callable[[Tensor, Tensor, Tensor, Tensor], Tensor]
@@ -63,7 +64,7 @@ INERTIA_TENSOR_DOF = 6
 
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
-        plant_diagram: MultibodyPlantDiagram
+    plant_diagram: MultibodyPlantDiagram
 ) -> Tuple[MultibodyPlant_[Expression], Context, np.ndarray, np.ndarray]:
     """Generates a symbolic interface for a ``MultibodyPlantDiagram``.
 
@@ -136,7 +137,7 @@ class LagrangianTerms(Module):
                                Variable.Type.CONTINUOUS)
         drake_forces_expression = -plant.CalcBiasTerm(
             context) + plant.MakeActuationMatrix(
-        ) @ u + plant.CalcGravityGeneralizedForces(context)
+            ) @ u + plant.CalcGravityGeneralizedForces(context)
 
         lagrangian_forces_expression = gamma.T @ drake_forces_expression
         self.lagrangian_forces, _ = drake_pytorch.sym_to_pytorch(
@@ -293,15 +294,16 @@ class ContactTerms(Module):
             np.stack(translations), q)
 
         drake_velocity_jacobian = Jacobian(plant.GetVelocities(context), v)
-        self.geometry_spatial_jacobians = make_configuration_callback(np.stack([
-            jacobian @ drake_velocity_jacobian
-            for jacobian in drake_spatial_jacobians
-        ]), q)
+        self.geometry_spatial_jacobians = make_configuration_callback(
+            np.stack([
+                jacobian @ drake_velocity_jacobian
+                for jacobian in drake_spatial_jacobians
+            ]), q)
 
         self.geometries = ModuleList(geometries)
 
-        mu_static = Tensor([friction.static_friction() for friction in
-                            coulomb_frictions])
+        mu_static = Tensor(
+            [friction.static_friction() for friction in coulomb_frictions])
 
         self.friction_coefficients = Parameter(mu_static, requires_grad=True)
 
@@ -310,8 +312,8 @@ class ContactTerms(Module):
     # noinspection PyUnresolvedReferences
     @staticmethod
     def extract_geometries_and_kinematics(
-            plant: MultibodyPlant_[Expression], inspector: SceneGraphInspector,
-            geometry_ids: List[GeometryId], context: Context
+        plant: MultibodyPlant_[Expression], inspector: SceneGraphInspector,
+        geometry_ids: List[GeometryId], context: Context
     ) -> Tuple[List[CollisionGeometry], List[np.ndarray], List[np.ndarray],
                List[np.ndarray]]:
         """Extracts modules and kinematics of list of geometries G.
@@ -492,8 +494,8 @@ class ContactTerms(Module):
             phi_list.append(phi_i)
 
         # pylint: disable=E1103
-        mu_repeated = torch.cat([mu.repeat(phi_i.shape[-1])
-                                 for phi_i in phi_list])
+        mu_repeated = torch.cat(
+            [mu.repeat(phi_i.shape[-1]) for phi_i in phi_list])
         phi = torch.cat(phi_list, dim=-1)  # type: Tensor
         J = ContactTerms.relative_velocity_to_contact_jacobian(
             torch.cat(Jv_v_W_BcAc_F, dim=-3), mu_repeated)
@@ -513,10 +515,12 @@ class MultibodyTerms(Module):
     plant_diagram: MultibodyPlantDiagram
     urdfs: Dict[str, str]
 
-    def scalars(self) -> Dict[str, float]:
+    def scalars_and_meshes(
+            self) -> Tuple[Dict[str, float], Dict[str, MeshSummary]]:
         """Generates summary statistics for inertial and geometric
         quantities."""
         scalars = {}
+        meshes = {}
         _, all_body_ids = \
             drake_utils.get_all_inertial_bodies(
                 self.plant_diagram.plant,
@@ -529,8 +533,8 @@ class MultibodyTerms(Module):
                 for scalar_name, scalar in body_scalars.items()
             })
             for geometry_index in self.geometry_body_assignment[body_id]:
-                geometry_scalars = self.contact_terms.geometries[
-                    geometry_index].scalars()
+                geometry = self.contact_terms.geometries[geometry_index]
+                geometry_scalars = geometry.scalars()
                 scalars.update({
                     f'{body_id}_{scalar_name}': scalar
                     for scalar_name, scalar in geometry_scalars.items()
@@ -538,8 +542,18 @@ class MultibodyTerms(Module):
                 scalars[f'{body_id}_mu'] = \
                     self.contact_terms.friction_coefficients[
                         geometry_index].item()
+                if isinstance(geometry, DeepSupportConvex):
+                    geometry_mesh = extract_mesh(geometry.network)
+                    meshes[body_id] = geometry_mesh
+                    vertices = geometry_mesh.vertices
+                    diameters = vertices.max(dim=0).values - vertices.min(
+                        dim=0).values
+                    scalars.update({
+                        f'{body_id}_diameter_{axis}': value.item()
+                        for axis, value in zip(['x', 'y', 'z'], diameters)
+                    })
 
-        return scalars
+        return scalars, meshes
 
     def forward(self, q: Tensor, v: Tensor,
                 u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:

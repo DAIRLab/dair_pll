@@ -38,10 +38,13 @@ extensions = ['sphinxcontrib.napoleon',
 
 autoclass_content = 'both'
 
-intersphinx_mapping = {'pydrake': ('https://drake.mit.edu/pydrake/', None),
-                       'torch': ('https://pytorch.org/docs/stable/', None),
-                       'python': ('https://docs.python.org/3', None),
-                       'numpy': ('https://numpy.org/doc/1.21/', None)}
+intersphinx_mapping = {
+    'pydrake': ('https://drake.mit.edu/pydrake/', None),
+    'torch': ('https://pytorch.org/docs/stable/', None),
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/1.21/', None),
+    'optuna': ('https://optuna.readthedocs.io/en/stable/', None)
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

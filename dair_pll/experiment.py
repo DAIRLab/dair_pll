@@ -22,6 +22,7 @@ from torch.utils.data import DataLoader
 from dair_pll import file_utils
 from dair_pll.dataset_management import SystemDataManager, \
     DataConfig, TrajectorySliceDataset, TrajectorySet
+from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System
 from dair_pll.tensorboard_manager import TensorboardManager
@@ -69,15 +70,15 @@ class OptimizerConfig:
     :func:`~torch.optim.Optimizer` for learning."""
     optimizer: Type[Optimizer] = torch.optim.Adam
     """Subclass of :py:class:`~torch.optim.Optimizer` to use."""
-    lr: float = 1e-5
+    lr: Float = Float(1e-5, log=True)
     """Learning rate."""
-    wd: float = 4e-5
+    wd: Float = Float(4e-5, log=True)
     """Weight decay."""
     epochs: int = 10000
     """Maximum number of epochs to optimize."""
     patience: int = 30
     """Number of epochs to wait for early stopping."""
-    batch_size: int = 64
+    batch_size: Int = Int(64, log=True)
     """Size of batch for an individual gradient step."""
 
 
@@ -241,8 +242,8 @@ class SupervisedLearningExperiment(ABC):
         config = self.config.optimizer_config
         if issubclass(config.optimizer, torch.optim.Adam):
             return config.optimizer(learned_system.parameters(),
-                                    lr=config.lr,
-                                    weight_decay=config.wd)
+                                    lr=config.lr.value,
+                                    weight_decay=config.wd.value)
         raise TypeError('Unsupported optimizer type:',
                         config.optimizer.__name__)
 
@@ -391,7 +392,8 @@ class SupervisedLearningExperiment(ABC):
         epoch_vars.update(
             {duration: statistics[duration] for duration in ALL_DURATIONS})
         self.tensorboard_manager.update(epoch, epoch_vars,
-                                        system_summary.videos)
+                                        system_summary.videos,
+                                        system_summary.meshes)
 
     def per_epoch_evaluation(self, epoch: int, learned_system: System,
                              train_loss: Tensor,
@@ -477,7 +479,7 @@ class SupervisedLearningExperiment(ABC):
         # Prepare sets for training.
         train_dataloader = DataLoader(
             train_set.slices,
-            batch_size=self.config.optimizer_config.batch_size,
+            batch_size=self.config.optimizer_config.batch_size.value,
             shuffle=True)
 
         # Setup optimization.
@@ -497,7 +499,9 @@ class SupervisedLearningExperiment(ABC):
         training_loss = best_valid_loss.clone()
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
-        for epoch in range(self.config.optimizer_config.epochs):
+        self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
+
+        for epoch in range(1, self.config.optimizer_config.epochs + 1):
             learned_system.train()
             start_train_time = time.time()
             training_loss = self.train_epoch(train_dataloader, learned_system,
@@ -586,11 +590,7 @@ class SupervisedLearningExperiment(ABC):
             stacked_y = torch.stack(all_y)
 
             # hack: assume 1-step prediction for now
-            assert self.config.data_config.t_prediction == 1
-            if len(all_y) > 0:
-                assert (sum(list(all_y[-1].shape)) == len(all_y[-1].shape) - 1 +
-                        space.n_x)
-            v_plus = [space.v(y) for y in all_y]
+            v_plus = [space.v(y[:1, :]) for y in all_y]
             v_minus = [space.v(x[-1:, :]) for x in all_x]
             dv2 = torch.stack([
                 space.velocity_square_error(vp, vm)

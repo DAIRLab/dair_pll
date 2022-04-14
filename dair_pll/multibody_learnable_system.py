@@ -39,27 +39,7 @@ from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.system import System, \
     SystemSummary
-from dair_pll.tensor_utils import pbmm, one_vector_block_diagonal, \
-    batch_diagonal
-
-
-def tripled_phi(phi: Tensor) -> Tensor:
-    """Utility function to broadcast phi to J shape.
-
-    The last index of the broadcasted output is formatted as::
-        [phi, phi_1, phi_1, ..., phi_n_contacts, phi_n_contacts].
-
-    Args:
-        (*, n_contacts) signed distance phi.
-    Returns:
-        (*, 3 * n_contacts) broadcasted phi.
-    """
-    n_contacts = phi.shape[-1]
-    double_phi_shape = phi.shape[:-1] + (2 * n_contacts,)
-    phi_tiled = phi.unsqueeze(-1).repeat([1] * len(phi.shape) +
-                                         [2]).reshape(double_phi_shape)
-    # pylint: disable=E1103
-    return torch.cat((phi, phi_tiled), dim=-1)
+from dair_pll.tensor_utils import pbmm, broadcast_lorentz
 
 
 class MultibodyLearnableSystem(System):
@@ -202,36 +182,33 @@ class MultibodyLearnableSystem(System):
         n_contacts = phi.shape[-1]
         J_t = J[..., n_contacts:, :]
 
-        # block diagonal matrix of [1; 1] vectors
-        E = one_vector_block_diagonal(n_contacts, 2)
-        phi_tripled = tripled_phi(phi)
+        # pylint: disable=E1103
+        double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
+        phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
+
+        # pylint: disable=E1103
         sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
+        sliding_speeds = sliding_velocities.reshape(phi.shape[:-1] +
+                                                    (n_contacts, 2)).norm(
+                                                        dim=-1, keepdim=True)
 
-        # Assemble maximum dissipation loss
-        dissipation_normal_mat = pbmm(
-            batch_diagonal(sliding_velocities.squeeze(2)), E)
-
-        sliding_speeds_squared = pbmm(E.t(),
-                                      sliding_velocities * sliding_velocities)
-
-        # pylint: disable=E1103
-        repeated_squared_sliding_speeds = pbmm(
-            E, torch.sqrt(sliding_speeds_squared)).squeeze(2)
-        dissipation_tangent_mat = batch_diagonal(
-            repeated_squared_sliding_speeds)
-
-        # pylint: disable=E1103
-        dissipation_penalty_sqrt = torch.cat(
-            (dissipation_normal_mat, dissipation_tangent_mat), dim=-1)
-        dissipation_penalty = pbmm(dissipation_penalty_sqrt.transpose(-1, -2),
-                                   dissipation_penalty_sqrt)
-
-        Q = delassus + batch_diagonal(phi_tripled) + dissipation_penalty
+        Q = delassus
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
-        q = pbmm(J, dv.transpose(-1, -2))
 
-        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        q_pred = -pbmm(J, dv.transpose(-1, -2))
+        q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
+        q_diss = dt * torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q = q_pred + q_comp + q_diss
+
+        penetration_penalty = (torch.maximum(
+            -phi, torch.zeros_like(phi))**2).sum(dim=-1)
+
+        penetration_penalty = penetration_penalty.reshape(
+            penetration_penalty.shape + (1, 1))
+
+        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(
+            -1, -2))) + penetration_penalty
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
@@ -241,10 +218,18 @@ class MultibodyLearnableSystem(System):
         force = self.solver.apply(Q, q, torch.rand(q.shape), 1e-7, 1000, 1e-7,
                                   loss_pool).detach()
 
+        # Hack: remove elements of ``force`` where solver likely failed.
+        invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
+                            dim=-2,
+                            keepdim=True)
+
+        constant[invalid] *= 0.
+        force[invalid.expand(force.shape)] = 0.
+
         loss = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) + pbmm(
             force.transpose(-1, -2), q) + constant
 
-        return loss.squeeze()
+        return loss.squeeze(-1).squeeze(-1)
 
     def forward_dynamics(self,
                          q: Tensor,
@@ -313,7 +298,7 @@ class MultibodyLearnableSystem(System):
         delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
             q, v, u)
         n_contacts = phi.shape[-1]
-        contact_filter = (tripled_phi(phi) <= eps).unsqueeze(-1)
+        contact_filter = (broadcast_lorentz(phi) <= eps).unsqueeze(-1)
         contact_matrix_filter = pbmm(contact_filter.int(),
                                      contact_filter.transpose(-1,
                                                               -2).int()).bool()
@@ -345,6 +330,7 @@ class MultibodyLearnableSystem(System):
     def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         """``Integrator.partial_step`` wrapper for ``forward_dynamics``."""
         q, v = self.space.q_v(x)
+        # pylint: disable=E1103
         u = torch.zeros(q.shape[:-1] + (0,))
         v_plus = self.forward_dynamics(q, v, u)
         return v_plus, carry
@@ -361,18 +347,17 @@ class MultibodyLearnableSystem(System):
         Returns:
             Scalars and videos packaged into a ``SystemSummary``.
         """
-        scalars = self.multibody_terms.scalars()
+        scalars, meshes = self.multibody_terms.scalars_and_meshes()
         videos = {}
         for set_name in ['train', 'valid']:
             traj_num = 0
             target_trajectory = Tensor(
-                statistics[f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'][
-                    0])
-            prediction_trajectory = Tensor(
-                statistics[
-                    f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
+                statistics[f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}']
+                [0])
+            prediction_trajectory = Tensor(statistics[
+                f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
             video, framerate = self.visualize(target_trajectory,
                                               prediction_trajectory)
             videos[f'{set_name}_trajectory_prediction_{traj_num}'] = (video,
                                                                       framerate)
-        return SystemSummary(scalars=scalars, videos=videos)
+        return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)

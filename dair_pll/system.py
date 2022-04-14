@@ -27,11 +27,20 @@ from dair_pll.state_space import StateSpace, StateSpaceSampler
 
 
 @dataclass
+class MeshSummary:
+    r""":py:func:`dataclasses.dataclass` for mesh visualization."""
+    vertices: Tensor = Tensor()
+    """Vertices in mesh, ``(n_vert, 3)``."""
+    faces: Tensor = Tensor()
+    """3-tuple indices of vertices that form faces, ``(n_face, 3)``."""
+
+@dataclass
 class SystemSummary:
-    """``dataclass`` for reporting information about the progress of a
-    training run."""
+    """:py:func:`dataclasses.dataclass` for reporting information about the
+    progress of a training run."""
     scalars: Dict[str, float] = field(default_factory=dict)
     videos: Dict[str, Tuple[np.ndarray, int]] = field(default_factory=dict)
+    meshes: Dict[str, MeshSummary] = field(default_factory=dict)
 
 
 class System(ABC, Module):

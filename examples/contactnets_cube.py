@@ -27,18 +27,22 @@ STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
 DT = 1 / 148.
 
 # Generation configuration.
-N_POP = 64
+N_POP = 256
 X_0 = torch.tensor([
     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
     0.014, 1.291, -0.212
 ])
 SAMPLER_RANGE = 0.1
 
+# Training data configuration.
+T_PREDICTION = 2
+
 # Optimization configuration.
-LR = 1e-6
-WD = 0
+LR = 1e-3
+WD = 0.0
 PATIENCE = 100
-EPOCHS = 3
+EPOCHS = 300
+BATCH_SIZE = 64
 
 
 def main(simulation: bool = True, contactnets: bool = True, box: bool = True):
@@ -56,10 +60,12 @@ def main(simulation: bool = True, contactnets: bool = True, box: bool = True):
     # Next, build the configuration of the learning experiment.
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
-    optimizer_config = OptimizerConfig(lr=LR,
-                                       wd=WD,
-                                       patience=PATIENCE,
-                                       epochs=EPOCHS)
+    optimizer_config = OptimizerConfig()
+    optimizer_config.lr.value = LR
+    optimizer_config.wd.value = WD
+    optimizer_config.patience = PATIENCE
+    optimizer_config.epochs = EPOCHS
+    optimizer_config.batch_size.value = BATCH_SIZE
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
@@ -92,7 +98,7 @@ def main(simulation: bool = True, contactnets: bool = True, box: bool = True):
             # How much to vary initial states around ``x_0``
             static_noise=torch.zeros(X_0.nelement() - 1),
             # constant-in-time noise distribution (zero in this case)
-            dynamic_noise=torch.zeros(X_0.nelement() - 1),
+            dynamic_noise=torch.zeros(X_0.nelement() - 1)
             # i.i.d.-in-time noise distribution (zero in this case)
         )
     else:
@@ -109,7 +115,8 @@ def main(simulation: bool = True, contactnets: bool = True, box: bool = True):
                              n_valid=N_POP // 4,
                              n_test=N_POP // 4,
                              generation_config=data_generation_config,
-                             import_directory=import_directory)
+                             import_directory=import_directory,
+                             t_prediction=1 if contactnets else T_PREDICTION)
 
     # Combines everything into config for entire experiment.
     experiment_config = SupervisedLearningExperimentConfig(
