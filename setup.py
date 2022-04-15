@@ -10,7 +10,7 @@ install_reqs = [
     'mujoco-py',
     'optuna',
     'numpy',
-    'scipy',
+    'scipy==1.7.3',
     'typing_extensions',
     'meshcat',
     'matplotlib',

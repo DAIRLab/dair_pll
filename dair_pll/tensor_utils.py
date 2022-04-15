@@ -3,6 +3,7 @@
 Contains various utility functions for common tensor operations required
 throughout the package. All such future functions should be placed here,
 with the following exceptions:
+
     * Utilities for operating directly on :math:`SO(3)` should be placed in
       :py:mod:`dair_pll.quaternion`
 """
@@ -55,8 +56,9 @@ def pbmm(t_1: Tensor, t_2: Tensor) -> Tensor:
         * do a matrix-matrix multiplication if both factors have dimension at
           least two, and broadcast to the larger (inferred) batch.
         * do a vector-matrix / matrix-vector multiplication if one factor is
-        a vector and the other has dimension ``>= 2``
+          a vector and the other has dimension ``>= 2``
         * do a vector-vector multiplication if both factors are vectors.
+
 
     Args:
         t_1: ``(*, l, m)`` or ``(l, m)`` or ``(m,)`` left tensor factor.

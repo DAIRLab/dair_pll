@@ -22,6 +22,7 @@
             "dair_pll.study",
             "dair_pll.sweep_plot",
             "dair_pll.system",
+            "dair_pll.tensorboard_manager",
             "dair_pll.urdf_utils"
         ],
         "name": "dair_pll",
@@ -69,10 +70,12 @@
     "dair_pll.deep_support_function": {
         "bacon": 1,
         "imported_by": [
-            "dair_pll.geometry"
+            "dair_pll.geometry",
+            "dair_pll.multibody_terms"
         ],
         "imports": [
             "dair_pll",
+            "dair_pll.system",
             "dair_pll.tensor_utils"
         ],
         "name": "dair_pll.deep_support_function",
@@ -294,10 +297,12 @@
         ],
         "imports": [
             "dair_pll",
+            "dair_pll.deep_support_function",
             "dair_pll.drake_state_converter",
             "dair_pll.drake_utils",
             "dair_pll.geometry",
             "dair_pll.inertia",
+            "dair_pll.system",
             "dair_pll.tensor_utils"
         ],
         "name": "dair_pll.multibody_terms",
@@ -367,11 +372,14 @@
         "imported_by": [
             "dair_pll.dataset_management",
             "dair_pll.deep_learnable_system",
+            "dair_pll.deep_support_function",
             "dair_pll.drake_experiment",
             "dair_pll.drake_system",
             "dair_pll.experiment",
             "dair_pll.mujoco_system",
-            "dair_pll.multibody_learnable_system"
+            "dair_pll.multibody_learnable_system",
+            "dair_pll.multibody_terms",
+            "dair_pll.tensorboard_manager"
         ],
         "imports": [
             "dair_pll",
@@ -398,6 +406,10 @@
         "bacon": 1,
         "imported_by": [
             "dair_pll.experiment"
+        ],
+        "imports": [
+            "dair_pll",
+            "dair_pll.system"
         ],
         "name": "dair_pll.tensorboard_manager",
         "path": "/Users/mathewhalm/PycharmProjects/dair_pll/dair_pll/tensorboard_manager.py"

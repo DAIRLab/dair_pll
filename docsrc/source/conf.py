@@ -52,7 +52,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['dair_pll.quaternion', 'index_text']
+exclude_patterns = ['index_text']
 
 autodoc_type_aliases = {'DrakeSpatialInertia':
                             'dair_pll.drake_utils.DrakeSpatialInertia',

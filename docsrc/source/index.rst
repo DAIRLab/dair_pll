@@ -11,13 +11,13 @@ Physics-based learning tools from DAIR Lab
    dair_pll.drake_utils
    dair_pll.tensor_utils
    dair_pll.inertia
+   dair_pll.integrator
+   dair_pll.system
    dair_pll.deep_support_function
    dair_pll.geometry
    dair_pll.drake_state_converter
    dair_pll.multibody_terms
    dair_pll.urdf_utils
-   dair_pll.integrator
-   dair_pll.system
    dair_pll.drake_system
    dair_pll.meshcat_utils
    dair_pll.file_utils
