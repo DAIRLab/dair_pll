@@ -1,5 +1,4 @@
-"""Simple ContactNets/differentiable physics learning example for tossing
-cube."""
+"""Simple ContactNets/differentiable physics learning examples."""
 import os
 
 import click
@@ -67,7 +66,7 @@ T_PREDICTION = 2
 
 # Optimization configuration.
 CUBE_LR = 1e-3
-ELBOW_LR = 1e-4
+ELBOW_LR = 1e-3
 LRS = {
     CUBE_SYSTEM: CUBE_LR,
     ELBOW_SYSTEM: ELBOW_LR
@@ -148,7 +147,7 @@ def main(system: str = CUBE_SYSTEM,
         # otherwise, specify directory with [T, n_x] tensor files saved as
         # 0.pt, 1.pt, ...
         # See :mod:`dair_pll.state_space` for state format.
-        import_directory = file_utils.get_asset(CUBE_DATA_ASSET)
+        import_directory = file_utils.get_asset(data_asset)
 
     # Describes configuration of the data:
     data_config = DataConfig(
