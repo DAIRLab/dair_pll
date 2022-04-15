@@ -497,7 +497,7 @@ class ContactTerms(Module):
 
         # pylint: disable=E1103
         mu_repeated = torch.cat(
-            [mu.repeat(phi_i.shape[-1]) for phi_i in phi_list])
+            [mu_i.repeat(phi_i.shape[-1]) for phi_i, mu_i in zip(phi_list, mu)])
         phi = torch.cat(phi_list, dim=-1)  # type: Tensor
         J = ContactTerms.relative_velocity_to_contact_jacobian(
             torch.cat(Jv_v_W_BcAc_F, dim=-3), mu_repeated)
