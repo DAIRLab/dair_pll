@@ -48,7 +48,7 @@ class DeepLearnableSystem(System):
 
     def preprocess_initial_condition(self, x_0: Tensor,
                                      carry_0: Tensor) -> Tuple[Tensor, Tensor]:
-
+        """Preload initial condition."""
         if len(x_0.shape) > 1 and x_0.shape[1] > 1:
             # recurrent start, preload trajectory
             x_pre = x_0[..., :(-1), :]

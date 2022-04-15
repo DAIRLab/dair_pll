@@ -100,13 +100,13 @@ class System(ABC, Module):
         """Simulate forward in time from initial condition.
 
         Args:
-            x_0: (*, T_0, space.n_x) initial state sequence
-            carry_0: (*, ?) initial hidden state
+            x_0: ``(*, T_0, space.n_x)`` initial state sequence
+            carry_0: ``(*, ?)`` initial hidden state
             steps: number of steps to take beyond initial condition
 
         Returns:
-            (*, steps + 1, space.n_x) state trajectory
-            (*, steps + 1, ?) hidden state trajectory
+            ``(*, steps + 1, space.n_x)`` state trajectory
+            ``(*, steps + 1, ?)`` hidden state trajectory
         """
 
         # If batching is more dimensions than allowed, iterate over outer
@@ -143,7 +143,7 @@ class System(ABC, Module):
 
     def preprocess_initial_condition(self, x_0: Tensor,
                                      carry_0: Tensor) -> Tuple[Tensor, Tensor]:
-        """Preprocesses initial condition state sequence into single state
+        r"""Preprocesses initial condition state sequence into single state
         initial condition for integration.
 
         For example, an RNN would use the state sequence to "preload" hidden
@@ -152,12 +152,12 @@ class System(ABC, Module):
         receives the state sequence.
 
         Args:
-            x_0: (*, T_0, space.n_x) initial state sequence.
-            carry_0: (*, ?) initial hidden state.
+            x_0: ``(*, T_0, space.n_x)`` initial state sequence.
+            carry_0: ``(*, ?)`` initial hidden state.
 
         Returns:
-            (*, space.n_x) processed initial state.
-            (*, ?) processed initial hidden state.
+            ``(*, space.n_x)`` processed initial state.
+            ``(*, ?)`` processed initial hidden state.
         """
         assert len(x_0.shape) >= 2
         assert len(carry_0.shape) >= 1

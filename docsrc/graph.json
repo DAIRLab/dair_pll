@@ -414,11 +414,6 @@
         "name": "dair_pll.tensorboard_manager",
         "path": "/Users/mathewhalm/PycharmProjects/dair_pll/dair_pll/tensorboard_manager.py"
     },
-    "dair_pll.train_cube": {
-        "bacon": 1,
-        "name": "dair_pll.train_cube",
-        "path": "/Users/mathewhalm/PycharmProjects/dair_pll/dair_pll/train_cube.py"
-    },
     "dair_pll.ukf": {
         "bacon": 1,
         "imported_by": [

@@ -36,7 +36,6 @@ from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
 from pydrake.systems.framework import DiagramBuilder  # type: ignore
 from pydrake.systems.meshcat_visualizer import MeshcatVisualizer  # type: ignore
-from typing_extensions import TypeAlias  # type: ignore
 
 from dair_pll import state_space
 
@@ -53,19 +52,17 @@ SceneGraphInspector_ = cast(DrakeTemplateType, SceneGraphInspector_)
 SpatialInertia_ = cast(DrakeTemplateType, SpatialInertia_)
 
 #:
-DrakeMultibodyPlant: TypeAlias = Union[MultibodyPlant_[float],
-                                       MultibodyPlant_[AutoDiffXd],
-                                       MultibodyPlant_[Expression]]
+DrakeMultibodyPlant = Union[MultibodyPlant_[float], MultibodyPlant_[AutoDiffXd],
+                            MultibodyPlant_[Expression]]
 #:
-DrakeBody: TypeAlias = Union[Body_[float], Body_[AutoDiffXd], Body_[Expression]]
+DrakeBody = Union[Body_[float], Body_[AutoDiffXd], Body_[Expression]]
 
 #:
-DrakeSceneGraphInspector: TypeAlias = Union[SceneGraphInspector_[float],
-                                            SceneGraphInspector_[AutoDiffXd]]
+DrakeSceneGraphInspector = Union[SceneGraphInspector_[float],
+                                 SceneGraphInspector_[AutoDiffXd]]
 #:
-DrakeSpatialInertia: TypeAlias = Union[SpatialInertia_[float],
-                                       SpatialInertia_[AutoDiffXd],
-                                       SpatialInertia_[Expression]]
+DrakeSpatialInertia = Union[SpatialInertia_[float], SpatialInertia_[AutoDiffXd],
+                            SpatialInertia_[Expression]]
 #:
 UniqueBodyIdentifier = str
 
@@ -98,8 +95,7 @@ def unique_body_identifier(plant: DrakeMultibodyPlant,
 
 
 def get_all_bodies(
-        plant: DrakeMultibodyPlant,
-        model_instance_indices: List[ModelInstanceIndex]
+    plant: DrakeMultibodyPlant, model_instance_indices: List[ModelInstanceIndex]
 ) -> Tuple[List[Body_], List[UniqueBodyIdentifier]]:
     """Get all bodies in plant's models."""
     bodies = []
@@ -109,8 +105,7 @@ def get_all_bodies(
 
 
 def get_all_inertial_bodies(
-        plant: DrakeMultibodyPlant,
-        model_instance_indices: List[ModelInstanceIndex]
+    plant: DrakeMultibodyPlant, model_instance_indices: List[ModelInstanceIndex]
 ) -> Tuple[List[DrakeBody], List[UniqueBodyIdentifier]]:
     """Get all bodies that should have inertial parameters in plant."""
     return get_all_bodies(plant, [
@@ -120,7 +115,7 @@ def get_all_inertial_bodies(
 
 
 def get_collision_geometry_set(
-        inspector: DrakeSceneGraphInspector
+    inspector: DrakeSceneGraphInspector
 ) -> Tuple[List[GeometryId], List[CoulombFriction], List[Tuple[int, int]]]:
     """Get colliding geometries, frictional properties, and corresponding
     collision pairs in a scene.
@@ -145,10 +140,10 @@ def get_collision_geometry_set(
         geometry_pairs.append((geometry_index_a, geometry_index_b))
 
     for geometry_id in geometry_ids:
-        proximity_properties = inspector.GetProximityProperties(
-            geometry_id)
-        coulomb_frictions.append(proximity_properties.GetProperty(
-            DRAKE_MATERIAL_GROUP, DRAKE_FRICTION_PROPERTY))
+        proximity_properties = inspector.GetProximityProperties(geometry_id)
+        coulomb_frictions.append(
+            proximity_properties.GetProperty(DRAKE_MATERIAL_GROUP,
+                                             DRAKE_FRICTION_PROPERTY))
 
     return geometry_ids, coulomb_frictions, geometry_pairs
 
@@ -174,7 +169,7 @@ class MultibodyPlantDiagram:
 
     @staticmethod
     def add_plant_from_urdfs(
-            builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
+        builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
     ) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
         """Add plant to builder with prescribed URDF models.
 

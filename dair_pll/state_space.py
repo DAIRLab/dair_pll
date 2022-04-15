@@ -67,35 +67,32 @@ class StateSpace(ABC):
         * The Lie group exponential map :math:`\exp: \mathfrak g \to G`
           is surjective/onto, such that a left inverse
           :math:`\log: G \to \mathfrak g` can be defined, i.e.
-          :math:`\exp(\log(g)) == g`.
+          :math:`\exp(\log(g)) = g`.
         * The Lie group exponential map coincides with the underlying
           manifold's Riemannian geometric exponential map, such that the
           geodesic distance from :math:`g_1` to :math:`g_1` is
           :math:`|\log(g_2 \cdot g_1^{-1})|`
 
     These conditions are met if and only if :math:`G` is the Cartesian
-    product of a compact group and an Abelian group [1]_ -- For
+    product of a compact group and an Abelian group :cite:p:`Milnor1976` -- For
     example, :math:`SO(3)\times\mathbb{R}^n`.
 
     For each concrete class inheriting from :py:class:`StateState`,
     a few fundamental mathematical operators associated with Lie groups must
     be defined on these coordinates. :py:class:`StateState` defines several
     other group operations from these units.
-    
-    References:
-        [1] Curvatures of left invariant metrics on lie groups, Milnor 1976,
-            https://doi.org/10.1016/S0001-8708(76)80002-3"""
+    """
     n_q: int
     n_v: int
     n_x: int
     comparisons: ComparisonDict
 
     def __init__(self, n_q: int, n_v: int) -> None:
-        """Inits ``StateSpace`` of prescribed size
-
+        """
         Args:
-            n_q: number of Lie group (configuration) coordinates (>= 0)
-            n_v: number of Lie algebra (velocity) coordinates (>= 0)
+            n_q: number of Lie group (configuration) coordinates
+              (:math:`>= 0`\ )
+            n_v: number of Lie algebra (velocity) coordinates (:math:`>= 0`\ )
         """
         assert n_q >= 0
         assert n_v >= 0
@@ -107,22 +104,24 @@ class StateSpace(ABC):
 
     @abstractmethod
     def configuration_difference(self, q_1: Tensor, q_2: Tensor) -> Tensor:
-        """Returns the relative transformation between ``q_1`` and ``q_2``
+        r"""Returns the relative transformation between ``q_1`` and ``q_2``.
 
-        Specifically, as G is a Lie group, it has a well-defined inverse
-        operator inv(). This function returns dq = log(q_2 * inv(q_1)), i.e.
-        the Lie algebra element such that q_1 * exp(dq) = q_2.
+        Specifically, as :math:`G` is a Lie group, it has a well-defined inverse
+        operator. This function returns :math:`dq = \log(q_2 \cdot q_1^{-1})`\ ,
+        i.e. the Lie algebra element such that :math:`q_1 \exp(dq) = q_2`\ .
 
-        ``configuration_difference()`` has a corresponding "inverse" function
-        ``exponential()``.
+        This method has a corresponding "inverse" function
+        :py:meth:`exponential`.
 
         Args:
-            q_1: (*, n_q) "starting" configuration, element(s) of Lie group G
-            q_2: (*, n_q) "ending" configuration, element(s) of Lie group G
+            q_1: ``(*, n_q)`` "starting" configuration, element(s) of Lie
+              group :math:`G`\ .
+            q_2: ``(*, n_q)`` "ending" configuration, element(s) of Lie group
+              :math:`G`\ .
 
         Returns:
-            (*, n_v) element of Lie algebra g defining the transformation from
-            ``q_1`` to ``q_2``
+            ``(*, n_v)`` element of Lie algebra g defining the transformation
+              from ``q_1`` to ``q_2``
         """
 
     @abstractmethod
@@ -133,18 +132,18 @@ class StateSpace(ABC):
         by returning q * exp(dq).
 
         Args:
-            q: (*, n_q) "starting" configuration, element(s) of Lie group G
-            dq: (*, n_v) perturbation, element(s) of Lie algebra g
+            q: ``(*, n_q)`` "starting" configuration, element(s) of Lie group G
+            dq: ``(*, n_v)`` perturbation, element(s) of Lie algebra g
         Returns:
-            (*, n_q) group product of q and exp(dq)
+            ``(*, n_q)`` group product of q and exp(dq)
         """
 
     @abstractmethod
     def project_configuration(self, q: Tensor) -> Tensor:
-        """Projects a tensor of size (*, n_q) onto the Lie group G.
+        """Projects a tensor of size ``(*, n_q)`` onto the Lie group G.
 
         This function is used, mostly for numerical stability, to ensure a
-        (*, n_q) tensor corresponds to Lie group elements. While not
+        ``(*, n_q)`` tensor corresponds to Lie group elements. While not
         necessarily a Euclidean projection, this function should be:
 
             * The identity on G, i.e. ``q = projection_configuration(q)``
@@ -152,10 +151,10 @@ class StateSpace(ABC):
             * (Piecewise) differentiable near G
 
         Args:
-            q: (*, n_q) vectors to project onto G.
+            q: ``(*, n_q)`` vectors to project onto G.
 
         Returns:
-            (*, n_q) tensor, projection of ``q`` onto G.
+            ``(*, n_q)`` projection of ``q`` onto G.
         """
 
     @abstractmethod
@@ -166,7 +165,7 @@ class StateSpace(ABC):
         as addition.
 
         Returns:
-            (n_x,) tensor group identity
+            ``(n_x,)`` tensor group identity
         """
 
     def q(self, x: Tensor) -> Tensor:
@@ -185,7 +184,7 @@ class StateSpace(ABC):
         return self.q(x), self.v(x)
 
     def x(self, q: Tensor, v: Tensor) -> Tensor:
-        """Concatenates configuration ``q'' and velocity ''v'' into a state"""
+        """Concatenates configuration ``q`` and velocity ``v`` into a state"""
         assert q.shape[-1] == self.n_q
         assert v.shape[-1] == self.n_v
 
@@ -196,20 +195,20 @@ class StateSpace(ABC):
                             q_1: Tensor,
                             q_2: Tensor,
                             keep_batch: bool = False) -> Tensor:
-        """Returns squared distance between two Lie group
+        r"""Returns squared distance between two Lie group
         elements/configurations.
 
-        Interprets an l_2-like error between two configurations as the
+        Interprets an :math:`l_2`\ -like error between two configurations as the
         square of the geodesic distance between them. This is simply equal to
-        |log(q_2 * inv(q_1))|^2 under the assumptions about G.
+        :math:`|\log(q_2 \mathrm{inv}(q_1))|^2` under the assumptions about G.
 
         Args:
-            q_1: (b_1, ..., b_k, n_q) "starting" configuration
-            q_2: (b_1, ..., b_k, n_q) "ending" configuration
+            q_1: ``(b_1, ..., b_k, n_q)`` "starting" configuration
+            q_2: ``(b_1, ..., b_k, n_q)`` "ending" configuration
             keep_batch: whether to keep the outermost batch
 
         Returns:
-            (b_1,) or scalar tensor of squared geodesic distances
+            ``(b_1,)`` or scalar tensor of squared geodesic distances
         """
         assert q_1.shape[-1] == self.n_q
         assert q_2.shape[-1] == self.n_q
@@ -227,12 +226,12 @@ class StateSpace(ABC):
         interpreted as the geodesic/Euclidean distance
 
         Args:
-            v_1: (b_1, ..., b_k, n_v) "starting" velocity
-            v_2: (b_1, ..., b_k, n_v) "ending" velocity
+            v_1: ``(b_1, ..., b_k, n_v)`` "starting" velocity
+            v_2: ``(b_1, ..., b_k, n_v)`` "ending" velocity
             keep_batch: whether to keep the outermost batch
 
         Returns:
-            (b_1,) or scalar tensor of squared geodesic distances.
+            ``(b_1,)`` or scalar tensor of squared geodesic distances.
         """
         assert v_1.shape[-1] == self.n_v
         assert v_2.shape[-1] == self.n_v
@@ -252,12 +251,12 @@ class StateSpace(ABC):
             dist(x_1, x_2)^2 == dist(q(x_1), q(x_2))^2 + dist(v(x_1), v(x_2))^2
 
         Args:
-            x_1: (b_1, ..., b_k, n_x) "starting" state
-            x_2: (b_1, ..., b_k, n_x) "ending" state
+            x_1: ``(b_1, ..., b_k, n_x)`` "starting" state
+            x_2: ``(b_1, ..., b_k, n_x)`` "ending" state
             keep_batch: whether to keep the outermost batch
 
         Returns:
-            (b_1,) or scalar tensor of squared geodesic distances
+            ``(b_1,)`` or scalar tensor of squared geodesic distances
         """
         assert x_1.shape[-1] == self.n_x
         assert x_2.shape[-1] == self.n_x
@@ -282,12 +281,12 @@ class StateSpace(ABC):
         ``euler_step()``
 
         Args:
-            q: (*, n_q) "starting" configuration, element(s) of Lie group G
-            q_plus: (*, n_q) "ending" configuration, element(s) of Lie group G
+            q: ``(*, n_q)`` "starting" configuration, element(s) of Lie group G
+            q_plus: ``(*, n_q)`` "ending" configuration, element(s) of Lie group G
             dt: time difference in [s]
 
         Returns:
-            (*, n_v) finite-difference velocity, element(s) of Lie algebra g
+            ``(*, n_v)`` finite-difference velocity, element(s) of Lie algebra g
         """
         assert q.shape[-1] == self.n_q
         assert q_plus.shape[-1] == self.n_q
@@ -300,12 +299,12 @@ class StateSpace(ABC):
         q * exp(v * dt), a geodesic forward Euler step.
 
         Args:
-            q: (*, n_q) "starting" configuration, element(s) of Lie group G
-            v: (*, n_v) "starting" velocity, element(s) of Lie algebra g
+            q: ``(*, n_q)`` "starting" configuration, element(s) of Lie group G
+            v: ``(*, n_v)`` "starting" velocity, element(s) of Lie algebra g
             dt: time difference in [s]
 
         Returns:
-            (*, n_q) configuration after Euler step.
+            ``(*, n_q)`` configuration after Euler step.
         """
         assert q.shape[-1] == self.n_q
         assert v.shape[-1] == self.n_v
@@ -322,11 +321,11 @@ class StateSpace(ABC):
         ``shift_state()``.
 
         Args:
-            x_1: (*, n_x) "starting" state, element(s) of Lie group G x g
-            x_2: (*, n_x) "ending" state, element(s) of Lie group G x g
+            x_1: ``(*, n_x)`` "starting" state, element(s) of Lie group G x g
+            x_2: ``(*, n_x)`` "ending" state, element(s) of Lie group G x g
 
         Returns:
-            (*, n_x) element of Lie algebra g x R^n_v defining the
+            ``(*, n_x)`` element of Lie algebra g x R^n_v defining the
             transformation from ``x_1`` to ``x_2``
         """
         assert x_1.shape[-1] == self.n_x
@@ -346,10 +345,10 @@ class StateSpace(ABC):
         by returning q * exp(dq).
 
         Args:
-            x: (*, n_x) "starting" state, element(s) of Lie group G x g
-            dx: (*, 2 * n_v) perturbation, element(s) of Lie algebra g x R^n_v
+            x: ``(*, n_x)`` "starting" state, element(s) of Lie group G x g
+            dx: ``(*, 2 * n_v)`` perturbation, element(s) of Lie algebra g x R^n_v
         Returns:
-            (*, n_q) group product of q and exp(dq).
+            ``(*, n_q)`` group product of q and exp(dq).
         """
         assert x.shape[-1] == self.n_x
         assert dx.shape[-1] == (2 * self.n_v)
@@ -369,10 +368,10 @@ class StateSpace(ABC):
         ``project_configuration()`` translated to the lie group G x g.
 
         Args:
-            x: (*, n_x) vectors to project onto G x g.
+            x: ``(*, n_x)`` vectors to project onto G x g.
 
         Returns:
-            (*, n_x) tensor, projection of ``x`` onto G x g.
+            ``(*, n_x)`` tensor, projection of ``x`` onto G x g.
         """
         assert x.shape[-1] == self.n_x
         return self.x(self.project_configuration(self.q(x)), self.v(x))
@@ -384,11 +383,11 @@ class StateSpace(ABC):
         velocities v_i with ``finite_difference(q_{i-1}, q_i, dt)``.
 
         Args:
-            x: (*, T, n_x) trajectories
+            x: ``(*, T, n_x)`` trajectories
             dt: time-step
 
         Returns:
-            (*, T, n_x) trajectories with finite-difference velocities.
+            ``(*, T, n_x)`` trajectories with finite-difference velocities.
         """
         assert x.shape[-1] == self.n_x
         assert x.dim() >= 2  # must have time indexing
@@ -446,11 +445,11 @@ class FloatingBaseSpace(StateSpace):
         elements of the return value are body-axes rotation vectors.
 
         Args:
-            q_1: (*, n_q) "starting" configuration in SE(3) x R^n_joints
-            q_2: (*, n_q) "ending" configuration, SE(3) x R^n_joints
+            q_1: ``(*, n_q)`` "starting" configuration in SE(3) x R^n_joints
+            q_2: ``(*, n_q)`` "ending" configuration, SE(3) x R^n_joints
 
         Returns:
-            (*, n_v) body-axes rotation vector, world-axes linear
+            ``(*, n_v)`` body-axes rotation vector, world-axes linear
             displacement, and joint offsets.
         """
         assert q_1.shape[-1] == self.n_q
@@ -472,10 +471,10 @@ class FloatingBaseSpace(StateSpace):
         ``dq``, and adding a linear offset to the remaining coordinates.
 
         Args:
-            q: (*, n_q) "starting" configuration in SE(3) x R^n_joints
-            dq: (*, n_v) perturbation in se(3) x R^n_joints
+            q: ``(*, n_q)`` "starting" configuration in SE(3) x R^n_joints
+            dq: ``(*, n_v)`` perturbation in se(3) x R^n_joints
         Returns:
-            (*, n_q) perturbed quaternion, world-axes floating base origin
+            ``(*, n_q)`` perturbed quaternion, world-axes floating base origin
         """
         assert q.shape[-1] == self.n_q
         assert dq.shape[-1] == self.n_v
@@ -490,14 +489,14 @@ class FloatingBaseSpace(StateSpace):
         """Implements projection onto the floating-base rigid chain
         configuration space.
 
-        This function projects (*, n_q) tensor onto SE(3) x R^n_joints by
+        This function projects a ``(*, n_q)`` tensor onto SE(3) x R^n_joints by
         simply normalizing the quaternion elements.
 
         Args:
-            q: (*, n_q) vectors to project onto SE(3) x R^n_joints.
+            q: ``(*, n_q)`` vectors to project onto SE(3) x R^n_joints.
 
         Returns:
-            (*, n_q) tensor, projection of ``q`` onto SE(3) x R^n_joints.
+            ``(*, n_q)`` tensor, projection of ``q`` onto SE(3) x R^n_joints.
         """
         assert q.shape[-1] == self.n_q
         quats = q[..., :N_QUAT] / torch.linalg.norm(q[..., :N_QUAT], dim=-1)
@@ -509,8 +508,8 @@ class FloatingBaseSpace(StateSpace):
         """Identity element of SE(3) x R^n_joints.
 
         Returns:
-            Concatenation of identity quaternion [1, 0, 0, 0] with (n_joints
-            + 3) zeros.
+            Concatenation of identity quaternion [1, 0, 0, 0] with
+              ``(n_joints + 3)`` zeros.
         """
         # pylint: disable=E1103
         zero = torch.zeros((self.n_x,))
@@ -525,8 +524,8 @@ class FloatingBaseSpace(StateSpace):
         by the angle of rotation between their base orientations.
 
         Args:
-            x_1: (*, n_x) "starting" state
-            x_2: (*, n_x) "ending" state
+            x_1: ``(*, n_x)`` "starting" state
+            x_2: ``(*, n_x)`` "ending" state
 
         Returns:
             scalar tensor, average angle of rotation in batch.
@@ -553,8 +552,8 @@ class FloatingBaseSpace(StateSpace):
         by the Euclidean between their bases.
 
         Args:
-            x_1: (*, n_x) "starting" state
-            x_2: (*, n_x) "ending" state
+            x_1: ``(*, n_x)`` "starting" state
+            x_2: ``(*, n_x)`` "ending" state
 
         Returns:
             scalar tensor, average translation in batch.
@@ -601,8 +600,8 @@ class FixedBaseSpace(StateSpace):
         In R^n_joints, this is simply vector subtraction.
 
         Args:
-            q_1: (*, n_q) "starting" configuration in R^n_joints
-            q_2: (*, n_q) "ending" configuration in R^n_joints
+            q_1: ``(*, n_q)`` "starting" configuration in R^n_joints
+            q_2: ``(*, n_q)`` "ending" configuration in R^n_joints
 
         Returns:
             (*, n_v) difference of configurations
@@ -617,10 +616,10 @@ class FixedBaseSpace(StateSpace):
         In R^n_joints, this is simply vector addition.
 
         Args:
-            q: (*, n_q) "starting" configuration in R^n_joints
-            dq: (*, n_v) perturbation in R^n_joints
+            q: ``(*, n_q)`` "starting" configuration in R^n_joints
+            dq: ``(*, n_v)`` perturbation in R^n_joints
         Returns:
-            (*, n_q) perturbed configuration
+            ``(*, n_q)`` perturbed configuration
         """
         assert q.shape[-1] == self.n_q
         assert dq.shape[-1] == self.n_v
@@ -633,10 +632,10 @@ class FixedBaseSpace(StateSpace):
         In R^n_joints, this is simply the identity function.
 
         Args:
-            q: (*, n_q) vectors in R^n_joints.
+            q: ``(*, n_q)`` vectors in R^n_joints.
 
         Returns:
-            (*, n_q) tensor, ``q``.
+            ``(*, n_q)`` tensor, ``q``.
         """
         assert q.shape[-1] == self.n_q
         return q
@@ -749,11 +748,12 @@ def centered_uniform(size: Size) -> Tensor:
 
 
 class WhiteNoiser:
-    """Helper class for adding artificial noise to state batches.
+    r"""Helper class for adding artificial noise to state batches.
 
     Defines an interface for noise distortion of a batch of states. Noise is
     modeled as a zero-mean distribution on the Lie algebra of the state
-    space, R^{2 * space.n_v}. Note that this means that velocities receive
+    space, :math:`\mathbb{R}^{2 n_v}`\ . Note that this means that
+    velocities receive
     noise independent to the configuration, and thus may break the
     finite-difference relationship in a trajectory."""
     space: StateSpace
@@ -787,12 +787,12 @@ class WhiteNoiser:
         distortion to each state in the batch, or i.i.d. noise to each state.
 
         Args:
-            x: (*, space.n_x) batch of states to distort with noise.
-            ranges: (2 * space.n_v,) multiplicative scale of noise.
+            x: ``(*, space.n_x)`` batch of states to distort with noise.
+            ranges: ``(2 * space.n_v,)`` multiplicative scale of noise.
             independent: whether to independently distort each state.
 
         Returns:
-            (*, space.n_x) distorted batch of states.
+            ``(*, space.n_x)`` distorted batch of states.
         """
         dx_shape = x.shape[:-1] + (2 * self.space.n_v,)
         if independent:
@@ -808,11 +808,11 @@ class WhiteNoiser:
         """State covariance matrix associated with noise scale.
 
         Args:
-            ranges: (2 * space.n_v,) multiplicative scale of noise.
+            ranges: ``(2 * space.n_v,)`` multiplicative scale of noise.
 
         Returns:
-            (2 * space.n_v, 2 * space.n_v) covariance matrix on state space
-            Lie algebra.
+            ``(2 * space.n_v, 2 * space.n_v)`` covariance matrix on state space
+              Lie algebra.
         """
         return torch.diag(self.variance_factor * (ranges**2))
 
@@ -854,11 +854,11 @@ class StateSpaceSampler(ABC):
 
     @abstractmethod
     def covariance(self) -> Tensor:
-        """Returns covariance of state space distribution.
+        r"""Returns covariance of state space distribution.
 
         Interprets the distribution in logarithmic coordinates (the Lie
-        algebra of the state space), and returns a covariance matrix in R^{2
-        * space.n_v x 2 * space.n_v}.
+        algebra of the state space), and returns a covariance matrix in
+        :math:`\mathbb{R}^{2 n_v \times 2 n_v}`\ .
 
         Returns:
             (2 * space.n_v, 2 * space.n_v) distribution covariance.
@@ -875,7 +875,7 @@ class ConstantSampler(StateSpaceSampler):
 
         Args:
             space: Sampler's state space.
-            x_0: (space.n_x,) singleton support of underlying probability
+            x_0: ``(space.n_x,)`` singleton support of underlying probability
             distribution.
         """
         super().__init__(space)
@@ -916,11 +916,11 @@ class CenteredSampler(StateSpaceSampler):
 
         Args:
             space: Sampler's state space.
-            ranges: (2 * space.n_v,) multiplicative scale on noise
+            ranges: ``(2 * space.n_v,)`` multiplicative scale on noise
             distribution standard deviation.
             unit_noise: Callback, returns coordinate-independent noise of
             nominal unit size.
-            x_0: (space.n_x,) center of distribution, around which Lie
+            x_0: ``(space.n_x,)`` center of distribution, around which Lie
             algebra perturbation is applied by underlying ``WhiteNoiser``.
         """
         super().__init__(space)

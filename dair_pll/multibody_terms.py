@@ -255,6 +255,7 @@ class ContactTerms(Module):
     geometry_translations: Optional[ConfigurationCallback]
     geometry_spatial_jacobians: Optional[ConfigurationCallback]
     geometries: ModuleList
+    geometry_local_poses: Parameter
     friction_coefficients: Parameter
     collision_candidates: Tensor
 
@@ -341,11 +342,12 @@ class ContactTerms(Module):
         for geometry_id in geometry_ids:
             geometry_pose = inspector.GetPoseInFrame(
                 geometry_id).cast[Expression]()
+
             geometry_frame = plant.GetBodyFromFrameId(
                 inspector.GetFrameId(geometry_id)).body_frame()
 
-            geometry_transform = plant.CalcRelativeTransform(
-                context, world_frame, geometry_frame) @ geometry_pose
+            geometry_transform = geometry_frame.CalcPoseInWorld(
+                context) @ geometry_pose
 
             rotations.append(geometry_transform.rotation().matrix())
 
@@ -355,7 +357,7 @@ class ContactTerms(Module):
                 context=context,
                 with_respect_to=JacobianWrtVariable.kV,
                 frame_B=geometry_frame,
-                p_BP=np.zeros((3, 1)),
+                p_BP=geometry_pose.translation().reshape(3,1),
                 frame_A=world_frame,
                 frame_E=world_frame)
             drake_spatial_jacobians.append(drake_spatial_jacobian)

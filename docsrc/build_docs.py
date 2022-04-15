@@ -14,12 +14,18 @@ PUBLISH_DIR = path.join(PROJECT_DIR, 'docs')
 MODULE_DIR = path.join(PROJECT_DIR, MODULE_NAME)
 TEMPLATE_DIR = path.join(DOCS_DIR, 'templates')
 INDEX_RST = path.join(SOURCE_DIR, 'index.rst')
-INDEX_TEXT_RST = path.join(SOURCE_DIR, 'index_text.rst')
+MODULES_RST = path.join(SOURCE_DIR, 'modules.rst')
+MODULE_RST = path.join(SOURCE_DIR, f'{MODULE_NAME}.rst')
+INDEX_TEXT_RST = path.join(SOURCE_DIR, 'index_text.rst.template')
 DEP_JSON_FILE = path.join(DOCS_DIR, 'graph.json')
 
 
 # regenerate .rst's
 def build(regenerate_deps: bool = False):
+    # remove any old documentation
+    os.system(f'rm {SOURCE_DIR}/{MODULE_NAME}.*')
+
+    # generate new .rst's
     os.system(
         f'sphinx-apidoc -f -o {SOURCE_DIR} {MODULE_DIR} -e --templatedir'
         f'={TEMPLATE_DIR}')
@@ -90,14 +96,25 @@ def build(regenerate_deps: bool = False):
 
     # sort for nodes relevant to docs
     reachable = nx.single_source_shortest_path(graph, main_document).keys()
+    not_reached = [module for module in mod_list if not module in reachable]
     mod_list = [module for module in mod_list if module in reachable]
 
     # add modules to table of contents.
     for module in mod_list:
         index_text.append(f'   {module}\n')
 
+    index_text.append(f'   bibliography\n')
+
     with open(INDEX_RST, 'w', encoding='utf-8') as index_file:
         index_file.write(''.join(index_text))
+
+    # remove unused files
+    remove_files = [path.join(SOURCE_DIR, f'{file_to_remove}.rst')
+                    for file_to_remove in set(not_reached + excludes)]
+    remove_files += [MODULES_RST]
+
+    for filename in remove_files:
+        os.system(f'rm {filename}')
 
     # build html
     os.system(f'sphinx-build -b html {SOURCE_DIR} {PUBLISH_DIR}')

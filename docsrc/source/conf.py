@@ -34,10 +34,12 @@ extensions = ['sphinxcontrib.napoleon',
               'sphinx.ext.viewcode',
               'sphinx.ext.mathjax',
               'sphinx.ext.intersphinx',
+              'sphinx.ext.todo',
               'sphinxcontrib.bibtex'
               ]
 
 bibtex_bibfiles = ['references.bib']
+html_static_path = []
 
 autoclass_content = 'both'
 

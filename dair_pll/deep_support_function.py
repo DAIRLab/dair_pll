@@ -73,9 +73,6 @@ class HomogeneousICNN(Module):
 
     where each :math:`W_{h,i} \geq 0` and :math:`\sigma` is a convex and
     monotonic :py:class:`~torch.nn.LeakyReLU`\ .
-
-    .. bibliography::
-
     """
     activation: Module
     r"""Activation module (:py:class:`~torch.nn.LeakyReLU`\ )."""
