@@ -25,6 +25,7 @@ install_reqs = [
     'sphinx-rtd-theme',
     'sphinx-toolbox',
     'sphinxcontrib-napoleon',
+    'sphinxcontrib-bibtex',
     # development
     'yapf',
     'pylint',

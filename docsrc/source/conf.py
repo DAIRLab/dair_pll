@@ -33,8 +33,11 @@ extensions = ['sphinxcontrib.napoleon',
               'sphinx_toolbox.more_autodoc.typehints',
               'sphinx.ext.viewcode',
               'sphinx.ext.mathjax',
-              'sphinx.ext.intersphinx'
+              'sphinx.ext.intersphinx',
+              'sphinxcontrib.bibtex'
               ]
+
+bibtex_bibfiles = ['references.bib']
 
 autoclass_content = 'both'
 

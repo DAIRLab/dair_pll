@@ -60,7 +60,7 @@ def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
 class HomogeneousICNN(Module):
     r""" Homogeneous Input-convex Neural Networks.
 
-    Implements a positively-homogenous version of an ICNN [1]_\ .
+    Implements a positively-homogenous version of an ICNN :cite:p:`AmosICNN2017`\ .
 
     These networks have the structure :math:`f(d)` where
 
@@ -74,9 +74,7 @@ class HomogeneousICNN(Module):
     where each :math:`W_{h,i} \geq 0` and :math:`\sigma` is a convex and
     monotonic :py:class:`~torch.nn.LeakyReLU`\ .
 
-    References:
-        [1] B. Amos et al., "Input Convex Neural Networks," ICML 2017,
-              https://arxiv.org/abs/1609.07152
+    .. bibliography::
 
     """
     activation: Module
