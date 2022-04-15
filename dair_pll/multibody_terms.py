@@ -326,11 +326,11 @@ class ContactTerms(Module):
 
         Returns:
             List of ``CollisionGeometry`` models with one-to-one
-            correspondence with provided geometries.
+              correspondence with provided geometries.
             List[(3,3)] of corresponding rotation matrices R_WG
             List[(3,)] of corresponding geometry frame origins p_WoGo_W
             List[(6,n_v)] of geometry spatial jacobians w.r.t. drake velocity
-            coordinates, J(v_drake)_V_WG_W
+              coordinates, J(v_drake)_V_WG_W
         """
         world_frame = plant.world_frame()
         geometries = []
@@ -550,9 +550,14 @@ class MultibodyTerms(Module):
                     vertices = geometry_mesh.vertices
                     diameters = vertices.max(dim=0).values - vertices.min(
                         dim=0).values
+                    center = vertices.min(dim=0).values + diameters/2
                     scalars.update({
                         f'{body_id}_diameter_{axis}': value.item()
                         for axis, value in zip(['x', 'y', 'z'], diameters)
+                    })
+                    scalars.update({
+                        f'{body_id}_center_{axis}': value.item()
+                        for axis, value in zip(['x', 'y', 'z'], center)
                     })
 
         return scalars, meshes
