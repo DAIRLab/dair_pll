@@ -30,9 +30,9 @@ from dair_pll.state_space import StateSpace, StateSpaceSampler
 class MeshSummary:
     r""":py:func:`dataclasses.dataclass` for mesh visualization."""
     vertices: Tensor = Tensor()
-    """Vertices in mesh, ``(n_vert, 3)``."""
+    r"""Vertices in mesh, ``(n_vert, 3)``\ ."""
     faces: Tensor = Tensor()
-    """3-tuple indices of vertices that form faces, ``(n_face, 3)``."""
+    r"""3-tuple indices of vertices that form faces, ``(n_face, 3)``\ ."""
 
 @dataclass
 class SystemSummary:

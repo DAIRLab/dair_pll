@@ -18,6 +18,7 @@ or :py:class:`~dair_pll.state_space.FixedBaseSpace`.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Tuple, Dict, List, Optional, Mapping, cast, Union, Type
 
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
@@ -114,9 +115,18 @@ def get_all_inertial_bodies(
     ])
 
 
+@dataclass
+class CollisionGeometrySet:
+    r""":py:func:`dataclasses.dataclass` for tracking object collisions."""
+    ids: List[GeometryId] = field(default_factory=list)
+    r"""List of geometries that may collide."""
+    frictions: List[CoulombFriction] = field(default_factory=dict)
+    r"""List of coulomb friction coefficients for the geometries."""
+    collision_candidates: List[Tuple[int, int]] = field(default_factory=dict)
+    r"""Pairs of geometries that may collide."""
+
 def get_collision_geometry_set(
-    inspector: DrakeSceneGraphInspector
-) -> Tuple[List[GeometryId], List[CoulombFriction], List[Tuple[int, int]]]:
+    inspector: DrakeSceneGraphInspector) -> CollisionGeometrySet:
     """Get colliding geometries, frictional properties, and corresponding
     collision pairs in a scene.
 
@@ -145,8 +155,41 @@ def get_collision_geometry_set(
             proximity_properties.GetProperty(DRAKE_MATERIAL_GROUP,
                                              DRAKE_FRICTION_PROPERTY))
 
-    return geometry_ids, coulomb_frictions, geometry_pairs
+    return CollisionGeometrySet(
+        ids=geometry_ids,
+        frictions=coulomb_frictions,
+        collision_candidates=geometry_pairs
+    )
 
+def add_plant_from_urdfs(
+    builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
+) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
+    """Add plant to builder with prescribed URDF models.
+
+    Generates a world containing each given URDF as a model instance.
+
+    Args:
+        builder: Diagram builder to add plant to
+        urdfs: Names and corresponding URDFs to add as models to plant.
+        dt: Time step of plant in seconds.
+
+    Returns:
+        Named dictionary of model instances returned by
+        ``AddModelFromFile``.
+        New plant, which has been added to builder.
+        Scene graph associated with new plant.
+    """
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, dt)
+    parser = Parser(plant)
+
+    # Build [model instance index] list, starting with world model, which is
+    # always added by default.
+    model_ids = [world_model_instance()]
+    model_ids.extend([
+        parser.AddModelFromFile(urdf, name) for name, urdf in urdfs.items()
+    ])
+
+    return model_ids, plant, scene_graph
 
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a meshcat
@@ -165,53 +208,22 @@ class MultibodyPlantDiagram:
     scene_graph: SceneGraph
     visualizer: Optional[MeshcatVisualizer]
     model_ids: List[ModelInstanceIndex]
+    collision_geometry_set = CollisionGeometrySet
     space: state_space.ProductSpace
 
-    @staticmethod
-    def add_plant_from_urdfs(
-        builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
-    ) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
-        """Add plant to builder with prescribed URDF models.
-
-        Generates a world containing each given URDF as a model instance.
-
-        Args:
-            builder: Diagram builder to add plant to
-            urdfs: Names and corresponding URDFs to add as models to plant.
-            dt: Time step of plant in seconds.
-
-        Returns:
-            Named dictionary of model instances returned by
-            ``AddModelFromFile``.
-            New plant, which has been added to builder.
-            Scene graph associated with new plant.
-        """
-        plant, scene_graph = AddMultibodyPlantSceneGraph(builder, dt)
-        parser = Parser(plant)
-
-        # Build [model instance index] list, starting with world model, which is
-        # always added by default.
-        model_ids = [world_model_instance()]
-        model_ids.extend([
-            parser.AddModelFromFile(urdf, name) for name, urdf in urdfs.items()
-        ])
-
-        return model_ids, plant, scene_graph
 
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
                  enable_visualizer: bool = False) -> None:
-        """Inits a ``MultibodyPlantDiagram`` from given URDF's.
-
-        Generates a world containing each given URDF as a model instance,
-        and a corresponding Drake ``Simulator`` set up to trigger a state
-        update every ``dt``.
+        """Initialization generates a world containing each given URDF as a
+        model instance, and a corresponding Drake ``Simulator`` set up to
+        trigger a state update every ``dt``.
 
         By default, a ground plane is added at world height ``z = 0``.
 
         If a visualizer is added, it listens on the default meshcat server
-        address, ``tcp://127.0.0.1:6000``.
+        address, ``tcp://127.0.0.1:6000``\ .
 
         Args:
             urdfs: Names and corresponding URDFs to add as models to plant.
@@ -219,9 +231,7 @@ class MultibodyPlantDiagram:
             enable_visualizer: Whether to add visualization system to diagram.
         """
         builder = DiagramBuilder()
-        model_ids, plant, scene_graph = \
-            MultibodyPlantDiagram.add_plant_from_urdfs(
-                builder, urdfs, dt)
+        model_ids, plant, scene_graph = add_plant_from_urdfs(builder, urdfs, dt)
 
         # Add visualizer to diagram if enabled. Sets ``delete_prefix_on_load``
         # to False, in the hopes of saving computation time; may cause
@@ -244,6 +254,10 @@ class MultibodyPlantDiagram:
         plant.RegisterCollisionGeometry(plant.world_body(), halfspace_transform,
                                         HalfSpace(), WORLD_GROUND_PLANE_NAME,
                                         friction)
+
+        # get collision candidates before default context filters for proximity.
+        self.collision_geometry_set = get_collision_geometry_set(
+            scene_graph.model_inspector())
 
         # Builds and initialize simulator from diagram
         plant.Finalize()

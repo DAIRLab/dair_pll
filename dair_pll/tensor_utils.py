@@ -304,11 +304,11 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
     column_a = directions / directions.norm(dim=-1, keepdim=True)
 
     # pylint: disable=E1103
-    min_a = torch.abs(directions).min(dim=-1)
-    min_magnitude_a = min_a.values
+    min_a = torch.abs(column_a).min(dim=-1)
+    min_magnitude_a = directions[batch_range, min_a.indices]
     axis_i = min_a.indices
-    axis_j = axis_i + 1 % 3
-    axis_k = axis_j + 1 % 3
+    axis_j = (axis_i + 1) % 3
+    axis_k = (axis_j + 1) % 3
 
     # pylint: disable=E1103
     magnitude_a_u = torch.sqrt(1 - min_magnitude_a * min_magnitude_a)
@@ -319,7 +319,7 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
     column_b[batch_range,
              axis_j] += -column_a[batch_range, axis_k] / magnitude_a_u
     column_b[batch_range,
-             axis_j] += column_a[batch_range, axis_j] / magnitude_a_u
+             axis_k] += column_a[batch_range, axis_j] / magnitude_a_u
 
     column_c = torch.zeros_like(column_a)
     column_c[batch_range, axis_i] += magnitude_a_u
@@ -334,6 +334,7 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
     columns[(axis + 2) % 3] = column_c
 
     return torch.stack(columns, dim=-1).reshape(original_shape + (3,))
+
 
 def broadcast_lorentz(vectors: Tensor) -> Tensor:
     r"""Utility function that broadcasts scalars into Lorentz product cone
@@ -353,10 +354,11 @@ def broadcast_lorentz(vectors: Tensor) -> Tensor:
     """
     n_cones = vectors.shape[-1]
     double_vectors_shape = vectors.shape[:-1] + (2 * n_cones,)
-    vectors_tiled = vectors.unsqueeze(-1).repeat([1] * len(vectors.shape) +
-                                             [2]).reshape(double_vectors_shape)
+    vectors_tiled = vectors.unsqueeze(-1).repeat(
+        [1] * len(vectors.shape) + [2]).reshape(double_vectors_shape)
     # pylint: disable=E1103
     return torch.cat((vectors, vectors_tiled), dim=-1)
+
 
 def project_lorentz(vectors: Tensor) -> Tensor:
     r"""Utility function that projects vectors in Lorentz cone product.
@@ -417,13 +419,11 @@ def project_lorentz(vectors: Tensor) -> Tensor:
     tangent_normalizer = normals_rescaled / tangent_norms
     tangent_rescaled = tangents * tangent_normalizer.unsqueeze(-1).expand(
         tangent_vectors_shape).reshape(tangents.shape)
-    vectors_rescaled = torch.cat((normals_rescaled,
-                                  tangent_rescaled), dim=-1)
+    vectors_rescaled = torch.cat((normals_rescaled, tangent_rescaled), dim=-1)
 
     projected_vectors[in_neither_mask] = vectors_rescaled[in_neither_mask]
 
+
 if __name__ == '__main__':
-    vectors = torch.rand((100,9)) - 0.5
+    vectors = torch.rand((100, 9)) - 0.5
     project_lorentz(vectors)
-
-

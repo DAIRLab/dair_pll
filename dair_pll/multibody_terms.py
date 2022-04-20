@@ -60,7 +60,7 @@ StateInputInertialCallback = Callable[[Tensor, Tensor, Tensor, Tensor], Tensor]
 
 CENTER_OF_MASS_DOF = 3
 INERTIA_TENSOR_DOF = 6
-
+DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
@@ -131,7 +131,7 @@ class LagrangianTerms(Module):
             mass_matrix_expression,
             q,
             body_variables,
-            simplify_computation=drake_pytorch.Simplifier.QUICKTRIG)
+            simplify_computation=DEFAULT_SIMPLIFIER)
 
         u = MakeVectorVariable(plant.num_actuated_dofs(), 'u',
                                Variable.Type.CONTINUOUS)
@@ -146,7 +146,7 @@ class LagrangianTerms(Module):
             v,
             u,
             body_variables,
-            simplify_computation=drake_pytorch.Simplifier.QUICKTRIG)
+            simplify_computation=DEFAULT_SIMPLIFIER)
 
         # pylint: disable=E1103
         self.inertial_parameters = Parameter(body_parameters,
@@ -242,7 +242,7 @@ def make_configuration_callback(expression: np.ndarray, q: np.ndarray) -> \
         drake_pytorch.sym_to_pytorch(
             expression,
             q,
-            simplify_computation=drake_pytorch.Simplifier.QUICKTRIG)[0])
+            simplify_computation=DEFAULT_SIMPLIFIER)[0])
 
 
 class ContactTerms(Module):
@@ -274,10 +274,12 @@ class ContactTerms(Module):
             plant_diagram)
         inspector = plant_diagram.scene_graph.model_inspector()
 
-        geometry_ids, coulomb_frictions, collision_candidates = \
-            drake_utils.get_collision_geometry_set(inspector)
+        collision_geometry_set = plant_diagram.collision_geometry_set
+        geometry_ids = collision_geometry_set.ids
+        coulomb_frictions = collision_geometry_set.frictions
+        collision_candidates = collision_geometry_set.collision_candidates
 
-        # sweep over collision elements
+        # sweep over collision elementsmake_sphere_instance
         geometries, rotations, translations, drake_spatial_jacobians = \
             ContactTerms.extract_geometries_and_kinematics(plant, inspector,
                                                            geometry_ids,
@@ -620,7 +622,7 @@ class MultibodyTerms(Module):
             body_id: [] for body_id in all_body_ids
         }
 
-        geometry_ids, _, _ = drake_utils.get_collision_geometry_set(inspector)
+        geometry_ids = plant_diagram.collision_geometry_set.ids
 
         for geometry_index, geometry_id in enumerate(geometry_ids):
             geometry_frame_id = inspector.GetFrameId(geometry_id)

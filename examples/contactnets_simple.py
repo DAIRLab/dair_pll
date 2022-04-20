@@ -71,7 +71,12 @@ LRS = {
     CUBE_SYSTEM: CUBE_LR,
     ELBOW_SYSTEM: ELBOW_LR
 }
-WD = 0.0
+CUBE_WD = 0.0
+ELBOW_WD = 1e-4
+WDS = {
+    CUBE_SYSTEM: CUBE_WD,
+    ELBOW_SYSTEM: ELBOW_WD
+}
 PATIENCE = 100
 EPOCHS = 300
 BATCH_SIZE = 64
@@ -90,7 +95,7 @@ def main(system: str = CUBE_SYSTEM,
         box: Whether to represent geometry as box or mesh.
     """
 
-    # First step, clear out data on disc for a fresh start.
+    # First step, clear out data on disk for a fresh start.
     data_asset = DATA_ASSETS[system]
     storage_name = os.path.join(os.path.dirname(__file__), 'storage',
                                 data_asset)
@@ -101,7 +106,7 @@ def main(system: str = CUBE_SYSTEM,
     # Describes the optimizer settings; by default, the optimizer is Adam.
     optimizer_config = OptimizerConfig()
     optimizer_config.lr.value = LRS[system]
-    optimizer_config.wd.value = WD
+    optimizer_config.wd.value = WDS[system]
     optimizer_config.patience = PATIENCE
     optimizer_config.epochs = EPOCHS
     optimizer_config.batch_size.value = BATCH_SIZE

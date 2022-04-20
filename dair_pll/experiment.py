@@ -499,7 +499,9 @@ class SupervisedLearningExperiment(ABC):
         training_loss = best_valid_loss.clone()
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
+        learned_system.eval()
         self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
+        learned_system.train()
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
             learned_system.train()
@@ -581,13 +583,13 @@ class SupervisedLearningExperiment(ABC):
 
         for set_name, trajectory_set in sets.items():
             trajectories = trajectory_set.trajectories
+            slices_loader = DataLoader(
+                trajectory_set.slices,
+                batch_size=128,
+                shuffle=False)
             slices = trajectory_set.slices[:]
             all_x = cast(List[Tensor], slices[0])
             all_y = cast(List[Tensor], slices[1])
-
-            # pylint: disable=E1103
-            stacked_x = torch.stack(all_x)
-            stacked_y = torch.stack(all_y)
 
             # hack: assume 1-step prediction for now
             v_plus = [space.v(y[:1, :]) for y in all_y]
@@ -602,8 +604,12 @@ class SupervisedLearningExperiment(ABC):
             stats[f'{set_name}_{PREDICTED_VELOCITY_SIZE}'] = to_json(vp2)
 
             for system_name, system in systems.items():
-                model_loss = \
-                    self.prediction_loss(stacked_x, stacked_y, system, True)
+                model_loss = []
+                for batch_x, batch_y in slices_loader:
+                    model_loss.append(self.prediction_loss(batch_x,
+                                                           batch_y,
+                                                           system, True))
+                model_loss = torch.cat(model_loss)
                 loss_name = f'{set_name}_{system_name}_{LOSS_NAME}'
                 stats[loss_name] = to_json(model_loss)
 

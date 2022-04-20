@@ -7,13 +7,49 @@ from torch import Tensor
 from torch.nn import Parameter, ParameterList, Module
 
 from dair_pll.system import MeshSummary
-from dair_pll.tensor_utils import pbmm
+from dair_pll.tensor_utils import pbmm, rotation_matrix_from_one_vector
 
 # pylint: disable=E1103
 _LINEAR_SPACE = torch.linspace(-1, 1, steps=8)
 _GRID = torch.cartesian_prod(_LINEAR_SPACE, _LINEAR_SPACE, _LINEAR_SPACE)
 _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
+_SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
+
+def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
+    """Extract hyperplane representation of convex hull from vertex-plane
+    representaiton.
+
+    Constructs a set of (outward) normal vectors and intercept values.
+    Additionally, notes a boolean value that is ``True`` iff the face vertices
+    are in counter-clockwise order when viewed from the outside.
+
+    Mathematically for a face :math:`(v_1, v_2, v_3)`\ , in counter-clockwise
+    order, this function returns :math:`\hat n`\ , the unit vector in the
+    :math:`(v_2 - v_1) \times (v_3 - v_`1)` direction, and intercept
+    :math:`d = \hat n \cdot v_1`\ .
+
+    Args:
+        vertices: ``(*, N, 3)`` batch of polytope vertices.
+        faces: ``(*, M, 3)`` batch of polytope triangle face vertex indices.
+
+    Returns:
+        ``(*, M, 3)`` face outward normals.
+        ``(*, M)`` whether each face is in counter-clockwise order.
+        ``(*, M)`` face hyperplane intercepts.
+    """
+    batch_range = torch.arange(vertices.shape[0]
+                               ).unsqueeze(1).repeat((1,faces.shape[-2]))
+    centroids = vertices.mean(dim=-2, keepdim=True)
+    v_a = vertices[batch_range, faces[..., 0]]
+    v_b = vertices[batch_range, faces[..., 1]]
+    v_c = vertices[batch_range, faces[..., 2]]
+    outward_normals = torch.cross(v_b - v_a, v_c - v_a)
+    outward_normals /= outward_normals.norm(dim=-1, keepdim=True)
+    backwards = (outward_normals * (v_a - centroids)).sum(dim=-1) < 0.
+    outward_normals[backwards] *= -1
+    extents = (v_a * outward_normals).sum(dim=-1)
+    return outward_normals, backwards, extents
 
 
 def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
@@ -41,17 +77,9 @@ def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
     hull = ConvexHull(vertices.numpy())
     faces = Tensor(hull.simplices).to(torch.long)  # type: ignore
 
-    # the inward normal and a vector from the face to the centroid should
-    # have positive dot product. If they do not, then the face indices are in
-    # reversed order, and must be flipped.
-    centroid = vertices.mean(dim=0, keepdim=True)
-    v_x = vertices[faces[:, 0], :]
-    v_y = vertices[faces[:, 1], :]
-    v_z = vertices[faces[:, 2], :]
-    inward_normals = torch.cross(v_x - v_y, v_z - v_y)
-    backwards = (inward_normals * (centroid - v_x)).sum(dim=-1) < 0.
-
-    # reorder indices of backwards faces
+    _, backwards, _ = extract_outward_normal_hyperplanes(
+        vertices.unsqueeze(0), faces.unsqueeze(0))
+    backwards = backwards.squeeze(0)
     faces[backwards] = faces[backwards].flip(-1)
 
     return MeshSummary(vertices=support_points, faces=faces)
@@ -154,7 +182,7 @@ class HomogeneousICNN(Module):
 
         Returns:
             List of ``(*, width)`` hidden layer activations.
-            ``(*, 1)`` network output
+            ``(*,)`` network output
         """
         hiddens = []
         hidden_wts, output_wt = self.abs_weights()
@@ -168,7 +196,7 @@ class HomogeneousICNN(Module):
             linear_output = linear_hidden + linear_input
             hiddens.append(self.activation(linear_output))
         output = pbmm(hiddens[-1], output_wt)
-        return hiddens, output
+        return hiddens, output.squeeze(-1)
 
     def forward(self, directions: Tensor) -> Tensor:
         """Evaluates support function Jacobian at provided inputs.
