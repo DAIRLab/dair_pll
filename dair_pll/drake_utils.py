@@ -120,13 +120,16 @@ class CollisionGeometrySet:
     r""":py:func:`dataclasses.dataclass` for tracking object collisions."""
     ids: List[GeometryId] = field(default_factory=list)
     r"""List of geometries that may collide."""
-    frictions: List[CoulombFriction] = field(default_factory=dict)
+    frictions: List[CoulombFriction] = field(
+        default_factory=dict)  # type: ignore
     r"""List of coulomb friction coefficients for the geometries."""
-    collision_candidates: List[Tuple[int, int]] = field(default_factory=dict)
+    collision_candidates: List[Tuple[int, int]] = field(
+        default_factory=dict)  # type: ignore
     r"""Pairs of geometries that may collide."""
 
+
 def get_collision_geometry_set(
-    inspector: DrakeSceneGraphInspector) -> CollisionGeometrySet:
+        inspector: DrakeSceneGraphInspector) -> CollisionGeometrySet:
     """Get colliding geometries, frictional properties, and corresponding
     collision pairs in a scene.
 
@@ -155,14 +158,13 @@ def get_collision_geometry_set(
             proximity_properties.GetProperty(DRAKE_MATERIAL_GROUP,
                                              DRAKE_FRICTION_PROPERTY))
 
-    return CollisionGeometrySet(
-        ids=geometry_ids,
-        frictions=coulomb_frictions,
-        collision_candidates=geometry_pairs
-    )
+    return CollisionGeometrySet(ids=geometry_ids,
+                                frictions=coulomb_frictions,
+                                collision_candidates=geometry_pairs)
+
 
 def add_plant_from_urdfs(
-    builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
+        builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
 ) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
     """Add plant to builder with prescribed URDF models.
 
@@ -185,11 +187,11 @@ def add_plant_from_urdfs(
     # Build [model instance index] list, starting with world model, which is
     # always added by default.
     model_ids = [world_model_instance()]
-    model_ids.extend([
-        parser.AddModelFromFile(urdf, name) for name, urdf in urdfs.items()
-    ])
+    model_ids.extend(
+        [parser.AddModelFromFile(urdf, name) for name, urdf in urdfs.items()])
 
     return model_ids, plant, scene_graph
+
 
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a meshcat
@@ -203,20 +205,20 @@ class MultibodyPlantDiagram:
     velocity vectors in the plant's context, via the one-chain-per-file
     assumption.
     """
+    # pylint: disable=too-few-public-methods
     sim: Simulator
     plant: MultibodyPlant
     scene_graph: SceneGraph
     visualizer: Optional[MeshcatVisualizer]
     model_ids: List[ModelInstanceIndex]
-    collision_geometry_set = CollisionGeometrySet
+    collision_geometry_set: CollisionGeometrySet
     space: state_space.ProductSpace
-
 
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
                  enable_visualizer: bool = False) -> None:
-        """Initialization generates a world containing each given URDF as a
+        r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
         trigger a state update every ``dt``.
 

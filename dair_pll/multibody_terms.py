@@ -62,6 +62,7 @@ CENTER_OF_MASS_DOF = 3
 INERTIA_TENSOR_DOF = 6
 DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 
+
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
     plant_diagram: MultibodyPlantDiagram
@@ -240,9 +241,7 @@ def make_configuration_callback(expression: np.ndarray, q: np.ndarray) -> \
     return cast(
         Callable[[Tensor], Tensor],
         drake_pytorch.sym_to_pytorch(
-            expression,
-            q,
-            simplify_computation=DEFAULT_SIMPLIFIER)[0])
+            expression, q, simplify_computation=DEFAULT_SIMPLIFIER)[0])
 
 
 class ContactTerms(Module):
@@ -279,7 +278,7 @@ class ContactTerms(Module):
         coulomb_frictions = collision_geometry_set.frictions
         collision_candidates = collision_geometry_set.collision_candidates
 
-        # sweep over collision elementsmake_sphere_instance
+        # sweep over collision elements
         geometries, rotations, translations, drake_spatial_jacobians = \
             ContactTerms.extract_geometries_and_kinematics(plant, inspector,
                                                            geometry_ids,
@@ -359,7 +358,7 @@ class ContactTerms(Module):
                 context=context,
                 with_respect_to=JacobianWrtVariable.kV,
                 frame_B=geometry_frame,
-                p_BP=geometry_pose.translation().reshape(3,1),
+                p_BP=geometry_pose.translation().reshape(3, 1),
                 frame_A=world_frame,
                 frame_E=world_frame)
             drake_spatial_jacobians.append(drake_spatial_jacobian)
@@ -554,7 +553,7 @@ class MultibodyTerms(Module):
                     vertices = geometry_mesh.vertices
                     diameters = vertices.max(dim=0).values - vertices.min(
                         dim=0).values
-                    center = vertices.min(dim=0).values + diameters/2
+                    center = vertices.min(dim=0).values + diameters / 2
                     scalars.update({
                         f'{body_id}_diameter_{axis}': value.item()
                         for axis, value in zip(['x', 'y', 'z'], diameters)

@@ -7,7 +7,7 @@ with the following exceptions:
     * Utilities for operating directly on :math:`SO(3)` should be placed in
       :py:mod:`dair_pll.quaternion`
 """
-from typing import List
+from typing import List, cast
 
 import torch
 from torch import Tensor
@@ -363,39 +363,40 @@ def broadcast_lorentz(vectors: Tensor) -> Tensor:
 def project_lorentz(vectors: Tensor) -> Tensor:
     r"""Utility function that projects vectors in Lorentz cone product.
 
-        This function takes in a batch of vectors
+    This function takes in a batch of vectors
 
-        .. math::
+    .. math::
 
-            \begin{align}
-            v &= \begin{bmatrix} v_{n1} & \cdots v_{nk} & v_{t1} & \cdots v_{tk}
-            \end{bmatrix},\\
-            v_{ni} &\in \mathbb{R},\\
-            v_{ti} &\in \mathbb{R}^2,\\
-            \end{align}
+        \begin{align}
+        v &= \begin{bmatrix} v_{n1} & \cdots v_{nk} & v_{t1} & \cdots v_{tk}
+        \end{bmatrix},\\
+        v_{ni} &\in \mathbb{R},\\
+        v_{ti} &\in \mathbb{R}^2,\\
+        \end{align}
 
-        and projects each :math:`v_i = [v_{ni} v_{ti}]` into the Lorentz cone
-        :math:`L = \{ v_{ni} \geq ||v_{ti}||_2\}` via the following piecewise
-        formula:
+    and projects each :math:`v_i = [v_{ni} v_{ti}]` into the Lorentz cone
+    :math:`L = \{ v_{ni} \geq ||v_{ti}||_2\}` via the following piecewise
+    formula:
 
-            * if :math:`v_i \in L`, it remains the same.
-            * if :math:`v_i \in L^{\circ} = \{-v_{ni} \geq ||v_{ti}||_2\}` (the
-              polar cone), replace it with :math:`0`.
-            * if :math:`v_i \not\in L \cup L^\circ`, replace it with
+        * if :math:`v_i \in L`, it remains the same.
+        * if :math:`v_i \in L^{\circ} = \{-v_{ni} \geq ||v_{ti}||_2\}` (the
+          polar cone), replace it with :math:`0`.
+        * if :math:`v_i \not\in L \cup L^\circ`, replace it with
 
-              .. math::
+          .. math::
 
-                v = \begin{bmatrix} n & \frac{n}{||v_{ti}||_2}v_{ti}
-                \end{bmatrix},
+            v = \begin{bmatrix} n & \frac{n}{||v_{ti}||_2}v_{ti}
+            \end{bmatrix},
 
-              where :math:`n = \frac{1}{2}(v_{ni} + ||v_{ti}||_2)`.
+          where :math:`n = \frac{1}{2}(v_{ni} + ||v_{ti}||_2)`.
 
 
-        Args:
-            vectors: ``(*, 3 * n)`` vectors to be projected.
-        Returns:
-            ``(*, 3 * n)`` broadcasted vectors.
-        """
+    Args:
+        vectors: ``(*, 3 * n)`` vectors to be projected.
+    Returns:
+        ``(*, 3 * n)`` broadcasted vectors.
+    """
+    # pylint: disable=too-many-locals
     assert vectors.shape[-1] % 3 == 0
     n_cones = vectors.shape[-1] // 3
 
@@ -405,8 +406,9 @@ def project_lorentz(vectors: Tensor) -> Tensor:
     tangent_norms = tangents.reshape(tangent_vectors_shape).norm(dim=-1)
 
     not_in_lorentz_cone = tangent_norms > normals
-    in_polar_cone = tangent_norms <= -normals
-    in_neither_cone = (~in_polar_cone) & not_in_lorentz_cone
+    in_polar_cone: Tensor = cast(Tensor, tangent_norms <= -normals)
+    in_neither_cone: Tensor = cast(Tensor,
+                                   (~in_polar_cone) & not_in_lorentz_cone)
 
     in_polar_mask = broadcast_lorentz(in_polar_cone)
     in_neither_mask = broadcast_lorentz(in_neither_cone)
@@ -419,11 +421,8 @@ def project_lorentz(vectors: Tensor) -> Tensor:
     tangent_normalizer = normals_rescaled / tangent_norms
     tangent_rescaled = tangents * tangent_normalizer.unsqueeze(-1).expand(
         tangent_vectors_shape).reshape(tangents.shape)
+    # pylint: disable=E1103
     vectors_rescaled = torch.cat((normals_rescaled, tangent_rescaled), dim=-1)
 
     projected_vectors[in_neither_mask] = vectors_rescaled[in_neither_mask]
-
-
-if __name__ == '__main__':
-    vectors = torch.rand((100, 9)) - 0.5
-    project_lorentz(vectors)
+    return projected_vectors

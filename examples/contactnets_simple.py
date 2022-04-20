@@ -1,4 +1,5 @@
 """Simple ContactNets/differentiable physics learning examples."""
+# pylint: disable=E1103
 import os
 
 import click
@@ -67,16 +68,10 @@ T_PREDICTION = 2
 # Optimization configuration.
 CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
-LRS = {
-    CUBE_SYSTEM: CUBE_LR,
-    ELBOW_SYSTEM: ELBOW_LR
-}
+LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 1e-4
-WDS = {
-    CUBE_SYSTEM: CUBE_WD,
-    ELBOW_SYSTEM: ELBOW_WD
-}
+WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 PATIENCE = 100
 EPOCHS = 300
 BATCH_SIZE = 64
@@ -94,6 +89,7 @@ def main(system: str = CUBE_SYSTEM,
         contactnets: Whether to use ContactNets or prediction loss
         box: Whether to represent geometry as box or mesh.
     """
+    # pylint: disable=too-many-locals
 
     # First step, clear out data on disk for a fresh start.
     data_asset = DATA_ASSETS[system]
@@ -181,12 +177,7 @@ def main(system: str = CUBE_SYSTEM,
     experiment.train()
 
 
-@click.group()
-def cli():
-    pass
-
-
-@cli.command()
+@click.command()
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -200,10 +191,11 @@ def cli():
               default=True,
               help="whether to represent geometry as box or mesh.")
 def main_command(system: str, simulation: bool, contactnets: bool, box: bool):
+    """Executes main function with argument interface."""
     if system == ELBOW_SYSTEM and not simulation:
         raise NotImplementedError('Elbow real-world data not supported!')
     main(system, simulation, contactnets, box)
 
 
 if __name__ == '__main__':
-    main_command()
+    main_command()  # pylint: disable=no-value-for-parameter

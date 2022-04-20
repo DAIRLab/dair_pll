@@ -16,10 +16,12 @@ All collision geometries implemented here mirror a Drake ``Shape`` object. A
 general purpose converter is implemented in
 ``PydrakeToCollisionGeometryFactory``.
 """
-from abc import ABC, abstractmethod
-from typing import Tuple, Dict
+from __future__ import annotations
 
-import fcl
+from abc import ABC, abstractmethod
+from typing import Tuple, Dict, cast
+
+import fcl  # type: ignore
 import numpy as np
 import pywavefront  # type: ignore
 import torch
@@ -31,7 +33,7 @@ from torch import Tensor
 from torch.nn import Module, Parameter
 
 from dair_pll.deep_support_function import HomogeneousICNN, \
-    extract_outward_normal_hyperplanes, extract_mesh
+    extract_mesh
 from dair_pll.tensor_utils import pbmm, tile_dim, \
     rotation_matrix_from_one_vector
 
@@ -47,7 +49,7 @@ _total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere', 'DeepSupportConvex']
 _POLYGON_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
-_DEEP_SUPPOR_DEFAULTT_WIDTH = 256
+_DEEP_SUPPORT_DEFAULT_WIDTH = 256
 
 
 class CollisionGeometry(ABC, Module):
@@ -282,9 +284,9 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
                  vertices: Tensor,
                  n_query: int = _DEEP_SUPPORT_DEFAULT_N_QUERY,
                  depth: int = _DEEP_SUPPORT_DEFAULT_DEPTH,
-                 width: int = _DEEP_SUPPOR_DEFAULTT_WIDTH,
+                 width: int = _DEEP_SUPPORT_DEFAULT_WIDTH,
                  perturbation: float = 0.1) -> None:
-        """Inits ``DeepSupportConvex`` object with initial vertex set.
+        r"""Inits ``DeepSupportConvex`` object with initial vertex set.
 
         When calculating a sparse vertex set with :py:meth:`get_vertices`\ ,
         supplements the support direction with nearby directions randomly.
@@ -296,6 +298,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             width: Width of support function network.
             perturbation: support direction sampling parameter.
         """
+        # pylint: disable=too-many-arguments,E1103
         super().__init__(n_query)
         length_scale = (vertices.max(dim=0).values -
                         vertices.min(dim=0).values).norm() / 2
@@ -321,8 +324,8 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         perturbed /= perturbed.norm(dim=-1, keepdim=True)
         return self.network(perturbed)
 
-    def train(self, mode: bool = True) -> Module:
-        """Override training-mode setter from :py:mod:`torch`\ .
+    def train(self, mode: bool = True) -> DeepSupportConvex:
+        r"""Override training-mode setter from :py:mod:`torch`\ .
 
         Sets a static fcl mesh geometry for the entirety of evaluation time,
         as the underlying support function is not changing.
@@ -335,7 +338,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         """
         if not mode:
             self.fcl_geometry = self.get_fcl_geometry()
-        return super().train(mode)
+        return cast(DeepSupportConvex, super().train(mode))
 
     def get_fcl_geometry(self) -> fcl.BVHModel:
         """Retrieves :py:mod:`fcl` mesh collision geometry representation.
@@ -355,8 +358,6 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             self.fcl_geometry.endModel()
 
         return self.fcl_geometry
-
-
 
     def scalars(self) -> Dict[str, float]:
         """no scalars!"""
@@ -478,6 +479,7 @@ class PydrakeToCollisionGeometryFactory:
         vertices = Tensor(mesh.vertices)
         return DeepSupportConvex(vertices)
 
+
 class GeometryCollider:
     """Utility class for colliding two ``CollisionGeometry`` instances."""
 
@@ -516,8 +518,8 @@ class GeometryCollider:
                 geometry_b, R_AB, p_AoBo_A)
         if isinstance(geometry_a, DeepSupportConvex) and isinstance(
                 geometry_b, DeepSupportConvex):
-            return GeometryCollider.collide_mesh_mesh(geometry_a,
-                                                      geometry_b, R_AB, p_AoBo_A)
+            return GeometryCollider.collide_mesh_mesh(geometry_a, geometry_b,
+                                                      R_AB, p_AoBo_A)
         raise TypeError(
             "No type-specific implementation for geometry "
             "pair of following types:",
@@ -556,211 +558,13 @@ class GeometryCollider:
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod
-    def collide_gjk(geometry_a: DeepSupportConvex,
-                    geometry_b: DeepSupportConvex,
-                    R_AB: Tensor,
-                    p_AoBo_A: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-
-        original_batch = p_AoBo_A.shape[:-1]
-        p_AoBo_A = p_AoBo_A.view(-1, 3)
-        R_AB = R_AB.view(-1, 3, 3)
-        batch_size = p_AoBo_A.shape[0]
-        batch_range = torch.arange(batch_size)
-        def supports(a_directions, R_ab, p_ab_a):
-            points_a = geometry_a.network(a_directions).detach()
-            b_directions = pbmm(-a_directions.unsqueeze(-2), R_ab).squeeze(-2)
-            points_b = geometry_b.network(b_directions).detach()
-            return points_a - points_b - p_ab_a
-
-        def same_direction(dir_a, dir_b, eps=0.0):
-            dots = (dir_a * dir_b).sum(dim=-1)
-            return dots > eps
-
-        def line_update(lines, ranks):
-            ranks[:] = 2
-            p_a = lines[:, 1, :]
-            p_b = lines[:, 0, :]
-            p_ab = p_b - p_a
-            p_ao = -p_a
-            directions = p_ao
-            same = same_direction(p_ab, p_ao)
-            directions[same] = p_ab[same].cross(p_ao[same]).cross(p_ab[same])
-            lines[~same, 0, :] = p_a[~same]
-            ranks[~same] = 1
-            collisions = torch.ones_like(ranks) < 0
-            return lines, ranks, directions, collisions
-
-        def triangle_update(triangles, ranks):
-            ranks[:] = 3
-            p_a = triangles[:, 2, :]
-            p_b = triangles[:, 1, :]
-            p_c = triangles[:, 0, :]
-            p_ab = p_b - p_a
-            p_ac = p_c - p_a
-            p_ao = -p_a
-            p_abc = torch.cross(p_ab, p_ac)
-            check_1 = same_direction(p_abc.cross(p_ac), p_ao)
-            check_2 = same_direction(p_ac, p_ao)
-            check_3 = same_direction(p_ab.cross(p_abc), p_ao)
-            check_4 = same_direction(p_abc, p_ao)
-            case_1 = check_1 & check_2
-            case_2 = (check_1 & ~check_2) | (~check_1 & check_3)
-            case_3 = ~check_1 & (check_3 & check_4)
-            case_4 = ~check_1 & (check_3 & ~check_4)
-            directions = p_abc.clone()
-            triangles[case_1, :2] = torch.stack((
-                p_c[case_1], p_a[case_1]), dim=-2)
-            ranks[case_1] = 2
-            directions[case_1] = p_ac[case_1].cross(p_ao[case_1]).cross(
-                p_ac[case_1])
-            triangles[case_2, :2] = triangles[case_2, 1:3]
-            triangles[case_2], ranks[case_2], directions[case_2], _ \
-                = line_update(triangles[case_2], ranks[case_2])
-            # case_3 is default
-            directions[case_4] *= -1
-            collisions = torch.ones_like(ranks) < 0
-            return triangles, ranks, directions, collisions
-
-        def tet_update(tets, ranks):
-            ranks[:] = 4
-            p_a = tets[:, 3, :]
-            p_b = tets[:, 2, :]
-            p_c = tets[:, 1, :]
-            p_d = tets[:, 0, :]
-
-            p_ab = p_b - p_a
-            p_ac = p_c - p_a
-            p_ad = p_d - p_a
-            p_ao = -p_a
-
-            case_1 = same_direction(p_ab.cross(p_ac), p_ao)
-            case_2 = same_direction(p_ac.cross(p_ad), p_ao)
-            case_3 = same_direction(p_ad.cross(p_ab), p_ao)
-            case_4 = ~(case_1 | case_2 | case_3)
-
-            tets[case_1, :3] = torch.stack(
-                (p_c[case_1], p_b[case_1], p_a[case_1]), dim=-2)
-            tets[case_2, :3] = torch.stack(
-                (p_d[case_2], p_c[case_2], p_a[case_2]), dim=-2)
-            tets[case_3, :3] = torch.stack(
-                (p_b[case_3], p_d[case_3], p_a[case_3]), dim=-2)
-            directions = torch.zeros_like(p_a)
-            for case in [case_1, case_2, case_3]:
-                tets[case], ranks[case], directions[case], _ = triangle_update(
-                    tets[case], ranks[case]
-                )
-
-            return tets, ranks, directions, case_4
-
-        def simplex_update(simplices, ranks):
-            lines = ranks == 2
-            triangles = ranks == 3
-            tets = ranks == 4
-            collision = torch.ones_like(ranks) < 0
-            directions = torch.zeros_like(simplices[:,0,:])
-            simplices[lines], ranks[lines], directions[lines], _ = line_update(
-                simplices[lines], ranks[lines])
-            simplices[triangles], ranks[triangles], directions[triangles], _ \
-                = triangle_update(simplices[triangles], ranks[triangles])
-            simplices[tets], ranks[tets], directions[tets], collision[tets] = \
-                tet_update(simplices[tets], ranks[tets])
-            directions /= directions.norm(dim= -1, keepdim=True)
-            return simplices, ranks, directions[~collision], collision
-
-        def get_face_normals(polytopes, faces):
-            all_normals, _, all_distances = \
-                extract_outward_normal_hyperplanes(polytopes, faces)
-            min_distances = all_distances.min(dim=-1)
-            return all_normals, min_distances.indices, min_distances.values
-
-
-
-        init_directions = p_AoBo_A / p_AoBo_A.norm(dim=-1, keepdim=True)
-        init_supports = supports(init_directions, R_AB, p_AoBo_A)
-        simplices = init_supports.unsqueeze(-2).repeat((1,4,1))
-        ranks = torch.ones((batch_size,)).to(torch.long)
-        has_collision = ranks.clone() == 0  # default to all false
-        cur_directions = -init_supports / init_supports.norm(
-            dim=-1, keepdim=True)
-        cur = torch.arange(batch_size)
-        for _ in range(100):
-            N_cont = cur.shape[0]
-            print(_,N_cont)
-            if N_cont == 0:
-                break
-            new_points = supports(cur_directions, R_AB[cur], p_AoBo_A[cur])
-            continues = same_direction(cur_directions, new_points, eps=1e-7)
-            # freeze rejections; result is no collision by default
-            cur = cur[continues]
-            new_points = new_points[continues]
-
-            # push to front
-            assert cur.shape[0] == new_points.shape[0]
-            simplices[cur,ranks[cur]] = new_points
-            ranks[cur] += 1
-
-            # update simplices
-            simplices[cur], ranks[cur], cur_directions, collisions = \
-                simplex_update(simplices[cur], ranks[cur])
-            # freeze collisions
-            collides = cur[collisions]
-            has_collision[collides] = True
-            cur = cur[~collisions]
-            assert cur.shape[0] == cur_directions.shape[0]
-        print(has_collision.sum()/batch_size)
-        """
-        # should all be tets
-        cur_polytopes = simplices[has_collision]
-        faces = Tensor([[0, 1, 2],
-		                [0, 3, 1],
-		                [0, 2, 3],
-		                [1, 3, 2]]).to(torch.long)
-        faces = faces.repeat((cur_polytopes.shape[0],1,1))
-        cur_faces = faces
-        cur_normals, min_faces, min_distances = get_face_normals(
-            cur_polytopes, cur_faces)
-        final_normals = cur_normals.clone()
-        final_distances = min_distances.clone()
-        cur = torch.arange(batch_size)
-        poly_size = 4
-        EPS = 1e-3
-        while cur.shape[0] > 0:
-            cur_range = torch.arange(cur.shape[0])
-            min_normals = cur_normals[cur_range, min_faces]
-            support = supports(min_normals, R_AB[cur], p_AoBo_A[cur])
-            s_distances = (support * min_normals).sum(dim=-1)
-            needs_expansion = (s_distances - min_distances).abs() > EPS
-
-            cur = cur[needs_expansion]
-            cur_polytopes = cur_polytopes[needs_expansion]
-            cur_normals = cur_normals[needs_expansion]
-            cur_faces = cur_faces[needs_expansion]
-            cur_range = torch.arange(cur.shape[0])
-
-            support_facing_normals = same_direction(cur_normals,
-                                                    support.unsqueeze(-2))
-            single_valid_face = support_facing_normals.max(dim=-1).indices
-            removed_count = support_facing_normals.sum(dim=-1).max()
-            sfn_transformed = support_facing_normals.sort(dim=-1,
-                descending=True).values[:,:removed_count]
-            removed_faces = single_valid_face.unsqueeze(-1).repeat((1,removed_count))
-            removed_faces[sfn_transformed] = faces[support_facing_normals]
-            edges = []
-            for (i,j) in [(0,1), (1,2), (2,0)]:
-                edges.append(torch.stack((removed_faces[..., i],
-                                          removed_faces[..., j])), dim=-1)
-            edges = torch.stack(edges, dim=-1)
-        """
-
-    @staticmethod
-    def collide_mesh_mesh(geometry_a: DeepSupportConvex,
-                          geometry_b: DeepSupportConvex,
-                          R_AB: Tensor,
-                          p_AoBo_A: Tensor) -> Tuple[Tensor, Tensor, Tensor,
-                                                     Tensor]:
-        """Implementation of ``GeometryCollider.collide()`` when
+    def collide_mesh_mesh(
+            geometry_a: DeepSupportConvex, geometry_b: DeepSupportConvex,
+            R_AB: Tensor,
+            p_AoBo_A: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        r"""Implementation of ``GeometryCollider.collide()`` when
          both geometries are ``DeepSupportConvex``\ es."""
-
+        # pylint: disable=too-many-locals
         p_AoBo_A = p_AoBo_A.unsqueeze(-2)
         original_batch_dims = p_AoBo_A.shape[:-2]
         p_AoBo_A = p_AoBo_A.view(-1, 3)
@@ -770,77 +574,46 @@ class GeometryCollider:
         # Assume collision directions are piecewise constant, which allows us
         # to use :py:mod:`fcl` to compute the direction, without the need to
         # differentiate through it.
+        # pylint: disable=E1103
         directions = torch.zeros_like(p_AoBo_A)
 
-        # setup fcl
-        a_fcl = geometry_a.get_fcl_geometry()
-        b_fcl = geometry_b.get_fcl_geometry()
-        a_obj = fcl.CollisionObject(a_fcl, fcl.Transform())
-        b_obj = fcl.CollisionObject(b_fcl, fcl.Transform())
+        # setup fcl=
+        a_obj = fcl.CollisionObject(geometry_a.get_fcl_geometry(),
+                                    fcl.Transform())
+        b_obj = fcl.CollisionObject(geometry_b.get_fcl_geometry(),
+                                    fcl.Transform())
         collision_request = fcl.CollisionRequest()
         collision_request.enable_contact = True
         distance_request = fcl.DistanceRequest()
         distance_request.enable_nearest_points = True
 
-        for i in range(batch_range):
-            b_t = fcl.Transform(R_AB[i].detach().numpy(),
-                                p_AoBo_A[i].detach().numpy())
+        for transform_index in range(batch_range):
+            b_t = fcl.Transform(R_AB[transform_index].detach().numpy(),
+                                p_AoBo_A[transform_index].detach().numpy())
             b_obj.setTransform(b_t)
             result = fcl.CollisionResult()
-            has_collided = fcl.collide(a_obj, b_obj, collision_request,
-                                       result) > 0
-            if has_collided:
-                # Assume only 1 contact point
-                directions[i] += result.contacts[0].normal
+            if fcl.collide(a_obj, b_obj, collision_request, result) > 0:
+                # Collision detected.
+                # Assume only 1 contact point.
+                directions[transform_index] += result.contacts[0].normal
             else:
                 result = fcl.DistanceResult()
                 fcl.distance(a_obj, b_obj, distance_request, result)
-                dp = Tensor(result.nearest_points[1] - result.nearest_points[0])
-                directions[i] += dp
+                directions[transform_index] += Tensor(result.nearest_points[1] -
+                                                      result.nearest_points[0])
         directions /= directions.norm(dim=-1, keepdim=True)
         R_AC = rotation_matrix_from_one_vector(directions, 2)
         p_AoAc_A = geometry_a.network(directions)
-        b_dirs = -pbmm(directions.unsqueeze(-2), R_AB).squeeze(-2)
-        p_BoBc_B = geometry_b.network(b_dirs)
-        p_BoBc_A = pbmm(p_BoBc_B.unsqueeze(-2),
-                        R_AB.transpose(-1,-2)).squeeze(-2)
+        p_BoBc_B = geometry_b.network(
+            -pbmm(directions.unsqueeze(-2), R_AB).squeeze(-2))
+        p_BoBc_A = pbmm(p_BoBc_B.unsqueeze(-2), R_AB.transpose(-1,
+                                                               -2)).squeeze(-2)
         p_AcBc_A = -p_AoAc_A + p_AoBo_A + p_BoBc_A
-        phi = (p_AcBc_A * R_AC[...,2]).sum(dim=-1)
-        return phi.reshape(original_batch_dims + (1,)), \
-               R_AC.reshape(original_batch_dims + (1,3,3)), \
-               p_AoAc_A.reshape(original_batch_dims + (1,3)), \
-               p_BoBc_B.reshape(original_batch_dims + (1,3))
 
+        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)
 
-if __name__ == "__main__":
-    LS = 0.5
-    B = 64
-    R = 64
-    TR = 256
-    TESTS = 2 ** 14
-    PA = (torch.rand((TR,3)) - 0.5) * 2 * LS
-    PB = (torch.rand((TR,3)) - 0.5) * 2 * LS
-    geometry_a = DeepSupportConvex(PA, width=256)
-    geometry_b = DeepSupportConvex(PB, width=256)
-    tests = (torch.rand((TESTS,3)) - 0.5)
-    tests /= tests.norm(dim=-1,keepdim=True)
-    supps_a = geometry_a.network.network_activations(tests)[1]
-    supps_b = geometry_b.network.network_activations(tests)[1]
-    min_to_gap = (supps_a.min() + supps_b.min()).detach()
-    max_to_gap = (supps_a.max() + supps_b.max()).detach()
-    print(min_to_gap, max_to_gap)
-    p_AoBo_A = torch.rand((B,3)) - 0.5
-    p_AoBo_A *= min_to_gap * 0.999 / p_AoBo_A.norm(dim=-1,keepdim=True)
-    #p_AoBo_A *= max_to_gap * 1.001 / p_AoBo_A.norm(dim=-1,keepdim=True)
-    xhat = torch.rand((B,3))
-    xhat /= xhat.norm(dim=-1, keepdim=True)
-    #R_AB = rotation_matrix_from_one_vector(xhat, axis=0)
-    R_AB = torch.eye(3).unsqueeze(0).repeat((B,1,1))
-    #GeometryCollider.collide_gjk(geometry_a,geometry_b, R_AB, p_AoBo_A)
-    import time
-    print('start')
-    st = time.time()
-    for i in range(R):
-        GeometryCollider.collide_mesh_mesh(geometry_a, geometry_b, R_AB, p_AoBo_A)
-    print((time.time() - st)/(B*R))
-    print('end')
+        phi = phi.reshape(original_batch_dims + (1,))
+        R_AC = R_AC.reshape(original_batch_dims + (1, 3, 3))
+        p_AoAc_A = p_AoAc_A.reshape(original_batch_dims + (1, 3))
+        p_BoBc_B = p_BoBc_B.reshape(original_batch_dims + (1, 3))
+        return phi, R_AC, p_AoAc_A, p_BoBc_B

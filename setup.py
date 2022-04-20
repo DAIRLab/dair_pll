@@ -17,6 +17,7 @@ install_reqs = [
     'threadpoolctl',
     'click',
     'pywavefront',
+    'python-fcl',
     # documentation
     'pydeps',
     'networkx',

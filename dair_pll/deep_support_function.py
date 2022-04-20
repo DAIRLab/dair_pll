@@ -16,9 +16,10 @@ _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
+
 def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
-    """Extract hyperplane representation of convex hull from vertex-plane
-    representaiton.
+    r"""Extract hyperplane representation of convex hull from vertex-plane
+    representation.
 
     Constructs a set of (outward) normal vectors and intercept values.
     Additionally, notes a boolean value that is ``True`` iff the face vertices
@@ -38,8 +39,8 @@ def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
         ``(*, M)`` whether each face is in counter-clockwise order.
         ``(*, M)`` face hyperplane intercepts.
     """
-    batch_range = torch.arange(vertices.shape[0]
-                               ).unsqueeze(1).repeat((1,faces.shape[-2]))
+    batch_range = torch.arange(vertices.shape[0]).unsqueeze(1).repeat(
+        (1, faces.shape[-2]))
     centroids = vertices.mean(dim=-2, keepdim=True)
     v_a = vertices[batch_range, faces[..., 0]]
     v_b = vertices[batch_range, faces[..., 1]]
@@ -215,8 +216,7 @@ class HomogeneousICNN(Module):
                            self.activation_jacobian(hiddens[-1])).unsqueeze(-1)
 
         jacobian = torch.zeros_like(directions)
-        layer_bundle = zip(reversed(hiddens[:-1]),
-                           reversed(hidden_wts),
+        layer_bundle = zip(reversed(hiddens[:-1]), reversed(hidden_wts),
                            reversed(list(input_wts[1:])))
 
         for hidden, hidden_wt, input_wt in layer_bundle:

@@ -74,6 +74,7 @@
     <drake:collision_filter_group name="elbow_group">
         <drake:member link="elbow_1"/>
         <drake:member link="elbow_2"/>
+        <drake:ignored_collision_filter_group name="elbow_group"/>
     </drake:collision_filter_group>
 
 </robot>

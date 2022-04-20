@@ -34,6 +34,7 @@ class MeshSummary:
     faces: Tensor = Tensor()
     r"""3-tuple indices of vertices that form faces, ``(n_face, 3)``\ ."""
 
+
 @dataclass
 class SystemSummary:
     """:py:func:`dataclasses.dataclass` for reporting information about the
