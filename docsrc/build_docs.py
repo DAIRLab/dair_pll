@@ -52,7 +52,7 @@ def build(regenerate_deps: bool = False):
 
     with open(DEP_JSON_FILE, 'r', encoding='utf-8') as dep_file:
         dep_graph = json.load(dep_file)
-
+    print(dep_graph)
     graph = nx.DiGraph()
     edges = []
     excludes = ['dair_pll']
