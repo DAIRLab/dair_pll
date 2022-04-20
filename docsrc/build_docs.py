@@ -48,6 +48,7 @@ def build(regenerate_deps: bool = False):
     if regenerate_deps:
         os.system(
             f'pydeps --only {MODULE_NAME} --show-deps {MODULE_DIR} --no-output'
+            ' --debug'
             f' > {DEP_JSON_FILE}')
 
     with open(DEP_JSON_FILE, 'r', encoding='utf-8') as dep_file:

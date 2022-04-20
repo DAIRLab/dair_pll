@@ -19,8 +19,8 @@ install_reqs = [
     'pywavefront',
     'python-fcl',
     # documentation
-    'pydeps',
     'networkx',
+    'pydeps',
     'Sphinx',
     'sphinx-autodoc-typehints',
     'sphinx-rtd-theme',
