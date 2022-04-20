@@ -20,7 +20,7 @@ install_reqs = [
     'python-fcl',
     # documentation
     'networkx',
-    'pydeps',
+    'pydeps==1.10.12',
     'Sphinx',
     'sphinx-autodoc-typehints',
     'sphinx-rtd-theme',
