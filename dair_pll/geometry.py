@@ -285,7 +285,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
                  n_query: int = _DEEP_SUPPORT_DEFAULT_N_QUERY,
                  depth: int = _DEEP_SUPPORT_DEFAULT_DEPTH,
                  width: int = _DEEP_SUPPORT_DEFAULT_WIDTH,
-                 perturbation: float = 0.1) -> None:
+                 perturbation: float = 0.4) -> None:
         r"""Inits ``DeepSupportConvex`` object with initial vertex set.
 
         When calculating a sparse vertex set with :py:meth:`get_vertices`\ ,

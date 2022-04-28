@@ -12,7 +12,7 @@ export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 pip install --upgrade pip setuptools wheel
 
 # git deps
-pip install git+https://github.com/mshalm/diffqcqp.git
+pip install git+https://github.com/mshalm/sappy.git
 pip install git+https://github.com/DAIRLab/drake-pytorch.git
 # install package to get deps
 pip install -e .

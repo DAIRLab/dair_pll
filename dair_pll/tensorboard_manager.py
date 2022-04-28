@@ -1,8 +1,8 @@
 """Interface for logging training progress to Tensorboard."""
 import contextlib
+import multiprocessing
 import os
 import socket
-import threading
 from typing import Dict, Tuple
 
 import numpy as np
@@ -23,6 +23,8 @@ class TensorboardManager:
     """
     writer: SummaryWriter
     """TensorboardX writer for logging to the tensorboard files."""
+    thread: multiprocessing.Process
+    r"""Thread for :py:func:`os.system` call to ``tensorboard``\ ."""
 
     def __init__(self, folder: str):
         self.folder = folder
@@ -43,11 +45,16 @@ class TensorboardManager:
         command = 'tensorboard --samples_per_plugin images=0 --bind_all ' \
                   f'--port {port} --logdir {folder} > /dev/null '\
                   f'--window_title {socket.gethostname()} 2>&1'
-        thread = threading.Thread(target=os.system, args=(command,))
-        thread.start()
+        #self.thread = threading.Thread(target=os.system, args=(command,))
+        self.thread = multiprocessing.Process(target=os.system, args=(command,))
+        self.thread.start()
 
         print(f'Launching tensorboard on http://localhost:{port}')
         self.create_writer()
+
+    def stop(self):
+        """Stops tensorboard thread."""
+        self.thread.terminate()
 
     def update(self, epoch: int, scalars: Dict[str, float],
                videos: Dict[str, Tuple[np.ndarray, int]],

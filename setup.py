@@ -42,7 +42,7 @@ except ModuleNotFoundError as e:
 
 dependency_links = [
     'git+https://github.com/DAIRLab/drake-pytorch.git',
-    'git+https://github.com/mshalm/diffqcqp.git'
+    'git+https://github.com/mshalm/sappy.git'
 ]
 
 setup(

@@ -533,6 +533,11 @@ class SupervisedLearningExperiment(ABC):
         # Reload best parameters.
         learned_system.load_state_dict(best_learned_system_state)
 
+        # kill tensorboard.
+        print("killing tboard")
+        if self.tensorboard_manager is not None:
+            self.tensorboard_manager.stop()
+
         return training_loss, best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(
