@@ -5,6 +5,7 @@ import os
 import click
 import numpy as np
 import torch
+from torch import Tensor
 
 from dair_pll import file_utils
 from dair_pll.dataset_management import DataConfig, \
@@ -13,12 +14,17 @@ from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, MultibodyLosses
 from dair_pll.experiment import SupervisedLearningExperimentConfig, \
-    OptimizerConfig
+    OptimizerConfig, default_epoch_callback
+from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
 
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
 SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+SIM_SOURCE = 'simulation'
+REAL_SOURCE = 'real'
+DYNAMIC_SOURCE = 'dynamic'
+DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
 # File management.
 CUBE_DATA_ASSET = 'contactnets_cube'
@@ -62,8 +68,11 @@ SAMPLER_RANGES = {
 }
 TRAJ_LENS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
 
+# dynamic load configuration.
+DYNAMIC_UPDATES_FROM = 4
+
 # Training data configuration.
-T_PREDICTION = 2
+T_PREDICTION = 1
 
 # Optimization configuration.
 CUBE_LR = 1e-3
@@ -72,26 +81,32 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-PATIENCE = 100
-EPOCHS = 300
-BATCH_SIZE = 64
+EPOCHS = 500
+PATIENCE = EPOCHS
+BATCH_SIZE = 256
 
 
 def main(system: str = CUBE_SYSTEM,
-         simulation: bool = True,
+         source: str = SIM_SOURCE,
          contactnets: bool = True,
-         box: bool = True):
+         box: bool = True,
+         regenerate: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
         system: Which system to learn.
-        simulation: Whether to use simulation or real data.
+        source: Where to get data from.
         contactnets: Whether to use ContactNets or prediction loss
         box: Whether to represent geometry as box or mesh.
+        regenerate: Whether save updated URDF's each epoch.
     """
     # pylint: disable=too-many-locals
 
     # First step, clear out data on disk for a fresh start.
+    simulation = source == SIM_SOURCE
+    real = source == REAL_SOURCE
+    dynamic = source == DYNAMIC_SOURCE
+
     data_asset = DATA_ASSETS[system]
     storage_name = os.path.join(os.path.dirname(__file__), 'storage',
                                 data_asset)
@@ -127,6 +142,7 @@ def main(system: str = CUBE_SYSTEM,
     # Describe data source
     data_generation_config = None
     import_directory = None
+    dynamic_updates_from = None
     x_0 = X_0S[system]
     if simulation:
         # For simulation, specify the following:
@@ -144,22 +160,25 @@ def main(system: str = CUBE_SYSTEM,
             dynamic_noise=torch.zeros(x_0.nelement() - 1),
             # i.i.d.-in-time noise distribution (zero in this case)
             traj_len=TRAJ_LENS[system])
-    else:
+    elif real:
         # otherwise, specify directory with [T, n_x] tensor files saved as
         # 0.pt, 1.pt, ...
         # See :mod:`dair_pll.state_space` for state format.
         import_directory = file_utils.get_asset(data_asset)
+    else:
+        dynamic_updates_from = DYNAMIC_UPDATES_FROM
 
-    # Describes configuration of the data:
+    # Describes configuration of the data
     data_config = DataConfig(
         storage=storage_name,
         # where to store data
         dt=DT,
-        n_train=N_POP // 2,
-        n_valid=N_POP // 4,
-        n_test=N_POP // 4,
+        train_fraction=1.0 if dynamic else 0.5,
+        valid_fraction=0.0 if dynamic else 0.25,
+        test_fraction=0.0 if dynamic else 0.25,
         generation_config=data_generation_config,
         import_directory=import_directory,
+        dynamic_updates_from=dynamic_updates_from,
         t_prediction=1 if contactnets else T_PREDICTION)
 
     # Combines everything into config for entire experiment.
@@ -168,33 +187,48 @@ def main(system: str = CUBE_SYSTEM,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
+        full_evaluation_period=EPOCHS if dynamic else 1
     )
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
+    def regenerate_callback(epoch: int,
+                            learned_system: MultibodyLearnableSystem,
+                            train_loss: Tensor,
+                            best_valid_loss: Tensor) -> None:
+        default_epoch_callback(
+            epoch, learned_system, train_loss, best_valid_loss)
+        learned_system.generate_updated_urdfs(storage_name)
+
     # Trains system.
-    experiment.train()
+    experiment.train(
+        regenerate_callback if regenerate else default_epoch_callback
+    )
 
 
 @click.command()
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
-@click.option('--simulation/--real',
-              default=True,
-              help="whether to train/test on simulated or real data.")
+@click.option('--source',
+              type=click.Choice(DATA_SOURCES, case_sensitive=True),
+              default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train/test with ContactNets/prediction loss.")
 @click.option('--box/--mesh',
               default=True,
               help="whether to represent geometry as box or mesh.")
-def main_command(system: str, simulation: bool, contactnets: bool, box: bool):
+@click.option('--regenerate/--no-regenerate',
+              default=False,
+              help="whether save updated URDF's each epoch.")
+def main_command(system: str, source: str, contactnets: bool, box: bool,
+                 regenerate: bool):
     """Executes main function with argument interface."""
-    if system == ELBOW_SYSTEM and not simulation:
+    if system == ELBOW_SYSTEM and source==REAL_SOURCE:
         raise NotImplementedError('Elbow real-world data not supported!')
-    main(system, simulation, contactnets, box)
+    main(system, source, contactnets, box, regenerate)
 
 
 if __name__ == '__main__':

@@ -75,7 +75,7 @@ class MultibodyLearnableSystem(System):
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
 
-    def get_updated_drake_system(self, storage_name: str) -> DrakeSystem:
+    def generate_updated_urdfs(self, storage_name: str) -> Dict[str, str]:
         """Exports current parameterization as a ``DrakeSystem``.
 
         Args:
@@ -86,10 +86,10 @@ class MultibodyLearnableSystem(System):
             New Drake system instantiated on new URDFs.
         """
         old_urdfs = self.urdfs
-        new_urdf_strings = urdf_utils.represent_multibody_terms_as_urdfs(
-            self.multibody_terms)
-        new_urdfs = {}
         urdf_dir = file_utils.urdf_dir(storage_name)
+        new_urdf_strings = urdf_utils.represent_multibody_terms_as_urdfs(
+            self.multibody_terms, urdf_dir)
+        new_urdfs = {}
 
         # saves new urdfs with identical file basenames to original ones,
         # but in new folder.
@@ -100,7 +100,7 @@ class MultibodyLearnableSystem(System):
                 new_urdf_file.write(new_urdf_string)
             new_urdfs[urdf_name] = new_urdf_path
 
-        return DrakeSystem(new_urdfs, self.dt)
+        return new_urdfs
 
     def get_visualization_system(self) -> DrakeSystem:
         """Generate a dummy ``DrakeSystem`` for visualizing comparisons
@@ -175,6 +175,7 @@ class MultibodyLearnableSystem(System):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
+        eps = 1e-3
 
         delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
             q_plus, v_plus, u)
@@ -202,7 +203,7 @@ class MultibodyLearnableSystem(System):
                                                         dim=-1, keepdim=True)
 
         L = torch.linalg.cholesky(torch.inverse((M)))
-        Q = delassus
+        Q = delassus + eps * torch.eye(3 * n_contacts)
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
@@ -232,7 +233,7 @@ class MultibodyLearnableSystem(System):
         force = pbmm(reorder_mat,
                      self.solver.apply(J_bar, pbmm(reorder_mat.transpose(-1,-2),
                          q).squeeze(-1),
-                     1e-4).detach().unsqueeze(-1))
+                     eps).detach().unsqueeze(-1))
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
@@ -383,9 +384,10 @@ class MultibodyLearnableSystem(System):
         videos = {}
         for set_name in ['train', 'valid']:
             traj_num = 0
-            target_trajectory = Tensor(
-                statistics[f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}']
-                [0])
+            target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'
+            if not target_key in statistics:
+                continue
+            target_trajectory = Tensor(statistics[target_key][0])
             prediction_trajectory = Tensor(statistics[
                 f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
             video, framerate = self.visualize(target_trajectory,

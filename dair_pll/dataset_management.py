@@ -4,6 +4,7 @@ Centers around the :class:`SystemDataManager` type, which transforms a set of
 trajectories saved to disc for various tasks encountered during an
 experiment. This module also contains utilities for generating simulation data
 from a :class:`~dair_pll.system.System`\ ."""
+import time
 from dataclasses import dataclass
 from typing import List, Tuple, Union, Type, Optional
 
@@ -24,7 +25,7 @@ class DataGenerationConfig:
 
     # pylint: disable=too-many-instance-attributes
     n_pop: float = 16384
-    r"""Total number of trajectories to generate, ``>= 0``\ ."""
+    r"""Total number of trajectories to select from, ``>= 0``\ ."""
     traj_len: int = 80
     r"""Trajectory length, ``>= 1``\ ."""
     x_0: Tensor = Tensor()
@@ -51,12 +52,12 @@ class DataConfig:
     """Folder to store results in and load data from."""
     dt: float = 1e-3
     r"""Time step, ``> 0``\ ."""
-    n_train: int = 512
-    r"""Number of training trajectories to select, ``>= 1``\ ."""
-    n_valid: int = 128
-    r"""Number of validation trajectories to select, ``>= 1``\ ."""
-    n_test: int = 128
-    r"""Number of testing trajectories to select, ``>= 1``\ ."""
+    train_fraction: float = 0.5
+    r"""Fraction of training trajectories to select, ``<= 1, >= 0``\ ."""
+    valid_fraction: float = 0.25
+    r"""Fraction of validation trajectories to select, ``<= 1, >= 0``\ ."""
+    test_fraction: float = 0.25
+    r"""Fraction of testing trajectories to select, ``<= 1, >= 0``\ ."""
     t_skip: int = 0
     """Index of first time to predict from ``>=`` :attr:`t_history` ``- 1``."""
     t_history: int = 1
@@ -67,6 +68,8 @@ class DataConfig:
     """Optionally, signals generation of data from given system."""
     import_directory: Optional[str] = None
     """Alternatively, signals data import from separate directory."""
+    dynamic_updates_from: Optional[int] = None
+    """Alternatively, loads dynamically, but blocks on initial size set."""
 
 
 class TrajectorySliceDataset(Dataset):
@@ -92,11 +95,12 @@ class TrajectorySliceDataset(Dataset):
         self.t_skip = t_skip
         self.t_history = t_history
         self.t_prediction = t_prediction
-        slice_lists = [self.slice_trajectory(traj) for traj in trajectories]
-        self.in_slices = [s for ts in slice_lists for s in ts[0]]
-        self.out_slices = [s for ts in slice_lists for s in ts[1]]
+        self.in_slices  = [] # type: List[Tensor]
+        self.out_slices = []  # type: List[Tensor]
+        for trajectory in trajectories:
+            self.add_sliced_trajectory(trajectory)
 
-    def slice_trajectory(self, traj: Tensor) -> Tuple[
+    def add_sliced_trajectory(self, traj: Tensor) -> Tuple[
         List[Tensor], List[Tensor]]:
         traj_len = traj.shape[0]
         first = self.t_skip
@@ -104,13 +108,9 @@ class TrajectorySliceDataset(Dataset):
         in_window = self.t_history
         out_window = self.t_prediction
         assert first <= last
-        in_slices = []
-        out_slices = []
-        # pdb.set_trace()
         for i in range(first, last):
-            in_slices.append(traj[(i + 1 - in_window):(i + 1), :])
-            out_slices.append(traj[(i + 1):(i + 1 + out_window), :])
-        return in_slices, out_slices
+            self.in_slices.append(traj[(i + 1 - in_window):(i + 1), :])
+            self.out_slices.append(traj[(i + 1):(i + 1 + out_window), :])
 
     def __len__(self) -> int:
         return len(self.in_slices)
@@ -131,6 +131,7 @@ class SystemDataManager:
     train_set: TrajectorySet
     valid_set: TrajectorySet
     test_set: TrajectorySet
+    n_on_disk: int
 
     def __init__(self, system: System, config: DataConfig) -> None:
         self.system = system
@@ -139,13 +140,25 @@ class SystemDataManager:
         # ensure only one data source
         do_generate = config.generation_config is not None
         do_import = config.import_directory is not None
-        assert (do_generate and not do_import) or (
-                do_import and not do_generate)
+        do_dynamics = config.dynamic_updates_from is not None
+        assert (int(do_generate) + int(do_import) + int(do_dynamics)) == 1
         if do_generate:
             self.generate()
-        else:
+
+        elif do_import:
             file_utils.import_data_to_storage(config.storage,
                                               config.import_directory)
+
+        else:
+            print("Waiting for minimum trajectory count...")
+            n_on_disk = file_utils.get_trajectory_count(self.config.storage)
+            while n_on_disk < config.dynamic_updates_from:
+                n_on_disk = file_utils.get_trajectory_count(self.config.storage)
+                time.sleep(1)
+            print("Minimum trajectory count reached!")
+
+        self.n_on_disk = file_utils.get_trajectory_count(self.config.storage)
+
         self.get_trajectory_split()
 
     def get_tensorboard_folder(self) -> str:
@@ -186,26 +199,27 @@ class SystemDataManager:
         assert config.generation_config is not None
         traj_len = config.generation_config.traj_len
         n_pop = config.generation_config.n_pop
-        n_on_disc = file_utils.get_trajectory_count(config.storage)
+        n_generated = file_utils.get_trajectory_count(config.storage)
         n_set = 30
-        while n_on_disc < n_pop:
+        while n_generated < n_pop:
             traj_i = self.generate_trajectory_set(n_set, traj_len)
-            n_on_disc = file_utils.get_trajectory_count(config.storage)
-            if n_on_disc == n_pop:
+            n_generated = file_utils.get_trajectory_count(config.storage)
+            if n_generated == n_pop:
                 break
-            n_set = min(n_set, n_pop - n_on_disc)
+            n_set = min(n_set, n_pop - n_generated)
             for i in range(n_set):
                 torch.save(
                     traj_i[i],
                     file_utils.trajectory_file(config.storage,
-                                               n_on_disc + i)
+                                               n_generated + i)
                 )
 
-    def get_trajectories(self, N: int) -> List[Tensor]:
-        N_total = file_utils.get_trajectory_count(self.config.storage)
-
-        assert N_total >= N
-        selection = torch.randperm(N_total)[:N]
+    def get_trajectories(self, N_begin: int, N_end: int, N_requested: int) -> List[
+        Tensor]:
+        n_on_disk = self.n_on_disk
+        assert n_on_disk >= N_end
+        trajectory_order = torch.randperm(N_end - N_begin) + N_begin
+        selection = trajectory_order[:N_requested]
 
         data = [torch.load(file_utils.trajectory_file(self.config.storage, i))
                 for i in selection]
@@ -231,14 +245,16 @@ class SystemDataManager:
     def get_trajectory_split(self) -> Tuple[TrajectorySet, TrajectorySet,
                                             TrajectorySet]:
 
+        config = self.config
+        n_on_disk = self.n_on_disk
         if not hasattr(self, 'train_set'):
-            config = self.config
-            N_train = config.n_train
-            N_valid = config.n_valid
-            N_test = config.n_test
+            N_train = round(n_on_disk * config.train_fraction)
+            N_valid = round(n_on_disk * config.train_fraction)
+            N_test = round(n_on_disk * config.test_fraction)
+            N_test = min(N_test, n_on_disk - N_train - N_valid)
             N_tot = sum([N_train, N_test, N_valid])
 
-            traj_set = self.get_trajectories(N_tot)
+            traj_set = self.get_trajectories(0, n_on_disk, N_tot)
 
             train_traj = traj_set[:N_train]
             traj_set = traj_set[N_train:]
@@ -249,4 +265,29 @@ class SystemDataManager:
             self.train_set = self.make_trajectory_set(train_traj)
             self.valid_set = self.make_trajectory_set(valid_traj)
             self.test_set = self.make_trajectory_set(test_traj)
+        elif config.dynamic_updates_from:
+            # update trajectory sets
+            n_on_disk_new = file_utils.get_trajectory_count(config.storage)
+            if n_on_disk_new != n_on_disk:
+                new_count = n_on_disk_new - n_on_disk
+                self.n_on_disk = n_on_disk_new
+                N_train = round(new_count * config.train_fraction)
+                N_valid = round(new_count * config.train_fraction)
+                N_test = round(new_count * config.test_fraction)
+                N_tot = sum([N_train, N_test, N_valid])
+                new_traj_set = self.get_trajectories(n_on_disk, n_on_disk_new,
+                                                     N_tot)
+                train_traj = new_traj_set[:N_train]
+                new_traj_set = new_traj_set[N_train:]
+
+                valid_traj = new_traj_set[:N_valid]
+                test_traj = new_traj_set[N_valid:]
+
+
+                sets = (self.train_set, self.valid_set, self.test_set)
+                trajectory_lists = (train_traj, valid_traj, test_traj)
+                for set, trajectory_list in zip(sets, trajectory_lists):
+                    set.trajectories.extend(trajectory_list)
+                    for trajectory in trajectory_list:
+                        set.slices.add_sliced_trajectory(trajectory)
         return self.train_set, self.valid_set, self.test_set

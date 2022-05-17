@@ -8,13 +8,17 @@ The ``UrdfGeometryRepresentationFactory`` generates URDF XML representations
 of a ``CollisionGeometry``, and ``fill_link_with_parameterization`` dumps
 these representations into a URDF "link" tag.
 """
+import os.path
 from typing import Dict, List, Optional, Tuple, cast
 from xml.etree import ElementTree
+from xml.etree.ElementTree import register_namespace
 
 from torch import Tensor
 
 from dair_pll import drake_utils
-from dair_pll.geometry import CollisionGeometry, Box, Sphere, Polygon
+from dair_pll.deep_support_function import extract_obj
+from dair_pll.geometry import CollisionGeometry, Box, Sphere, Polygon, \
+    DeepSupportConvex
 from dair_pll.inertia import InertialParameterConverter
 from dair_pll.multibody_terms import MultibodyTerms
 
@@ -28,12 +32,14 @@ _GEOMETRY = "geometry"
 _BOX = "box"
 _SPHERE = "sphere"
 _CYLINDER = "cylinder"
+_MESH = "mesh"
 
 # attributes
 _VALUE = "value"
 _SIZE = "size"
 _RADIUS = "radius"
 _LENGTH = "length"
+_FILENAME = "filename"
 _XYZ = "xyz"
 _RPY = "rpy"
 _IXX = "ixx"
@@ -168,8 +174,8 @@ class UrdfGeometryRepresentationFactory:
     ``CollisionGeometry`` instances."""
 
     @staticmethod
-    def representation(
-            geometry: CollisionGeometry) -> Tuple[str, Dict[str, str]]:
+    def representation(geometry: CollisionGeometry,
+                       output_dir: str) -> Tuple[str, Dict[str, str]]:
         """Representation of an associated URDF tag that describes the
         properties of this geometry.
 
@@ -183,6 +189,7 @@ class UrdfGeometryRepresentationFactory:
                 ('sphere', {'radius': '5.1'})
         Args:
             geometry: collision geometry to be represented
+            output_dir: File directory to store helper files (e.g., meshes).
 
         Returns:
             URDF tag and attributes.
@@ -195,6 +202,9 @@ class UrdfGeometryRepresentationFactory:
         if isinstance(geometry, Sphere):
             return UrdfGeometryRepresentationFactory.sphere_representation(
                 geometry)
+        if isinstance(geometry, DeepSupportConvex):
+            return UrdfGeometryRepresentationFactory.mesh_representation(
+                geometry, output_dir)
         raise TypeError(
             "Unsupported type for CollisionGeometry() to"
             "URDF representation conversion:", type(geometry))
@@ -217,16 +227,31 @@ class UrdfGeometryRepresentationFactory:
         attribute."""
         return _SPHERE, {_RADIUS: str(sphere.radius.item())}
 
+    @staticmethod
+    def mesh_representation(convex: DeepSupportConvex, output_dir: str) -> \
+            Tuple[str, Dict[str, str]]:
+        """Returns URDF representation as ``mesh`` tag with name of saved
+        mesh file."""
+        #pdb.set_trace()
+        mesh_name = "test.obj"
+        mesh_path = os.path.join(output_dir, mesh_name)
+        #print(mesh_path)
+        with open(mesh_path, 'w', encoding="utf8") as new_obj_file:
+            new_obj_file.write(extract_obj(convex.network))
 
-def fill_link_with_parameterization(
-        element: ElementTree.Element, pi: Tensor,
-        geometries: List[CollisionGeometry]) -> None:
+        return _MESH, {_FILENAME: mesh_name}
+
+
+def fill_link_with_parameterization(element: ElementTree.Element, pi: Tensor,
+                                    geometries: List[CollisionGeometry],
+                                    output_dir: str) -> None:
     """Convert pytorch inertial and geometric representations to URDF elements.
 
     Args:
         element: XML "link" tag in which representation is stored.
         pi: (10,) inertial representation of link in ``pi`` parameterization.
         geometries: All geometries attached to body.
+        output_dir: File directory to store helper files (e.g., meshes).
 
     Warning:
         Does not handle multiple geometries.
@@ -257,18 +282,20 @@ def fill_link_with_parameterization(
             UrdfFindOrDefault.find(collision_element,
                                    _GEOMETRY)
         (shape_tag, shape_attributes) = \
-            UrdfGeometryRepresentationFactory.representation(geometry)
+            UrdfGeometryRepresentationFactory.representation(geometry,
+                                                             output_dir)
         shape_element = UrdfFindOrDefault.find(geometry_element, shape_tag)
         shape_element.attrib = shape_attributes
 
 
-def represent_multibody_terms_as_urdfs(
-        multibody_terms: MultibodyTerms) -> Dict[str, str]:
+def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
+                                       output_dir: str) -> Dict[str, str]:
     """Renders the current parameterization of multibody terms as a
     set of urdfs.
 
     Args:
         multibody_terms: Multibody dynamics representation to convert.
+        output_dir: File directory to store helper files (e.g., meshes).
     Returns:
         Dictionary of (urdf name, urdf XML string) pairs.
     Warning:
@@ -278,6 +305,7 @@ def represent_multibody_terms_as_urdfs(
         implementation would be to directly edit the MultibodyPlant, but this
         would make the representation less portable.
     """
+    # pylint: disable=too-many-locals
     urdf_xml = {}
     _, all_body_ids = \
         drake_utils.get_all_inertial_bodies(
@@ -291,6 +319,7 @@ def represent_multibody_terms_as_urdfs(
         model_instance_index = \
             multibody_terms.plant_diagram.plant.GetModelInstanceByName(
                 urdf_name)
+
         urdf_tree = ElementTree.parse(urdf)
 
         for element in urdf_tree.iter():
@@ -313,8 +342,9 @@ def represent_multibody_terms_as_urdfs(
                     for index in body_geometry_indices
                 ]
                 fill_link_with_parameterization(element, pi[body_index, :],
-                                                body_geometries)
+                                                body_geometries, output_dir)
 
+        register_namespace('drake', 'https://drake.mit.edu/')
         system_urdf_representation = ElementTree.tostring(
             urdf_tree.getroot(), encoding="utf-8").decode("utf-8")
         urdf_xml[

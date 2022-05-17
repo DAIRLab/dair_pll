@@ -44,7 +44,8 @@ class TensorboardManager:
         # Use threading so tensorboard is automatically closed on process end
         command = 'tensorboard --samples_per_plugin images=0 --bind_all ' \
                   f'--port {port} --logdir {folder} > /dev/null '\
-                  f'--window_title {socket.gethostname()} 2>&1'
+                  f'--reload_interval=1 --window_title {socket.gethostname()} '\
+                  f'2>&1'
         #self.thread = threading.Thread(target=os.system, args=(command,))
         self.thread = multiprocessing.Process(target=os.system, args=(command,))
         self.thread.start()

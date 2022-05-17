@@ -98,6 +98,8 @@ class SupervisedLearningExperimentConfig:
     """Configuration for experiment's optimization process."""
     run_tensorboard: bool = True
     """Whether to run Tensorboard logging."""
+    full_evaluation_period: int = 1
+    """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
     """How many trajectories to save in full for experiment's summary."""
 
@@ -377,12 +379,11 @@ class SupervisedLearningExperiment(ABC):
         start_log_time = time.time()
         epoch_vars = {}
         for stats_set in TRAIN_TIME_SETS:
-            epoch_vars.update({
-                f'{stats_set}_{variable}':
-                statistics[f'{stats_set}_{LEARNED_SYSTEM_NAME}_'
-                           f'{variable}_{AVERAGE_TAG}']
-                for variable in EVALUATION_VARIABLES
-            })
+            for variable in EVALUATION_VARIABLES:
+                var_key = f'{stats_set}_{LEARNED_SYSTEM_NAME}' + \
+                          f'_{variable}_{AVERAGE_TAG}'
+                if var_key in statistics:
+                    epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
 
         system_summary = learned_system.summary(statistics)
 
@@ -415,28 +416,32 @@ class SupervisedLearningExperiment(ABC):
         Returns:
             Scalar validation set loss.
         """
+        # pylint: disable=too-many-locals
         start_eval_time = time.time()
+        statistics = {}
+        if epoch > 0 and (epoch % self.config.full_evaluation_period) == 0:
+            train_set, valid_set, _ = self.data_manager.get_trajectory_split()
+            n_train_eval = min(len(train_set.trajectories),
+                              self.config.full_evaluation_samples)
 
-        train_set, valid_set, _ = self.data_manager.get_trajectory_split()
-        n_eval_traj = min(len(train_set.trajectories),
-                          len(valid_set.trajectories),
-                          self.config.full_evaluation_samples)
+            n_valid_eval = min(len(valid_set.trajectories),
+                               self.config.full_evaluation_samples)
 
-        dummy_train_slice_set = TrajectorySliceDataset(
-            train_set.trajectories[:1])
+            dummy_train_slice_set = TrajectorySliceDataset(
+                train_set.trajectories[:1])
 
-        train_eval_set = TrajectorySet(
-            trajectories=train_set.trajectories[:n_eval_traj],
-            slices=dummy_train_slice_set)
-        valid_eval_set = TrajectorySet(
-            trajectories=valid_set.trajectories[:n_eval_traj],
-            slices=valid_set.slices)
+            train_eval_set = TrajectorySet(
+                trajectories=train_set.trajectories[:n_train_eval],
+                slices=dummy_train_slice_set)
+            valid_eval_set = TrajectorySet(
+                trajectories=valid_set.trajectories[:n_valid_eval],
+                slices=valid_set.slices)
 
-        statistics = self.evaluate_systems_on_sets(
-            {LEARNED_SYSTEM_NAME: learned_system}, {
-                TRAIN_SET: train_eval_set,
-                VALID_SET: valid_eval_set
-            })
+            statistics = self.evaluate_systems_on_sets(
+                {LEARNED_SYSTEM_NAME: learned_system}, {
+                    TRAIN_SET: train_eval_set,
+                    VALID_SET: valid_eval_set
+                })
 
         statistics[f'{TRAIN_SET}_{LEARNED_SYSTEM_NAME}_'
                    f'{LOSS_NAME}_{AVERAGE_TAG}'] = float(train_loss.item())
@@ -450,7 +455,10 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=E1103
         valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
                          f'_{AVERAGE_TAG}'
-        return torch.tensor(statistics[valid_loss_key])
+        valid_loss = 0.0 \
+            if not valid_loss_key in statistics \
+            else statistics[valid_loss_key]
+        return torch.tensor(valid_loss)
 
     def train(
         self,
@@ -504,6 +512,19 @@ class SupervisedLearningExperiment(ABC):
         learned_system.train()
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
+            if self.config.data_config.dynamic_updates_from is not None:
+                # reload training data
+
+                # get train/test/val trajectories
+                train_set, _, _ = \
+                    self.data_manager.get_trajectory_split()
+
+                # Prepare sets for training.
+                train_dataloader = DataLoader(
+                    train_set.slices,
+                    batch_size=self.config.optimizer_config.batch_size.value,
+                    shuffle=True)
+
             learned_system.train()
             start_train_time = time.time()
             training_loss = self.train_epoch(train_dataloader, learned_system,
@@ -567,9 +588,7 @@ class SupervisedLearningExperiment(ABC):
             Currently assumes prediction horizon of 1.
         """
         # pylint: disable=too-many-locals
-        n_saved_trajectories = min(
-            MAX_SAVED_TRAJECTORIES,
-            min([len(dataset.trajectories) for dataset in sets.values()]))
+
         stats = {}  # type: StatisticsDict
         space = self.space
 
@@ -588,6 +607,8 @@ class SupervisedLearningExperiment(ABC):
 
         for set_name, trajectory_set in sets.items():
             trajectories = trajectory_set.trajectories
+            n_saved_trajectories = min(MAX_SAVED_TRAJECTORIES,
+                                       len(trajectories))
             slices_loader = DataLoader(trajectory_set.slices,
                                        batch_size=128,
                                        shuffle=False)
