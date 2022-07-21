@@ -4,9 +4,6 @@ import os
 
 import sys
 import pdb
-print('Adding dair_pll to PYTHONPATH.')
-sys.path.append('/home/bibit/pll_env/dair_pll')
-sys.path.append('/mnt/beegfs/scratch/bibit/pll_env/dair_pll')
 
 import click
 import numpy as np

@@ -1,6 +1,5 @@
 from collections import defaultdict
 import sys
-sys.path.append('/Users/bibit/Documents/College/Penn/DAIRLab/pll_env/dair_pll')
 
 import json
 import math
