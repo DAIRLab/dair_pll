@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from torch import Tensor
 import pickle
+import git
 
 from dair_pll import file_utils
 from dair_pll.dataset_management import DataConfig, \
@@ -50,8 +51,7 @@ CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET, BOX_TYPE: CUBE_BOX_URDF_ASSET}
 ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET, BOX_TYPE: ELBOW_BOX_URDF_ASSET}
 URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 
-STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
-                            CUBE_DATA_ASSET)
+REPO_DIR = os.path.normpath(git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
 
 # Data configuration.
 DT = 0.0068
@@ -101,7 +101,8 @@ def main(name: str = None,
          contactnets: bool = True,
          box: bool = True,
          regenerate: bool = False,
-         dataset_size: int = 512):
+         dataset_size: int = 512,
+         local: bool = True):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -127,7 +128,7 @@ def main(name: str = None,
     dynamic = source == DYNAMIC_SOURCE
 
     data_asset = DATA_ASSETS[system]
-    storage_name = os.path.join(os.path.dirname(__file__), '..', 'results', name) #data_asset)
+    storage_name = os.path.join(REPO_DIR, 'results', name)
     if os.path.isdir(storage_name):
         if not click.confirm(f'Pause!  Experiment name \'{name}\' already taken, continue?'):
             raise RuntimeError('Choose a new name next time.')
@@ -298,13 +299,18 @@ def main(name: str = None,
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether save updated URDF's each epoch.")
-@click.option('--dataset-size', default=512, help="dataset size")
+@click.option('--dataset-size',
+              default=512,
+              help="dataset size")
+@click.option('--local/--cluster',
+              default=True,
+              help="running script locally or on cluster.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, dataset_size: int):
+                 box: bool, regenerate: bool, dataset_size: int, local: bool):
     """Executes main function with argument interface."""
     # if system == ELBOW_SYSTEM and source==REAL_SOURCE:
     #     raise NotImplementedError('Elbow real-world data not supported!')
-    main(name, system, source, contactnets, box, regenerate, dataset_size)
+    main(name, system, source, contactnets, box, regenerate, dataset_size, local)
 
 
 if __name__ == '__main__':
