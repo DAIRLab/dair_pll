@@ -7,6 +7,7 @@ from a :class:`~dair_pll.system.System`\ ."""
 import time
 from dataclasses import dataclass
 from typing import List, Tuple, Union, Type, Optional
+import pdb
 
 import torch
 from torch import Tensor
@@ -70,6 +71,8 @@ class DataConfig:
     """Alternatively, signals data import from separate directory."""
     dynamic_updates_from: Optional[int] = None
     """Alternatively, loads dynamically, but blocks on initial size set."""
+    n_import: Optional[int] = 512
+    """Number of trajectories to either generate or randomly sample from storage."""
 
 
 class TrajectorySliceDataset(Dataset):
@@ -132,6 +135,10 @@ class SystemDataManager:
     valid_set: TrajectorySet
     test_set: TrajectorySet
     n_on_disk: int
+    dataset_type: str
+    subset: bool
+    orig_data: List[int]
+
 
     def __init__(self, system: System, config: DataConfig) -> None:
         self.system = system
@@ -142,12 +149,17 @@ class SystemDataManager:
         do_import = config.import_directory is not None
         do_dynamics = config.dynamic_updates_from is not None
         assert (int(do_generate) + int(do_import) + int(do_dynamics)) == 1
+
         if do_generate:
             self.generate()
+            self.dataset_type = 'sim'
 
         elif do_import:
-            file_utils.import_data_to_storage(config.storage,
-                                              config.import_directory)
+            self.orig_data = file_utils.import_data_to_storage(
+                                    config.storage,
+                                    config.import_directory,
+                                    num=config.n_import)
+            self.dataset_type = 'static'
 
         else:
             print("Waiting for minimum trajectory count...")
@@ -156,6 +168,7 @@ class SystemDataManager:
                 n_on_disk = file_utils.get_trajectory_count(self.config.storage)
                 time.sleep(1)
             print("Minimum trajectory count reached!")
+            self.dataset_type = 'dynamic'
 
         self.n_on_disk = file_utils.get_trajectory_count(self.config.storage)
 

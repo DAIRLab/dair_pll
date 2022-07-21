@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import List, Tuple, Callable, Optional, Dict, cast, Type, Union
+import pdb
 
 import numpy as np
 import torch
@@ -181,6 +182,7 @@ class SupervisedLearningExperiment(ABC):
     def __init__(self, config: SupervisedLearningExperimentConfig) -> \
             None:
         super().__init__()
+
         self.config = config
         file_utils.assure_storage_tree_created(config.data_config.storage)
         base_system = self.get_base_system()
@@ -448,6 +450,8 @@ class SupervisedLearningExperiment(ABC):
 
         statistics[TRAINING_DURATION] = training_duration
         statistics[EVALUATION_DURATION] = time.time() - start_eval_time
+
+        self.statistics = statistics
 
         if self.tensorboard_manager is not None:
             self.write_to_tensorboard(epoch, learned_system, statistics)

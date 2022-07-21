@@ -33,6 +33,8 @@ from typing import List, Tuple, Callable, Dict, cast, Optional
 import drake_pytorch  # type: ignore
 import numpy as np
 import torch
+import pdb
+
 from pydrake.geometry import SceneGraphInspector, GeometryId  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant_  # type: ignore
 from pydrake.multibody.tree import JacobianWrtVariable  # type: ignore
@@ -532,21 +534,28 @@ class MultibodyTerms(Module):
                 self.plant_diagram.model_ids)
 
         for body_pi, body_id in zip(self.lagrangian_terms.pi(), all_body_ids):
-            body_scalars = InertialParameterConverter.pi_to_scalars(body_pi)
-            scalars.update({
-                f'{body_id}_{scalar_name}': scalar
-                for scalar_name, scalar in body_scalars.items()
-            })
+            # include inertial terms
+            # print(f'Skipping the inertial terms; just learning friction and geometry.')
+            # body_scalars = InertialParameterConverter.pi_to_scalars(body_pi)
+            # scalars.update({
+            #     f'{body_id}_{scalar_name}': scalar
+            #     for scalar_name, scalar in body_scalars.items()
+            # })
+
             for geometry_index in self.geometry_body_assignment[body_id]:
+                # include geometry
                 geometry = self.contact_terms.geometries[geometry_index]
                 geometry_scalars = geometry.scalars()
                 scalars.update({
                     f'{body_id}_{scalar_name}': scalar
                     for scalar_name, scalar in geometry_scalars.items()
                 })
+
+                # include friction
                 scalars[f'{body_id}_mu'] = \
                     self.contact_terms.friction_coefficients[
                         geometry_index].item()
+
                 if isinstance(geometry, DeepSupportConvex):
                     geometry_mesh = extract_mesh(geometry.network)
                     meshes[body_id] = geometry_mesh

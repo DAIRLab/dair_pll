@@ -7,6 +7,8 @@ summary information about the content of this directory.
 import glob
 import os
 import time
+import random
+import pdb
 from os import path
 from typing import List, Optional
 
@@ -83,23 +85,54 @@ def assure_storage_tree_created(storage_name: str) -> None:
         assure_created(directory(storage_name))
 
 
-def import_data_to_storage(storage_name: str, import_data_dir: str) -> None:
+def list_file_nums(path: str) -> List[int]:
+    file_nums = []
+    for file_name in os.listdir(path):
+        file_nums.append(int(file_name.split('.')[0]))
+    return file_nums
+
+
+def import_data_to_storage(storage_name: str, import_data_dir: str,
+                           num: int = None) -> List[int]:
     """Import data in external folder into data directory.
 
     Args:
         storage_name: Name of storage for data import.
         import_data_dir: Directory to import data from.
+
+    Returns:
+        List of original trajectory numbers used for the dataset.
     """
-    # check if data is synchronized already
     storage_data_dir = data_dir(storage_name)
     storage_traj_count = get_numeric_file_count(storage_data_dir,
                                                 TRAJ_EXTENSION)
     data_traj_count = get_numeric_file_count(import_data_dir, TRAJ_EXTENSION)
+    runs = [i for i in range(data_traj_count)]
 
-    # overwrite in case of any discrepeancies
-    if storage_traj_count != data_traj_count:
-        os.system(f'rm -r {storage_data_dir}')
-        os.system(f'cp -r {import_data_dir} {storage_data_dir}')
+    if num is None:
+        # check if data is synchronized already -- overwrite in case of discrepencies
+        if storage_traj_count != data_traj_count:
+            os.system(f'rm -r {storage_data_dir}')
+            os.system(f'cp -r {import_data_dir} {storage_data_dir}')
+
+            return runs
+
+    else:
+        # check that we have the right number of trajectories already
+        if storage_traj_count != num:
+            os.system(f'rm -r {storage_data_dir}')
+            os.system(f'mkdir {storage_data_dir}')
+
+            # copy over a random selection of trajectories, numbering from 0
+            n_traj = min(num, data_traj_count)
+
+            random.shuffle(runs)
+            runs = runs[:n_traj]
+
+            for i, run in zip(range(len(runs)), runs):
+                os.system(f'cp -r {import_data_dir}/{run}.pt {storage_data_dir}/{i}.pt')
+
+            return runs
 
 
 def storage_dir(storage_name: str) -> str:
