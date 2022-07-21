@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from torch import Tensor
 import pickle
-​
+
 from dair_pll import file_utils
 from dair_pll.dataset_management import DataConfig, \
     DataGenerationConfig
@@ -23,7 +23,8 @@ from dair_pll.experiment import SupervisedLearningExperimentConfig, \
     OptimizerConfig, default_epoch_callback
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
-​
+
+
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
 SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
@@ -31,7 +32,8 @@ SIM_SOURCE = 'simulation'
 REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
-​
+
+
 # File management.
 CUBE_DATA_ASSET = 'contactnets_cube'
 ELBOW_DATA_ASSET = 'contactnets_elbow'
@@ -40,21 +42,22 @@ CUBE_BOX_URDF_ASSET = 'contactnets_cube_small_init.urdf'
 CUBE_MESH_URDF_ASSET = 'contactnets_cube_mesh.urdf'
 ELBOW_BOX_URDF_ASSET = 'contactnets_elbow.urdf'
 ELBOW_MESH_URDF_ASSET = 'contactnets_elbow_mesh.urdf'
-​
+
+
 DATA_ASSETS = {CUBE_SYSTEM: CUBE_DATA_ASSET, ELBOW_SYSTEM: ELBOW_DATA_ASSET}
-​
+
 MESH_TYPE = 'mesh'
 BOX_TYPE = 'box'
 CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET, BOX_TYPE: CUBE_BOX_URDF_ASSET}
 ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET, BOX_TYPE: ELBOW_BOX_URDF_ASSET}
 URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
-​
+
 STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
                             CUBE_DATA_ASSET)
-​
+
 # Data configuration.
 DT = 0.0068
-​
+
 # Generation configuration.
 # N_POP = 256  <-- replaced with a commandline argument
 CUBE_X_0 = torch.tensor([
@@ -74,13 +77,13 @@ SAMPLER_RANGES = {
     ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE
 }
 TRAJ_LENS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
-​
+
 # dynamic load configuration.
 DYNAMIC_UPDATES_FROM = 4
-​
+
 # Training data configuration.
 T_PREDICTION = 1
-​
+
 # Optimization configuration.
 CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
@@ -91,8 +94,9 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 10            # change this (originally 500)
 PATIENCE = EPOCHS       # change this (originally EPOCHS)
 # BATCH_SIZE = 256  <-- updated to scale with commandline argument for dataset_size
-​
-​
+
+
+
 def main(name: str = None,
          system: str = CUBE_SYSTEM,
          source: str = SIM_SOURCE,
@@ -101,7 +105,7 @@ def main(name: str = None,
          regenerate: bool = False,
          dataset_size: int = 512):
     """Execute ContactNets basic example on a system.
-​
+
     Args:
         system: Which system to learn.
         source: Where to get data from.
@@ -111,30 +115,30 @@ def main(name: str = None,
     """
     # pylint: disable=too-many-locals
     assert name is not None
-​
+
     print(f'\nStarting test with name \'{name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith box: {box} \n\tand regenerate: {regenerate}.')
-​
+
     BATCH_SIZE = int(dataset_size/2)
-​
+
     # First step, clear out data on disk for a fresh start.
     simulation = source == SIM_SOURCE
     real = source == REAL_SOURCE
     dynamic = source == DYNAMIC_SOURCE
-​
+
     data_asset = DATA_ASSETS[system]
     storage_name = os.path.join(os.path.dirname(__file__), 'storage', name) #data_asset)
     if os.path.isdir(storage_name):
         if not click.confirm(f'Pause!  Experiment name \'{name}\' already taken, continue?'):
             raise RuntimeError('Choose a new name next time.')
-​
+
     os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
     print(f'Storing data at {storage_name}\n')
-​
+
     # Next, build the configuration of the learning experiment.
-​
+
     # Describes the optimizer settings; by default, the optimizer is Adam.
     optimizer_config = OptimizerConfig()
     optimizer_config.lr.value = LRS[system]
@@ -142,7 +146,7 @@ def main(name: str = None,
     optimizer_config.patience = PATIENCE
     optimizer_config.epochs = EPOCHS
     optimizer_config.batch_size.value = BATCH_SIZE
-​
+
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
@@ -151,7 +155,7 @@ def main(name: str = None,
     urdf = file_utils.get_asset(urdf_asset)
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
-​
+
     # Describes the learnable system. The MultibodyLearnableSystem type
     # learns a multibody system, which is initialized as the system in the
     # given URDFs.
@@ -159,7 +163,7 @@ def main(name: str = None,
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
     learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
-​
+
     # Describe data source
     data_generation_config = None
     import_directory = None
@@ -189,7 +193,7 @@ def main(name: str = None,
         print(f'Getting real trajectories from {import_directory}.\n')
     else:
         dynamic_updates_from = DYNAMIC_UPDATES_FROM
-​
+
     # Describes configuration of the data
     data_config = DataConfig(
         storage=storage_name,
@@ -203,7 +207,7 @@ def main(name: str = None,
         dynamic_updates_from=dynamic_updates_from,
         t_prediction=1 if contactnets else T_PREDICTION,
         n_import=dataset_size if real else None)
-​
+
     # Combines everything into config for entire experiment.
     experiment_config = SupervisedLearningExperimentConfig(
         base_config=base_config,
@@ -212,10 +216,10 @@ def main(name: str = None,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1
     )
-​
+
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
-​
+
     def regenerate_callback(epoch: int,
                             learned_system: MultibodyLearnableSystem,
                             train_loss: Tensor,
@@ -223,26 +227,26 @@ def main(name: str = None,
         default_epoch_callback(
             epoch, learned_system, train_loss, best_valid_loss)
         learned_system.generate_updated_urdfs(storage_name)
-​
+
     def log_callback(epoch: int,
                      learned_system: MultibodyLearnableSystem,
                      train_loss: Tensor,
                      best_valid_loss: Tensor) -> None:
         default_epoch_callback(epoch, learned_system, train_loss, best_valid_loss)
-​
+
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         stats = {}
         for key in ['train_model_trajectory_mse', 'valid_model_trajectory_mse',
                     'train_model_trajectory_mse_mean', 'valid_model_trajectory_mse_mean',
                     'training_duration', 'evaluation_duration', 'logging_duration']:
             stats[key] = experiment.statistics[key]
-​
+
         with open(f'{storage_name}/params.txt', 'a') as txt_file:
             txt_file.write(f'Epoch {epoch}:\n\tscalars: {scalars}\n' \
                            + f'\tstatistics: {stats}\n' \
                            + f'\ttrain_loss: {train_loss}\n\n')
             txt_file.close()
-​
+
     # Save all parameters so far in experiment directory.
     # with open(f'{storage_name}/params.pickle', 'wb') as pickle_file:
     #     pickle.dump(experiment_config, pickle_file)
@@ -265,19 +269,20 @@ def main(name: str = None,
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         txt_file.write(f'Epoch 0:\n\tscalars: {scalars}\n\n')
         txt_file.close()
-​
+
     # Trains system.
     experiment.train(
         regenerate_callback if regenerate else log_callback #default_epoch_callback
     )
-​
+
     # Save the final urdf.
     # print(f'\nSaving the final learned box parameters.')
     # train_set, _, _ = experiment.data_manager.get_trajectory_split()
     # learned_system = experiment.get_learned_system(torch.cat(train_set.trajectories))
     # learned_system.generate_updated_urdfs(storage_name)
-​
-​
+
+
+
 @click.command()
 @click.argument('name')
 @click.option('--system',
@@ -302,7 +307,7 @@ def main_command(name: str, system: str, source: str, contactnets: bool,
     # if system == ELBOW_SYSTEM and source==REAL_SOURCE:
     #     raise NotImplementedError('Elbow real-world data not supported!')
     main(name, system, source, contactnets, box, regenerate, dataset_size)
-​
-​
+
+
 if __name__ == '__main__':
     main_command()  # pylint: disable=no-value-for-parameter
