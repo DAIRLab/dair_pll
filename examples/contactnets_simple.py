@@ -127,7 +127,7 @@ def main(name: str = None,
     dynamic = source == DYNAMIC_SOURCE
 
     data_asset = DATA_ASSETS[system]
-    storage_name = os.path.join(os.path.dirname(__file__), 'storage', name) #data_asset)
+    storage_name = os.path.join(os.path.dirname(__file__), '..', 'results', name) #data_asset)
     if os.path.isdir(storage_name):
         if not click.confirm(f'Pause!  Experiment name \'{name}\' already taken, continue?'):
             raise RuntimeError('Choose a new name next time.')
@@ -188,7 +188,7 @@ def main(name: str = None,
         # 0.pt, 1.pt, ...
         # See :mod:`dair_pll.state_space` for state format.
         import_directory = file_utils.get_asset(data_asset)
-        print(f'Getting real trajectories from {import_directory}.\n')
+        print(f'Getting real trajectories from {import_directory}\n')
     else:
         dynamic_updates_from = DYNAMIC_UPDATES_FROM
 
