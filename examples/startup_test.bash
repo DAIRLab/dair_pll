@@ -26,4 +26,3 @@ python /mnt/beegfs/scratch/bibit/pll_env/dair_pll/examples/contactnets_simple.py
 
 echo "killing meshcat server and firefox"
 kill %%
-
