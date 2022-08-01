@@ -12,11 +12,17 @@ echo "display" >> /mnt/beegfs/scratch/bibit/pll_env/dair_pll/logs/start_t0.txt
 source /mnt/beegfs/scratch/bibit/pll_env/dair_pll/../bin/activate;
 export PYTHONPATH=/mnt/beegfs/scratch/bibit/pll_env/dair_pll;
 export DISPLAY=:5;
-# export PLL_EXPERIMENT=t0;
+export XDG_RUNTIME_DIR=/mnt/beegfs/scratch/bibit/tmp
 
 
 echo "meshcat server"
-xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" meshcat-server &
+meshcat-server &
 
-echo "train" >> /mnt/beegfs/scratch/bibit/pll_env/dair_pll/logs/start_t0.txt
+echo "open meshcat browswer in screen"
+xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" /mnt/beegfs/scratch/bibit/firefox/firefox http://127.0.0.1:7000/static/ &
+
+echo "train"
 python /mnt/beegfs/scratch/bibit/pll_env/dair_pll/examples/contactnets_simple.py t0 --source real &> /mnt/beegfs/scratch/bibit/pll_env/dair_pll/logs/train_t0.txt
+
+echo "killing meshcat server and firefox"
+kill %%
