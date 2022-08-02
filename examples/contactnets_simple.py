@@ -13,13 +13,11 @@ import pickle
 import git
 
 from dair_pll import file_utils
-from dair_pll.dataset_management import DataConfig, \
-    DataGenerationConfig
-from dair_pll.drake_experiment import \
-    DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
-    MultibodyLearnableSystemConfig, MultibodyLosses
-from dair_pll.experiment import SupervisedLearningExperimentConfig, \
-    OptimizerConfig, default_epoch_callback
+from dair_pll.dataset_management import DataConfig, DataGenerationConfig
+from dair_pll.drake_experiment import DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
+                                      MultibodyLearnableSystemConfig, MultibodyLosses
+from dair_pll.experiment import SupervisedLearningExperimentConfig, OptimizerConfig, \
+                                default_epoch_callback
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
 
@@ -89,8 +87,8 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-EPOCHS = 10            # change this (originally 500)
-PATIENCE = EPOCHS       # change this (originally EPOCHS)
+EPOCHS = 80            # change this (originally 500)
+PATIENCE = 20       # change this (originally EPOCHS)
 # BATCH_SIZE = 256  <-- updated to scale with commandline argument for dataset_size
 
 
@@ -111,14 +109,24 @@ def main(name: str = None,
         contactnets: Whether to use ContactNets or prediction loss
         box: Whether to represent geometry as box or mesh.
         regenerate: Whether save updated URDF's each epoch.
+        dataset_size: Number of trajectories for train/val/test.
+        local: Running locally versus on cluster.
     """
     # pylint: disable=too-many-locals
-    assert name is not None
+
+    storage_name = os.path.join(REPO_DIR, 'results', name)
+    if os.path.isdir(storage_name):
+        if not click.confirm(f'\nPause!  Experiment name \'{name}\' already taken, continue?'):
+            raise RuntimeError('Choose a new name next time.')
 
     print(f'\nStarting test with name \'{name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith box: {box} \n\tand regenerate: {regenerate}.')
+
+    # overwrite previous results, per user input.
+    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+    print(f'\nStoring data at {storage_name}')
 
     BATCH_SIZE = int(dataset_size/2)
 
@@ -128,13 +136,6 @@ def main(name: str = None,
     dynamic = source == DYNAMIC_SOURCE
 
     data_asset = DATA_ASSETS[system]
-    storage_name = os.path.join(REPO_DIR, 'results', name)
-    if os.path.isdir(storage_name):
-        if not click.confirm(f'Pause!  Experiment name \'{name}\' already taken, continue?'):
-            raise RuntimeError('Choose a new name next time.')
-
-    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
-    print(f'Storing data at {storage_name}\n')
 
     # Next, build the configuration of the learning experiment.
 
@@ -275,10 +276,10 @@ def main(name: str = None,
     )
 
     # Save the final urdf.
-    # print(f'\nSaving the final learned box parameters.')
-    # train_set, _, _ = experiment.data_manager.get_trajectory_split()
-    # learned_system = experiment.get_learned_system(torch.cat(train_set.trajectories))
-    # learned_system.generate_updated_urdfs(storage_name)
+    print(f'\nSaving the final learned box parameters.')
+    train_set, _, _ = experiment.data_manager.get_trajectory_split()
+    learned_system = experiment.get_learned_system(torch.cat(train_set.trajectories))
+    learned_system.generate_updated_urdfs(storage_name)
 
 
 
@@ -308,8 +309,8 @@ def main(name: str = None,
 def main_command(name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, dataset_size: int, local: bool):
     """Executes main function with argument interface."""
-    # if system == ELBOW_SYSTEM and source==REAL_SOURCE:
-    #     raise NotImplementedError('Elbow real-world data not supported!')
+    assert name is not None
+
     main(name, system, source, contactnets, box, regenerate, dataset_size, local)
 
 
