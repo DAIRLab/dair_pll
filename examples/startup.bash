@@ -20,7 +20,7 @@ echo "repo at hash {hash}" >> {pll_dir}/logs/start_{name}.txt
 echo "meshcat server" >> {pll_dir}/logs/start_{name}.txt
 meshcat-server &
 
-echo "open meshcat browswer in screen" >> {pll_dir}/logs/start_{name}.txt
+echo "open meshcat browser in screen" >> {pll_dir}/logs/start_{name}.txt
 xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" {firefox_dir}/firefox http://127.0.0.1:7000/static/ &
 
 
