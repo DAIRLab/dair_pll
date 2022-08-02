@@ -114,17 +114,13 @@ def main(name: str = None,
     """
     # pylint: disable=too-many-locals
 
-    storage_name = os.path.join(REPO_DIR, 'results', name)
-    if os.path.isdir(storage_name):
-        if not click.confirm(f'\nPause!  Experiment name \'{name}\' already taken, continue?'):
-            raise RuntimeError('Choose a new name next time.')
-
     print(f'\nStarting test with name \'{name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith box: {box} \n\tand regenerate: {regenerate}.')
 
     # overwrite previous results, per user input.
+    storage_name = os.path.join(REPO_DIR, 'results', name)
     os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
     print(f'\nStoring data at {storage_name}')
 
