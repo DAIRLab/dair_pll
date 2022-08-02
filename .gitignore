@@ -10,6 +10,9 @@ plots/*
 # SLURM
 slurm-*
 
+# startup scripts
+examples/startup_*
+
 # Sphinx
 docsrc/source/dair_pll.*
 docsrc/source/modules.rst
