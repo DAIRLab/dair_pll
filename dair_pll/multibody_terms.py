@@ -67,8 +67,8 @@ DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
-    plant_diagram: MultibodyPlantDiagram
-) -> Tuple[MultibodyPlant_[Expression], Context, np.ndarray, np.ndarray]:
+        plant_diagram: MultibodyPlantDiagram
+    ) -> Tuple[MultibodyPlant_[Expression], Context, np.ndarray, np.ndarray]:
     """Generates a symbolic interface for a ``MultibodyPlantDiagram``.
 
     Generates a new Drake ``Expression`` data type state in ``StateSpace``
@@ -109,6 +109,7 @@ class LagrangianTerms(Module):
     mass_matrix: Optional[ConfigurationInertialCallback]
     lagrangian_forces: Optional[StateInputInertialCallback]
     inertial_parameters: Parameter
+    first_mass: float
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
         """Inits ``LagrangianTerms`` with prescribed parameters and
@@ -154,6 +155,23 @@ class LagrangianTerms(Module):
         # pylint: disable=E1103
         self.inertial_parameters = Parameter(body_parameters,
                                              requires_grad=True)
+
+        # store the mass of the first object for later access
+        self.first_mass = InertialParameterConverter.theta_to_pi(
+                              self.inertial_parameters)[0,0].item()
+
+    def inertial_params(self):
+        # make a method here instead of accessing the parameters directly so we
+        # can overwrite the mass of the first object to handle scale invariance.
+
+        # first, convert the current inertial parameters to pi format
+        curr_pi = InertialParameterConverter.theta_to_pi(self.inertial_parameters)
+
+        # overwrite the first mass to the original mass value
+        curr_pi[0,0] = self.first_mass
+
+        # convert back to inertial parameters
+        return InertialParameterConverter.pi_to_theta(curr_pi)
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -205,7 +223,7 @@ class LagrangianTerms(Module):
 
     def pi(self) -> Tensor:
         """Returns inertial parameters in human-understandable ``pi``-format"""
-        return InertialParameterConverter.theta_to_pi(self.inertial_parameters)
+        return InertialParameterConverter.theta_to_pi(self.inertial_params())
 
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
         """Evaluates Lagrangian dynamics terms at given state and input.
@@ -524,8 +542,7 @@ class MultibodyTerms(Module):
 
     def scalars_and_meshes(
             self) -> Tuple[Dict[str, float], Dict[str, MeshSummary]]:
-        """Generates summary statistics for inertial and geometric
-        quantities."""
+        """Generates summary statistics for inertial and geometric quantities."""
         scalars = {}
         meshes = {}
         _, all_body_ids = \
@@ -535,12 +552,12 @@ class MultibodyTerms(Module):
 
         for body_pi, body_id in zip(self.lagrangian_terms.pi(), all_body_ids):
             # include inertial terms
-            # print(f'Skipping the inertial terms; just learning friction and geometry.')
-            # body_scalars = InertialParameterConverter.pi_to_scalars(body_pi)
-            # scalars.update({
-            #     f'{body_id}_{scalar_name}': scalar
-            #     for scalar_name, scalar in body_scalars.items()
-            # })
+            body_scalars = InertialParameterConverter.pi_to_scalars(body_pi)
+
+            scalars.update({
+                f'{body_id}_{scalar_name}': scalar
+                for scalar_name, scalar in body_scalars.items()
+            })
 
             for geometry_index in self.geometry_body_assignment[body_id]:
                 # include geometry
