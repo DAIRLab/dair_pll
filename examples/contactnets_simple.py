@@ -232,8 +232,12 @@ def main(name: str = None,
 
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         stats = {}
+        pdb.set_trace()
         for key in ['train_model_trajectory_mse', 'valid_model_trajectory_mse',
                     'train_model_trajectory_mse_mean', 'valid_model_trajectory_mse_mean',
+                    'train_delta_v_squared_mean', 'valid_delta_v_squared_mean',
+                    'train_v_plus_squared_mean', 'valid_v_plus_squared_mean',
+                    'train_model_loss_mean', 'valid_model_loss_mean',
                     'training_duration', 'evaluation_duration', 'logging_duration']:
             stats[key] = experiment.statistics[key]
 
