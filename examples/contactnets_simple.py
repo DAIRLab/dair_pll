@@ -100,7 +100,8 @@ def main(name: str = None,
          box: bool = True,
          regenerate: bool = False,
          dataset_size: int = 512,
-         local: bool = True):
+         local: bool = True,
+         videos: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -111,13 +112,17 @@ def main(name: str = None,
         regenerate: Whether save updated URDF's each epoch.
         dataset_size: Number of trajectories for train/val/test.
         local: Running locally versus on cluster.
+        videos: Generate videos or not.
     """
     # pylint: disable=too-many-locals
 
     print(f'\nStarting test with name \'{name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
          + f'\n\tusing ContactNets: {contactnets}' \
-         + f'\n\twith box: {box} \n\tand regenerate: {regenerate}.')
+         + f'\n\twith box: {box}' \
+         + f'\n\tregenerate: {regenerate}' \
+         + f'\n\trunning locally: {local}' \
+         + f'\n\tand doing videos: {videos}.')
 
     # overwrite previous results, per user input.
     storage_name = os.path.join(REPO_DIR, 'results', name)
@@ -210,7 +215,8 @@ def main(name: str = None,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
-        full_evaluation_period=EPOCHS if dynamic else 1
+        full_evaluation_period=EPOCHS if dynamic else 1,
+        gen_videos=videos
     )
 
     # Makes experiment.
@@ -232,7 +238,7 @@ def main(name: str = None,
 
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         stats = {}
-        pdb.set_trace()
+        # pdb.set_trace()
         for key in ['train_model_trajectory_mse', 'valid_model_trajectory_mse',
                     'train_model_trajectory_mse_mean', 'valid_model_trajectory_mse_mean',
                     'train_delta_v_squared_mean', 'valid_delta_v_squared_mean',
@@ -256,7 +262,10 @@ def main(name: str = None,
         txt_file.write(f'Starting test with name \'{name}\':' \
             + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
             + f'\n\tusing ContactNets: {contactnets}' \
-            + f'\n\twith box: {box} \n\tand regenerate: {regenerate}.\n\n' \
+            + f'\n\twith box: {box}' \
+            + f'\n\tregenerate: {regenerate}' \
+            + f'\n\trunning locally: {local}' \
+            + f'\n\tand doing videos: {videos}.\n\n'
             + f'experiment_config: {experiment_config}\n\n' \
             + f'experiment_config.data_manager.orig_data:' \
             + f'{experiment.data_manager.orig_data}\n\n' \
@@ -306,12 +315,16 @@ def main(name: str = None,
 @click.option('--local/--cluster',
               default=True,
               help="running script locally or on cluster.")
+@click.option('--videos/--no-videos',
+              default=False,
+              help="whether to generate videos or not.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, dataset_size: int, local: bool):
+                 box: bool, regenerate: bool, dataset_size: int, local: bool,
+                 videos: bool):
     """Executes main function with argument interface."""
     assert name is not None
 
-    main(name, system, source, contactnets, box, regenerate, dataset_size, local)
+    main(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
 
 
 if __name__ == '__main__':

@@ -17,7 +17,8 @@ DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
 
 def create_instance(name: str, system: str, source: str, contactnets: bool,
-                 	box: bool, regenerate: bool, dataset_size: int, local: bool):
+                 	box: bool, regenerate: bool, dataset_size: int, local: bool,
+                 	videos: bool):
 	print(f'Generating experiment {name}')
 
 	base_file = 'startup'
@@ -34,11 +35,13 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	script = open(base_file, 'r').read()
 
 	script = script.replace('{name}', name)
+	script = script.replace('{gen_videos}', 'true') if videos else script.replace('{gen_videos}', 'false')
 
 	train_options = f' --system={system} --source={source} --dataset-size={dataset_size}'
 	train_options += ' --box' if box else ' --mesh'
 	train_options += ' --contactnets' if contactnets else ' --prediction'
 	train_options += ' --regenerate' if regenerate else ' --no-regenerate'
+	train_options += ' --videos' if videos else ' --no-videos'
 
 	script = script.replace('{train_args}', train_options)
 
@@ -72,21 +75,25 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
               default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
               default=True,
-              help="whether to train/test with ContactNets/prediction loss.")
+              help="whether to train and test with ContactNets/prediction loss.")
 @click.option('--box/--mesh',
               default=True,
               help="whether to represent geometry as box or mesh.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
-              help="whether save updated URDF's each epoch.")
+              help="whether to save updated URDF's each epoch or not.")
 @click.option('--dataset-size',
               default=512,
               help="dataset size")
 @click.option('--local/--cluster',
               default=False,
-              help="running script locally or on cluster.")
+              help="whether running script locally or on cluster.")
+@click.option('--videos/--no-videos',
+			  default=False,
+			  help="whether to generate videos or not.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, dataset_size: int, local: bool):
+                 box: bool, regenerate: bool, dataset_size: int, local: bool,
+                 videos: bool):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -114,7 +121,7 @@ def main_command(name: str, system: str, source: str, contactnets: bool,
             raise RuntimeError('Choose a new name next time.')
 
     # Continue creating PLL instance.
-    create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local)
+    create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
 
 
 if __name__ == '__main__':

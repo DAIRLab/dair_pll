@@ -13,11 +13,23 @@ export CONTACTNETS_EXPERIMENT={name};
 
 echo "repo at hash {hash}"
 
-echo "meshcat server and automatic open"
-meshcat-server --open &
+if {gen_videos}; then
+	echo "meshcat server"
+	meshcat-server &
+
+	echo "delay to let server start up"
+	sleep 3s
+
+	echo "open meshcat browser in screen"
+	open -a "Google Chrome" {pll_dir}/assets/static.html &
+else
+	echo "skipping video visualizations"
+fi
 
 echo "train"
 python {pll_dir}/examples/contactnets_simple.py {name} {train_args}
 
-echo "killing meshcat server and firefox"
-kill %%
+if {gen_videos}; then
+	echo "killing meshcat server and firefox"
+	kill %%
+fi

@@ -103,6 +103,8 @@ class SupervisedLearningExperimentConfig:
     """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
     """How many trajectories to save in full for experiment's summary."""
+    gen_videos: bool = False
+    """Whether to use meshcat server to generate toss videos."""
 
 
 #:
@@ -387,7 +389,7 @@ class SupervisedLearningExperiment(ABC):
                 if var_key in statistics:
                     epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
 
-        system_summary = learned_system.summary(statistics)
+        system_summary = learned_system.summary(statistics, videos=self.config.gen_videos)
 
         epoch_vars.update(system_summary.scalars)
         logging_duration = time.time() - start_log_time

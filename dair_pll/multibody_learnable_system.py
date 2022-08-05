@@ -26,6 +26,7 @@ from typing import Tuple, Optional, Dict
 
 import numpy as np
 import torch
+import pdb
 from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 
@@ -368,7 +369,7 @@ class MultibodyLearnableSystem(System):
         v_plus = self.forward_dynamics(q, v, u)
         return v_plus, carry
 
-    def summary(self, statistics: Dict) -> SystemSummary:
+    def summary(self, statistics: Dict, videos: bool = False) -> SystemSummary:
         """Generates summary statistics for multibody system.
 
         The scalars returned are simply the scalar description of the
@@ -381,17 +382,22 @@ class MultibodyLearnableSystem(System):
             Scalars and videos packaged into a ``SystemSummary``.
         """
         scalars, meshes = self.multibody_terms.scalars_and_meshes()
-        videos = {}
-        for set_name in ['train', 'valid']:
-            traj_num = 0
-            target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'
-            if not target_key in statistics:
-                continue
-            target_trajectory = Tensor(statistics[target_key][0])
-            prediction_trajectory = Tensor(statistics[
-                f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
-            video, framerate = self.visualize(target_trajectory,
-                                              prediction_trajectory)
-            videos[f'{set_name}_trajectory_prediction_{traj_num}'] = (video,
-                                                                      framerate)
+
+        if videos:
+            videos = {}
+            for set_name in ['train', 'valid']:
+                traj_num = 0
+                target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'
+                if not target_key in statistics:
+                    continue
+                target_trajectory = Tensor(statistics[target_key][0])
+                prediction_trajectory = Tensor(statistics[
+                    f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
+                video, framerate = self.visualize(target_trajectory,
+                                                  prediction_trajectory)
+                videos[f'{set_name}_trajectory_prediction_{traj_num}'] = (video,
+                                                                          framerate)
+        else:
+            videos = None
+
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)

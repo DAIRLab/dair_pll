@@ -70,7 +70,8 @@ class TensorboardManager:
         """
 
         self.__write_scalars(epoch, scalars)
-        self.__write_videos(epoch, videos)
+        if videos is not None:
+            self.__write_videos(epoch, videos)
         self.__write_meshes(epoch, meshes)
 
         # Should just have to flush--for some reason, need to close??

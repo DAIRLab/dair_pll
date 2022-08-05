@@ -17,15 +17,23 @@ export XDG_RUNTIME_DIR=/mnt/beegfs/scratch/bibit/tmp;
 
 echo "repo at hash {hash}" >> {pll_dir}/logs/start_{name}.txt
 
-echo "meshcat server" >> {pll_dir}/logs/start_{name}.txt
-meshcat-server &
+if {gen_videos}; then
+	echo "meshcat server" >> {pll_dir}/logs/start_{name}.txt
+	meshcat-server &
 
-echo "open meshcat browser in screen" >> {pll_dir}/logs/start_{name}.txt
-xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" {firefox_dir}/firefox http://127.0.0.1:7000/static/ &
+	echo "delay to let server start up" >> {pll_dir}/logs/start_{name}.txt
+	sleep 3s
 
+	echo "open meshcat browser in screen" >> {pll_dir}/logs/start_{name}.txt
+	xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" {firefox_dir}/firefox {pll_dir}/assets/static.html &
+else
+	echo "skipping video visualizations" >> {pll_dir}/logs/start_{name}.txt
+fi
 
 echo "train" >> {pll_dir}/logs/start_{name}.txt
 python {pll_dir}/examples/contactnets_simple.py {name} {train_args} &> {pll_dir}/logs/train_{name}.txt
 
-echo "killing meshcat server and firefox" >> {pll_dir}/logs/start_{name}.txt
-kill %%
+if {gen_videos}; then
+	echo "killing meshcat server and firefox" >> {pll_dir}/logs/start_{name}.txt
+	kill %%
+fi
