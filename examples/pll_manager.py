@@ -42,6 +42,7 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	train_options += ' --contactnets' if contactnets else ' --prediction'
 	train_options += ' --regenerate' if regenerate else ' --no-regenerate'
 	train_options += ' --videos' if videos else ' --no-videos'
+	train_options += ' --local' if local else ' --cluster'
 
 	script = script.replace('{train_args}', train_options)
 
