@@ -8,20 +8,20 @@
 echo "display"
 source {pll_dir}/../bin/activate;
 export PYTHONPATH={pll_dir};
-export CONTACTNETS_EXPERIMENT={name};
+export PLL_EXPERIMENT={name};
 
 
 echo "repo at hash {hash}"
 
 if {gen_videos}; then
 	echo "meshcat server"
-	meshcat-server &
+	PYTHONUNBUFFERED=1 meshcat-server >> {pll_dir}/logs/meshcat_{name}.txt &
 
 	echo "delay to let server start up"
 	sleep 3s
 
 	echo "open meshcat browser in screen"
-	open -a "Google Chrome" {pll_dir}/assets/static.html &
+	open -a "Google Chrome" {pll_dir}/results/{name}/static.html &
 else
 	echo "skipping video visualizations"
 fi

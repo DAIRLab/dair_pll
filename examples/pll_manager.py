@@ -121,6 +121,10 @@ def main_command(name: str, system: str, source: str, contactnets: bool,
         if not click.confirm(f'\nPause!  Experiment name \'{name}\' already taken, continue (overwrite)?'):
             raise RuntimeError('Choose a new name next time.')
 
+	# clear the results directory, per user input
+	storage_name = os.path.join(repo_dir, 'results', name)
+	os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+
     # Continue creating PLL instance.
     create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
 

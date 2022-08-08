@@ -124,9 +124,7 @@ def main(name: str = None,
          + f'\n\trunning locally: {local}' \
          + f'\n\tand doing videos: {videos}.')
 
-    # overwrite previous results, per user input.
     storage_name = os.path.join(REPO_DIR, 'results', name)
-    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
     print(f'\nStoring data at {storage_name}')
 
     BATCH_SIZE = int(dataset_size/2)

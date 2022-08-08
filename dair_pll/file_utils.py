@@ -35,6 +35,7 @@ def assure_created(directory: str) -> str:
 
 
 MAIN_DIR = path.dirname(path.dirname(__file__))
+LOG_DIR = assure_created(os.path.join(MAIN_DIR, 'logs'))
 RESULTS_DIR = assure_created(os.path.join(MAIN_DIR, 'results'))
 ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, 'assets'))
 PLOTS_DIR = assure_created(os.path.join(MAIN_DIR, 'plots'))
