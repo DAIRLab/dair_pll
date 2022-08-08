@@ -5,6 +5,7 @@ import git
 import click
 import subprocess
 
+from dair_pll import file_utils
 
 
 CUBE_SYSTEM = 'cube'
@@ -17,8 +18,8 @@ DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
 
 def create_instance(name: str, system: str, source: str, contactnets: bool,
-                 	box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 	videos: bool):
+					box: bool, regenerate: bool, dataset_size: int, local: bool,
+					videos: bool):
 	print(f'Generating experiment {name}')
 
 	base_file = 'startup'
@@ -69,65 +70,65 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 @click.command()
 @click.argument('name')
 @click.option('--system',
-              type=click.Choice(SYSTEMS, case_sensitive=True),
-              default=CUBE_SYSTEM)
+			  type=click.Choice(SYSTEMS, case_sensitive=True),
+			  default=CUBE_SYSTEM)
 @click.option('--source',
-              type=click.Choice(DATA_SOURCES, case_sensitive=True),
-              default=SIM_SOURCE)
+			  type=click.Choice(DATA_SOURCES, case_sensitive=True),
+			  default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
-              default=True,
-              help="whether to train and test with ContactNets/prediction loss.")
+			  default=True,
+			  help="whether to train and test with ContactNets/prediction loss.")
 @click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+			  default=True,
+			  help="whether to represent geometry as box or mesh.")
 @click.option('--regenerate/--no-regenerate',
-              default=False,
-              help="whether to save updated URDF's each epoch or not.")
+			  default=False,
+			  help="whether to save updated URDF's each epoch or not.")
 @click.option('--dataset-size',
-              default=512,
-              help="dataset size")
+			  default=512,
+			  help="dataset size")
 @click.option('--local/--cluster',
-              default=False,
-              help="whether running script locally or on cluster.")
+			  default=False,
+			  help="whether running script locally or on cluster.")
 @click.option('--videos/--no-videos',
 			  default=False,
 			  help="whether to generate videos or not.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 videos: bool):
-    """Executes main function with argument interface."""
+				 box: bool, regenerate: bool, dataset_size: int, local: bool,
+				 videos: bool):
+	"""Executes main function with argument interface."""
 
-    # Check if git repository has uncommitted changes.
-    repo = git.Repo(search_parent_directories=True)
+	# Check if git repository has uncommitted changes.
+	repo = git.Repo(search_parent_directories=True)
 
-    commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
-    if commits_ahead > 0:
-        if not click.confirm(f'You are {commits_ahead} commits ahead of main branch, continue?'):
-            raise RuntimeError('Make sure you have pushed commits!')
+	commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
+	if commits_ahead > 0:
+		if not click.confirm(f'You are {commits_ahead} commits ahead of main branch, continue?'):
+			raise RuntimeError('Make sure you have pushed commits!')
 
-    changed_files = [item.a_path for item in repo.index.diff(None)]
-    if len(changed_files) > 0:
-        print('Uncommitted changes to:')
-        print(changed_files)
-        if not click.confirm('Continue?'):
-            raise RuntimeError('Make sure you have committed changes!')
+	changed_files = [item.a_path for item in repo.index.diff(None)]
+	if len(changed_files) > 0:
+		print('Uncommitted changes to:')
+		print(changed_files)
+		if not click.confirm('Continue?'):
+			raise RuntimeError('Make sure you have committed changes!')
 
-    # Check if experiment name already exists.
-    assert name is not None
+	# Check if experiment name already exists.
+	assert name is not None
 
-    repo_dir = repo.git.rev_parse("--show-toplevel")
-    storage_name = op.join(repo_dir, 'results', name)
-    if op.isdir(storage_name):
-        if not click.confirm(f'\nPause!  Experiment name \'{name}\' already taken, continue (overwrite)?'):
-            raise RuntimeError('Choose a new name next time.')
+	repo_dir = repo.git.rev_parse("--show-toplevel")
+	storage_name = op.join(repo_dir, 'results', name)
+	if op.isdir(storage_name):
+		if not click.confirm(f'\nPause!  Experiment name \'{name}\' already taken, continue (overwrite)?'):
+			raise RuntimeError('Choose a new name next time.')
 
 	# clear the results directory, per user input
 	storage_name = os.path.join(repo_dir, 'results', name)
 	os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
-    # Continue creating PLL instance.
-    create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
+	# Continue creating PLL instance.
+	create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
 
 
 if __name__ == '__main__':
-    main_command()
+	main_command()

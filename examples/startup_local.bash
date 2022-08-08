@@ -20,6 +20,9 @@ if {gen_videos}; then
 	echo "delay to let server start up"
 	sleep 3s
 
+	echo "write meshcat html"
+	python {pll_dir}/examples/dynamic_meshcat.py
+
 	echo "open meshcat browser in screen"
 	open -a "Google Chrome" {pll_dir}/results/{name}/static.html &
 else
