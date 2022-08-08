@@ -19,7 +19,7 @@ echo "repo at hash {hash}" >> {pll_dir}/logs/start_{name}.txt
 
 if {gen_videos}; then
 	echo "meshcat server" >> {pll_dir}/logs/start_{name}.txt
-	meshcat-server &
+	PYTHONUNBUFFERED=1 meshcat-server >> {pll_dir}/logs/meshcat_{name}.txt &
 
 	echo "delay to let server start up" >> {pll_dir}/logs/start_{name}.txt
 	sleep 3s
