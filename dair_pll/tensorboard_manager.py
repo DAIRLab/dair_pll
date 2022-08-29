@@ -7,6 +7,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 import torch
+import time
 from tensorboardX import SummaryWriter  # type: ignore
 from torch import Tensor
 

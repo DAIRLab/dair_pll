@@ -27,6 +27,7 @@ from typing import Tuple, Optional, Dict
 import numpy as np
 import torch
 import pdb
+import time
 from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 
@@ -157,6 +158,9 @@ class MultibodyLearnableSystem(System):
                          loss_pool: Optional[pool.Pool] = None) -> Tensor:
         """Calculate ContactNets [1] loss for state transition.
 
+        Change made to scale this loss to be per kilogram.  This helps prevent
+        sending mass quantities to zero in multibody learning scenarios.
+
         References:
             [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
             Discontinuous Contact Dynamics with Smooth, Implicit
@@ -246,6 +250,10 @@ class MultibodyLearnableSystem(System):
 
         loss = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) + pbmm(
             force.transpose(-1, -2), q) + constant
+
+        # divide by total mass so loss does not encourage learning zero mass
+        total_mass = M[0, 3, 3].item()
+        loss /= total_mass
 
         return loss.squeeze(-1).squeeze(-1)
 
@@ -388,11 +396,11 @@ class MultibodyLearnableSystem(System):
             for set_name in ['train', 'valid']:
                 traj_num = 0
                 target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'
+                prediction_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'
                 if not target_key in statistics:
                     continue
                 target_trajectory = Tensor(statistics[target_key][0])
-                prediction_trajectory = Tensor(statistics[
-                    f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'][0])
+                prediction_trajectory = Tensor(statistics[prediction_key][0])
                 video, framerate = self.visualize(target_trajectory,
                                                   prediction_trajectory)
                 videos[f'{set_name}_trajectory_prediction_{traj_num}'] = (video,

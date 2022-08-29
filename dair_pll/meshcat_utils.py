@@ -26,6 +26,7 @@ from typing import Tuple
 
 import meshcat  # type: ignore
 import numpy as np
+import time
 from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
 from pydrake.math import RigidTransform  # type: ignore
 from torch import Tensor
