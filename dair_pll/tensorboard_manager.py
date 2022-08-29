@@ -72,13 +72,14 @@ class TensorboardManager:
 		# make a tensorboard log file
 		tb_logfile = op.join(git_folder, 'logs', 'tensorboard_' + name + '.txt')
 		os.system(f'rm {tb_logfile}')
-		tb_folder = op.join(git_folder, 'results', name, 'tensorboard')
 
 		# make and start tensorboard command
-		if local:
-			tboard_cmd = f'bash {tb_script} {tb_folder} {name} >> {tb_logfile}'
+		if 'SLURM_JOBID' in os.environ:
+			# running on cluster
+			tboard_cmd = f'sbatch --output={tb_logfile} --job-name=tb_{name} {tb_script} {self.folder} {name}'
 		else:
-			tboard_cmd = f'sbatch --output={tb_logfile} --job-name=tb_{name} {tb_script} {tb_folder} {name}'
+			# running locally
+			tboard_cmd = f'bash {tb_script} {self.folder} {name} &> {tb_logfile}'
 
 		print(f'\ntboard_cmd:\n{tboard_cmd}\n')
 
@@ -94,10 +95,8 @@ class TensorboardManager:
 			with open(tb_logfile) as f:
 				lines = f.readlines()
 			time.sleep(1.0)
-		print('')
-		print(f'TensorBoard running on {lines[0]}')
-		print('')
-		print('Running training setup')
+
+		print(f'\nTensorBoard running on {lines[0]}\n')
 
 		self.create_writer()
 

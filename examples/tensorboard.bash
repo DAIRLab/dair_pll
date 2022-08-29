@@ -13,4 +13,4 @@ TB_TITLE=$2
 
 echo "http://$IP_ADDRESS:$TB_PORT"
 
-tensorboard --samples_per_plugin="images=0" --bind_all --logdir $TB_FOLDER  --window_title $TB_TITLE --port $TB_PORT
+tensorboard --samples_per_plugin="images=0" --bind_all --logdir $TB_FOLDER  --window_title $TB_TITLE --port $TB_PORT &
