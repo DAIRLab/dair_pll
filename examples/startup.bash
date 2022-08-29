@@ -35,7 +35,7 @@ else
 fi
 
 echo "train" >> {pll_dir}/logs/start_{name}.txt
-python {pll_dir}/examples/contactnets_simple.py {name} {train_args} &> {pll_dir}/logs/train_{name}.txt
+python {pll_dir}/examples/contactnets_simple.py {name} {train_args} >> {pll_dir}/logs/train_{name}.txt
 
 if {gen_videos}; then
 	echo "kill meshcat server and firefox" >> {pll_dir}/logs/start_{name}.txt
