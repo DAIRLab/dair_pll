@@ -2,8 +2,11 @@
 import contextlib
 import multiprocessing
 import os
+import os.path as op
 import socket
 from typing import Dict, Tuple
+
+import git
 
 import numpy as np
 import torch
@@ -38,6 +41,7 @@ class TensorboardManager:
 
     def launch(self) -> None:
         """Launches tensorboard thread"""
+        '''
         folder = self.folder
 
         # pylint: disable=E1103
@@ -52,6 +56,35 @@ class TensorboardManager:
         self.thread.start()
 
         print(f'Launching tensorboard on http://localhost:{port}')
+        self.create_writer()
+        '''
+        repo = git.Repo(search_parent_directories=True)
+        git_folder = repo.git.rev_parse("--show-toplevel")
+        git_folder = op.normpath(git_folder)
+        tb_script = op.join(git_folder, 'examples', 'tensorboard.bash')
+        tb_logfile = op.join(git_folder, 'logs', 'tensorboard_' + 't00' + '.txt')  #TODO replace with name
+        os.system(f'rm {tb_logfile}')
+        tb_folder = op.join(git_folder, 'experiments', 't00', 'out', 'tensorboard')
+        tboard_cmd = f'bash {tb_script} {tb_folder} t00 >> {tb_logfile}'
+        # ec = subprocess.run(tboard_cmd)
+
+        self.thread = multiprocessing.Process(target=os.system, args=(tboard_cmd,))
+        self.thread.start()
+
+        # wait for tensorboard url
+        print('Waiting on TensorBoard startup ...')
+        lines = []
+        while not op.exists(tb_logfile):
+            time.sleep(0.1)
+        while len(lines) < 1:
+            with open(tb_logfile) as f:
+                lines = f.readlines()
+            time.sleep(1.0)
+        print('')
+        print(f'TensorBoard running on {lines[0]}')
+        print('')
+        print('Running training setup')
+
         self.create_writer()
 
     def stop(self):
