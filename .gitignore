@@ -13,6 +13,9 @@ slurm-*
 # startup scripts
 examples/startup_*
 
+# test bash script
+examples/test.bash
+
 # Sphinx
 docsrc/source/dair_pll.*
 docsrc/source/modules.rst
