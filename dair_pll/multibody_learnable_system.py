@@ -340,8 +340,12 @@ class MultibodyLearnableSystem(System):
             delassus.shape)
 
 
+        try:
+            L = torch.linalg.cholesky(torch.inverse((M)))
+        except:
+            min_eig_val = min(torch.linalg.eigvals(M))
+            print(f'\nIssue with M: min eigenvalue of {min_eig_val}')
 
-        L = torch.linalg.cholesky(torch.inverse((M)))
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
         # pylint: disable=E1103
