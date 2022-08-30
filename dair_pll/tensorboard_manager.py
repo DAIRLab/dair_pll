@@ -1,6 +1,7 @@
 """Interface for logging training progress to Tensorboard."""
 import contextlib
 import multiprocessing
+import subprocess
 import os
 import os.path as op
 import socket
@@ -76,15 +77,18 @@ class TensorboardManager:
 		# make and start tensorboard command
 		if 'SLURM_JOBID' in os.environ:
 			# running on cluster
-			tboard_cmd = f'sbatch --output={tb_logfile} --job-name=tb_{name} {tb_script} {self.folder} {name}'
+			#tboard_cmd = f'sbatch --output={tb_logfile} --job-name=tb_{name} {tb_script} {self.folder} {name}'
+			tboard_cmd = ['sbatch', f'--output={tb_logfile}', f'--job-name=tb_{name}', tb_script, self.folder, name]
 		else:
 			# running locally
-			tboard_cmd = f'bash {tb_script} {self.folder} {name} &> {tb_logfile}'
+			#tboard_cmd = f'bash {tb_script} {self.folder} {name} &> {tb_logfile}'
+			tboard_cmd = ['bash', tb_script, self.folder, name, '&>', tb_logfile]
 
 		print(f'\ntboard_cmd:\n{tboard_cmd}\n')
 
-		thread = multiprocessing.Process(target=os.system, args=(tboard_cmd,))
-		thread.start()
+		#thread = multiprocessing.Process(target=os.system, args=(tboard_cmd,))
+		#thread.start()
+		thread = subprocess.run(tboard_cmd)
 
 		# wait for and report tensorboard url
 		print('Waiting on TensorBoard startup ...')

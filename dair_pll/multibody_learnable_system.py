@@ -252,7 +252,7 @@ class MultibodyLearnableSystem(System):
             force.transpose(-1, -2), q) + constant
 
         # divide by total mass so loss does not encourage learning zero mass
-        total_mass = M[0, 3, 3].item()
+        total_mass = M[0, 3, 3]
         loss /= total_mass
 
         return loss.squeeze(-1).squeeze(-1)
