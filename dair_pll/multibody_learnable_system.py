@@ -252,8 +252,11 @@ class MultibodyLearnableSystem(System):
             force.transpose(-1, -2), q) + constant
 
         # divide by total mass so loss does not encourage learning zero mass
-        total_mass = M[0, 3, 3]
+        # total_mass = M[0, 3, 3]
+        total_mass = sum(self.multibody_terms.lagrangian_terms.pi()[:,0])
         loss /= total_mass
+
+        # pdb.set_trace()
 
         return loss.squeeze(-1).squeeze(-1)
 
