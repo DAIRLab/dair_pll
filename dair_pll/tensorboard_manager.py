@@ -82,7 +82,10 @@ class TensorboardManager:
 		else:
 			# running locally
 			#tboard_cmd = f'bash {tb_script} {self.folder} {name} &> {tb_logfile}'
-			tboard_cmd = ['bash', tb_script, self.folder, name, '&>', tb_logfile]
+			# tboard_cmd = ['bash', tb_script, self.folder, name, '&>', tb_logfile]
+			print('Skipping tensorboard startup when running locally...')
+			self.create_writer()
+			return
 
 		print(f'\ntboard_cmd:\n{tboard_cmd}\n')
 
