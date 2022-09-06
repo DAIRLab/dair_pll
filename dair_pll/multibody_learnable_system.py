@@ -218,7 +218,7 @@ class MultibodyLearnableSystem(System):
             -phi, torch.zeros_like(phi))**2).sum(dim=-1)
 
         penetration_penalty = penetration_penalty.reshape(
-            penetration_penalty.shape + (1, 1))
+            penetration_penalty.shape + (1, 1)) * 100.
 
         constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(
             -1, -2))) + penetration_penalty

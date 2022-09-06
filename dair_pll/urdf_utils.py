@@ -320,6 +320,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
             multibody_terms.plant_diagram.plant.GetModelInstanceByName(
                 urdf_name)
 
+        register_namespace('drake', 'https://drake.mit.edu/')
         urdf_tree = ElementTree.parse(urdf)
 
         for element in urdf_tree.iter():
@@ -344,7 +345,6 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                 fill_link_with_parameterization(element, pi[body_index, :],
                                                 body_geometries, output_dir)
 
-        register_namespace('drake', 'https://drake.mit.edu/')
         system_urdf_representation = ElementTree.tostring(
             urdf_tree.getroot(), encoding="utf-8").decode("utf-8")
         urdf_xml[

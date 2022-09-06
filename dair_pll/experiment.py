@@ -495,6 +495,8 @@ class SupervisedLearningExperiment(ABC):
         learned_system = self.get_learned_system(
             torch.cat(train_set.trajectories))
         optimizer = self.get_optimizer(learned_system)
+        from torch.optim.lr_scheduler import MultiStepLR
+        scheduler = MultiStepLR(optimizer, [0, 300], gamma=0.1, last_epoch=0 - 1)
 
         if self.tensorboard_manager is not None:
             self.tensorboard_manager.launch()
@@ -510,6 +512,8 @@ class SupervisedLearningExperiment(ABC):
         learned_system.eval()
         self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
         learned_system.train()
+        
+        last_train_loss = torch.tensor(1e10)
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
             if self.config.data_config.dynamic_updates_from is not None:
@@ -529,6 +533,11 @@ class SupervisedLearningExperiment(ABC):
             start_train_time = time.time()
             training_loss = self.train_epoch(train_dataloader, learned_system,
                                              optimizer)
+            if training_loss > 1.5 * last_train_loss:
+                learned_system.load_state_dict(best_learned_system_state)
+                print('Reset!')
+                continue
+            last_train_loss = training_loss
             training_duration = time.time() - start_train_time
             learned_system.eval()
             valid_loss = self.per_epoch_evaluation(epoch, learned_system,
@@ -536,7 +545,7 @@ class SupervisedLearningExperiment(ABC):
                                                    training_duration)
 
             # Check for validation loss improvement.
-            if valid_loss < best_valid_loss:
+            if valid_loss <= best_valid_loss:
                 best_valid_loss = valid_loss
                 best_learned_system_state = deepcopy(
                     learned_system.state_dict())
@@ -547,6 +556,8 @@ class SupervisedLearningExperiment(ABC):
             # Decide to early-stop or not.
             if epochs_since_best >= self.config.optimizer_config.patience:
                 break
+                
+            scheduler.step()
 
             epoch_callback(epoch, learned_system, training_loss,
                            best_valid_loss)
