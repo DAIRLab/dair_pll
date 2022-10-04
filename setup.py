@@ -31,6 +31,7 @@ install_reqs = [
     'yapf',
     'pylint',
     'mypy',
+    'git',
 ]
 
 try:
