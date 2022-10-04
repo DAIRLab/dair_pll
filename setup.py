@@ -18,8 +18,10 @@ install_reqs = [
     'click',
     'pywavefront',
     'python-fcl',
+    'gitpython',
     # documentation
     'networkx',
+    'protobuf==3.19.6',
     'pydeps==1.10.12',
     'Sphinx',
     'sphinx-autodoc-typehints',
