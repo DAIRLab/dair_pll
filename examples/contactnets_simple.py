@@ -34,20 +34,25 @@ DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 # File management.
 CUBE_DATA_ASSET = 'contactnets_cube'
 ELBOW_DATA_ASSET = 'contactnets_elbow'
-# CUBE_BOX_URDF_ASSET = 'contactnets_cube_bad_init.urdf'
-CUBE_BOX_URDF_ASSET = 'contactnets_cube_small_init.urdf'
+CUBE_BOX_URDF_ASSET = 'contactnets_cube.urdf'
 CUBE_MESH_URDF_ASSET = 'contactnets_cube_mesh.urdf'
 ELBOW_BOX_URDF_ASSET = 'contactnets_elbow.urdf'
 ELBOW_MESH_URDF_ASSET = 'contactnets_elbow_mesh.urdf'
 
-
-DATA_ASSETS = {CUBE_SYSTEM: CUBE_DATA_ASSET, ELBOW_SYSTEM: ELBOW_DATA_ASSET}
+TRUE_DATA_ASSETS = {CUBE_SYSTEM: CUBE_DATA_ASSET, ELBOW_SYSTEM: ELBOW_DATA_ASSET}
 
 MESH_TYPE = 'mesh'
 BOX_TYPE = 'box'
 CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET, BOX_TYPE: CUBE_BOX_URDF_ASSET}
 ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET, BOX_TYPE: ELBOW_BOX_URDF_ASSET}
-URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
+TRUE_URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
+
+
+CUBE_BOX_URDF_ASSET_BAD = 'contactnets_cube_bad_init.urdf'
+CUBE_BOX_URDF_ASSET_SMALL = 'contactnets_cube_small_init.urdf'
+CUBE_WRONG_URDFS = {'bad': CUBE_BOX_URDF_ASSET_BAD, 'small': CUBE_BOX_URDF_ASSET_SMALL}
+WRONG_URDFS = {CUBE_SYSTEM: CUBE_WRONG_URDFS}
+
 
 REPO_DIR = os.path.normpath(git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
 
@@ -134,7 +139,7 @@ def main(name: str = None,
     real = source == REAL_SOURCE
     dynamic = source == DYNAMIC_SOURCE
 
-    data_asset = DATA_ASSETS[system]
+    data_asset = TRUE_DATA_ASSETS[system]
 
     # Next, build the configuration of the learning experiment.
 
@@ -150,18 +155,26 @@ def main(name: str = None,
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
     # first, select urdfs
-    urdf_asset = URDFS[system][BOX_TYPE if box else MESH_TYPE]
+    urdf_asset = TRUE_URDFS[system][BOX_TYPE if box else MESH_TYPE]
     urdf = file_utils.get_asset(urdf_asset)
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
     # Describes the learnable system. The MultibodyLearnableSystem type
-    # learns a multibody system, which is initialized as the system in the
-    # given URDFs.
+    # learns a multibody system, which is initialized as a provided wrong
+    # urdf, or if not provided, as the original system urdf.
+    if box and (system in WRONG_URDFS.keys()):
+        wrong_urdf_asset = WRONG_URDFS[system]['small']
+        wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
+        init_urdfs = {system: wrong_urdf}
+    # else:  use the initial mesh type anyway
+    else:
+        init_urdfs = urdfs
+
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
+    learnable_config = MultibodyLearnableSystemConfig(urdfs=init_urdfs, loss=loss)
 
     # Describe data source
     data_generation_config = None
@@ -262,7 +275,7 @@ def main(name: str = None,
                         + f'{experiment.data_manager.orig_data}\n\n'
         else:
             orig_data = ''
-            
+
         txt_file.write(f'Starting test with name \'{name}\':' \
             + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
             + f'\n\tusing ContactNets: {contactnets}' \
