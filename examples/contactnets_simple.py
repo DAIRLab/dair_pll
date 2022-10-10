@@ -257,6 +257,12 @@ def main(name: str = None,
     # with open(f'{storage_name}/dataset.pickle', 'wb') as pickle_file:
     #     pickle.dump(experiment.data_manager.orig_data, pickle_file)
     with open(f'{storage_name}/params.txt', 'a') as txt_file:
+        if source == REAL_SOURCE:
+            orig_data = f'experiment_config.data_manager.orig_data:' \
+                        + f'{experiment.data_manager.orig_data}\n\n'
+        else:
+            orig_data = ''
+            
         txt_file.write(f'Starting test with name \'{name}\':' \
             + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
             + f'\n\tusing ContactNets: {contactnets}' \
@@ -265,8 +271,7 @@ def main(name: str = None,
             + f'\n\trunning locally: {local}' \
             + f'\n\tand doing videos: {videos}.\n\n'
             + f'experiment_config: {experiment_config}\n\n' \
-            + f'experiment_config.data_manager.orig_data:' \
-            + f'{experiment.data_manager.orig_data}\n\n' \
+            + orig_data \
             + f'optimizer_config.lr:  {optimizer_config.lr.value}\n\n' \
             + f'optimizer_config.wd:  {optimizer_config.wd.value}\n\n' \
             + f'optimizer_config.batch_size:  {optimizer_config.batch_size.value}\n\n')
