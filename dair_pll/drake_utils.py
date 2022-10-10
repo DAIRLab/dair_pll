@@ -36,7 +36,7 @@ from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
 from pydrake.systems.framework import DiagramBuilder  # type: ignore
-from pydrake.systems.meshcat_visualizer import MeshcatVisualizer  # type: ignore
+# from pydrake.systems.meshcat_visualizer import MeshcatVisualizer  # type: ignore
 
 from dair_pll import state_space
 
@@ -209,7 +209,7 @@ class MultibodyPlantDiagram:
     sim: Simulator
     plant: MultibodyPlant
     scene_graph: SceneGraph
-    visualizer: Optional[MeshcatVisualizer]
+    # visualizer: Optional[MeshcatVisualizer]
     model_ids: List[ModelInstanceIndex]
     collision_geometry_set: CollisionGeometrySet
     space: state_space.ProductSpace
