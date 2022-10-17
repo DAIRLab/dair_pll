@@ -97,8 +97,8 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-EPOCHS = 80            # change this (originally 500)
-PATIENCE = 20       # change this (originally EPOCHS)
+EPOCHS = 200            # change this (originally 500)
+PATIENCE = 100       # change this (originally EPOCHS)
 # BATCH_SIZE = 256  <-- updated to scale with commandline argument for dataset_size
 
 
