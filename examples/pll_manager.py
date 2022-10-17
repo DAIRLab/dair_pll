@@ -4,6 +4,7 @@ import os.path as op
 import git
 import click
 import subprocess
+from typing import List, Optional
 
 from dair_pll import file_utils
 
@@ -66,8 +67,54 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	ec = subprocess.run(train_cmd)
 
 
+def get_slurm_from_instances(instances: List[str], prefix='pll'):
+	jobids = []
+	for instance in instances:
+		cmd = ['squeue', f'--user={os.getlogin()}', '--format', '%.18i', '--noheader', '--name',
+			   f'{prefix}_{instance}']
+		ps = subprocess.Popen(cmd, stdout=subprocess.PIPE,  stderr=subprocess.STDOUT)
+		ps.wait()
+		(out, err) = ps.communicate()
+		out = out.decode('unicode-escape')
+		out = ''.join(i for i in out if i.isdigit())
+		if len(out) > 0:
+			jobids.append(out)
+	return jobids
 
-@click.command()
+
+def attach_tb(name: str):
+	repo = git.Repo(search_parent_directories=True)
+	tb_script = op.join(op.dirname(__file__), 'tensorboard.bash')
+	git_folder = repo.git.rev_parse("--show-toplevel")
+	git_folder = op.normpath(git_folder)
+	tb_logfile = op.join(git_folder, 'logs', 'tensorboard_' + name + '.txt')
+	os.system(f'rm {tb_logfile}')
+	tboard_cmd = ['sbatch', f'--output={tb_logfile}', \
+		f'--job-name=tb_{name}'.format(tb_logfile), tb_script, \
+		op.join(git_folder, 'results', name, 'tensorboard'), name]
+	ec = subprocess.run(tboard_cmd)
+
+	# wait for and report tensorboard url
+	print('Waiting on TensorBoard startup ...')
+	lines = []
+	while not op.exists(tb_logfile):
+		time.sleep(0.1)
+	while len(lines) < 1:
+		with open(tb_logfile) as f:
+			lines = f.readlines()
+		time.sleep(1.0)
+	print('')
+	print(f'TensorBoard running on {lines[0]}')
+	print('')
+	print('Running training setup')
+
+
+@click.group()
+def cli():
+	pass
+
+
+@cli.command('create')
 @click.argument('name')
 @click.option('--system',
 			  type=click.Choice(SYSTEMS, case_sensitive=True),
@@ -93,9 +140,9 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 @click.option('--videos/--no-videos',
 			  default=False,
 			  help="whether to generate videos or not.")
-def main_command(name: str, system: str, source: str, contactnets: bool,
-				 box: bool, regenerate: bool, dataset_size: int, local: bool,
-				 videos: bool):
+def create_command(name: str, system: str, source: str, contactnets: bool,
+				   box: bool, regenerate: bool, dataset_size: int, local: bool,
+				   videos: bool):
 	"""Executes main function with argument interface."""
 
 	# Check if git repository has uncommitted changes.
@@ -130,5 +177,22 @@ def main_command(name: str, system: str, source: str, contactnets: bool,
 	create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
 
 
+
+@cli.command('detach')
+@click.argument('instance')
+def detach(instance: str):
+	"""Deletes Tensorboard task associated with experiment name."""
+	jobid = get_slurm_from_instances([instance], prefix='tb')[0]
+	os.system(f'scancel {jobid}')
+
+
+@cli.command('attach')
+@click.argument('instance')
+def attach(instance: str):
+	"""Attaches Tensorboard task to experiment name."""
+	attach_tb(instance)
+
+
+
 if __name__ == '__main__':
-	main_command()
+	cli()
