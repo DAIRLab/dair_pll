@@ -50,8 +50,13 @@ TRUE_URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 
 CUBE_BOX_URDF_ASSET_BAD = 'contactnets_cube_bad_init.urdf'
 CUBE_BOX_URDF_ASSET_SMALL = 'contactnets_cube_small_init.urdf'
-CUBE_WRONG_URDFS = {'bad': CUBE_BOX_URDF_ASSET_BAD, 'small': CUBE_BOX_URDF_ASSET_SMALL}
-WRONG_URDFS = {CUBE_SYSTEM: CUBE_WRONG_URDFS}
+ELBOW_BOX_URDF_ASSET_BAD = 'contactnets_elbow_bad_init.urdf'
+ELBOW_BOX_URDF_ASSET_SMALL = 'contactnets_elbow_small_init.urdf'
+CUBE_WRONG_URDFS = {'bad': CUBE_BOX_URDF_ASSET_BAD,
+                    'small': CUBE_BOX_URDF_ASSET_SMALL}
+ELBOW_WRONG_URDFS = {'bad': ELBOW_BOX_URDF_ASSET_BAD,
+                    'small': ELBOW_BOX_URDF_ASSET_SMALL}
+WRONG_URDFS = {CUBE_SYSTEM: CUBE_WRONG_URDFS, ELBOW_SYSTEM: ELBOW_WRONG_URDFS}
 
 
 REPO_DIR = os.path.normpath(git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
