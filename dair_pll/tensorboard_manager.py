@@ -33,6 +33,7 @@ class TensorboardManager:
 
 	def __init__(self, folder: str):
 		self.folder = folder
+		self.thread = None
 
 	def create_writer(self) -> None:
 		"""Creates :py:class:`tensorboardX.SummaryWriter` for interfacing
@@ -91,7 +92,7 @@ class TensorboardManager:
 
 		#thread = multiprocessing.Process(target=os.system, args=(tboard_cmd,))
 		#thread.start()
-		thread = subprocess.run(tboard_cmd)
+		self.thread = subprocess.run(tboard_cmd)
 
 		# wait for and report tensorboard url
 		print('Waiting on TensorBoard startup ...')
@@ -109,7 +110,8 @@ class TensorboardManager:
 
 	def stop(self):
 		"""Stops tensorboard thread."""
-		self.thread.terminate()
+		if self.thread is not None:
+			self.thread.terminate()
 
 	def update(self, epoch: int, scalars: Dict[str, float],
 			   videos: Dict[str, Tuple[np.ndarray, int]],
