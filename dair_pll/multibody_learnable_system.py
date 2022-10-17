@@ -346,8 +346,12 @@ class MultibodyLearnableSystem(System):
         try:
             L = torch.linalg.cholesky(torch.inverse((M)))
         except:
-            min_eig_val = min(torch.linalg.eigvals(M))
-            print(f'\nIssue with M: min eigenvalue of {min_eig_val}')
+            try:
+                min_eig_val = min(torch.linalg.eigvals(M))
+                print(f'\nIssue with M: min eigenvalue of {min_eig_val}')
+            except:
+                pdb.set_trace()
+                print(f'\nCannot calculate eigenvalues of M: {M}')
 
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
