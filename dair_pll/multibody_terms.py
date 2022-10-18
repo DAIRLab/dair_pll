@@ -204,8 +204,6 @@ class LagrangianTerms(Module):
             curr_pi[:, 1:4] = (orig[:, 1:4].detach().T * \
                                curr_pi[:, 0] / orig[:, 0].detach()).T
 
-        print(f'In inertial_params: {curr_pi}')
-
         # convert back to inertial parameters
         return InertialParameterConverter.pi_to_theta(curr_pi)
 
