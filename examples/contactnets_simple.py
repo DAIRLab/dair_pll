@@ -22,13 +22,32 @@ from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
 
 
+# Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
 SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+
+# Possible dataset types
 SIM_SOURCE = 'simulation'
 REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
+
+# Possible inertial parameterizations to learn for the elbow system.
+# The options are:
+# 0 - none (0 parameters)
+# 1 - masses (n_bodies - 1 parameters)
+# 2 - CoMs (3*n_bodies parameters)
+# 3 - CoMs and masses (4*n_bodies - 1 parameters)
+# 4 - all (10*n_bodies - 1 parameters)
+INERTIA_PARAM_CHOICES = ['0', '1', '2', '3', '4']
+INERTIA_PARAM_DESCRIPTIONS = [
+    'learn no inertial parameters (0 * n_bodies)',
+    'learn only masses and not the first mass (n_bodies - 1)',
+    'learn only centers of mass (3 * n_bodies)',
+    'learn masses (except first) and centers of mass (4 * n_bodies - 1)',
+    'learn all parameters (except first mass) (10 * n_bodies - 1)']
+INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 
 # File management.
@@ -111,18 +130,20 @@ def main(name: str = None,
          regenerate: bool = False,
          dataset_size: int = 512,
          local: bool = True,
-         videos: bool = False):
+         videos: bool = False,
+         inertia_params: str = '4'):
     """Execute ContactNets basic example on a system.
 
     Args:
         system: Which system to learn.
         source: Where to get data from.
-        contactnets: Whether to use ContactNets or prediction loss
+        contactnets: Whether to use ContactNets or prediction loss.
         box: Whether to represent geometry as box or mesh.
         regenerate: Whether save updated URDF's each epoch.
         dataset_size: Number of trajectories for train/val/test.
         local: Running locally versus on cluster.
         videos: Generate videos or not.
+        inertia_params: What inertial parameters to learn.
     """
     # pylint: disable=too-many-locals
 
@@ -132,7 +153,9 @@ def main(name: str = None,
          + f'\n\twith box: {box}' \
          + f'\n\tregenerate: {regenerate}' \
          + f'\n\trunning locally: {local}' \
-         + f'\n\tand doing videos: {videos}.')
+         + f'\n\tdoing videos: {videos}' \
+         + f'\n\tand inertia learning mode: {inertia_params}' \
+         + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}.')
 
     storage_name = os.path.join(REPO_DIR, 'results', name)
     print(f'\nStoring data at {storage_name}')
@@ -179,7 +202,8 @@ def main(name: str = None,
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=init_urdfs, loss=loss)
+    learnable_config = MultibodyLearnableSystemConfig(
+        urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params))
 
     # Describe data source
     data_generation_config = None
@@ -287,8 +311,10 @@ def main(name: str = None,
             + f'\n\twith box: {box}' \
             + f'\n\tregenerate: {regenerate}' \
             + f'\n\trunning locally: {local}' \
-            + f'\n\tand doing videos: {videos}.\n\n'
-            + f'experiment_config: {experiment_config}\n\n' \
+            + f'\n\tdoing videos: {videos}' \
+            + f'\n\tand inertia learning mode: {inertia_params}' \
+            + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}.' \
+            + f'\n\nexperiment_config: {experiment_config}\n\n' \
             + orig_data \
             + f'optimizer_config.lr:  {optimizer_config.lr.value}\n\n' \
             + f'optimizer_config.wd:  {optimizer_config.wd.value}\n\n' \
@@ -339,13 +365,18 @@ def main(name: str = None,
 @click.option('--videos/--no-videos',
               default=False,
               help="whether to generate videos or not.")
+@click.option('--inertia-params',
+              type=click.Choice(INERTIA_PARAM_CHOICES),
+              default='4',
+              help="what inertia parameters to learn.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 videos: bool):
+                 videos: bool, inertia_params: str):
     """Executes main function with argument interface."""
     assert name is not None
 
-    main(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
+    main(name, system, source, contactnets, box, regenerate, dataset_size,
+         local, videos, inertia_params)
 
 
 if __name__ == '__main__':

@@ -64,6 +64,8 @@ CENTER_OF_MASS_DOF = 3
 INERTIA_TENSOR_DOF = 6
 DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 
+INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
+
 
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
@@ -109,14 +111,19 @@ class LagrangianTerms(Module):
     mass_matrix: Optional[ConfigurationInertialCallback]
     lagrangian_forces: Optional[StateInputInertialCallback]
     inertial_parameters: Parameter
-    first_mass: float
+    inertia_mode_txt: str
 
-    def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
+    def __init__(self, plant_diagram: MultibodyPlantDiagram,
+                 inertia_mode: int) -> None:
         """Inits ``LagrangianTerms`` with prescribed parameters and
         functional forms.
 
         Args:
             plant_diagram: Drake MultibodyPlant diagram to extract terms from.
+            inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
+            inertial parameters the model can learn.  The higher the number
+            the more inertial parameters are free to be learned, and 0
+            corresponds to learning no inertial parameters.
         """
         super().__init__()
 
@@ -156,19 +163,49 @@ class LagrangianTerms(Module):
         self.inertial_parameters = Parameter(body_parameters,
                                              requires_grad=True)
 
-        # store the mass of the first object for later access
-        self.first_mass = InertialParameterConverter.theta_to_pi(
-                              self.inertial_parameters)[0,0].item()
+        # store the original inertial parameters since not all will be learned
+        self.original_pi_params = InertialParameterConverter.theta_to_pi(
+                                    self.inertial_parameters)
+
+        # keep track of what inertial parameters will or will not be learned
+        self.inertia_mode_txt = INERTIA_PARAM_OPTIONS[inertia_mode]
 
     def inertial_params(self):
-        # make a method here instead of accessing the parameters directly so we
-        # can overwrite the mass of the first object to handle scale invariance.
+        # Make a method here instead of accessing the parameters directly so we
+        # can overwrite any parameters that will not be learned.
 
-        # first, convert the current inertial parameters to pi format
+        # First, convert the current inertial parameters to pi format.
         curr_pi = InertialParameterConverter.theta_to_pi(self.inertial_parameters)
 
-        # overwrite the first mass to the original mass value
-        curr_pi[0,0] = self.first_mass
+        # Overwrite any inertial parameters that should not be learned.  In all
+        # cases, overwrite the mass of the first object to handle scale
+        # invariance.
+        orig = self.original_pi_params
+        curr_pi[0,0] = orig[0,0].item()
+
+        mode = self.inertia_mode_txt
+        n_bodies = curr_pi.shape[0]
+
+        # Overwrite the moments of inertia unless learning all remaining
+        # parameters.
+        if mode != 'all':
+            curr_pi[:, 4:10] = orig[:, 4:10].detach()
+            # for body_i in range(n_bodies):
+            #     for moment_j in range(4, 10):
+            #         curr_pi[body_i, moment_j] = orig[body_i, moment_j].item()
+
+        # Overwrite the center of masses unless learning those.
+        if (mode == 'none') or ('CoMs' not in mode):
+            curr_pi[:, 1:4] = orig[:, 1:4].detach()
+            # for body_i in range(n_bodies):
+            #     for com_j in range(1, 4):
+            #         curr_pi[body_i, com_j] = orig[body_i, com_j].item()
+
+        # Overwrite the masses unless learning those.
+        if (mode == 'none') or ('masses' not in mode):
+            curr_pi[:, 0] = orig[:, 0].detach()
+            # for body_i in range(1, n_bodies):
+            #     curr_pi[body_i, 0] = orig[body_i, 0].item()
 
         # convert back to inertial parameters
         return InertialParameterConverter.pi_to_theta(curr_pi)
@@ -539,6 +576,7 @@ class MultibodyTerms(Module):
     geometry_body_assignment: Dict[str, List[int]]
     plant_diagram: MultibodyPlantDiagram
     urdfs: Dict[str, str]
+    inertia_mode: int
 
     def scalars_and_meshes(
             self) -> Tuple[Dict[str, float], Dict[str, MeshSummary]]:
@@ -617,7 +655,7 @@ class MultibodyTerms(Module):
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration
 
-    def __init__(self, urdfs: Dict[str, str]) -> None:
+    def __init__(self, urdfs: Dict[str, str], inertia_mode: int) -> None:
         """Inits ``MultibodyTerms`` for system described in URDFs
 
         Interpretation is performed as a thin wrapper around ``LagrangianTerms``
@@ -632,6 +670,10 @@ class MultibodyTerms(Module):
         Args:
             urdfs: Dictionary of named URDF XML file names, containing
             description of multibody system.
+            inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
+            inertial parameters the model can learn.  The higher the number
+            the more inertial parameters are free to be learned, and 0
+            corresponds to learning no inertial parameters.
         """
         super().__init__()
 
@@ -658,7 +700,7 @@ class MultibodyTerms(Module):
                 geometry_index)
 
         # setup parameterization
-        self.lagrangian_terms = LagrangianTerms(plant_diagram)
+        self.lagrangian_terms = LagrangianTerms(plant_diagram, inertia_mode)
         self.contact_terms = ContactTerms(plant_diagram)
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram

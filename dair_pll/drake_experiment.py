@@ -30,6 +30,8 @@ class MultibodyLosses(Enum):
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss."""
+    inertia_mode: int = 4
+    """What inertial parameters to learn."""
 
 
 class DrakeExperiment(SupervisedLearningExperiment):
@@ -67,7 +69,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         learnable_config = cast(MultibodyLearnableSystemConfig,
                                 self.config.learnable_config)
         return MultibodyLearnableSystem(learnable_config.urdfs,
-                                        self.config.data_config.dt)
+                                        self.config.data_config.dt,
+                                        learnable_config.inertia_mode)
 
     def contactnets_loss(self,
                          x_past: Tensor,

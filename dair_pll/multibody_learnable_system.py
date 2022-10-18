@@ -51,8 +51,10 @@ class MultibodyLearnableSystem(System):
     visualization_system: Optional[DrakeSystem]
     solver: SAPSolver
     dt: float
+    inertia_mode: int
 
-    def __init__(self, urdfs: Dict[str, str], dt: float) -> None:
+    def __init__(self, urdfs: Dict[str, str], dt: float,
+                 inertia_mode: int) -> None:
         """Inits ``MultibodyLearnableSystem`` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -64,8 +66,12 @@ class MultibodyLearnableSystem(System):
             urdfs: Names and corresponding URDFs to model with
             ``MultibodyTerms``.
             dt: Time step of system in seconds.
+            inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
+            inertial parameters the model can learn.  The higher the number
+            the more inertial parameters are free to be learned, and 0
+            corresponds to learning no inertial parameters.
         """
-        multibody_terms = MultibodyTerms(urdfs)
+        multibody_terms = MultibodyTerms(urdfs, inertia_mode)
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super().__init__(space, integrator)

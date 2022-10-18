@@ -5,23 +5,43 @@ import git
 import click
 import subprocess
 import time
+import pdb
 from typing import List, Optional
 
 from dair_pll import file_utils
 
 
+# Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
 SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+
+# Possible dataset types
 SIM_SOURCE = 'simulation'
 REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
+# Possible inertial parameterizations to learn for the elbow system.
+# The options are:
+# 0 - learn no inertial parameters (0 for elbow)
+# 1 - learn the mass of second and beyond links (1 for elbow)
+# 2 - learn the locations of all links' centers of mass (6 for elbow)
+# 3 - learn second and beyond masses and all centers of mass (7 for elbow)
+# 4 - learn all parameters except mass of first link (19 for elbow)
+INERTIA_PARAM_CHOICES = ['0', '1', '2', '3', '4']
+INERTIA_PARAM_DESCRIPTIONS = [
+    'learn no inertial parameters (0 * n_bodies)',
+    'learn only masses and not the first mass (n_bodies - 1)',
+    'learn only locations of centers of mass (3 * n_bodies)',
+    'learn masses (except first) and centers of mass (4 * n_bodies - 1)',
+    'learn all parameters (except first mass) (10 * n_bodies - 1)']
+INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
+
 
 def create_instance(name: str, system: str, source: str, contactnets: bool,
 					box: bool, regenerate: bool, dataset_size: int, local: bool,
-					videos: bool):
+					videos: bool, inertia_params: str):
 	print(f'Generating experiment {name}')
 
 	base_file = 'startup'
@@ -46,6 +66,7 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	train_options += ' --regenerate' if regenerate else ' --no-regenerate'
 	train_options += ' --videos' if videos else ' --no-videos'
 	train_options += ' --local' if local else ' --cluster'
+	train_options += f' --inertia-params={inertia_params}'
 
 	script = script.replace('{train_args}', train_options)
 
@@ -104,10 +125,7 @@ def attach_tb(name: str):
 		with open(tb_logfile) as f:
 			lines = f.readlines()
 		time.sleep(1.0)
-	print('')
-	print(f'TensorBoard running on {lines[0]}')
-	print('')
-	print('Running training setup')
+	print(f'\nTensorBoard running on {lines[0]}\n')
 
 
 @click.group()
@@ -141,9 +159,13 @@ def cli():
 @click.option('--videos/--no-videos',
 			  default=False,
 			  help="whether to generate videos or not.")
+@click.option('--inertia-params',
+              type=click.Choice(INERTIA_PARAM_CHOICES),
+              default='4',
+              help="what inertia parameters to learn.")
 def create_command(name: str, system: str, source: str, contactnets: bool,
 				   box: bool, regenerate: bool, dataset_size: int, local: bool,
-				   videos: bool):
+				   videos: bool, inertia_params: str):
 	"""Executes main function with argument interface."""
 
 	# Check if git repository has uncommitted changes.
@@ -161,9 +183,8 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 		if not click.confirm('Continue?'):
 			raise RuntimeError('Make sure you have committed changes!')
 
-	# Check if experiment name already exists.
+	# Check if experiment name was given and if it already exists.
 	assert name is not None
-
 	repo_dir = repo.git.rev_parse("--show-toplevel")
 	storage_name = op.join(repo_dir, 'results', name)
 	if op.isdir(storage_name):
@@ -175,7 +196,8 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 	os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
 	# Continue creating PLL instance.
-	create_instance(name, system, source, contactnets, box, regenerate, dataset_size, local, videos)
+	create_instance(name, system, source, contactnets, box, regenerate,
+					dataset_size, local, videos, inertia_params)
 
 
 
