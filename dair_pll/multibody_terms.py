@@ -177,6 +177,9 @@ class LagrangianTerms(Module):
         # First, convert the current inertial parameters to pi format.
         curr_pi = InertialParameterConverter.theta_to_pi(self.inertial_parameters)
 
+        # Reminder, pi format is:
+        # [m, m * p_x, m * p_y, m * p_z, I_xx, I_yy, I_zz, I_xy, I_xz, I_yz]
+
         # Overwrite any inertial parameters that should not be learned.  In all
         # cases, overwrite the mass of the first object to handle scale
         # invariance.
@@ -184,28 +187,24 @@ class LagrangianTerms(Module):
         curr_pi[0,0] = orig[0,0].item()
 
         mode = self.inertia_mode_txt
-        n_bodies = curr_pi.shape[0]
 
         # Overwrite the moments of inertia unless learning all remaining
         # parameters.
         if mode != 'all':
             curr_pi[:, 4:10] = orig[:, 4:10].detach()
-            # for body_i in range(n_bodies):
-            #     for moment_j in range(4, 10):
-            #         curr_pi[body_i, moment_j] = orig[body_i, moment_j].item()
-
-        # Overwrite the center of masses unless learning those.
-        if (mode == 'none') or ('CoMs' not in mode):
-            curr_pi[:, 1:4] = orig[:, 1:4].detach()
-            # for body_i in range(n_bodies):
-            #     for com_j in range(1, 4):
-            #         curr_pi[body_i, com_j] = orig[body_i, com_j].item()
 
         # Overwrite the masses unless learning those.
         if (mode == 'none') or ('masses' not in mode):
             curr_pi[:, 0] = orig[:, 0].detach()
-            # for body_i in range(1, n_bodies):
-            #     curr_pi[body_i, 0] = orig[body_i, 0].item()
+
+        # Overwrite the center of masses unless learning those.
+        if (mode == 'none') or ('CoMs' not in mode):
+            # pi format has the center of masses multiplied by the mass, so
+            # need to use the new updated mass (which might equal old mass).
+            curr_pi[:, 1:4] = (orig[:, 1:4].detach().T * \
+                               curr_pi[:, 0] / orig[:, 0].detach()).T
+
+        print(f'In inertial_params: {curr_pi}')
 
         # convert back to inertial parameters
         return InertialParameterConverter.pi_to_theta(curr_pi)
