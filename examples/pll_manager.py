@@ -222,6 +222,81 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 
 
 
+@cli.command('sweep')
+@click.argument('sweep_name')
+@click.option('--system',
+			  type=click.Choice(SYSTEMS, case_sensitive=True),
+			  default=CUBE_SYSTEM)
+@click.option('--source',
+			  type=click.Choice(DATA_SOURCES, case_sensitive=True),
+			  default=SIM_SOURCE)
+@click.option('--contactnets/--prediction',
+			  default=True,
+			  help="whether to train on ContactNets or prediction loss.")
+@click.option('--box/--mesh',
+			  default=True,
+			  help="whether to represent geometry as box or mesh.")
+@click.option('--regenerate/--no-regenerate',
+			  default=False,
+			  help="whether to save updated URDF's each epoch or not.")
+@click.option('--local/--cluster',
+			  default=False,
+			  help="whether running script locally or on cluster.")
+@click.option('--inertia-params',
+              type=click.Choice(INERTIA_PARAM_CHOICES),
+              default='4',
+              help="what inertia parameters to learn.")
+@click.option('--true-sys/--wrong-sys',
+              default=False,
+              help="whether to start with correct or poor URDF.")
+def sweep_command(sweep_name: str, system: str, source: str,
+				  contactnets: bool, box: bool, regenerate: bool,
+				  local: bool, inertia_params: str, true_sys: bool):
+	"""Starts a series of instances, sweeping over dataset size.  Note, this
+	defaults to not generating any videos."""
+
+	# Check if git repository has uncommitted changes.
+	repo = git.Repo(search_parent_directories=True)
+
+	commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
+	if commits_ahead > 0:
+		if not click.confirm(f'You are {commits_ahead} commits ahead of' \
+							 + f' main branch, continue?'):
+			raise RuntimeError('Make sure you have pushed commits!')
+
+	changed_files = [item.a_path for item in repo.index.diff(None)]
+	if len(changed_files) > 0:
+		print('Uncommitted changes to:')
+		print(changed_files)
+		if not click.confirm('Continue?'):
+			raise RuntimeError('Make sure you have committed changes!')
+
+	# Check if experiment name was given and if it already exists.
+	assert sweep_name is not None
+	assert '-' not in sweep_name
+	repo_dir = repo.git.rev_parse("--show-toplevel")
+	storage_name = op.join(repo_dir, 'results', f'{sweep_name}-2')
+	if op.isdir(storage_name):
+		raise RuntimeError(f'It appears the sweep experiment name ' \
+			  			   + f'\'{sweep_name}\' is already taken.  Choose' \
+			  			   + f' a new name next time.')
+
+	# No need to clear the results directory because it should be assured
+	# to be empty.
+
+	# Create a PLL instance for every dataset size from 4 to 512 (2^2 to
+	# 2^9).
+	videos = False
+	tb = False
+	for dataset_exponent in range(2, 10):
+		dataset_size = 2**dataset_exponent
+		exp_name = f'{sweep_name}-{dataset_exponent}'
+		create_instance(exp_name, system, source, contactnets, box,
+						regenerate, dataset_size, local, videos,
+						inertia_params, true_sys, tb)
+
+
+
 @cli.command('detach')
 @click.argument('instance')
 def detach(instance: str):
