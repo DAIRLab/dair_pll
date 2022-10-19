@@ -382,7 +382,7 @@ def main(name: str = None,
               default=False,
               help="whether to start with correct or poor URDF.")
 @click.option('--tb/--no-tb',
-              default=True,
+              default=False,
               help="whether to start tensorboard webpage.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, dataset_size: int, local: bool,

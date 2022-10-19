@@ -170,7 +170,7 @@ def cli():
               default=False,
               help="whether to start with correct or poor URDF.")
 @click.option('--tb/--no-tb',
-              default=True,
+              default=False,
               help="start tensorboard webpage or not (made False if local).")
 def create_command(name: str, system: str, source: str, contactnets: bool,
 				   box: bool, regenerate: bool, dataset_size: int, local: bool,
