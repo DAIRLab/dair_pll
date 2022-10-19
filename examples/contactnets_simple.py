@@ -132,7 +132,8 @@ def main(name: str = None,
          local: bool = True,
          videos: bool = False,
          inertia_params: str = '4',
-         true_sys: bool = False):
+         true_sys: bool = False,
+         tb: bool = True):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -146,6 +147,7 @@ def main(name: str = None,
         videos: Generate videos or not.
         inertia_params: What inertial parameters to learn.
         true_sys: Whether to start with the "true" URDF or poor initialization.
+        tb: Start up tensorboard webpage or not.
     """
     # pylint: disable=too-many-locals
 
@@ -261,6 +263,7 @@ def main(name: str = None,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
+        run_tensorboard=tb,
         gen_videos=videos
     )
 
@@ -355,19 +358,19 @@ def main(name: str = None,
               default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
               default=True,
-              help="whether to train/test with ContactNets/prediction loss.")
+              help="whether to train on ContactNets or prediction loss.")
 @click.option('--box/--mesh',
               default=True,
               help="whether to represent geometry as box or mesh.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
-              help="whether save updated URDF's each epoch.")
+              help="whether to save updated URDF's each epoch or not.")
 @click.option('--dataset-size',
               default=512,
               help="dataset size")
 @click.option('--local/--cluster',
-              default=True,
-              help="running script locally or on cluster.")
+              default=False,
+              help="whether running script locally or on cluster.")
 @click.option('--videos/--no-videos',
               default=False,
               help="whether to generate videos or not.")
@@ -377,15 +380,19 @@ def main(name: str = None,
               help="what inertia parameters to learn.")
 @click.option('--true-sys/--wrong-sys',
               default=False,
-              help="whether to start with correct initial URDF or poor initialization.")
+              help="whether to start with correct or poor URDF.")
+@click.option('--tb/--no-tb',
+              default=True,
+              help="whether to start tensorboard webpage.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 videos: bool, inertia_params: str, true_sys: bool):
+                 videos: bool, inertia_params: str, true_sys: bool,
+                 tb: bool):
     """Executes main function with argument interface."""
     assert name is not None
 
     main(name, system, source, contactnets, box, regenerate, dataset_size,
-         local, videos, inertia_params, true_sys)
+         local, videos, inertia_params, true_sys, tb)
 
 
 if __name__ == '__main__':

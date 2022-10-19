@@ -31,8 +31,9 @@ class TensorboardManager:
 	thread: multiprocessing.Process
 	r"""Thread for :py:func:`os.system` call to ``tensorboard``\ ."""
 
-	def __init__(self, folder: str):
+	def __init__(self, folder: str, log_only: bool = False):
 		self.folder = folder
+		self.log_only = log_only
 		self.thread = None
 
 	def create_writer(self) -> None:
@@ -60,6 +61,12 @@ class TensorboardManager:
 		print(f'Launching tensorboard on http://localhost:{port}')
 		self.create_writer()
 		'''
+		# Don't host the tensorboard webpage if told to just log events.
+		if self.log_only or (not 'SLURM_JOBID' in os.environ):
+			print('Logging tensorboard events only (not starting webpage)...')
+			self.create_writer()
+			return
+
 		# get the git repository folder
 		repo = git.Repo(search_parent_directories=True)
 		git_folder = repo.git.rev_parse("--show-toplevel")
@@ -76,19 +83,8 @@ class TensorboardManager:
 		os.system(f'rm {tb_logfile}')
 
 		# make and start tensorboard command
-		if 'SLURM_JOBID' in os.environ:
-			# running on cluster
-			#tboard_cmd = f'sbatch --output={tb_logfile} --job-name=tb_{name} {tb_script} {self.folder} {name}'
-			tboard_cmd = ['sbatch', f'--output={tb_logfile}', f'--job-name=tb_{name}', tb_script, self.folder, name]
-		else:
-			# running locally
-			#tboard_cmd = f'bash {tb_script} {self.folder} {name} &> {tb_logfile}'
-			# tboard_cmd = ['bash', tb_script, self.folder, name, '&>', tb_logfile]
-			print('Skipping tensorboard startup when running locally...')
-			self.create_writer()
-			return
-
-		print(f'\ntboard_cmd:\n{tboard_cmd}\n')
+		tboard_cmd = ['sbatch', f'--output={tb_logfile}', \
+					  f'--job-name=tb_{name}', tb_script, self.folder, name]
 
 		#thread = multiprocessing.Process(target=os.system, args=(tboard_cmd,))
 		#thread.start()

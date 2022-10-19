@@ -191,9 +191,10 @@ class SupervisedLearningExperiment(ABC):
         self.space = base_system.space
         self.data_manager = SystemDataManager(base_system, config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
-        if config.run_tensorboard:
-            self.tensorboard_manager = TensorboardManager(
-                self.data_manager.get_tensorboard_folder())
+        # if config.run_tensorboard:
+        self.tensorboard_manager = TensorboardManager(
+            self.data_manager.get_tensorboard_folder(),
+            log_only = not config.run_tensorboard)
 
     @abstractmethod
     def get_base_system(self) -> System:

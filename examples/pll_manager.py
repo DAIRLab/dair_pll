@@ -41,7 +41,8 @@ INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 def create_instance(name: str, system: str, source: str, contactnets: bool,
 					box: bool, regenerate: bool, dataset_size: int, local: bool,
-					videos: bool, inertia_params: str, true_sys: bool):
+					videos: bool, inertia_params: str, true_sys: bool,
+					tb: bool):
 	print(f'Generating experiment {name}')
 
 	base_file = 'startup'
@@ -68,6 +69,7 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	train_options += ' --local' if local else ' --cluster'
 	train_options += f' --inertia-params={inertia_params}'
 	train_options += ' --true-sys' if true_sys else ' --wrong-sys'
+	train_options += ' --tb' if tb else ' --no-tb'
 
 	script = script.replace('{train_args}', train_options)
 
@@ -144,7 +146,7 @@ def cli():
 			  default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
 			  default=True,
-			  help="whether to train and test with ContactNets/prediction loss.")
+			  help="whether to train on ContactNets or prediction loss.")
 @click.option('--box/--mesh',
 			  default=True,
 			  help="whether to represent geometry as box or mesh.")
@@ -166,10 +168,14 @@ def cli():
               help="what inertia parameters to learn.")
 @click.option('--true-sys/--wrong-sys',
               default=False,
-              help="whether to start with correct initial URDF or poor initialization.")
+              help="whether to start with correct or poor URDF.")
+@click.option('--tb/--no-tb',
+              default=True,
+              help="start tensorboard webpage or not (made False if local).")
 def create_command(name: str, system: str, source: str, contactnets: bool,
 				   box: bool, regenerate: bool, dataset_size: int, local: bool,
-				   videos: bool, inertia_params: str, true_sys: bool):
+				   videos: bool, inertia_params: str, true_sys: bool,
+				   tb: bool):
 	"""Executes main function with argument interface."""
 
 	# Check if git repository has uncommitted changes.
@@ -177,7 +183,8 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 
 	commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
 	if commits_ahead > 0:
-		if not click.confirm(f'You are {commits_ahead} commits ahead of main branch, continue?'):
+		if not click.confirm(f'You are {commits_ahead} commits ahead of' \
+							 + f' main branch, continue?'):
 			raise RuntimeError('Make sure you have pushed commits!')
 
 	changed_files = [item.a_path for item in repo.index.diff(None)]
@@ -187,21 +194,31 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 		if not click.confirm('Continue?'):
 			raise RuntimeError('Make sure you have committed changes!')
 
-	# Check if experiment name was given and if it already exists.
+	# Check if experiment name was given and if it already exists.  We also
+	# don't want hyphens in the name since that's how the sweep instances
+	# are created.
 	assert name is not None
+	assert '-' not in name
 	repo_dir = repo.git.rev_parse("--show-toplevel")
 	storage_name = op.join(repo_dir, 'results', name)
 	if op.isdir(storage_name):
-		if not click.confirm(f'\nPause!  Experiment name \'{name}\' already taken, continue (overwrite)?'):
+		if not click.confirm(f'\nPause!  Experiment name \'{name}\'' \
+							 + f' already taken, continue (overwrite)?'):
 			raise RuntimeError('Choose a new name next time.')
 
 	# clear the results directory, per user input
 	storage_name = os.path.join(repo_dir, 'results', name)
 	os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
+	# Don't open tensorboard webpage if running locally.
+	if local:
+		print(f'Running locally, so won\'t open tensorboard webpage.')
+		tb = False
+
 	# Continue creating PLL instance.
 	create_instance(name, system, source, contactnets, box, regenerate,
-					dataset_size, local, videos, inertia_params, true_sys)
+					dataset_size, local, videos, inertia_params, true_sys,
+					tb)
 
 
 
