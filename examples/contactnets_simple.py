@@ -131,7 +131,8 @@ def main(name: str = None,
          dataset_size: int = 512,
          local: bool = True,
          videos: bool = False,
-         inertia_params: str = '4'):
+         inertia_params: str = '4',
+         true_sys: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -144,6 +145,7 @@ def main(name: str = None,
         local: Running locally versus on cluster.
         videos: Generate videos or not.
         inertia_params: What inertial parameters to learn.
+        true_sys: Whether to start with the "true" URDF or poor initialization.
     """
     # pylint: disable=too-many-locals
 
@@ -155,7 +157,8 @@ def main(name: str = None,
          + f'\n\trunning locally: {local}' \
          + f'\n\tdoing videos: {videos}' \
          + f'\n\tand inertia learning mode: {inertia_params}' \
-         + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}.')
+         + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
+         + f'\n\tand starting with "true" URDF: {true_sys}.')
 
     storage_name = os.path.join(REPO_DIR, 'results', name)
     print(f'\nStoring data at {storage_name}')
@@ -189,9 +192,11 @@ def main(name: str = None,
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
     # Describes the learnable system. The MultibodyLearnableSystem type
-    # learns a multibody system, which is initialized as a provided wrong
-    # urdf, or if not provided, as the original system urdf.
-    if box and (system in WRONG_URDFS.keys()):
+    # learns a multibody system, which is initialized as the original
+    # system URDF, or as a provided wrong initialization.
+    # For now, this is only implemented with the box geometry
+    # parameterization.
+    if box and not true_sys:
         wrong_urdf_asset = WRONG_URDFS[system]['small']
         wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
         init_urdfs = {system: wrong_urdf}
@@ -314,6 +319,7 @@ def main(name: str = None,
             + f'\n\tdoing videos: {videos}' \
             + f'\n\tand inertia learning mode: {inertia_params}' \
             + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}.' \
+            + f'\n\tand starting with "true" URDF: {true_sys}.' \
             + f'\n\nexperiment_config: {experiment_config}\n\n' \
             + orig_data \
             + f'optimizer_config.lr:  {optimizer_config.lr.value}\n\n' \
@@ -369,14 +375,17 @@ def main(name: str = None,
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--true-sys/--wrong-sys',
+              default=False,
+              help="whether to start with correct initial URDF or poor initialization.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 videos: bool, inertia_params: str):
+                 videos: bool, inertia_params: str, true_sys: bool):
     """Executes main function with argument interface."""
     assert name is not None
 
     main(name, system, source, contactnets, box, regenerate, dataset_size,
-         local, videos, inertia_params)
+         local, videos, inertia_params, true_sys)
 
 
 if __name__ == '__main__':

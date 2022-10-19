@@ -41,7 +41,7 @@ INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 def create_instance(name: str, system: str, source: str, contactnets: bool,
 					box: bool, regenerate: bool, dataset_size: int, local: bool,
-					videos: bool, inertia_params: str):
+					videos: bool, inertia_params: str, true_sys: bool):
 	print(f'Generating experiment {name}')
 
 	base_file = 'startup'
@@ -67,6 +67,7 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	train_options += ' --videos' if videos else ' --no-videos'
 	train_options += ' --local' if local else ' --cluster'
 	train_options += f' --inertia-params={inertia_params}'
+	train_options += ' --true-sys' if true_sys else ' --wrong-sys'
 
 	script = script.replace('{train_args}', train_options)
 
@@ -163,9 +164,12 @@ def cli():
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--true-sys/--wrong-sys',
+              default=False,
+              help="whether to start with correct initial URDF or poor initialization.")
 def create_command(name: str, system: str, source: str, contactnets: bool,
 				   box: bool, regenerate: bool, dataset_size: int, local: bool,
-				   videos: bool, inertia_params: str):
+				   videos: bool, inertia_params: str, true_sys: bool):
 	"""Executes main function with argument interface."""
 
 	# Check if git repository has uncommitted changes.
@@ -197,7 +201,7 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 
 	# Continue creating PLL instance.
 	create_instance(name, system, source, contactnets, box, regenerate,
-					dataset_size, local, videos, inertia_params)
+					dataset_size, local, videos, inertia_params, true_sys)
 
 
 
