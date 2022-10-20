@@ -314,19 +314,19 @@ def main(name: str = None,
             orig_data = ''
 
         txt_file.write(f'Starting test with name \'{name}\':' \
-            + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
+            + f'\n\tPerforming on system: {system}\n\twith source: {source}' \
             + f'\n\tusing ContactNets: {contactnets}' \
             + f'\n\twith box: {box}' \
             + f'\n\tregenerate: {regenerate}' \
             + f'\n\trunning locally: {local}' \
             + f'\n\tdoing videos: {videos}' \
             + f'\n\tand inertia learning mode: {inertia_params}' \
-            + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}.' \
+            + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
             + f'\n\tand starting with "true" URDF: {true_sys}.' \
             + f'\n\nexperiment_config: {experiment_config}\n\n' \
             + orig_data \
-            + f'optimizer_config.lr:  {optimizer_config.lr.value}\n\n' \
-            + f'optimizer_config.wd:  {optimizer_config.wd.value}\n\n' \
+            + f'optimizer_config.lr:  {optimizer_config.lr.value}\n' \
+            + f'optimizer_config.wd:  {optimizer_config.wd.value}\n' \
             + f'optimizer_config.batch_size:  {optimizer_config.batch_size.value}\n\n')
         
         train_set, _, _ = experiment.data_manager.get_trajectory_split()
