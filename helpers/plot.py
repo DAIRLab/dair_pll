@@ -34,11 +34,12 @@ plt.rc('ytick', labelsize=20)
                       # 's03-.+': 'Simulation Inertia Mode 3',
                       # 's04-.+': 'Simulation Inertia Mode 4'}
 
-EXPERIMENT_NAMES = ['s00-.+', 's01-.+', 's02-.+', 's03-.+', 's04-.+']
+EXPERIMENT_NAMES = ['s00-.+']  #, 's01-.+', 's02-.+', 's03-.+', 's04-.+']
 
 VALIDATION_LOSS = 'valid_model_loss_mean'
 
 RESULTS_FOLDER = file_utils.RESULTS_DIR
+PLOTS_FOLDER = file_utils.PLOTS_DIR
 
 SYSTEMS = ['elbow', 'cube']
 SOURCES = ['real', 'simulation']
@@ -120,13 +121,24 @@ def load_results_from_experiment(exp_name):
     scalars_list.append(convert_scalars_line_to_dict(lines[start_line+1]))
 
     # Collect all the other epoch scalars and statistics.
-    # The text file should have epoch numbers listed at every 5th line
-    # followed by scalars, statistics, the training loss, then a blank line.
+    # The text file should have epoch numbers listed on a line followed
+    # by one line of scalars, possibly multiple lines of statistics,
+    # one line of the training loss, then a blank line.
     i = start_line + 4
     while i+1 < len(lines):
+        if 'scalars' not in lines[i]:
+            i += 1
+            continue
+
         scalars_list.append(convert_scalars_line_to_dict(lines[i]))
-        stats_list.append(convert_stats_line_to_dict(lines[i+1]))
-        i += 5
+
+        i += 1
+        stats_line = lines[i]
+        while 'train_loss' not in lines[i+1]:
+            stats_line += lines[i+1]
+            i += 1
+
+        stats_list.append(convert_stats_line_to_dict(stats_line))
 
     return experiment_config, scalars_list, stats_list
 
@@ -160,11 +172,41 @@ def load_results(instance_regex):
             
     return results
 
+"""Make a plot of some statistic given the results dictionary."""
+def plot_statistics_key_over_epochs(results_dict, key):
+    fig = plt.figure()
+    ax = plt.gca()
+
+    # for every experiment
+    for exp in results_dict.keys():
+        # grab the right data
+        stats_list = results_dict[exp][2]
+
+        n_epochs = len(stats_list)
+        stats = []
+
+        for i in range(1, n_epochs):
+            stats.append(stats_list[i][key])
+
+        ax.plot(range(1, n_epochs), stats, linewidth=3, label=exp)
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    ax.yaxis.set_minor_formatter(FormatStrFormatter("%.1f"))
+    ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+
+    plt.xlabel('Epochs')
+    plt.ylabel(key)
+    plt.legend(prop=dict(weight='bold'))
+    fig.set_size_inches(13, 13)
+    fig.savefig(f'{PLOTS_FOLDER}/{key}.png', dpi=100)
+
+
 all_results = {}
 for sweep_name in EXPERIMENT_NAMES:
     results = load_results(sweep_name)
     all_results = {**all_results, **results}
 
+plot_statistics_key_over_epochs(all_results, VALIDATION_LOSS)
 
 # exp_config, scalar_list, stat_list = load_results_from_experiment('t19')
 # scalars, stats = get_learned_model(scalar_list, stat_list)
