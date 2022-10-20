@@ -249,7 +249,7 @@ class SystemDataManager:
         n_on_disk = self.n_on_disk
         if not hasattr(self, 'train_set'):
             N_train = round(n_on_disk * config.train_fraction)
-            N_valid = round(n_on_disk * config.train_fraction)
+            N_valid = round(n_on_disk * config.valid_fraction)
             N_test = round(n_on_disk * config.test_fraction)
             N_test = min(N_test, n_on_disk - N_train - N_valid)
             N_tot = sum([N_train, N_test, N_valid])
@@ -272,7 +272,7 @@ class SystemDataManager:
                 new_count = n_on_disk_new - n_on_disk
                 self.n_on_disk = n_on_disk_new
                 N_train = round(new_count * config.train_fraction)
-                N_valid = round(new_count * config.train_fraction)
+                N_valid = round(new_count * config.valid_fraction)
                 N_test = round(new_count * config.test_fraction)
                 N_tot = sum([N_train, N_test, N_valid])
                 new_traj_set = self.get_trajectories(n_on_disk, n_on_disk_new,
