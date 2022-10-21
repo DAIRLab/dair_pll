@@ -330,7 +330,16 @@ def main(name: str = None,
             + f'optimizer_config.batch_size:  {optimizer_config.batch_size.value}\n\n')
         
         train_set, _, _ = experiment.data_manager.get_trajectory_split()
-        learned_system = experiment.get_learned_system(torch.cat(train_set.trajectories))
+        if hasattr(experiment.data_manager, 'train_indices'):
+            train_indices = experiment.data_manager.train_indices
+            valid_indices = experiment.data_manager.valid_indices
+            test_indices = experiment.data_manager.test_indices
+            txt_file.write(f'training set data indices: {train_indices}\n' \
+                + f'validation set data indices: {valid_indices}\n' \
+                + f'test set data indices: {test_indices}\n\n')
+
+        learned_system = experiment.get_learned_system(torch.cat(
+                            train_set.trajectories))
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         txt_file.write(f'Epoch 0:\n\tscalars: {scalars}\n\n')
         txt_file.close()
@@ -342,8 +351,7 @@ def main(name: str = None,
 
     # Save the final urdf.
     print(f'\nSaving the final learned box parameters.')
-    train_set, _, _ = experiment.data_manager.get_trajectory_split()
-    learned_system = experiment.get_learned_system(torch.cat(train_set.trajectories))
+    learned_system = experiment.get_learned_system(None)
     learned_system.generate_updated_urdfs(storage_name)
 
 

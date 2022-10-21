@@ -234,6 +234,8 @@ class SystemDataManager:
         trajectory_order = torch.randperm(N_end - N_begin) + N_begin
         selection = trajectory_order[:N_requested]
 
+        self.ordered_set_indices = selection
+
         data = [torch.load(file_utils.trajectory_file(self.config.storage, i))
                 for i in selection]
         return data
@@ -262,7 +264,7 @@ class SystemDataManager:
         n_on_disk = self.n_on_disk
         if not hasattr(self, 'train_set'):
             N_train = round(n_on_disk * config.train_fraction)
-            N_valid = round(n_on_disk * config.train_fraction)
+            N_valid = round(n_on_disk * config.valid_fraction)
             N_test = round(n_on_disk * config.test_fraction)
             N_test = min(N_test, n_on_disk - N_train - N_valid)
             N_tot = sum([N_train, N_test, N_valid])
@@ -275,6 +277,11 @@ class SystemDataManager:
             valid_traj = traj_set[:N_valid]
             test_traj = traj_set[N_valid:]
 
+            self.train_indices = self.ordered_set_indices[:N_train]
+            traj_indices = self.ordered_set_indices[N_train:]
+            self.valid_indices = traj_indices[:N_valid]
+            self.test_indices = traj_indices[N_valid:]
+
             self.train_set = self.make_trajectory_set(train_traj)
             self.valid_set = self.make_trajectory_set(valid_traj)
             self.test_set = self.make_trajectory_set(test_traj)
@@ -285,7 +292,7 @@ class SystemDataManager:
                 new_count = n_on_disk_new - n_on_disk
                 self.n_on_disk = n_on_disk_new
                 N_train = round(new_count * config.train_fraction)
-                N_valid = round(new_count * config.train_fraction)
+                N_valid = round(new_count * config.valid_fraction)
                 N_test = round(new_count * config.test_fraction)
                 N_tot = sum([N_train, N_test, N_valid])
                 new_traj_set = self.get_trajectories(n_on_disk, n_on_disk_new,
