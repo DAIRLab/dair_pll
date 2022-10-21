@@ -14,10 +14,12 @@ import git
 
 from dair_pll import file_utils
 from dair_pll.dataset_management import DataConfig, DataGenerationConfig
-from dair_pll.drake_experiment import DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
-                                      MultibodyLearnableSystemConfig, MultibodyLosses
-from dair_pll.experiment import SupervisedLearningExperimentConfig, OptimizerConfig, \
-                                default_epoch_callback
+from dair_pll.drake_experiment import DrakeMultibodyLearnableExperiment, \
+                                      DrakeSystemConfig, \
+                                      MultibodyLearnableSystemConfig, \
+                                      MultibodyLosses
+from dair_pll.experiment import SupervisedLearningExperimentConfig, \
+                                OptimizerConfig, default_epoch_callback
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
 
@@ -334,9 +336,9 @@ def main(name: str = None,
             train_indices = experiment.data_manager.train_indices
             valid_indices = experiment.data_manager.valid_indices
             test_indices = experiment.data_manager.test_indices
-            txt_file.write(f'training set data indices: {train_indices}\n' \
-                + f'validation set data indices: {valid_indices}\n' \
-                + f'test set data indices: {test_indices}\n\n')
+            txt_file.write(f'training set data indices:  {train_indices}\n' \
+                + f'validation set data indices:  {valid_indices}\n' \
+                + f'test set data indices:  {test_indices}\n\n')
 
         learned_system = experiment.get_learned_system(torch.cat(
                             train_set.trajectories))

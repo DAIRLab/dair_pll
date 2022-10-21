@@ -34,7 +34,7 @@ plt.rc('ytick', labelsize=20)
                       # 's03-.+': 'Simulation Inertia Mode 3',
                       # 's04-.+': 'Simulation Inertia Mode 4'}
 
-EXPERIMENT_NAMES = ['s00-.+']  #, 's01-.+', 's02-.+', 's03-.+', 's04-.+']
+SWEEP_NAMES = ['s00-.+', 's01-.+', 's02-.+', 's03-.+', 's04-.+']
 
 VALIDATION_LOSS = 'valid_model_loss_mean'
 
@@ -51,8 +51,10 @@ DATASET_SIZES = [4, 8, 16, 32, 64, 128, 256, 512]
 CONFIG_KEYS = ['system', 'source', 'loss_type', 'geometry_type',
                'inertia_mode', 'initial_urdf', 'dataset_size']
 
-"""Get the scalars and statistics per epoch, and the experiment settings
-from the params.txt file of the experiment name."""
+"""Get the scalars and statistics per epoch, the experiment settings from the
+params.txt file of the experiment name, and a dictionary of the dataset indices
+for each train/valid/test set, returned as a tuple of these four elements
+(exp_config, datasets, scalars_list, stats_list)."""
 def load_results_from_experiment(exp_name):
     txt_file = f'{RESULTS_FOLDER}/{exp_name}/params.txt'
 
@@ -113,7 +115,26 @@ def load_results_from_experiment(exp_name):
         dict_str = '{' + dict_str.replace('\'', '\"')
         return json.loads(dict_str)
 
+    def compile_datasets(beginning_lines):
+        i = 11
+        while 'indices' not in beginning_lines[i]: i += 1
+
+        datasets = {}
+
+        train_indices = beginning_lines[i].split('[')[1].split(']')[0]
+        datasets['train'] = [int(j) for j in train_indices.split(', ')]
+
+        valid_indices = beginning_lines[i+1].split('[')[1].split(']')[0]
+        datasets['valid'] = [int(j) for j in valid_indices.split(', ')]
+
+        test_indices = beginning_lines[i+2].split('[')[1].split(']')[0]
+        datasets['test'] = [int(j) for j in test_indices.split(', ')]
+
+        return datasets
+
     experiment_config = compile_experiment_config_dict(lines[:start_line])
+
+    datasets = compile_datasets(lines[:start_line])
 
     scalars_list = []
     stats_list = [None]
@@ -140,11 +161,27 @@ def load_results_from_experiment(exp_name):
 
         stats_list.append(convert_stats_line_to_dict(stats_line))
 
-    return experiment_config, scalars_list, stats_list
+    return (experiment_config, datasets, scalars_list, stats_list)
+
+"""Make a dictionary with keys for experiment names and entries as a
+4-tuple of experiment configs, dataset indices, scalar list, and statistics
+list."""
+def load_results(instance_regex):
+    pattern = re.compile(instance_regex + '\Z')
+    results = {}
+    for instance_name in os.listdir(RESULTS_FOLDER):
+        if pattern.match(instance_name):
+            print(f'Found {instance_name}...')
+
+            # get the results
+            results[instance_name] = load_results_from_experiment(instance_name)
+            
+    return results
 
 """Get the scalars and statistics corresponding to the best validation
-loss."""
-def get_learned_model(scalars_list, stats_list):
+loss and the initial scalars upon initialization, returned as a 3-tuple
+of (initial_scalars, best_scalars, best_stats)."""
+def get_initial_and_learned_model(scalars_list, stats_list):
     lowest_valid_loss = 1e6
     lowest_valid_idx = 1
 
@@ -154,23 +191,8 @@ def get_learned_model(scalars_list, stats_list):
             lowest_valid_loss = valid_loss
             lowest_valid_idx = i
 
-    return scalars_list[lowest_valid_idx], stats_list[lowest_valid_idx]
-
-"""Make a dictionary with keys for experiment names and entries as a
-3-tuple of experiment configs, scalar list, and statistics list."""
-def load_results(instance_regex):
-    pattern = re.compile(instance_regex + '\Z')
-    results = {}
-    for instance_name in os.listdir(RESULTS_FOLDER):
-        if pattern.match(instance_name):
-            print(f'Found {instance_name}...')
-
-            # get the results
-            exp_config, scalar_list, stat_list = \
-                load_results_from_experiment(instance_name)
-            results[instance_name] = (exp_config, scalar_list, stat_list)
-            
-    return results
+    return (scalars_list[0], scalars_list[lowest_valid_idx],
+           stats_list[lowest_valid_idx])
 
 """Make a plot of some statistic given the results dictionary."""
 def plot_statistics_key_over_epochs(results_dict, key):
@@ -199,18 +221,21 @@ def plot_statistics_key_over_epochs(results_dict, key):
     plt.legend(prop=dict(weight='bold'))
     fig.set_size_inches(13, 13)
     fig.savefig(f'{PLOTS_FOLDER}/{key}.png', dpi=100)
+    print(f'Saved {PLOTS_FOLDER}/{key}.png')
 
 
-all_results = {}
-for sweep_name in EXPERIMENT_NAMES:
-    results = load_results(sweep_name)
-    all_results = {**all_results, **results}
+if __name__ == "__main__":
+    all_results = {}
+    for sweep_name in SWEEP_NAMES:
+        results = load_results(sweep_name)
+        all_results = {**all_results, **results}
 
-plot_statistics_key_over_epochs(all_results, VALIDATION_LOSS)
+    plot_statistics_key_over_epochs(all_results, VALIDATION_LOSS)
 
-# exp_config, scalar_list, stat_list = load_results_from_experiment('t19')
-# scalars, stats = get_learned_model(scalar_list, stat_list)
-pdb.set_trace()
+    exp_config, dataset_indices, scalar_list, stat_list = \
+              load_results_from_experiment('t19')
+    scalars, stats = get_learned_model(scalar_list, stat_list)
+    pdb.set_trace()
 
 
  
