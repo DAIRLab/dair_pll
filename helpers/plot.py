@@ -40,6 +40,7 @@ VALIDATION_LOSS = 'valid_model_loss_mean'
 
 RESULTS_FOLDER = file_utils.RESULTS_DIR
 PLOTS_FOLDER = file_utils.PLOTS_DIR
+LOG_FOLDER = file_utils.LOG_DIR
 
 SYSTEMS = ['elbow', 'cube']
 SOURCES = ['real', 'simulation']
@@ -50,11 +51,14 @@ INITIAL_URDF = ['correct', 'wrong']
 DATASET_SIZES = [4, 8, 16, 32, 64, 128, 256, 512]
 CONFIG_KEYS = ['system', 'source', 'loss_type', 'geometry_type',
                'inertia_mode', 'initial_urdf', 'dataset_size', 'timestep']
+RESULTS_KEYS = ['experiment_config', 'datasets', 'scalars_list', 'stats_list',
+                'success']
 
 """Get the scalars and statistics per epoch, the experiment settings from the
-params.txt file of the experiment name, and a dictionary of the dataset indices
-for each train/valid/test set, returned as a tuple of these four elements
-(exp_config, datasets, scalars_list, stats_list)."""
+params.txt file of the experiment name, a dictionary of the dataset indices
+for each train/valid/test set, and whether the training process went to
+completion, returned as a dictionary of these five elements (exp_config,
+datasets, scalars_list, stats_list, success)."""
 def load_results_from_experiment(exp_name):
     txt_file = f'{RESULTS_FOLDER}/{exp_name}/params.txt'
 
@@ -122,10 +126,10 @@ def load_results_from_experiment(exp_name):
     def compile_datasets(beginning_lines):
         datasets = {}
 
+        # Get the start and end of the training set indices.
         i = 11
         while 'indices' not in beginning_lines[i]: i += 1
         line = beginning_lines[i]
-        
         j = i+1
         while 'indices' not in beginning_lines[j]:
             line += beginning_lines[j]
@@ -134,6 +138,7 @@ def load_results_from_experiment(exp_name):
         train_indices = line.split('[')[1].split(']')[0]
         datasets['train'] = [int(k) for k in train_indices.split(',') if k != '\n']
 
+        # Get the start and end of the validation set indices.
         i = j
         j = i+1
         line = beginning_lines[i]
@@ -144,6 +149,7 @@ def load_results_from_experiment(exp_name):
         valid_indices = line.split('[')[1].split(']')[0]
         datasets['valid'] = [int(k) for k in valid_indices.split(',') if k != '\n']
 
+        # Get the start and end of the test set indices.
         i = j
         j = i+1
         line = beginning_lines[i]
@@ -185,11 +191,21 @@ def load_results_from_experiment(exp_name):
 
         stats_list.append(convert_stats_line_to_dict(stats_line))
 
-    return (experiment_config, datasets, scalars_list, stats_list)
+    log_file = f'{LOG_FOLDER}/train_{exp_name}.txt'
+    with open(log_file, 'r') as f:
+        lines = f.readlines()
+    
+    success = True if 'Saving the final' in lines[-1] else False
 
-"""Make a dictionary with keys for experiment names and entries as a
-4-tuple of experiment configs, dataset indices, scalar list, and statistics
-list."""
+    return {'experiment_config': experiment_config,
+            'datasets': datasets,
+            'scalars_list': scalars_list,
+            'stats_list': stats_list,
+            'success': success}
+
+"""Make a dictionary with keys for experiment names and entries as another
+dictionary of experiment configs, dataset indices, scalar list, statistics list,
+and training completion success."""
 def load_results(instance_regex):
     pattern = re.compile(instance_regex + '\Z')
     results = {}
@@ -225,8 +241,13 @@ def plot_statistics_key_over_epochs(results_dict, key):
 
     # for every experiment
     for exp in results_dict.keys():
+        # check if went to completion or not
+        if not results_dict[exp]['success']:
+            print(f'Experiment {exp} did not complete -- skipping')
+            continue
+
         # grab the right data
-        stats_list = results_dict[exp][3]
+        stats_list = results_dict[exp]['stats_list']
 
         n_epochs = len(stats_list)
         stats = []
