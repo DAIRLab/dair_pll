@@ -99,11 +99,13 @@ class MultibodyLearnableSystem(System):
             self.multibody_terms, urdf_dir)
         new_urdfs = {}
 
-        # saves new urdfs with identical file basenames to original ones,
-        # but in new folder.
+        # saves new urdfs with original file basenames plus '_learned' in new
+        # folder.
         for urdf_name, new_urdf_string in new_urdf_strings.items():
             old_urdf_filename = path.basename(old_urdfs[urdf_name])
-            new_urdf_path = path.join(urdf_dir, old_urdf_filename)
+            new_urdf_filename = old_urdf_filename.split('.')[0] + \
+                                f'_learned.urdf'
+            new_urdf_path = path.join(urdf_dir, new_urdf_filename)
             with open(new_urdf_path, 'w', encoding="utf8") as new_urdf_file:
                 new_urdf_file.write(new_urdf_string)
             new_urdfs[urdf_name] = new_urdf_path
