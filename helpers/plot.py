@@ -49,7 +49,7 @@ INERTIA_MODES = ['none', 'masses', 'CoMs', 'CoMsandmasses', 'all']
 INITIAL_URDF = ['correct', 'wrong']
 DATASET_SIZES = [4, 8, 16, 32, 64, 128, 256, 512]
 CONFIG_KEYS = ['system', 'source', 'loss_type', 'geometry_type',
-               'inertia_mode', 'initial_urdf', 'dataset_size']
+               'inertia_mode', 'initial_urdf', 'dataset_size', 'timestep']
 
 """Get the scalars and statistics per epoch, the experiment settings from the
 params.txt file of the experiment name, and a dictionary of the dataset indices
@@ -89,6 +89,10 @@ def load_results_from_experiment(exp_name):
 
         config_line = 11
         while 'n_pop' not in lns[config_line]:  config_line += 1
+
+        # get the timestep
+        experiment_config['timestep'] = float(lns[config_line].split(
+                                            'dt=')[1].split(',')[0])
 
         if experiment_config['source'] == 'simulation':
             # get the dataset size from n_pop
