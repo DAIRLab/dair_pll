@@ -288,7 +288,7 @@ def main(name: str = None,
 
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         stats = {}
-        # pdb.set_trace()
+
         for key in ['train_model_trajectory_mse', 'valid_model_trajectory_mse',
                     'train_model_trajectory_mse_mean', 'valid_model_trajectory_mse_mean',
                     'train_delta_v_squared_mean', 'valid_delta_v_squared_mean',
@@ -339,12 +339,6 @@ def main(name: str = None,
             txt_file.write(f'training set data indices:  {train_indices}\n' \
                 + f'validation set data indices:  {valid_indices}\n' \
                 + f'test set data indices:  {test_indices}\n\n')
-
-        learned_system = experiment.get_learned_system(torch.cat(
-                            train_set.trajectories))
-        scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
-        txt_file.write(f'Epoch 0:\n\tscalars: {scalars}\n\n')
-        txt_file.close()
 
     # Trains system.
     _, _, learned_system = experiment.train(

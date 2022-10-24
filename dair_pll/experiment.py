@@ -424,7 +424,7 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=too-many-locals
         start_eval_time = time.time()
         statistics = {}
-        if epoch > 0 and (epoch % self.config.full_evaluation_period) == 0:
+        if (epoch % self.config.full_evaluation_period) == 0:
             train_set, valid_set, _ = self.data_manager.get_trajectory_split()
             n_train_eval = min(len(train_set.trajectories),
                               self.config.full_evaluation_samples)
@@ -515,8 +515,9 @@ class SupervisedLearningExperiment(ABC):
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
         learned_system.eval()
-        self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
+        self.per_epoch_evaluation(0, learned_system, training_loss, 0.)
         learned_system.train()
+        epoch_callback(0, learned_system, training_loss, best_valid_loss)
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
             if self.config.data_config.dynamic_updates_from is not None:
