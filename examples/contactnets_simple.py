@@ -347,13 +347,12 @@ def main(name: str = None,
         txt_file.close()
 
     # Trains system.
-    experiment.train(
+    _, _, learned_system = experiment.train(
         regenerate_callback if regenerate else log_callback #default_epoch_callback
     )
 
     # Save the final urdf.
     print(f'\nSaving the final learned box parameters.')
-    learned_system = experiment.get_learned_system(None)
     learned_system.generate_updated_urdfs(storage_name)
 
 
