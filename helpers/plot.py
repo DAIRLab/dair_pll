@@ -34,7 +34,7 @@ plt.rc('ytick', labelsize=20)
                       # 's03-.+': 'Simulation Inertia Mode 3',
                       # 's04-.+': 'Simulation Inertia Mode 4'}
 
-SWEEP_NAMES = ['s00-.+', 's01-.+', 's02-.+', 's03-.+', 's04-.+']
+SWEEP_NAMES = ['s05-.+', 's06-.+', 's07-.+', 's08-.+', 's09-.+']
 
 VALIDATION_LOSS = 'valid_model_loss_mean'
 
@@ -120,19 +120,39 @@ def load_results_from_experiment(exp_name):
         return json.loads(dict_str)
 
     def compile_datasets(beginning_lines):
-        i = 11
-        while 'indices' not in beginning_lines[i]: i += 1
-
         datasets = {}
 
-        train_indices = beginning_lines[i].split('[')[1].split(']')[0]
-        datasets['train'] = [int(j) for j in train_indices.split(', ')]
+        i = 11
+        while 'indices' not in beginning_lines[i]: i += 1
+        line = beginning_lines[i]
+        
+        j = i+1
+        while 'indices' not in beginning_lines[j]:
+            line += beginning_lines[j]
+            j += 1
 
-        valid_indices = beginning_lines[i+1].split('[')[1].split(']')[0]
-        datasets['valid'] = [int(j) for j in valid_indices.split(', ')]
+        train_indices = line.split('[')[1].split(']')[0]
+        datasets['train'] = [int(k) for k in train_indices.split(',') if k != '\n']
 
-        test_indices = beginning_lines[i+2].split('[')[1].split(']')[0]
-        datasets['test'] = [int(j) for j in test_indices.split(', ')]
+        i = j
+        j = i+1
+        line = beginning_lines[i]
+        while 'indices' not in beginning_lines[j]:
+            line += beginning_lines[j]
+            j += 1
+
+        valid_indices = line.split('[')[1].split(']')[0]
+        datasets['valid'] = [int(k) for k in valid_indices.split(',') if k != '\n']
+
+        i = j
+        j = i+1
+        line = beginning_lines[i]
+        while j < len(beginning_lines):
+            line += beginning_lines[j]
+            j += 1
+
+        test_indices = line.split('[')[1].split(']')[0]
+        datasets['test'] = [int(k) for k in test_indices.split(',') if k != '\n']
 
         return datasets
 
@@ -206,7 +226,7 @@ def plot_statistics_key_over_epochs(results_dict, key):
     # for every experiment
     for exp in results_dict.keys():
         # grab the right data
-        stats_list = results_dict[exp][2]
+        stats_list = results_dict[exp][3]
 
         n_epochs = len(stats_list)
         stats = []
