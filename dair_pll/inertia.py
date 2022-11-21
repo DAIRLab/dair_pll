@@ -84,6 +84,7 @@ from typing import Any, Tuple, List, Dict
 
 import torch
 from torch import Tensor
+import pdb
 
 from dair_pll.drake_utils import DrakeSpatialInertia
 from dair_pll.tensor_utils import deal
@@ -226,7 +227,7 @@ class InertialParameterConverter:
         :py:attr:`~pydrake.multibody.tree.SpatialInertia` object."""
         mass = number_to_float(spatial_inertia.get_mass())
         p_BoBcm_B = spatial_inertia.get_com()
-        I_BBcm_B = spatial_inertia.CalcRotationalInertia()
+        I_BBcm_B = spatial_inertia.Shift(p_BoBcm_B).CalcRotationalInertia()
 
         mass_list = [
             mass * number_to_float(coordinate) for coordinate in p_BoBcm_B
