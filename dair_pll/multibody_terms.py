@@ -39,7 +39,8 @@ from pydrake.geometry import SceneGraphInspector, GeometryId  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant_  # type: ignore
 from pydrake.multibody.tree import JacobianWrtVariable  # type: ignore
 from pydrake.multibody.tree import ModelInstanceIndex  # type: ignore
-from pydrake.multibody.tree import SpatialInertia_, UnitInertia_  # type: ignore
+from pydrake.multibody.tree import SpatialInertia_, UnitInertia_, \
+                                   RotationalInertia_  # type: ignore
 from pydrake.symbolic import Expression, Variable  # type: ignore
 from pydrake.symbolic import MakeVectorVariable, Jacobian  # type: ignore
 from pydrake.systems.framework import Context  # type: ignore
@@ -246,8 +247,10 @@ class LagrangianTerms(Module):
                 InertialParameterConverter.drake_to_theta(
                     body.CalcSpatialInertiaInBodyFrame(context)))
 
-            body_spatial_inertia = SpatialInertia_[Expression](
-                mass, p_BoBcm_B, UnitInertia_[Expression](*I_BBcm_B))
+            body_spatial_inertia = \
+                SpatialInertia_[Expression].MakeFromCentralInertia(
+                    mass=mass, p_PScm_E=p_BoBcm_B,
+                    I_SScm_E=RotationalInertia_[Expression](*I_BBcm_B))
 
             body.SetMass(context, mass)
             body.SetSpatialInertiaInBodyFrame(context, body_spatial_inertia)
