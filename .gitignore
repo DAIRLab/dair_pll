@@ -27,6 +27,7 @@ docs/*
 
 # virtualenv
 *sv2_env*
+*pll_env*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
