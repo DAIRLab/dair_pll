@@ -215,7 +215,12 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        L = torch.linalg.cholesky(torch.inverse((M)))
+        try:
+            L = torch.linalg.cholesky(torch.inverse((M)))
+        except:
+            pdb.set_trace()
+            print(f'M matrix: {M}')
+            
         Q = delassus + eps * torch.eye(3 * n_contacts)
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
@@ -261,7 +266,7 @@ class MultibodyLearnableSystem(System):
 
         # divide by total mass so loss does not encourage learning zero mass
         # total_mass = M[0, 3, 3]
-        total_mass = sum(self.multibody_terms.lagrangian_terms.pi()[:,0])
+        total_mass = sum(self.multibody_terms.lagrangian_terms.pi_cm()[:,0])
         loss /= total_mass
 
         # pdb.set_trace()

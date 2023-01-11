@@ -165,7 +165,7 @@ class LagrangianTerms(Module):
                                              requires_grad=True)
 
         # store the original inertial parameters since not all will be learned
-        self.original_pi_params = InertialParameterConverter.theta_to_pi(
+        self.original_pi_cm_params = InertialParameterConverter.theta_to_pi_cm(
                                     self.inertial_parameters)
 
         # keep track of what inertial parameters will or will not be learned
@@ -175,8 +175,9 @@ class LagrangianTerms(Module):
         # Make a method here instead of accessing the parameters directly so we
         # can overwrite any parameters that will not be learned.
 
-        # First, convert the current inertial parameters to pi format.
-        curr_pi = InertialParameterConverter.theta_to_pi(self.inertial_parameters)
+        # First, convert the current inertial parameters to pi_cm format.
+        curr_pi_cm = InertialParameterConverter.theta_to_pi_cm(
+                    self.inertial_parameters)
 
         # Reminder, pi format is:
         # [m, m * p_x, m * p_y, m * p_z, I_xx, I_yy, I_zz, I_xy, I_xz, I_yz]
@@ -184,29 +185,29 @@ class LagrangianTerms(Module):
         # Overwrite any inertial parameters that should not be learned.  In all
         # cases, overwrite the mass of the first object to handle scale
         # invariance.
-        orig = self.original_pi_params
-        curr_pi[0,0] = orig[0,0].item()
+        orig = self.original_pi_cm_params
+        curr_pi_cm[0,0] = orig[0,0].item()
 
         mode = self.inertia_mode_txt
 
         # Overwrite the moments of inertia unless learning all remaining
         # parameters.
         if mode != 'all':
-            curr_pi[:, 4:10] = orig[:, 4:10].detach()
+            curr_pi_cm[:, 4:10] = orig[:, 4:10].detach()
 
         # Overwrite the masses unless learning those.
         if (mode == 'none') or ('masses' not in mode):
-            curr_pi[:, 0] = orig[:, 0].detach()
+            curr_pi_cm[:, 0] = orig[:, 0].detach()
 
         # Overwrite the center of masses unless learning those.
         if (mode == 'none') or ('CoMs' not in mode):
             # pi format has the center of masses multiplied by the mass, so
             # need to use the new updated mass (which might equal old mass).
-            curr_pi[:, 1:4] = (orig[:, 1:4].detach().T * \
-                               curr_pi[:, 0] / orig[:, 0].detach()).T
+            curr_pi_cm[:, 1:4] = (orig[:, 1:4].detach().T * \
+                               curr_pi_cm[:, 0] / orig[:, 0].detach()).T
 
         # convert back to inertial parameters
-        return InertialParameterConverter.pi_to_theta(curr_pi)
+        return InertialParameterConverter.pi_cm_to_theta(curr_pi_cm)
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -251,6 +252,8 @@ class LagrangianTerms(Module):
                 SpatialInertia_[Expression].MakeFromCentralInertia(
                     mass=mass, p_PScm_E=p_BoBcm_B,
                     I_SScm_E=RotationalInertia_[Expression](*I_BBcm_B))
+                # SpatialInertia_[Expression](mass, p_BoBcm_B, 
+                #                       UnitInertia_[Expression](*I_BBcm_B))
 
             body.SetMass(context, mass)
             body.SetSpatialInertiaInBodyFrame(context, body_spatial_inertia)
@@ -258,9 +261,10 @@ class LagrangianTerms(Module):
         # pylint: disable=E1103
         return torch.stack(body_parameter_list), np.vstack(body_variable_list)
 
-    def pi(self) -> Tensor:
-        """Returns inertial parameters in human-understandable ``pi``-format"""
-        return InertialParameterConverter.theta_to_pi(self.inertial_params())
+    def pi_cm(self) -> Tensor:
+        """Returns inertial parameters in human-understandable ``pi_cm``
+        -format"""
+        return InertialParameterConverter.theta_to_pi_cm(self.inertial_params())
 
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
         """Evaluates Lagrangian dynamics terms at given state and input.
@@ -278,8 +282,8 @@ class LagrangianTerms(Module):
         # pylint: disable=not-callable
         assert self.mass_matrix is not None
         assert self.lagrangian_forces is not None
-        inertia = InertialParameterConverter.pi_to_drake_spatial_inertia(
-            self.pi())
+        inertia = InertialParameterConverter.pi_cm_to_drake_spatial_inertia(
+            self.pi_cm())
         inertia = inertia.expand(q.shape[:-1] + inertia.shape)
 
         M = self.mass_matrix(q, inertia)
@@ -588,9 +592,9 @@ class MultibodyTerms(Module):
                 self.plant_diagram.plant,
                 self.plant_diagram.model_ids)
 
-        for body_pi, body_id in zip(self.lagrangian_terms.pi(), all_body_ids):
+        for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(), all_body_ids):
             # include inertial terms
-            body_scalars = InertialParameterConverter.pi_to_scalars(body_pi)
+            body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
 
             scalars.update({
                 f'{body_id}_{scalar_name}': scalar
