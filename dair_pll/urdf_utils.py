@@ -242,14 +242,15 @@ class UrdfGeometryRepresentationFactory:
         return _MESH, {_FILENAME: mesh_name}
 
 
-def fill_link_with_parameterization(element: ElementTree.Element, pi: Tensor,
+def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
                                     geometries: List[CollisionGeometry],
                                     output_dir: str) -> None:
     """Convert pytorch inertial and geometric representations to URDF elements.
 
     Args:
         element: XML "link" tag in which representation is stored.
-        pi: (10,) inertial representation of link in ``pi`` parameterization.
+        pi_cm: (10,) inertial representation of link in ``pi_cm``
+                parameterization.
         geometries: All geometries attached to body.
         output_dir: File directory to store helper files (e.g., meshes).
 
@@ -264,7 +265,7 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi: Tensor,
         raise NotImplementedError("generating a URDF with multiple geometries"
                                   "per body not implemented yet.")
     mass, p_BoBcm_B, I_BBcm_B = \
-        InertialParameterConverter.pi_to_urdf(pi)
+        InertialParameterConverter.pi_cm_to_urdf(pi_cm)
 
     body_inertial_element = UrdfFindOrDefault.find(element, _INERTIAL)
 
@@ -311,7 +312,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
         drake_utils.get_all_inertial_bodies(
             multibody_terms.plant_diagram.plant,
             multibody_terms.plant_diagram.model_ids)
-    pi = multibody_terms.lagrangian_terms.pi()
+    pi_cm = multibody_terms.lagrangian_terms.pi_cm()
 
     for urdf_name, urdf in multibody_terms.urdfs.items():
 
@@ -341,7 +342,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                          multibody_terms.contact_terms.geometries[index])
                     for index in body_geometry_indices
                 ]
-                fill_link_with_parameterization(element, pi[body_index, :],
+                fill_link_with_parameterization(element, pi_cm[body_index, :],
                                                 body_geometries, output_dir)
 
         register_namespace('drake', 'https://drake.mit.edu/')

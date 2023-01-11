@@ -197,6 +197,8 @@ class LagrangianTerms(Module):
                 SpatialInertia_[Expression].MakeFromCentralInertia(
                     mass=mass, p_PScm_E=p_BoBcm_B,
                     I_SScm_E=RotationalInertia_[Expression](*I_BBcm_B))
+                # SpatialInertia_[Expression](mass, p_BoBcm_B, 
+                #                       UnitInertia_[Expression](*I_BBcm_B))
 
             body.SetMass(context, mass)
             body.SetSpatialInertiaInBodyFrame(context, body_spatial_inertia)
@@ -206,7 +208,7 @@ class LagrangianTerms(Module):
 
     def pi(self) -> Tensor:
         """Returns inertial parameters in human-understandable ``pi``-format"""
-        return InertialParameterConverter.theta_to_pi(self.inertial_parameters)
+        return InertialParameterConverter.theta_to_pi_cm(self.inertial_parameters)
 
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
         """Evaluates Lagrangian dynamics terms at given state and input.
@@ -224,8 +226,8 @@ class LagrangianTerms(Module):
         # pylint: disable=not-callable
         assert self.mass_matrix is not None
         assert self.lagrangian_forces is not None
-        inertia = InertialParameterConverter.pi_to_drake_spatial_inertia(
-            self.pi())
+        inertia = InertialParameterConverter.pi_cm_to_drake_spatial_inertia(
+            self.pi_cm())
         inertia = inertia.expand(q.shape[:-1] + inertia.shape)
 
         M = self.mass_matrix(q, inertia)
@@ -534,8 +536,10 @@ class MultibodyTerms(Module):
                 self.plant_diagram.plant,
                 self.plant_diagram.model_ids)
 
-        for body_pi, body_id in zip(self.lagrangian_terms.pi(), all_body_ids):
-            body_scalars = InertialParameterConverter.pi_to_scalars(body_pi)
+        for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(), all_body_ids):
+            # include inertial terms
+            body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
+
             scalars.update({
                 f'{body_id}_{scalar_name}': scalar
                 for scalar_name, scalar in body_scalars.items()
