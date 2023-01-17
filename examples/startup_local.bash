@@ -24,7 +24,7 @@ if {gen_videos}; then
 	python {pll_dir}/examples/dynamic_meshcat.py
 
 	echo "open meshcat browser in screen"
-	open -a "Google Chrome" {pll_dir}/results/{name}/static.html &
+	xdg-open {pll_dir}/results/{name}/static.html &
 else
 	echo "skipping video visualizations"
 fi
