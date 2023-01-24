@@ -99,6 +99,9 @@ instance/
 # Scrapy stuff:
 .scrapy
 
+# Drake stuff:
+drake-dev*.deb
+
 # Sphinx documentation
 docs/_build/
 
