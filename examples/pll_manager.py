@@ -59,9 +59,9 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 	script = open(base_file, 'r').read()
 
 	script = script.replace('{name}', name)
-	script = script.replace('{gen_videos}', 'true') if videos else script.replace('{gen_videos}', 'false')
-
-	train_options = f' --system={system} --source={source} --dataset-size={dataset_size}'
+	
+	train_options = f' --system={system} --source={source}' + \
+					f' --dataset-size={dataset_size}'
 	train_options += ' --box' if box else ' --mesh'
 	train_options += ' --contactnets' if contactnets else ' --prediction'
 	train_options += ' --regenerate' if regenerate else ' --no-regenerate'
@@ -95,9 +95,10 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 def get_slurm_from_instances(instances: List[str], prefix='pll'):
 	jobids = []
 	for instance in instances:
-		cmd = ['squeue', f'--user={os.getlogin()}', '--format', '%.18i', '--noheader', '--name',
-			   f'{prefix}_{instance}']
-		ps = subprocess.Popen(cmd, stdout=subprocess.PIPE,  stderr=subprocess.STDOUT)
+		cmd = ['squeue', f'--user={os.getlogin()}', '--format', '%.18i',
+			   '--noheader', '--name', f'{prefix}_{instance}']
+		ps = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+							  stderr=subprocess.STDOUT)
 		ps.wait()
 		(out, err) = ps.communicate()
 		out = out.decode('unicode-escape')

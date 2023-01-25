@@ -56,8 +56,7 @@ video_writer = VideoWriter.AddToBuilder(filename="output.gif",
 halfspace_transform = RigidTransform()
 friction = CoulombFriction(1.0, 1.0)
 plant.RegisterCollisionGeometry(plant.world_body(), halfspace_transform,
-                                HalfSpace(), "ground",
-                                friction)
+                                HalfSpace(), "ground", friction)
 
 # Builds and initialize simulator from diagram
 plant.Finalize()

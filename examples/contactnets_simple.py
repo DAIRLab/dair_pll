@@ -284,17 +284,20 @@ def main(name: str = None,
                      learned_system: MultibodyLearnableSystem,
                      train_loss: Tensor,
                      best_valid_loss: Tensor) -> None:
-        default_epoch_callback(epoch, learned_system, train_loss, best_valid_loss)
+        default_epoch_callback(epoch, learned_system, train_loss,
+                               best_valid_loss)
 
         scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
         stats = {}
 
         for key in ['train_model_trajectory_mse', 'valid_model_trajectory_mse',
-                    'train_model_trajectory_mse_mean', 'valid_model_trajectory_mse_mean',
+                    'train_model_trajectory_mse_mean',
+                    'valid_model_trajectory_mse_mean',
                     'train_delta_v_squared_mean', 'valid_delta_v_squared_mean',
                     'train_v_plus_squared_mean', 'valid_v_plus_squared_mean',
                     'train_model_loss_mean', 'valid_model_loss_mean',
-                    'training_duration', 'evaluation_duration', 'logging_duration']:
+                    'training_duration', 'evaluation_duration',
+                    'logging_duration']:
             stats[key] = experiment.statistics[key]
 
         with open(f'{storage_name}/params.txt', 'a') as txt_file:

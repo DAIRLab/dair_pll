@@ -6,33 +6,13 @@
 #SBATCH --job-name=pll_{name}
 
 echo "display"
-source {pll_dir}/../bin/activate;
-export PYTHONPATH={pll_dir};
+source {pll_dir}/pll_env/bin/activate;
+# export PYTHONPATH={pll_dir};  # commented out bc using drake PR build which
+								# installed drake at /opt/drake
 export PLL_EXPERIMENT={name};
 
 
 echo "repo at hash {hash}"
 
-if {gen_videos}; then
-	echo "meshcat server"
-	PYTHONUNBUFFERED=1 meshcat-server >> {pll_dir}/logs/meshcat_{name}.txt &
-
-	echo "delay to let server start up"
-	sleep 3s
-
-	echo "write meshcat html"
-	python {pll_dir}/examples/dynamic_meshcat.py
-
-	echo "open meshcat browser in screen"
-	xdg-open {pll_dir}/results/{name}/static.html &
-else
-	echo "skipping video visualizations"
-fi
-
 echo "train"
 python {pll_dir}/examples/contactnets_simple.py {name} {train_args}
-
-if {gen_videos}; then
-	echo "killing meshcat server and firefox"
-	kill %%
-fi
