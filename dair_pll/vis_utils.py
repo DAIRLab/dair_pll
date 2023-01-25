@@ -63,6 +63,11 @@ def generate_visualization_system(
     double_urdfs.update({
         (k + LEARNED_TAG): v for k, v in base_system.urdfs.items()
     })
+    double_urdfs.update({
+        k: file_utils.get_geometrically_accurate_urdf(v) for k, v in \
+        double_urdfs.items()
+    })
+
     visualization_system = DrakeSystem(double_urdfs,
                                        base_system.dt,
                                        enable_visualizer=True)

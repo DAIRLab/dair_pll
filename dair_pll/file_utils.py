@@ -303,3 +303,30 @@ def sweep_summary_file(storage_name: str,
     if n_run is None:
         return append_by_extension(directory, STATS_EXTENSION)
     return path.join(directory, str(n_run) + STATS_EXTENSION)
+
+
+def get_geometrically_accurate_urdf(urdf_name: str) -> str:
+    """Replaces urdf_name with the name of a urdf corresponding to the same
+    system with accurate geometry.
+
+    Args:
+        urdf_name: Name of a URDF file located in ``ASSET_DIR``
+
+    Returns:
+        The name of a URDF file located in ``ASSET_DIR`` that contains the true
+        geometry of the system.
+    """
+    URDF_MAP = {'contactnets_cube_bad_init.urdf': 'contactnets_cube.urdf',
+                'contactnets_cube_small_init.urdf': 'contactnets_cube.urdf',
+                'contactnets_cube.urdf': 'contactnets_cube.urdf',
+                'contactnets_elbow_bad_init.urdf': 'contactnets_elbow.urdf',
+                'contactnets_elbow_small_init.urdf': 'contactnets_elbow.urdf',
+                'contactnets_elbow.urdf': 'contactnets_elbow.urdf'}
+    base_name = urdf_name.split('/')[-1]
+
+    if base_name in URDF_MAP.keys():
+        return get_asset(URDF_MAP[base_name])
+    else:
+        print(f'Could not find geometrically accurate version of {base_name};' +
+              f' defaulting to using it directly.')
+        return get_asset(base_name)
