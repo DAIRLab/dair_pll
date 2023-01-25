@@ -12,7 +12,6 @@ install_reqs = [
     'numpy',
     'scipy==1.7.3',
     'typing_extensions',
-    'meshcat',
     'matplotlib',
     'threadpoolctl',
     'click',

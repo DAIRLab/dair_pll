@@ -3,8 +3,8 @@
 This file implements :py:class:`MultibodyPlantDiagram`, which instantiates
 Drake simulation and visualization system for a given group of URDF files.
 
-Visualization is done via meshcat. Details on using meshcat are available
-in the documentation for :py:mod:`dair_pll.meshcat_utils`.
+Visualization is done via Drake's VideoWriter. Details on using the VideoWriter
+are available in the documentation for :py:mod:`dair_pll.vis_utils`.
 
 In order to make the Drake states compatible with available
 :py:class:`~dair_pll.state_space.StateSpace` inheriting classes,
@@ -21,10 +21,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Tuple, Dict, List, Optional, Mapping, cast, Union, Type
 
+import numpy as np
+import os
+import os.path as op
+import pdb
+
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
 from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
 from pydrake.geometry import SceneGraphInspector_, GeometryId  # type: ignore
-from pydrake.math import RigidTransform  # type: ignore
+from pydrake.math import RigidTransform, RollPitchYaw  # type: ignore
 from pydrake.multibody.parsing import Parser  # type: ignore
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph  # type: ignore
 from pydrake.multibody.plant import CoulombFriction  # type: ignore
@@ -36,15 +41,24 @@ from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
 from pydrake.systems.framework import DiagramBuilder  # type: ignore
-from pydrake.systems.meshcat_visualizer import MeshcatVisualizer  # type: ignore
+from pydrake.visualization import VideoWriter  # type: ignore
 
 from dair_pll import state_space
+from dair_pll import file_utils
 
 WORLD_GROUND_PLANE_NAME = "world_ground_plane"
 DRAKE_MATERIAL_GROUP = 'material'
 DRAKE_FRICTION_PROPERTY = 'coulomb_friction'
 N_DRAKE_FLOATING_BODY_VELOCITIES = 6
 DEFAULT_DT = 1e-3
+
+CAM_FOV = np.pi/5
+VIDEO_PIXELS = [480, 640]
+FPS = 30
+SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1, 0, 0.2])
+EXP_NAME = os.environ['PLL_EXPERIMENT']
+VIDEO_FILENAME = op.join(file_utils.temp_dir(
+                    op.join(file_utils.RESULTS_DIR, EXP_NAME)), 'output.gif')
 
 DrakeTemplateType = Mapping[Type, Type]
 MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)
@@ -194,11 +208,11 @@ def add_plant_from_urdfs(
 
 
 class MultibodyPlantDiagram:
-    """Constructs and manages a diagram, simulator, and optionally a meshcat
-    visualizer for a multibody system described in a list of URDF's.
+    """Constructs and manages a diagram, simulator, and optionally a visualizer
+    for a multibody system described in a list of URDF's.
 
-    This minimal diagram consists on of a ``MultibodyPlant``, ``SceneGraph``,
-    and optionally a MeshcatVisualizer hooked up in the typical fashion.
+    This minimal diagram consists of a ``MultibodyPlant``, ``SceneGraph``, and
+    optionally a ``VideoWriter`` hooked up in the typical fashion.
 
     From the ``MultibodyPlant``, ``MultibodyPlantDiagram`` can infer the
     corresponding ``StateSpace`` from the dimension of the associated
@@ -209,7 +223,7 @@ class MultibodyPlantDiagram:
     sim: Simulator
     plant: MultibodyPlant
     scene_graph: SceneGraph
-    visualizer: Optional[MeshcatVisualizer]
+    visualizer: Optional[VideoWriter]
     model_ids: List[ModelInstanceIndex]
     collision_geometry_set: CollisionGeometrySet
     space: state_space.ProductSpace
@@ -224,9 +238,6 @@ class MultibodyPlantDiagram:
 
         By default, a ground plane is added at world height ``z = 0``.
 
-        If a visualizer is added, it listens on the default meshcat server
-        address, ``tcp://127.0.0.1:6000``\ .
-
         Args:
             urdfs: Names and corresponding URDFs to add as models to plant.
             dt: Time step of plant in seconds.
@@ -240,15 +251,13 @@ class MultibodyPlantDiagram:
         # re-initialization to produce erroneous visualizations.
         visualizer = None
         if enable_visualizer:
-            visualizer = builder.AddSystem(
-                MeshcatVisualizer(open_browser=False,
-                                  window=None,
-                                  delete_prefix_on_load=False))
-            # clears visualizer
-            visualizer.delete_prefix()
-
-            builder.Connect(scene_graph.get_query_output_port(),
-                            visualizer.get_geometry_query_input_port())
+            visualizer = VideoWriter.AddToBuilder(filename=VIDEO_FILENAME,
+                                                  builder=builder,
+                                                  sensor_pose=SENSOR_POSE,
+                                                  fps=FPS,
+                                                  width=VIDEO_PIXELS[1],
+                                                  height=VIDEO_PIXELS[0],
+                                                  fov_y=CAM_FOV)
 
         # Adds ground plane at ``z = 0``
         halfspace_transform = RigidTransform()

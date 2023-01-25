@@ -30,7 +30,7 @@ from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 
 from dair_pll import file_utils
-from dair_pll import meshcat_utils
+from dair_pll import vis_utils
 from dair_pll import urdf_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.experiment import LEARNED_SYSTEM_NAME, \
@@ -108,7 +108,7 @@ class MultibodyLearnableSystem(System):
         e.g. data.
 
         Implemented as a thin wrapper of
-        ``meshcat_utils.generate_visualization_system()``, which generates a
+        ``vis_utils.generate_visualization_system()``, which generates a
         drake system where each model in the ``MultibodyLearnableSystem`` has a
         duplicate, and visualization elements are repainted for visual
         distinction.
@@ -118,7 +118,7 @@ class MultibodyLearnableSystem(System):
         """
         if not self.visualization_system:
             self.visualization_system = \
-                meshcat_utils.generate_visualization_system(
+                vis_utils.generate_visualization_system(
                     DrakeSystem(self.urdfs, self.dt)
                 )
 
@@ -129,7 +129,7 @@ class MultibodyLearnableSystem(System):
         """Visualizes a comparison between a target trajectory and one
         predicted by this system.
 
-        Implemented as a wrapper to ``meshcat_utils.visualize_trajectory()``.
+        Implemented as a wrapper to ``vis_utils.visualize_trajectory()``.
 
         Args:
             target_trajectory: (T, space.n_x) trajectory to compare to.
@@ -146,7 +146,7 @@ class MultibodyLearnableSystem(System):
         visualization_trajectory = torch.cat(
             (space.q(target_trajectory), space.q(prediction_trajectory),
              space.v(target_trajectory), space.v(prediction_trajectory)), -1)
-        return meshcat_utils.visualize_trajectory(
+        return vis_utils.visualize_trajectory(
             self.get_visualization_system(), visualization_trajectory)
 
     def contactnets_loss(self,

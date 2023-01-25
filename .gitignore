@@ -10,6 +10,9 @@ plots/*
 # SLURM
 slurm-*
 
+# startup scripts
+examples/startup_*
+
 # Sphinx
 docsrc/source/dair_pll.*
 docsrc/source/modules.rst
@@ -21,6 +24,7 @@ docs/*
 
 # virtualenv
 *sv2_env*
+*pll_env*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -91,6 +95,9 @@ instance/
 
 # Scrapy stuff:
 .scrapy
+
+# special Drake version:
+drake-dev*.deb
 
 # Sphinx documentation
 docs/_build/
