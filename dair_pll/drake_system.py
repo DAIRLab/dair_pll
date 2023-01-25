@@ -35,7 +35,7 @@ class DrakeSystem(System):
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float,
-                 enable_visualizer=False) -> None:
+                 enable_visualizer: bool = False) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
         Args:
