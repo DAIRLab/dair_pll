@@ -84,13 +84,13 @@ def generate_visualization_system(
         for body_index in plant.GetBodyIndices(model_id):
             body_frame = plant.GetBodyFrameIdOrThrow(body_index)
             for geometry_id in inspector.GetGeometries(body_frame,
-                                                       Role.kIllustration):
+                                                       Role.kPerception):
                 props = inspector.GetPerceptionProperties(geometry_id)
                 # phong.diffuse is the name of property controlling perception
                 # color.
                 if props and \
                    props.HasProperty(PERCEPTION_COLOR_GROUP, \
-                                         PERCEPTION_COLOR_PROPERTY):
+                                     PERCEPTION_COLOR_PROPERTY):
                     # Sets color in properties.
                     props.UpdateProperty(
                         PERCEPTION_COLOR_GROUP, PERCEPTION_COLOR_PROPERTY,
