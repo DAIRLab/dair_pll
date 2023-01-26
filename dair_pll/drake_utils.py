@@ -52,6 +52,8 @@ DRAKE_FRICTION_PROPERTY = 'coulomb_friction'
 N_DRAKE_FLOATING_BODY_VELOCITIES = 6
 DEFAULT_DT = 1e-3
 
+GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
+
 CAM_FOV = np.pi/5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
@@ -265,6 +267,9 @@ class MultibodyPlantDiagram:
         plant.RegisterCollisionGeometry(plant.world_body(), halfspace_transform,
                                         HalfSpace(), WORLD_GROUND_PLANE_NAME,
                                         friction)
+        plant.RegisterVisualGeometry(plant.world_body(), halfspace_transform,
+                                     HalfSpace(), WORLD_GROUND_PLANE_NAME,
+                                     GROUND_COLOR)
 
         # get collision candidates before default context filters for proximity.
         self.collision_geometry_set = get_collision_geometry_set(
