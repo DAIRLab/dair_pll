@@ -243,6 +243,9 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 @click.option('--local/--cluster',
 			  default=False,
 			  help="whether running script locally or on cluster.")
+@click.option('--videos/--no-videos',
+			  default=False,
+			  help="whether to generate videos or not.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
@@ -287,7 +290,6 @@ def sweep_command(sweep_name: str, system: str, source: str,
 
 	# Create a PLL instance for every dataset size from 4 to 512 (2^2 to
 	# 2^9).
-	videos = False
 	tb = False
 	for dataset_exponent in range(2, 10):
 		dataset_size = 2**dataset_exponent
