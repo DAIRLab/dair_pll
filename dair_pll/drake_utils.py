@@ -58,9 +58,14 @@ CAM_FOV = np.pi/5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
 SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1, 0, 0.2])
-EXP_NAME = os.environ['PLL_EXPERIMENT']
-VIDEO_FILENAME = op.join(file_utils.temp_dir(
-                    op.join(file_utils.RESULTS_DIR, EXP_NAME)), 'output.gif')
+if 'PLL_EXPERIMENT' in os.environ:
+    EXP_NAME = os.environ['PLL_EXPERIMENT']
+    VIDEO_FILENAME = op.join(file_utils.temp_dir(
+                     op.join(file_utils.RESULTS_DIR, EXP_NAME)), 'output.gif')
+else:
+    VIDEO_FILENAME = 'dummy_filename.gif'
+    print(f'Warning:  Using a dummy video filename {VIDEO_FILENAME} because ' +
+          f'PLL_EXPERIMENT environment variable not set.')
 
 DrakeTemplateType = Mapping[Type, Type]
 MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)
