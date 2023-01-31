@@ -103,6 +103,84 @@ def number_to_float(number: Any) -> float:
     return float(str(number))
 
 
+def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
+                          from_com_to_other: bool = True):
+    """Converts an inertia matrix represented from one reference point to that
+    represented from another reference point.  One of these reference points
+    must be the center of mass.
+
+    The parallel axis theorem states [2]::
+
+        I_R = I_C - M [d]^2
+
+    ...for ``I_C`` as the inertia matrix about the center of mass, ``I_R`` as
+    the moment of inertia about a point ``R`` defined as ``R = C + d``, and
+    ``M`` as the total mass of the body.  The brackets in ``[d]`` indicate the
+    skew-symmetric matrix formed from the vector ``d``.
+
+    [2] https://en.wikipedia.org/wiki/Moment_of_inertia#Parallel_axis_theorem
+
+    Args:
+        inertia_mat: ``(*, 3, 3)`` inertia matrices.
+        masses: ``(*)`` masses.
+        vec: ``(*, 3)`` displacement from current frame to new frame.
+        from_com_to_other: bool, true if the provided inertia_mat is from the
+        perspective of the CoM.
+
+    Returns:
+        ``(*, 3, 3)`` inertia matrices with changed reference point.
+    """
+    d_squared = skew_symmetric(vec) @ skew_symmetric(vec)
+    term = d_squared * masses.view((-1, 1, 1))
+
+    if from_com_to_other:
+        return inertia_mat - term
+    else:
+        return inertia_mat + term
+
+
+def inertia_matrix_from_vector(inertia_vec: Tensor):
+    """Writes vectorized form of [Ixx, Iyy, Izz, Ixy, Ixz, Iyz] into matrix
+    form:    [Ixx  Ixy  Ixz]
+             [Ixy  Iyy  Iyz]
+             [Ixz  Iyz  Izz].
+
+    Args:
+        inertia_vec: ``(*, 6)`` inertia parameters.
+
+    Returns:
+        inertia_mat: ``(*, 3, 3)`` inertia matrix.
+    """
+    # Put Ixx, Iyy, Izz on the diagonals.
+    diags = torch.diag_embed(inertia_vec[:, :3])
+
+    # Put Ixy, Ixz, Iyz on the off-diagonals.
+    off_diags = torch.abs(skew_symmetric(inertia_vec[:, 3:].flip(1)))
+
+    return diags + off_diags
+
+
+def inertia_vector_from_matrix(inertia_mat: Tensor):
+    """Writes matrix form of inertial parameters in matrix, in order [Ixx, Iyy,
+    Izz, Ixy, Ixz, Iyz] into matrix
+    
+    Args:
+        inertia_mat: ``(*, 3, 3)`` inertia matrix.
+
+    Returns:
+        inertia_vec: ``(*, 6)`` inertia parameters.
+    """
+    # Grab Ixx, Iyy, Izz on the diagonals.
+    firsts = inertia_mat.diagonal(dim1=1, dim2=2)
+
+    # Grab Ixy, Ixz, Iyz on the off-diagonals individually.
+    ixys = inertia_mat[:, 0, 1].reshape(-1, 1)
+    ixzs = inertia_mat[:, 0, 2].reshape(-1, 1)
+    iyzs = inertia_mat[:, 1, 2].reshape(-1, 1)
+
+    return torch.cat((firsts, ixys, ixzs, iyzs), dim=1)
+
+
 class InertialParameterConverter:
     """Utility class for transforming between inertial parameterizations."""
 
@@ -219,22 +297,19 @@ class InertialParameterConverter:
         """
         # Expand in case tensor starts as shape (10,).
         pi_o = pi_o.reshape(-1, 10)
-        batch_n = pi_o.shape[0]
 
         # Split ``pi_o`` object into mass, CoM offset, and inertias wrt origin.
-        mass = pi_o[..., 0].reshape(batch_n, 1)
+        mass = pi_o[..., 0].reshape(-1, 1)
         p_BoBcm_B = pi_o[..., 1:4] / mass
         I_BBo_B = pi_o[..., 4:]
 
-        to_subtract = torch.abs(skew_symmetric(p_BoBcm_B**2)) @ \
-                      torch.ones((batch_n, 3, 1))
-        to_subtract = to_subtract.reshape(-1, 3)
+        # Use parallel axis theorem to compute inertia matrix wrt CoM.
+        inertia_mat = inertia_matrix_from_vector(I_BBo_B)
+        new_inertia_mat = parallel_axis_theorem(inertia_mat, mass, p_BoBcm_B,
+                                                from_com_to_other=False)
+        I_BBcm_B = inertia_vector_from_matrix(new_inertia_mat)
 
-        I_BBcm_B = torch.hstack((I_BBo_B[..., :3] - mass*to_subtract,
-                                 I_BBo_B[..., 3:]))
-
-        return torch.hstack((mass.reshape(batch_n, 1), p_BoBcm_B*mass, \
-                             I_BBcm_B)).reshape(-1, 10)
+        return torch.hstack((mass, p_BoBcm_B*mass, I_BBcm_B)).reshape(-1, 10)
 
     @staticmethod
     def pi_cm_to_pi_o(pi_cm: Tensor) -> Tensor:
@@ -249,22 +324,19 @@ class InertialParameterConverter:
         """
         # Expand in case tensor starts as shape (10,).
         pi_cm = pi_cm.reshape(-1, 10)
-        batch_n = pi_cm.shape[0]
 
         # Split ``pi_cm`` object into mass, CoM offset, and inertias wrt CoM.
-        mass = pi_cm[..., 0].reshape(batch_n, 1)
+        mass = pi_cm[..., 0].reshape(-1, 1)
         p_BoBcm_B = pi_cm[..., 1:4] / mass
         I_BBcm_B = pi_cm[..., 4:]
 
-        to_add = torch.abs(skew_symmetric(p_BoBcm_B**2)) @ \
-                 torch.ones((batch_n, 3, 1))
-        to_add = to_add.reshape(-1, 3)
+        # Use parallel axis theorem to compute inertia matrix wrt origin.
+        inertia_mat = inertia_matrix_from_vector(I_BBcm_B)
+        new_inertia_mat = parallel_axis_theorem(inertia_mat, mass, p_BoBcm_B,
+                                                from_com_to_other=True)
+        I_BBo_B = inertia_vector_from_matrix(new_inertia_mat)
 
-        I_BBo_B = torch.hstack((I_BBcm_B[..., :3] + mass*to_add,
-                                I_BBcm_B[..., 3:]))
-
-        return torch.hstack((mass.reshape(batch_n, 1), p_BoBcm_B*mass, \
-                             I_BBo_B)).reshape(-1, 10)
+        return torch.hstack((mass, p_BoBcm_B*mass, I_BBo_B)).reshape(-1, 10)
 
     @staticmethod
     def theta_to_pi_cm(theta: Tensor) -> Tensor:
