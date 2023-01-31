@@ -197,8 +197,6 @@ class LagrangianTerms(Module):
                 SpatialInertia_[Expression].MakeFromCentralInertia(
                     mass=mass, p_PScm_E=p_BoBcm_B,
                     I_SScm_E=RotationalInertia_[Expression](*I_BBcm_B))
-                # SpatialInertia_[Expression](mass, p_BoBcm_B, 
-                #                       UnitInertia_[Expression](*I_BBcm_B))
 
             body.SetMass(context, mass)
             body.SetSpatialInertiaInBodyFrame(context, body_spatial_inertia)
@@ -537,7 +535,6 @@ class MultibodyTerms(Module):
                 self.plant_diagram.model_ids)
 
         for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(), all_body_ids):
-            # include inertial terms
             body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
 
             scalars.update({
