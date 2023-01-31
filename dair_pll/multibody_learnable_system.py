@@ -202,7 +202,7 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        L = torch.linalg.cholesky(torch.inverse((M)))  
+        L = torch.linalg.cholesky(torch.inverse((M)))
         Q = delassus + eps * torch.eye(3 * n_contacts)
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
