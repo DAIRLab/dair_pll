@@ -162,6 +162,8 @@ def skew_symmetric(vectors: Tensor) -> Tensor:
     return torch.stack((row_1, row_2, row_3), -2)
 
 
+# Note:  torch.diag_embed() does the same as the below function.
+# https://pytorch.org/docs/stable/generated/torch.diag_embed.html
 def batch_diagonal(vectors: Tensor) -> Tensor:
     """Converts vectors to diagonal matrices.
 
