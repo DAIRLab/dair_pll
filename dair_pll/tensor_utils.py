@@ -162,6 +162,35 @@ def skew_symmetric(vectors: Tensor) -> Tensor:
     return torch.stack((row_1, row_2, row_3), -2)
 
 
+def nonskew_symmetric(vectors: Tensor) -> Tensor:
+    r"""Converts vectors in :math:`\mathbb{R}^3` into nonskew-symmetric form.
+    This is the same as skew symmetric except for the skew negative signs.
+
+    Converts vector(s) :math:`v` in ``vectors`` into symmetric matrix:
+
+    .. math::
+
+        S(v) = S(v)^T = \begin{bmatrix} 0 & v_3 & v_2 \\
+        v_3 & 0 & v_1 \\
+        v_2 & v_1 & 0 \end{bmatrix}
+
+    Args:
+        vectors: ``(*, 3)`` vector(s) to convert to matrices
+
+    Returns:
+        ``(*, 3, 3)`` symmetric matrices :math:`S(v)`
+    """
+    # pylint: disable=E1103
+    zero = torch.zeros_like(vectors[..., 0])
+
+    # pylint: disable=E1103
+    row_1 = torch.stack((zero, vectors[..., 2], vectors[..., 1]), -1)
+    row_2 = torch.stack((vectors[..., 2], zero, vectors[..., 0]), -1)
+    row_3 = torch.stack((vectors[..., 1], vectors[..., 0], zero), -1)
+
+    return torch.stack((row_1, row_2, row_3), -2)
+
+
 # Note:  torch.diag_embed() does the same as the below function.
 # https://pytorch.org/docs/stable/generated/torch.diag_embed.html
 def batch_diagonal(vectors: Tensor) -> Tensor:
