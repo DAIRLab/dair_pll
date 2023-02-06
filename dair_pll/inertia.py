@@ -93,6 +93,9 @@ import pdb
 from dair_pll.drake_utils import DrakeSpatialInertia
 from dair_pll.tensor_utils import deal, skew_symmetric, nonskew_symmetric
 
+
+torch.set_default_dtype(torch.float64)
+
 INERTIA_INDICES = [(0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2)]
 INERTIA_SCALARS = ["I_xx", "I_yy", "I_zz", "I_xy", "I_xz", "I_yz"]
 AXES = ["x", "y", "z"]
