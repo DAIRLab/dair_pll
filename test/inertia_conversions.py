@@ -6,10 +6,11 @@ import pdb
 from dair_pll.inertia import InertialParameterConverter as ipc
 
 
+# torch.set_default_dtype(torch.float64)  <-- moved into inertia.py
 
 N_TESTS = 20
-VERBOSE = True
-THETA_SCALE = 1e0
+VERBOSE = False
+THETA_SCALE = 1e1
 N_BODIES_UP_TO = 6
 
 
@@ -39,7 +40,8 @@ def do_pi_o_cm_test(use_thetas = True):
         pi_o = ipc.theta_to_pi_o(theta)
 
     else:
-        pi_o = torch.rand(n_bodies, 10)
+        pi_o = torch.rand(n_bodies, 10) - 0.5
+        pi_o[:, 0] = torch.abs(pi_o[:, 0])
 
     # Calculate pi_cm from this set.
     pi_cm = ipc.pi_o_to_pi_cm(pi_o)

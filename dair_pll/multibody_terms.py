@@ -195,30 +195,15 @@ class LagrangianTerms(Module):
         # the parameter gradient.
         curr_pi_cm[0,0] = orig_m
 
-        # All of the other inertial parameters of the first link are
-        # proportional to its mass, so ensure physical consistency by scaling
-        # the paraemters appropriately.  Use multiplication to preserve the
-        # parameter gradients.
-        curr_pi_cm[0,1:] *= orig_m/curr_m
-
         # Overwrite more parameters based on the inertia mode.
         mode = self.inertia_mode_txt
         if mode != 'all':
             # Overwrite the moments of inertia unless learning all remaining
-            # parameters.  Since moments of inertia scale with mass, ensure 
-            # physical feasibility by scaling the parameters with the current
-            # mass belief and not the original mass (which may differ).  Use
-            # direct assignment to zero the parameter gradient.
-            curr_pi_cm[:, 4:] = (orig[:, 4:].T * \
-                                 curr_pi_cm[:, 0].detach() / orig[:, 0]).T
+            # parameters.  Use direct assignment to zero the parameter gradient.
+            curr_pi_cm[:, 4:] = orig[:, 4:]
 
             # Overwrite the masses unless learning those.
             if (mode == 'none') or ('masses' not in mode):
-                # Scale the rest of the parameters appropriately.  Use
-                # multiplication to preserve the parameter gradients.
-                curr_pi_cm[:, 1:] *= (orig[:, 0] / \
-                                      curr_pi_cm[:, 0].detach()).unsqueeze(1)
-
                 # Overwrite the masses.  Use direct assignment to zero the
                 # parameter gradients.
                 curr_pi_cm[:, 0] = orig[:, 0]
