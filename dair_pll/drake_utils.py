@@ -54,10 +54,10 @@ DEFAULT_DT = 1e-3
 
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
-CAM_FOV = np.pi/5
+CAM_FOV = np.pi/4
 VIDEO_PIXELS = [480, 640]
 FPS = 30
-SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1, 0, 0.2])
+SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1.2, 0, 0.2])
 if 'PLL_EXPERIMENT' in os.environ:
     EXP_NAME = os.environ['PLL_EXPERIMENT']
     VIDEO_FILENAME = op.join(file_utils.temp_dir(
