@@ -108,28 +108,38 @@ def get_slurm_from_instances(instances: List[str], prefix='pll'):
 	return jobids
 
 
-def attach_tb(name: str):
+def attach_tb(name: str, local: bool = False):
 	repo = git.Repo(search_parent_directories=True)
-	tb_script = op.join(op.dirname(__file__), 'tensorboard.bash')
 	git_folder = repo.git.rev_parse("--show-toplevel")
 	git_folder = op.normpath(git_folder)
-	tb_logfile = op.join(git_folder, 'logs', 'tensorboard_' + name + '.txt')
-	os.system(f'rm {tb_logfile}')
-	tboard_cmd = ['sbatch', f'--output={tb_logfile}', \
-		f'--job-name=tb_{name}'.format(tb_logfile), tb_script, \
-		op.join(git_folder, 'results', name, 'tensorboard'), name]
-	ec = subprocess.run(tboard_cmd)
 
-	# wait for and report tensorboard url
-	print('Waiting on TensorBoard startup ...')
-	lines = []
-	while not op.exists(tb_logfile):
-		time.sleep(0.1)
-	while len(lines) < 1:
-		with open(tb_logfile) as f:
-			lines = f.readlines()
-		time.sleep(1.0)
-	print(f'\nTensorBoard running on {lines[0]}\n')
+	if not local:
+		tb_script = op.join(op.dirname(__file__), 'tensorboard.bash')
+		tb_logfile = op.join(git_folder, 'logs', 'tensorboard_' + name + '.txt')
+		os.system(f'rm {tb_logfile}')
+		tboard_cmd = ['sbatch', f'--output={tb_logfile}', \
+			f'--job-name=tb_{name}'.format(tb_logfile), tb_script, \
+			op.join(git_folder, 'results', name, 'tensorboard'), name]
+		ec = subprocess.run(tboard_cmd)
+
+		# wait for and report tensorboard url
+		print('Waiting on TensorBoard startup ...')
+		lines = []
+		while not op.exists(tb_logfile):
+			time.sleep(0.1)
+		while len(lines) < 1:
+			with open(tb_logfile) as f:
+				lines = f.readlines()
+			time.sleep(1.0)
+		print(f'\nTensorBoard running on {lines[0]}\n')
+
+	else:
+		tb_script = op.join(op.dirname(__file__), 'tensorboard_local.bash')
+		tboard_cmd = ['bash', tb_script,
+					  op.join(git_folder, 'results', name, 'tensorboard'), name]
+		print(f'Starting local TensorBoard command:  {tboard_cmd}')
+		ec = subprocess.run(tboard_cmd)
+
 
 
 @click.group()
@@ -213,7 +223,8 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 
 	# Don't open tensorboard webpage if running locally.
 	if local:
-		print(f'Running locally, so won\'t open tensorboard webpage.')
+		print(f'Running locally, so won\'t open tensorboard webpage -- ' + \
+			  f'can run pll_manager.py attach if want to start tensorboard.')
 		tb = False
 
 	# Continue creating PLL instance.
@@ -310,9 +321,12 @@ def detach(instance: str):
 
 @cli.command('attach')
 @click.argument('instance')
-def attach(instance: str):
+@click.option('--local/--cluster',
+			  default=False,
+			  help="whether running script locally or on cluster.")
+def attach(instance: str, local: bool):
 	"""Attaches Tensorboard task to experiment name."""
-	attach_tb(instance)
+	attach_tb(instance, local)
 
 
 
