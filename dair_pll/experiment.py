@@ -515,9 +515,10 @@ class SupervisedLearningExperiment(ABC):
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
         learned_system.eval()
-        self.per_epoch_evaluation(0, learned_system, training_loss, 0.)
+        self.per_epoch_evaluation(0, learned_system, torch.tensor(torch.nan), 0.)
         learned_system.train()
-        epoch_callback(0, learned_system, training_loss, best_valid_loss)
+        epoch_callback(0, learned_system, torch.tensor(torch.nan),
+                       torch.tensor(torch.nan))
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
             if self.config.data_config.dynamic_updates_from is not None:
