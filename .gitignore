@@ -13,6 +13,7 @@ slurm-*
 # Sphinx
 docsrc/source/dair_pll.*
 docsrc/source/modules.rst
+docsrc/graph.json
 docs/*
 
 
