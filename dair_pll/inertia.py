@@ -356,21 +356,22 @@ class InertialParameterConverter:
         return InertialParameterConverter.pi_o_to_theta(pi_o)
 
     @staticmethod
-    def pi_cm_to_drake_spatial_inertia(pi: Tensor) -> Tensor:
-        """Converts batch of ``pi`` parameters to ``drake_spatial_inertia``
+    def pi_cm_to_drake_spatial_inertia(pi_cm: Tensor) -> Tensor:
+        """Converts batch of ``pi-cm`` parameters to ``drake_spatial_inertia``
         parameters."""
         # pylint: disable=E1103
-        return torch.cat((pi[..., 0:1], pi[..., 1:] / pi[..., 0:1]), dim=-1)
+        return torch.cat((pi_cm[..., 0:1], pi_cm[..., 1:] / pi_cm[..., 0:1]),
+                         dim=-1)
 
     @staticmethod
-    def pi_cm_to_urdf(pi: Tensor) -> Tuple[str, str, List[str]]:
-        """Converts a single ``(10,)`` ``pi`` vector into the ``urdf`` string
+    def pi_cm_to_urdf(pi_cm: Tensor) -> Tuple[str, str, List[str]]:
+        """Converts a single ``(10,)`` ``pi_cm`` vector into the ``urdf`` string
         format."""
-        assert len(pi.shape) == 1
-        mass = str(pi[0].item())
+        assert len(pi_cm.shape) == 1
+        mass = str(pi_cm[0].item())
         p_BoBcm_B = ' '.join(
-            [str((coordinate / pi[0]).item()) for coordinate in pi[1:4]])
-        I_BBcm_B = [str(inertia_element.item()) for inertia_element in pi[4:]]
+            [str((coordinate / pi_cm[0]).item()) for coordinate in pi_cm[1:4]])
+        I_BBcm_B = [str(inertia_element.item()) for inertia_element in pi_cm[4:]]
 
         return mass, p_BoBcm_B, I_BBcm_B
 
