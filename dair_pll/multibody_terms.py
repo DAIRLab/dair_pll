@@ -204,8 +204,9 @@ class LagrangianTerms(Module):
         # pylint: disable=E1103
         return torch.stack(body_parameter_list), np.vstack(body_variable_list)
 
-    def pi(self) -> Tensor:
-        """Returns inertial parameters in human-understandable ``pi``-format"""
+    def pi_cm(self) -> Tensor:
+        """Returns inertial parameters in human-understandable ``pi_cm``-
+        format"""
         return InertialParameterConverter.theta_to_pi_cm(self.inertial_parameters)
 
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
