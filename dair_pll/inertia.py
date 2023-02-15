@@ -91,7 +91,7 @@ from torch import Tensor
 import pdb
 
 from dair_pll.drake_utils import DrakeSpatialInertia
-from dair_pll.tensor_utils import deal, skew_symmetric, nonskew_symmetric
+from dair_pll.tensor_utils import deal, skew_symmetric, symmetric_offdiagonal
 
 
 torch.set_default_dtype(torch.float64)
@@ -158,7 +158,7 @@ def inertia_matrix_from_vector(inertia_vec: Tensor):
     diags = torch.diag_embed(inertia_vec[:, :3])
 
     # Put Ixy, Ixz, Iyz on the off-diagonals.
-    off_diags = nonskew_symmetric(inertia_vec[:, 3:].flip(1))
+    off_diags = symmetric_offdiagonal(inertia_vec[:, 3:].flip(1))
 
     return diags + off_diags
 
