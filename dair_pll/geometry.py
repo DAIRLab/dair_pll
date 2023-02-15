@@ -309,8 +309,8 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Return batched view of support points of interest.
 
-        Given a direction :batch:`d`, this function finds the support point
-        of the object in that direction, calculated via envelope
+        Given a direction :math:`d`, this function finds the support point of
+        the object in that direction, calculated via envelope
 
         Args:
             directions: ``(*, 3)`` batch of support directions sample.

@@ -114,12 +114,16 @@ def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
 
     The parallel axis theorem states [2]::
 
-        I_R = I_C - M [d]^2
+    .. math::
 
-    ...for ``I_C`` as the inertia matrix about the center of mass, ``I_R`` as
-    the moment of inertia about a point ``R`` defined as ``R = C + d``, and
-    ``M`` as the total mass of the body.  The brackets in ``[d]`` indicate the
-    skew-symmetric matrix formed from the vector ``d``.
+        I_R = I_C - m_{tot} [d]^2
+
+
+    ...for :math:`I_C` as the inertia matrix about the center of mass,
+    :math:`I_R` as the moment of inertia about a point :math:`R` defined as
+    :math:`R = C + d`, and :math:`m_{tot}` as the total mass of the body.  The
+    brackets in :math:`[d]` indicate the skew-symmetric matrix formed from the
+    vector :math:`d`.  Test addition.
 
     [2] https://en.wikipedia.org/wiki/Moment_of_inertia#Parallel_axis_theorem
 
@@ -144,9 +148,7 @@ def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
 
 def inertia_matrix_from_vector(inertia_vec: Tensor):
     """Writes vectorized form of [Ixx, Iyy, Izz, Ixy, Ixz, Iyz] into matrix
-    form:    [Ixx  Ixy  Ixz]
-             [Ixy  Iyy  Iyz]
-             [Ixz  Iyz  Izz].
+    form:    [Ixx  Ixy  Ixz] [Ixy  Iyy  Iyz] [Ixz  Iyz  Izz].
 
     Args:
         inertia_vec: ``(*, 6)`` inertia parameters.

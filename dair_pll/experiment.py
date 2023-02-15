@@ -66,7 +66,7 @@ class SystemConfig:
 
 @dataclass
 class OptimizerConfig:
-    """:funct:`~dataclasses.dataclass` defining setup and usage opf a Pytorch
+    """:func:`~dataclasses.dataclass` defining setup and usage opf a Pytorch
     :func:`~torch.optim.Optimizer` for learning."""
     optimizer: Type[Optimizer] = torch.optim.Adam
     """Subclass of :py:class:`~torch.optim.Optimizer` to use."""
