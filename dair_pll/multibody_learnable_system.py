@@ -190,6 +190,13 @@ class MultibodyLearnableSystem(System):
         dt = self.dt
         eps = 1e-3
 
+        # Some hyperparameters for weight-tuning.  Assume w_pred = 1, and all
+        # the below weights are relative to that.
+        w_comp = 1e-1
+        w_diss = 1e0
+        w_pen = 1e1
+
+        # Begin loss calculation.
         delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
             q_plus, v_plus, u)
 
@@ -227,15 +234,16 @@ class MultibodyLearnableSystem(System):
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         q_pred = -pbmm(J, dv.transpose(-1, -2))
-        q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
-        q_diss = dt * torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q_comp = w_comp * (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+        q_diss = w_diss * torch.cat((sliding_speeds, sliding_velocities),
+                                    dim=-2)
         q = q_pred + q_comp + q_diss
 
 
         penetration_penalty = (torch.maximum(
             -phi, torch.zeros_like(phi))**2).sum(dim=-1)
 
-        penetration_penalty = penetration_penalty.reshape(
+        penetration_penalty = w_pen * penetration_penalty.reshape(
             penetration_penalty.shape + (1, 1))
 
         constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(
@@ -246,12 +254,9 @@ class MultibodyLearnableSystem(System):
         # Therefore, we can detach ``force`` from pytorch's computation graph
         # without causing error in the overall loss gradient.
         # pylint: disable=E1103
-        #force = self.solver.apply(Q, q, torch.rand(q.shape), 1e-7, 1000, 1e-7,
-        #                          loss_pool).detach()
         force = pbmm(reorder_mat,
                      self.solver.apply(J_bar, pbmm(reorder_mat.transpose(-1,-2),
-                         q).squeeze(-1),
-                     eps).detach().unsqueeze(-1))
+                         q).squeeze(-1), eps).detach().unsqueeze(-1))
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
@@ -263,13 +268,6 @@ class MultibodyLearnableSystem(System):
 
         loss = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) + pbmm(
             force.transpose(-1, -2), q) + constant
-
-        # divide by total mass so loss does not encourage learning zero mass
-        # total_mass = M[0, 3, 3]
-        total_mass = sum(self.multibody_terms.lagrangian_terms.pi_cm()[:,0])
-        loss /= total_mass
-
-        # pdb.set_trace()
 
         return loss.squeeze(-1).squeeze(-1)
 
