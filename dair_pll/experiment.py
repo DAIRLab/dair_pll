@@ -102,8 +102,6 @@ class SupervisedLearningExperimentConfig:
     """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
     """How many trajectories to save in full for experiment's summary."""
-    gen_videos: bool = False
-    """Whether to use ``VideoWriter`` to generate toss videos."""
 
 
 #:
