@@ -269,3 +269,11 @@ def sweep_summary_file(storage_name: str,
     if n_run is None:
         return append_by_extension(directory, STATS_EXTENSION)
     return path.join(directory, str(n_run) + STATS_EXTENSION)
+
+
+
+# Some hard-coded video-related parameters.
+# TODO Can build in a more elegant solution in the future.
+EXP_NAME = os.environ['PLL_EXPERIMENT']
+VIDEO_FILENAME = path.join(temp_dir(path.join(RESULTS_DIR, EXP_NAME)),
+                           'output.gif')
