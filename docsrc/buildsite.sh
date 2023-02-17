@@ -2,6 +2,7 @@
 set -x
 
 pwd ls -lah
+git log -1 --pretty=%ct
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 
 ##############
