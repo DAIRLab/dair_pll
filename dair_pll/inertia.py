@@ -88,7 +88,6 @@ from typing import Any, Tuple, List, Dict
 
 import torch
 from torch import Tensor
-import pdb
 
 from dair_pll.drake_utils import DrakeSpatialInertia
 from dair_pll.tensor_utils import deal, skew_symmetric, symmetric_offdiagonal
