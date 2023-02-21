@@ -241,8 +241,7 @@ class InertialParameterConverter:
         Implements hand-derived local inverse of standard mapping from Rucker
         and Wensing.
 
-        This function inverts :py:meth:`theta_to_pi_o` for
-        valid ``pi_o``.
+        This function inverts :py:meth:`theta_to_pi_o` for valid ``pi_o``.
 
         Args:
             pi_o: ``(*, 10)`` ``pi_o``-type parameterization.
@@ -314,6 +313,8 @@ class InertialParameterConverter:
         Returns:
             pi_cm: ``(*, 10)`` ``pi_cm``-type parameterization.
         """
+        assert pi_o.dim() <= 2
+
         # Expand in case tensor starts as shape (10,).
         pi_o = pi_o.reshape(-1, 10)
 
@@ -341,6 +342,8 @@ class InertialParameterConverter:
         Returns:
             pi_o: ``(*, 10)`` ``pi_o``-type parameterization.
         """
+        assert pi_cm.dim() <= 2
+
         # Expand in case tensor starts as shape (10,).
         pi_cm = pi_cm.reshape(-1, 10)
 
