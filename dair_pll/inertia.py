@@ -107,12 +107,12 @@ def number_to_float(number: Any) -> float:
 
 
 def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
-                          from_com_to_other: bool = True):
+                          from_com_to_other: bool = True) -> Tensor:
     """Converts an inertia matrix represented from one reference point to that
     represented from another reference point.  One of these reference points
     must be the center of mass.
 
-    The parallel axis theorem states [2]::
+    The parallel axis theorem states [2]:
 
     .. math::
 
@@ -123,7 +123,7 @@ def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
     :math:`I_R` as the moment of inertia about a point :math:`R` defined as
     :math:`R = C + d`, and :math:`m_{tot}` as the total mass of the body.  The
     brackets in :math:`[d]` indicate the skew-symmetric matrix formed from the
-    vector :math:`d`.  Test addition.
+    vector :math:`d`.
 
     [2] https://en.wikipedia.org/wiki/Moment_of_inertia#Parallel_axis_theorem
 
@@ -131,8 +131,9 @@ def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
         inertia_mat: ``(*, 3, 3)`` inertia matrices.
         masses: ``(*)`` masses.
         vec: ``(*, 3)`` displacement from current frame to new frame.
-        from_com_to_other: bool, true if the provided inertia_mat is from the
-        perspective of the CoM.
+        from_com_to_other: ``True`` if the provided inertia_mat is from the
+          perspective of the CoM, ``False`` if from the perspective of the
+          origin.
 
     Returns:
         ``(*, 3, 3)`` inertia matrices with changed reference point.
@@ -146,15 +147,22 @@ def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
         return inertia_mat + term
 
 
-def inertia_matrix_from_vector(inertia_vec: Tensor):
-    """Writes vectorized form of [Ixx, Iyy, Izz, Ixy, Ixz, Iyz] into matrix
-    form:    [Ixx  Ixy  Ixz] [Ixy  Iyy  Iyz] [Ixz  Iyz  Izz].
+def inertia_matrix_from_vector(inertia_vec: Tensor) -> Tensor:
+    r"""Converts vectorized inertia vector of the following order into an
+    inertia matrix:
+
+    .. math::
+
+        [I_{xx}, I_{yy}, I_{zz}, I_{xy}, I_{xz}, I_{yz}] \Rightarrow
+        \begin{bmatrix} I_{xx} & I_{xy} & I_{xz} \\
+        I_{xy} & I_{yy} & I_{yz} \\
+        I_{xz} & I_{yz} & I_{zz} \end{bmatrix}
 
     Args:
-        inertia_vec: ``(*, 6)`` inertia parameters.
+        inertia_vec: ``(*, 6)`` vectorized inertia parameters.
 
     Returns:
-        inertia_mat: ``(*, 3, 3)`` inertia matrix.
+        ``(*, 3, 3)`` inertia matrix.
     """
     # Put Ixx, Iyy, Izz on the diagonals.
     diags = torch.diag_embed(inertia_vec[:, :3])
@@ -165,15 +173,22 @@ def inertia_matrix_from_vector(inertia_vec: Tensor):
     return diags + off_diags
 
 
-def inertia_vector_from_matrix(inertia_mat: Tensor):
-    """Writes matrix form of inertial parameters in matrix, in order [Ixx, Iyy,
-    Izz, Ixy, Ixz, Iyz] into matrix
+def inertia_vector_from_matrix(inertia_mat: Tensor) -> Tensor:
+    r"""Converts inertia matrix into vectorized inertia vector of the following
+    order:
+
+    .. math::
+
+        \begin{bmatrix} I_{xx} & I_{xy} & I_{xz} \\
+        I_{xy} & I_{yy} & I_{yz} \\
+        I_{xz} & I_{yz} & I_{zz} \end{bmatrix} \Rightarrow
+        [I_{xx}, I_{yy}, I_{zz}, I_{xy}, I_{xz}, I_{yz}]
     
     Args:
         inertia_mat: ``(*, 3, 3)`` inertia matrix.
 
     Returns:
-        inertia_vec: ``(*, 6)`` inertia parameters.
+        ``(*, 6)`` vectorized inertia parameters.
     """
     # Grab Ixx, Iyy, Izz on the diagonals.
     firsts = inertia_mat.diagonal(dim1=1, dim2=2)
@@ -227,7 +242,7 @@ class InertialParameterConverter:
         Implements hand-derived local inverse of standard mapping from Rucker
         and Wensing.
 
-        This function inverts :py:meth:``theta_to_pi_o`` for
+        This function inverts :py:meth:`theta_to_pi_o` for
         valid ``pi_o``.
 
         Args:
@@ -379,7 +394,7 @@ class InertialParameterConverter:
 
     @staticmethod
     def drake_to_pi_cm(spatial_inertia: DrakeSpatialInertia) -> Tensor:
-        """Extracts a ``pi`` parameterization from a Drake
+        """Extracts a ``pi-cm`` parameterization from a Drake
         :py:attr:`~pydrake.multibody.tree.SpatialInertia` object."""
         mass = number_to_float(spatial_inertia.get_mass())
         p_BoBcm_B = spatial_inertia.get_com()
@@ -398,7 +413,7 @@ class InertialParameterConverter:
 
     @staticmethod
     def drake_to_pi_o(spatial_inertia: DrakeSpatialInertia) -> Tensor:
-        """Extracts a ``pi`` parameterization from a Drake
+        """Extracts a ``pi-o`` parameterization from a Drake
         :py:attr:`~pydrake.multibody.tree.SpatialInertia` object."""
         mass = number_to_float(spatial_inertia.get_mass())
         p_BoBcm_B = spatial_inertia.get_com()

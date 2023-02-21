@@ -32,8 +32,7 @@ from pydrake.geometry import Shape  # type: ignore
 from torch import Tensor
 from torch.nn import Module, Parameter
 
-from dair_pll.deep_support_function import HomogeneousICNN, \
-    extract_mesh
+from dair_pll.deep_support_function import HomogeneousICNN, extract_mesh
 from dair_pll.tensor_utils import pbmm, tile_dim, \
     rotation_matrix_from_one_vector
 
@@ -86,6 +85,7 @@ class CollisionGeometry(ABC, Module):
             A cylinder might be represented with the following output::
 
                 {'radius': 5.2, 'height': 4.1}
+
         Returns:
             A dictionary of named parameters describing the geometry.
         """
@@ -133,10 +133,10 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
         However,
 
         Args:
-            directions: (*, 3) batch of unit-length directions.
+            directions: (\*, 3) batch of unit-length directions.
 
         Returns:
-            (*, N, 3) sets of corresponding witness points of cardinality N.
+            (\*, N, 3) sets of corresponding witness points of cardinality N.
         """
 
 
@@ -174,10 +174,10 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         directions``.
 
         Args:
-            directions: (*, 3) batch of directions.
+            directions: (\*, 3) batch of directions.
 
         Returns:
-            (*, n_query, 3) sets of corresponding witness points.
+            (\*, n_query, 3) sets of corresponding witness points.
         """
         assert directions.shape[-1] == 3
         original_shape = directions.shape
@@ -211,9 +211,9 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
             argmax_{s \\in S} s \\cdot directions \\subset convexHull(S_v).
 
         Args:
-            directions: (*, 3) batch of unit-length directions.
+            directions: (\*, 3) batch of unit-length directions.
         Returns:
-            (*, N, 3) witness point convex hull vertices.
+            (\*, N, 3) witness point convex hull vertices.
         """
 
 
@@ -256,7 +256,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
     r"""Deep support function convex shape.
 
     Any convex shape :math:`S` can be equivalently represented via its support
-    function :math:`f(d)`\ , which returns the extent to which the object
+    function :math:`f(d)`, which returns the extent to which the object
     extends in the :math:`d` direction:
 
     .. math::
@@ -264,7 +264,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         f(d) = \max_{s \in S} s \cdot d.
 
     Given a direction, the set of points that form the :math:`\arg\max` in
-    :math:`f(d)` is exactly the convex subgradient :math:`\partial_d f(d)`\ .
+    :math:`f(d)` is exactly the convex subgradient :math:`\partial_d f(d)`.
 
     Furthermore, for every convex shape, :math:`f(d)` is convex and
     positively homogeneous, and every convex and positively homogeneous
@@ -272,7 +272,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
 
     This collision geometry type implements the support function directly as
     a convex and positively homogeneous neural network (
-    :py:class:`~dair_pll.deep_support_function.HomogeneousICNN`\ )."""
+    :py:class:`~dair_pll.deep_support_function.HomogeneousICNN`\)."""
     network: HomogeneousICNN
     """Support function representation as a neural net."""
     perturbations: Tensor
@@ -288,7 +288,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
                  perturbation: float = 0.4) -> None:
         r"""Inits ``DeepSupportConvex`` object with initial vertex set.
 
-        When calculating a sparse vertex set with :py:meth:`get_vertices`\ ,
+        When calculating a sparse vertex set with :py:meth:`get_vertices`,
         supplements the support direction with nearby directions randomly.
 
         Args:
@@ -325,7 +325,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         return self.network(perturbed)
 
     def train(self, mode: bool = True) -> DeepSupportConvex:
-        r"""Override training-mode setter from :py:mod:`torch`\ .
+        r"""Override training-mode setter from :py:mod:`torch`.
 
         Sets a static fcl mesh geometry for the entirety of evaluation time,
         as the underlying support function is not changing.
@@ -334,7 +334,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             mode: ``True`` for training, ``False`` for evaluation.
 
         Returns:
-            ``self``\ .
+            ``self``.
         """
         if not mode:
             self.fcl_geometry = self.get_fcl_geometry()
@@ -346,7 +346,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         If evaluation mode is set, retrieves precalculated version.
 
         Returns:
-            :py:mod:`fcl`bounding volume hierarchy for mesh.
+            :py:mod:`fcl` bounding volume hierarchy for mesh.
         """
         if self.training:
             mesh = extract_mesh(self.network)
@@ -420,10 +420,10 @@ class Sphere(BoundedConvexCollisionGeometry):
             argmax_{s \\in S} s \\cdot directions = directions * radius.
 
         Args:
-            directions: (*, 3) batch of directions.
+            directions: (\*, 3) batch of directions.
 
         Returns:
-            (*, 1, 3) corresponding witness point sets of cardinality 1.
+            (\*, 1, 3) corresponding witness point sets of cardinality 1.
         """
         return (directions.clone() * self.radius).unsqueeze(-2)
 
@@ -462,18 +462,18 @@ class PydrakeToCollisionGeometryFactory:
 
     @staticmethod
     def convert_box(drake_box: DrakeBox) -> Box:
-        """Converts ``pydrake.geometry.Box`` to ``Box``"""
+        """Converts ``pydrake.geometry.Box`` to ``Box``."""
         half_widths = 0.5 * Tensor(np.copy(drake_box.size()))
         return Box(half_widths, 4)
 
     @staticmethod
     def convert_plane() -> Plane:
-        """Converts ``pydrake.geometry.HalfSpace`` to ``Plane``"""
+        """Converts ``pydrake.geometry.HalfSpace`` to ``Plane``."""
         return Plane()
 
     @staticmethod
     def convert_mesh(drake_mesh: DrakeMesh) -> DeepSupportConvex:
-        """Converts ``pydrake.geometry.Mesh`` to ``Polygon``"""
+        """Converts ``pydrake.geometry.Mesh`` to ``Polygon``."""
         filename = drake_mesh.filename()
         mesh = pywavefront.Wavefront(filename)
         vertices = Tensor(mesh.vertices)
@@ -497,17 +497,17 @@ class GeometryCollider:
         Args:
             geometry_a: first collision geometry
             geometry_b: second collision geometry, with type
-            ordering ``not geometry_A > geometry_B``.
-            R_AB: (*,3,3) rotation between geometry frames
-            p_AoBo_A: (*, 3) offset of geometry frame origins
+              ordering ``not geometry_A > geometry_B``.
+            R_AB: (\*,3,3) rotation between geometry frames
+            p_AoBo_A: (\*, 3) offset of geometry frame origins
 
         Returns:
-            (*, N) batch of witness point pair distances
-            (*, N, 3, 3) contact frame C rotation in A, R_AC, where the z
+            (\*, N) batch of witness point pair distances
+            (\*, N, 3, 3) contact frame C rotation in A, R_AC, where the z
             axis of C is contained in the normal cone of body A at contact
             point Ac and is parallel (or antiparallel) to AcBc.
-            (*, N, 3) witness points Ac on A, p_AoAc_A
-            (*, N, 3) witness points Bc on B, p_BoBc_B
+            (\*, N, 3) witness points Ac on A, p_AoAc_A
+            (\*, N, 3) witness points Bc on B, p_BoBc_B
         """
         assert not geometry_a > geometry_b
 
@@ -551,7 +551,7 @@ class GeometryCollider:
         p_AoAc_A = torch.cat(
             (p_AoBc_A[..., :2], torch.zeros_like(p_AoBc_A[..., 2:])), -1)
 
-        # ``R_AC`` (*, N, 3, 3) is simply a batch of identities, as the z
+        # ``R_AC`` (\*, N, 3, 3) is simply a batch of identities, as the z
         # axis of A points out of the plane.
         # pylint: disable=E1103
         R_AC = torch.eye(3).expand(p_AoAc_A.shape + (3,))
@@ -562,8 +562,8 @@ class GeometryCollider:
             geometry_a: DeepSupportConvex, geometry_b: DeepSupportConvex,
             R_AB: Tensor,
             p_AoBo_A: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        r"""Implementation of ``GeometryCollider.collide()`` when
-         both geometries are ``DeepSupportConvex``\ es."""
+        """Implementation of ``GeometryCollider.collide()`` when
+        both geometries are ``DeepSupportConvex``\es."""
         # pylint: disable=too-many-locals
         p_AoBo_A = p_AoBo_A.unsqueeze(-2)
         original_batch_dims = p_AoBo_A.shape[:-2]
