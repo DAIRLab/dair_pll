@@ -106,8 +106,8 @@ def number_to_float(number: Any) -> float:
     return float(str(number))
 
 
-def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
-                          from_com_to_other: bool = True) -> Tensor:
+def parallel_axis_theorem(I_BBa_B: Tensor, m_B: Tensor, p_BaBb_B: Tensor,
+                          Ba_is_Bcm: bool = True) -> Tensor:
     """Converts an inertia matrix represented from one reference point to that
     represented from another reference point.  One of these reference points
     must be the center of mass.
@@ -128,26 +128,25 @@ def parallel_axis_theorem(inertia_mat: Tensor, masses: Tensor, vec: Tensor,
     [2] https://en.wikipedia.org/wiki/Moment_of_inertia#Parallel_axis_theorem
 
     Args:
-        inertia_mat: ``(*, 3, 3)`` inertia matrices.
-        masses: ``(*)`` masses.
-        vec: ``(*, 3)`` displacement from current frame to new frame.
-        from_com_to_other: ``True`` if the provided inertia_mat is from the
-          perspective of the CoM, ``False`` if from the perspective of the
-          origin.
+        I_BBa_B: ``(*, 3, 3)`` inertia matrices.
+        m_B: ``(*)`` masses.
+        p_BaBb_B: ``(*, 3)`` displacement from current frame to new frame.
+        Ba_is_Bcm: ``True`` if the provided I_BBa_B is from the perspective of
+          the CoM, ``False`` if from the perspective of the origin.
 
     Returns:
         ``(*, 3, 3)`` inertia matrices with changed reference point.
     """
-    d_squared = skew_symmetric(vec) @ skew_symmetric(vec)
-    term = d_squared * masses.view((-1, 1, 1))
+    d_squared = skew_symmetric(p_BaBb_B) @ skew_symmetric(p_BaBb_B)
+    term = d_squared * m_B.view((-1, 1, 1))
 
-    if from_com_to_other:
-        return inertia_mat - term
+    if Ba_is_Bcm:
+        return I_BBa_B - term
     else:
-        return inertia_mat + term
+        return I_BBa_B + term
 
 
-def inertia_matrix_from_vector(inertia_vec: Tensor) -> Tensor:
+def inertia_matrix_from_vector(I_BBa_B_vec: Tensor) -> Tensor:
     r"""Converts vectorized inertia vector of the following order into an
     inertia matrix:
 
@@ -159,21 +158,21 @@ def inertia_matrix_from_vector(inertia_vec: Tensor) -> Tensor:
         I_{xz} & I_{yz} & I_{zz} \end{bmatrix}
 
     Args:
-        inertia_vec: ``(*, 6)`` vectorized inertia parameters.
+        I_BBa_B_vec: ``(*, 6)`` vectorized inertia parameters.
 
     Returns:
         ``(*, 3, 3)`` inertia matrix.
     """
     # Put Ixx, Iyy, Izz on the diagonals.
-    diags = torch.diag_embed(inertia_vec[:, :3])
+    diags = torch.diag_embed(I_BBa_B_vec[:, :3])
 
     # Put Ixy, Ixz, Iyz on the off-diagonals.
-    off_diags = symmetric_offdiagonal(inertia_vec[:, 3:].flip(1))
+    off_diags = symmetric_offdiagonal(I_BBa_B_vec[:, 3:].flip(1))
 
     return diags + off_diags
 
 
-def inertia_vector_from_matrix(inertia_mat: Tensor) -> Tensor:
+def inertia_vector_from_matrix(I_BBa_B_mat: Tensor) -> Tensor:
     r"""Converts inertia matrix into vectorized inertia vector of the following
     order:
 
@@ -185,18 +184,18 @@ def inertia_vector_from_matrix(inertia_mat: Tensor) -> Tensor:
         [I_{xx}, I_{yy}, I_{zz}, I_{xy}, I_{xz}, I_{yz}]
     
     Args:
-        inertia_mat: ``(*, 3, 3)`` inertia matrix.
+        I_BBa_B_mat: ``(*, 3, 3)`` inertia matrix.
 
     Returns:
         ``(*, 6)`` vectorized inertia parameters.
     """
     # Grab Ixx, Iyy, Izz on the diagonals.
-    firsts = inertia_mat.diagonal(dim1=1, dim2=2)
+    firsts = I_BBa_B_mat.diagonal(dim1=1, dim2=2)
 
     # Grab Ixy, Ixz, Iyz on the off-diagonals individually.
-    ixys = inertia_mat[:, 0, 1].reshape(-1, 1)
-    ixzs = inertia_mat[:, 0, 2].reshape(-1, 1)
-    iyzs = inertia_mat[:, 1, 2].reshape(-1, 1)
+    ixys = I_BBa_B_mat[:, 0, 1].reshape(-1, 1)
+    ixzs = I_BBa_B_mat[:, 0, 2].reshape(-1, 1)
+    iyzs = I_BBa_B_mat[:, 1, 2].reshape(-1, 1)
 
     return torch.cat((firsts, ixys, ixzs, iyzs), dim=1)
 
@@ -324,10 +323,10 @@ class InertialParameterConverter:
         I_BBo_B = pi_o[..., 4:]
 
         # Use parallel axis theorem to compute inertia matrix wrt CoM.
-        inertia_mat = inertia_matrix_from_vector(I_BBo_B)
-        new_inertia_mat = parallel_axis_theorem(inertia_mat, mass, p_BoBcm_B,
-                                                from_com_to_other=False)
-        I_BBcm_B = inertia_vector_from_matrix(new_inertia_mat)
+        I_BBo_B_mat = inertia_matrix_from_vector(I_BBo_B)
+        I_BBcm_B_mat = parallel_axis_theorem(I_BBo_B_mat, mass, p_BoBcm_B,
+                                             Ba_is_Bcm=False)
+        I_BBcm_B = inertia_vector_from_matrix(I_BBcm_B_mat)
 
         return torch.hstack((mass, p_BoBcm_B*mass, I_BBcm_B)).reshape(-1, 10)
 
@@ -351,10 +350,10 @@ class InertialParameterConverter:
         I_BBcm_B = pi_cm[..., 4:]
 
         # Use parallel axis theorem to compute inertia matrix wrt origin.
-        inertia_mat = inertia_matrix_from_vector(I_BBcm_B)
-        new_inertia_mat = parallel_axis_theorem(inertia_mat, mass, p_BoBcm_B,
-                                                from_com_to_other=True)
-        I_BBo_B = inertia_vector_from_matrix(new_inertia_mat)
+        I_BBcm_B_mat = inertia_matrix_from_vector(I_BBcm_B)
+        I_BBo_B_mat = parallel_axis_theorem(I_BBcm_B_mat, mass, p_BoBcm_B,
+                                            Ba_is_Bcm=True)
+        I_BBo_B = inertia_vector_from_matrix(I_BBo_B_mat)
 
         return torch.hstack((mass, p_BoBcm_B*mass, I_BBo_B)).reshape(-1, 10)
 
