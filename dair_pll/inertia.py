@@ -401,16 +401,8 @@ class InertialParameterConverter:
         p_BoBcm_B = spatial_inertia.get_com()
         I_BBcm_B = spatial_inertia.Shift(p_BoBcm_B).CalcRotationalInertia()
 
-        mass_list = [
-            mass * number_to_float(coordinate) for coordinate in p_BoBcm_B
-        ]
-
-        inertia_list = [
-            number_to_float(I_BBcm_B[index[0], index[1]])
-            for index in INERTIA_INDICES
-        ]
-        pi_cm = Tensor([mass] + mass_list + inertia_list)
-        return pi_cm
+        return InertialParameterConverter.drake_inertial_components_to_pi(
+            mass, p_BoBcm_B, I_BBcm_B)
 
     @staticmethod
     def drake_to_pi_o(spatial_inertia: DrakeSpatialInertia) -> Tensor:
@@ -420,16 +412,26 @@ class InertialParameterConverter:
         p_BoBcm_B = spatial_inertia.get_com()
         I_BBo_B = spatial_inertia.CalcRotationalInertia()
 
+        return InertialParameterConverter.drake_inertial_components_to_pi(
+            mass, p_BoBcm_B, I_BBo_B)
+
+    @staticmethod
+    def drake_inertial_components_to_pi(mass, p_BoBcm_B, I_BBa_B) -> Tensor:
+        """Combines system mass with Drake representations of CoM location and
+        inertia parameters (w.r.t. either the body origin or CoM) into a Tensor
+        of ``pi`` parameters.  Note:  If Ba is Bo, the returned ``pi`` is
+        ``pi_o``; similarly, if Ba is Bcm, the returned ``pi`` is ``pi_cm``."""
         mass_list = [
             mass * number_to_float(coordinate) for coordinate in p_BoBcm_B
         ]
 
         inertia_list = [
-            number_to_float(I_BBo_B[index[0], index[1]])
+            number_to_float(I_BBa_B[index[0], index[1]])
             for index in INERTIA_INDICES
         ]
-        pi_o = Tensor([mass] + mass_list + inertia_list)
-        return pi_o
+        pi = Tensor([mass] + mass_list + inertia_list)
+        return pi
+
 
     @staticmethod
     def drake_to_theta(spatial_inertia: DrakeSpatialInertia) -> Tensor:
