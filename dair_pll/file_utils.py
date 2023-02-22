@@ -39,7 +39,7 @@ LOG_DIR = assure_created(os.path.join(MAIN_DIR, 'logs'))
 RESULTS_DIR = assure_created(os.path.join(MAIN_DIR, 'results'))
 ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, 'assets'))
 PLOTS_DIR = assure_created(os.path.join(MAIN_DIR, 'plots'))
-"""str: locations of key static directories"""
+# str: locations of key static directories
 
 
 def get_asset(asset_file_basename: str) -> str:
@@ -330,3 +330,9 @@ def get_geometrically_accurate_urdf(urdf_name: str) -> str:
         print(f'Could not find geometrically accurate version of {base_name};' +
               f' defaulting to using it directly.')
         return get_asset(base_name)
+
+# Some hard-coded video-related parameters.
+# TODO Can build in a more elegant solution in the future.
+EXP_NAME = os.environ['PLL_EXPERIMENT'] if 'PLL_EXPERIMENT' in os.environ else ''
+VIDEO_FILENAME = path.join(temp_dir(path.join(RESULTS_DIR, EXP_NAME)),
+                           'output.gif')

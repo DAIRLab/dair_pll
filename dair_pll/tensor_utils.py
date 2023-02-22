@@ -162,9 +162,10 @@ def skew_symmetric(vectors: Tensor) -> Tensor:
     return torch.stack((row_1, row_2, row_3), -2)
 
 
-def nonskew_symmetric(vectors: Tensor) -> Tensor:
-    r"""Converts vectors in :math:`\mathbb{R}^3` into nonskew-symmetric form.
-    This is the same as skew symmetric except for the skew negative signs.
+def symmetric_offdiagonal(vectors: Tensor) -> Tensor:
+    r"""Converts vectors in :math:`\mathbb{R}^3` into symmetric off-diagonal
+    form.  This is the same as skew symmetric except for the skew negative
+    signs.
 
     Converts vector(s) :math:`v` in ``vectors`` into symmetric matrix:
 

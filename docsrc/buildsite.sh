@@ -1,7 +1,8 @@
 #!/bin/bash
 set -x
 
-pwd ls -lah
+export GIT_PWD=$(pwd ls -lah)
+git config --global --add safe.directory ${GIT_PWD}
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 
 ##############

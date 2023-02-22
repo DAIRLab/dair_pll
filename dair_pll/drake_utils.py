@@ -24,7 +24,6 @@ from typing import Tuple, Dict, List, Optional, Mapping, cast, Union, Type
 import numpy as np
 import os
 import os.path as op
-import pdb
 
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
 from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
@@ -54,18 +53,12 @@ DEFAULT_DT = 1e-3
 
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
-CAM_FOV = np.pi/4
+CAM_FOV = np.pi/5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
-SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1.2, 0, 0.2])
-if 'PLL_EXPERIMENT' in os.environ:
-    EXP_NAME = os.environ['PLL_EXPERIMENT']
-    VIDEO_FILENAME = op.join(file_utils.temp_dir(
-                     op.join(file_utils.RESULTS_DIR, EXP_NAME)), 'output.gif')
-else:
-    VIDEO_FILENAME = 'dummy_filename.gif'
-    print(f'Warning:  Using a dummy video filename {VIDEO_FILENAME} because ' +
-          f'PLL_EXPERIMENT environment variable not set.')
+SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1, 0, 0.2])
+EXP_NAME = file_utils.EXP_NAME
+VIDEO_FILENAME = file_utils.VIDEO_FILENAME
 
 DrakeTemplateType = Mapping[Type, Type]
 MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)

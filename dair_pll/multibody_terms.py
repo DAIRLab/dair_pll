@@ -1,10 +1,10 @@
 """Mathematical implementation of multibody dynamics terms calculations.
 
-This file implements the ``MultibodyTerms`` type, which interprets a list of
-urdfs as a learnable Lagrangian system with contact, taking the state space
-from the corresponding ``MultibodyPlantDiagram`` as a given, and interpreting
-the various inertial and geometric terms stored within it as initial
-conditions of learnable parameters.
+This file implements the :py:class:`MultibodyTerms` type, which interprets a
+list of urdfs as a learnable Lagrangian system with contact, taking the state
+space from the corresponding :py:class:`MultibodyPlantDiagram` as a given, and
+interpreting the various inertial and geometric terms stored within it as
+initial conditions of learnable parameters.
 
 Multibody dynamics can be derived from four functions of state [q,v]:
 
@@ -18,16 +18,18 @@ and parameterize the contact-free Lagrangian dynamics as::
 
     dv/dt = (M(q) ** (-1)) * F(q)
 
-These terms are accordingly encapsulated in a ``LagrangianTerms`` instance.
+These terms are accordingly encapsulated in a :py:class:`LagrangianTerms`
+instance.
 
 The latter two terms depend solely on the geometry of bodies coming into
-contact, and are encapsulated in a ``ContactTerms`` instance.
+contact, and are encapsulated in a :py:class:`ContactTerms` instance.
 
 For both sets of terms, we derive their functional form either directly or in
-part through symbolic analysis of the ``MultibodyPlant`` of the associated
-``MultibodyPlantDiagram``. The ``MultibodyTerms`` object manages the symbolic
-calculation and has corresponding ``LagrangianTerms`` and ``ContactTerms``
-members."""
+part through symbolic analysis of the :py:class:`MultibodyPlant` of the
+associated :py:class:`MultibodyPlantDiagram`. The :py:class:`MultibodyTerms`
+object manages the symbolic calculation and has corresponding
+:py:class:`LagrangianTerms` and :py:class:`ContactTerms` members.
+"""
 from typing import List, Tuple, Callable, Dict, cast, Optional
 
 import drake_pytorch  # type: ignore
@@ -70,13 +72,13 @@ INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
-        plant_diagram: MultibodyPlantDiagram
-    ) -> Tuple[MultibodyPlant_[Expression], Context, np.ndarray, np.ndarray]:
-    """Generates a symbolic interface for a ``MultibodyPlantDiagram``.
+    plant_diagram: MultibodyPlantDiagram
+) -> Tuple[MultibodyPlant_[Expression], Context, np.ndarray, np.ndarray]:
+    """Generates a symbolic interface for a :py:class:`MultibodyPlantDiagram`.
 
-    Generates a new Drake ``Expression`` data type state in ``StateSpace``
-    format, and sets this state inside a new context for a symbolic version
-    of the diagram's ``MultibodyPlant``.
+    Generates a new Drake ``Expression`` data type state in
+    :py:class:`StateSpace` format, and sets this state inside a new context for
+    a symbolic version of the diagram's :py:class:`MultibodyPlant`.
 
     Args:
         plant_diagram: Drake MultibodyPlant diagram to convert to symbolic.
@@ -84,20 +86,20 @@ def init_symbolic_plant_context_and_state(
     Returns:
         New symbolic plant.
         New plant's context, with symbolic states set.
-        (n_q,) symbolic ``StateSpace`` configuration.
-        (n_v,) symbolic ``StateSpace`` velocity.
+        (n_q,) symbolic :py:class:`StateSpace` configuration.
+        (n_v,) symbolic :py:class:`StateSpace` velocity.
     """
     plant = plant_diagram.plant.ToSymbolic()
     space = plant_diagram.space
     context = plant.CreateDefaultContext()
 
-    # ``StateSpace`` representation of Plant's state.
+    # :py:class:`StateSpace` representation of Plant's state.
     q = MakeVectorVariable(plant.num_positions(), 'q', Variable.Type.CONTINUOUS)
     v = MakeVectorVariable(plant.num_velocities(), 'v',
                            Variable.Type.CONTINUOUS)
     x = np.concatenate([q, v], axis=-1)
 
-    # Set ``StateSpace`` symbolic state inside
+    # Set :py:class:`StateSpace` symbolic state inside
     DrakeStateConverter.state_to_context(plant, context, x,
                                          plant_diagram.model_ids, space)
     return plant, context, q, v
@@ -114,9 +116,8 @@ class LagrangianTerms(Module):
     inertial_parameters: Parameter
     inertia_mode_txt: str
 
-    def __init__(self, plant_diagram: MultibodyPlantDiagram,
-                 inertia_mode: int) -> None:
-        """Inits ``LagrangianTerms`` with prescribed parameters and
+    def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
+        """Inits :py:class:`LagrangianTerms` with prescribed parameters and
         functional forms.
 
         Args:
@@ -264,8 +265,6 @@ class LagrangianTerms(Module):
                 SpatialInertia_[Expression].MakeFromCentralInertia(
                     mass=mass, p_PScm_E=p_BoBcm_B,
                     I_SScm_E=RotationalInertia_[Expression](*I_BBcm_B))
-                # SpatialInertia_[Expression](mass, p_BoBcm_B, 
-                #                       UnitInertia_[Expression](*I_BBcm_B))
 
             body.SetMass(context, mass)
             body.SetSpatialInertiaInBodyFrame(context, body_spatial_inertia)
@@ -282,13 +281,13 @@ class LagrangianTerms(Module):
         """Evaluates Lagrangian dynamics terms at given state and input.
 
         Args:
-            q: (*, n_q) configuration batch.
-            v: (*, n_v) velocity batch.
-            u: (*, n_u) input batch.
+            q: (\*, n_q) configuration batch.
+            v: (\*, n_v) velocity batch.
+            u: (\*, n_u) input batch.
 
         Returns:
-            (*, n_v, n_v) mass matrix batch M(q)
-            (*, n_v) Lagrangian contact-free acceleration inv(M(q)) F(q)
+            (\*, n_v, n_v) mass matrix batch M(q)
+            (\*, n_v) Lagrangian contact-free acceleration inv(M(q)) F(q)
         """
         # Pylint bug: cannot recognize instance attributes as Callable.
         # pylint: disable=not-callable
@@ -322,7 +321,8 @@ class ContactTerms(Module):
 
     Derives batched pytorch callback functions for collision geometry
     position and velocity kinematics from a
-    :class:`~dair_pll.drake_utils.MultibodyPlantDiagram`."""
+    :class:`~dair_pll.drake_utils.MultibodyPlantDiagram`.
+    """
     geometry_rotations: Optional[ConfigurationCallback]
     geometry_translations: Optional[ConfigurationCallback]
     geometry_spatial_jacobians: Optional[ConfigurationCallback]
@@ -332,7 +332,8 @@ class ContactTerms(Module):
     collision_candidates: Tensor
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
-        """Inits ``ContactTerms`` with prescribed kinematics and geometries.
+        """Inits :py:class:`ContactTerms` with prescribed kinematics and
+        geometries.
 
         phi(q) and J(q) are calculated implicitly from kinematics and ``n_g ==
         len(geometries)`` collision geometries C.
@@ -400,12 +401,12 @@ class ContactTerms(Module):
             context: Plant's context with symbolic state.
 
         Returns:
-            List of ``CollisionGeometry`` models with one-to-one
-              correspondence with provided geometries.
+            List of :py:class:`CollisionGeometry` models with one-to-one
+            correspondence with provided geometries.
             List[(3,3)] of corresponding rotation matrices R_WG
             List[(3,)] of corresponding geometry frame origins p_WoGo_W
             List[(6,n_v)] of geometry spatial jacobians w.r.t. drake velocity
-              coordinates, J(v_drake)_V_WG_W
+            coordinates, J(v_drake)_V_WG_W
         """
         world_frame = plant.world_frame()
         geometries = []
@@ -447,12 +448,12 @@ class ContactTerms(Module):
         """Helper method to generate velocity jacobian from contact information.
 
         Args:
-            R_CW: (*, n_c, 3, 3) Rotation of world frame w.r.t. geometry frame.
-            Jv_V_WC_W: (*, 1, 6, n_v) Geometry spatial velocity Jacobian.
-            p_CoCc_C: (*, n_c, 3) Geometry-frame contact points.
+            R_CW: (\*, n_c, 3, 3) Rotation of world frame w.r.t. geometry frame.
+            Jv_V_WC_W: (\*, 1, 6, n_v) Geometry spatial velocity Jacobian.
+            p_CoCc_C: (\*, n_c, 3) Geometry-frame contact points.
 
         Returns:
-            (*, n_c, 3, n_v) World-frame contact point translational velocity
+            (\*, n_c, 3, n_v) World-frame contact point translational velocity
             Jacobian.
         """
         p_CoCc_W = pbmm(p_CoCc_C.unsqueeze(-2), R_CW).squeeze(-2)
@@ -465,12 +466,12 @@ class ContactTerms(Module):
         """Helper method to reorder contact Jacobian columns.
 
         Args:
-            Jv_v_W_BcAc_F: (*, n_collisions, 3, n_v) collection of
+            Jv_v_W_BcAc_F: (\*, n_collisions, 3, n_v) collection of
             contact-frame relative velocity Jacobians.
             mu: (n_collisions,) list of
 
         Returns:
-            (*, 3 * n_collisions, n_v) contact jacobian J(q) in [J_n; mu * J_t]
+            (\*, 3 * n_collisions, n_v) contact jacobian J(q) in [J_n; mu * J_t]
             ordering.
         """
         # Tuple of (*, n_collisions, n_v)
@@ -489,19 +490,19 @@ class ContactTerms(Module):
     def forward(self, q: Tensor) -> Tuple[Tensor, Tensor]:
         """Evaluates Lagrangian dynamics terms at given state and input.
 
-        Uses ``GeometryCollider`` and kinematics to construct signed
+        Uses :py:class:`GeometryCollider` and kinematics to construct signed
         distance phi(q) and the corresponding Jacobian J(q).
 
         phi(q) and J(q) are calculated implicitly from kinematics and collision
         geometries.
 
         Args:
-            q: (*, n_q) configuration batch.
+            q: (\*, n_q) configuration batch.
             indices that can collide.
 
         Returns:
-            (*, n_collisions) signed distance phi(q).
-            (*, 3 * n_collisions, n_v) contact Jacobian J(q).
+            (\*, n_collisions) signed distance phi(q).
+            (\*, 3 * n_collisions, n_v) contact Jacobian J(q).
         """
         # Pylint bug: cannot recognize instance attributes as Callable.
         # pylint: disable=too-many-locals,not-callable
@@ -605,7 +606,6 @@ class MultibodyTerms(Module):
                 self.plant_diagram.model_ids)
 
         for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(), all_body_ids):
-            # include inertial terms
             body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
 
             scalars.update({
@@ -649,21 +649,22 @@ class MultibodyTerms(Module):
                 u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Evaluates multibody system dynamics terms at given state and input.
 
-        Calculation is performed as a thin wrapper around ``LagrangianTerms``
-        and ``ContactTerms``. For convenience, this function also returns the
-        Delassus operator D(q) = J(q)^T inv(M(q)) J(q).
+        Calculation is performed as a thin wrapper around
+        :py:class:`LagrangianTerms` and :py:class:`ContactTerms`. For
+        convenience, this function also returns the Delassus operator
+        `D(q) = J(q)^T inv(M(q)) J(q)`.
 
         Args:
-            q: (*, n_q) configuration batch.
-            v: (*, n_v) velocity batch.
-            u: (*, n_u) input batch.
+            q: (\*, n_q) configuration batch.
+            v: (\*, n_v) velocity batch.
+            u: (\*, n_u) input batch.
 
         Returns:
-            (*, 3 * n_collisions, 3 * n_collisions) Delassus operator D(q).
-            (*, n_v, n_v) mass matrix batch M(q).
-            (*, 3 * n_collisions, n_v) contact Jacobian J(q).
-            (*, n_collisions) signed distance phi(q).
-            (*, n_v) Contact-free acceleration inv(M(q)) * F(q).
+            (\*, 3 * n_collisions, 3 * n_collisions) Delassus operator D(q).
+            (\*, n_v, n_v) mass matrix batch M(q).
+            (\*, 3 * n_collisions, n_v) contact Jacobian J(q).
+            (\*, n_collisions) signed distance phi(q).
+            (\*, n_v) Contact-free acceleration inv(M(q)) * F(q).
         """
         M, non_contact_acceleration = self.lagrangian_terms(q, v, u)
         phi, J = self.contact_terms(q)
@@ -671,11 +672,11 @@ class MultibodyTerms(Module):
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration
 
-    def __init__(self, urdfs: Dict[str, str], inertia_mode: int) -> None:
-        """Inits ``MultibodyTerms`` for system described in URDFs
+    def __init__(self, urdfs: Dict[str, str]) -> None:
+        """Inits :py:class:`MultibodyTerms` for system described in URDFs
 
-        Interpretation is performed as a thin wrapper around ``LagrangianTerms``
-        and ``ContactTerms``.
+        Interpretation is performed as a thin wrapper around
+        :py:class:`LagrangianTerms` and :py:class:`ContactTerms`.
 
         As this module is also responsible for evaluating updated URDF
         representations, the associations between bodies and geometries is
