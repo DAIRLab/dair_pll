@@ -36,7 +36,7 @@ MAIN_DIR = path.dirname(path.dirname(__file__))
 RESULTS_DIR = assure_created(os.path.join(MAIN_DIR, 'results'))
 ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, 'assets'))
 PLOTS_DIR = assure_created(os.path.join(MAIN_DIR, 'plots'))
-"""str: locations of key static directories"""
+# str: locations of key static directories
 
 
 def get_asset(asset_file_basename: str) -> str:

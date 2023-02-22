@@ -43,7 +43,7 @@ def partial_sum_batch(summands: Tensor, keep_batch: bool = False) -> Tensor:
 
     Returns:
         sum of x as scalar tensor, or ``(b_1,)`` tensor if
-          ``keep_batch == True``.
+        ``keep_batch == True``.
     """
     if keep_batch:
         while len(summands.shape) > 1:
@@ -91,8 +91,8 @@ class StateSpace(ABC):
         """
         Args:
             n_q: number of Lie group (configuration) coordinates
-              (:math:`>= 0`\ )
-            n_v: number of Lie algebra (velocity) coordinates (:math:`>= 0`\ )
+              (:math:`>= 0`)
+            n_v: number of Lie algebra (velocity) coordinates (:math:`>= 0`)
         """
         assert n_q >= 0
         assert n_v >= 0
@@ -107,17 +107,17 @@ class StateSpace(ABC):
         r"""Returns the relative transformation between ``q_1`` and ``q_2``.
 
         Specifically, as :math:`G` is a Lie group, it has a well-defined inverse
-        operator. This function returns :math:`dq = \log(q_2 \cdot q_1^{-1})`\ ,
-        i.e. the Lie algebra element such that :math:`q_1 \exp(dq) = q_2`\ .
+        operator. This function returns :math:`dq = \log(q_2 \cdot q_1^{-1})`,
+        i.e. the Lie algebra element such that :math:`q_1 \exp(dq) = q_2`.
 
         This method has a corresponding "inverse" function
         :py:meth:`exponential`.
 
         Args:
             q_1: ``(*, n_q)`` "starting" configuration, element(s) of Lie
-              group :math:`G`\ .
+              group :math:`G`.
             q_2: ``(*, n_q)`` "ending" configuration, element(s) of Lie group
-              :math:`G`\ .
+              :math:`G`.
 
         Returns:
             ``(*, n_v)`` element of Lie algebra g defining the transformation
@@ -128,8 +128,8 @@ class StateSpace(ABC):
     def exponential(self, q: Tensor, dq: Tensor) -> Tensor:
         """Evolves ``q`` along the Lie group G in the direction ``dq``.
 
-        This function implements the inverse of ``configuration_difference()``
-        by returning q * exp(dq).
+        This function implements the inverse of
+        :py:meth:`configuration_difference` by returning q * exp(dq).
 
         Args:
             q: ``(*, n_q)`` "starting" configuration, element(s) of Lie group G
@@ -198,7 +198,7 @@ class StateSpace(ABC):
         r"""Returns squared distance between two Lie group
         elements/configurations.
 
-        Interprets an :math:`l_2`\ -like error between two configurations as the
+        Interprets an :math:`l_2`-like error between two configurations as the
         square of the geodesic distance between them. This is simply equal to
         :math:`|\log(q_2 \mathrm{inv}(q_1))|^2` under the assumptions about G.
 
@@ -277,8 +277,8 @@ class StateSpace(ABC):
         Interprets the rate of change of ``q`` as an element of the Lie
         algebra ``v``, such that q_plus == q * exp(v * dt).
 
-        ``finite_difference()`` has a corresponding "inverse" function
-        ``euler_step()``
+        :py:meth:`finite_difference` has a corresponding "inverse" function
+        :py:meth:`euler_step`.
 
         Args:
             q: ``(*, n_q)`` "starting" configuration, element(s) of Lie group G
@@ -295,7 +295,7 @@ class StateSpace(ABC):
     def euler_step(self, q: Tensor, v: Tensor, dt: float) -> Tensor:
         """Integrates ``q`` forward in time given derivative ``v``.
 
-        Implements the inverse of ``finite_difference()`` by returning
+        Implements the inverse of :py:meth:`finite_difference` by returning
         q * exp(v * dt), a geodesic forward Euler step.
 
         Args:
@@ -315,10 +315,10 @@ class StateSpace(ABC):
 
         As G x g is a Lie group, we can interpret the difference between two
         states via its corresponding Lie algebra, just as in
-        ``configuration_difference()``, as log(x_2 / x_1).
+        :py:meth:`configuration_difference`, as log(x_2 / x_1).
 
-        ``state_difference()`` has a corresponding "inverse" function
-        ``shift_state()``.
+        :py:meth:`state_difference` has a corresponding "inverse" function
+        :py:meth:`shift_state`.
 
         Args:
             x_1: ``(*, n_x)`` "starting" state, element(s) of Lie group G x g
@@ -341,7 +341,7 @@ class StateSpace(ABC):
     def shift_state(self, x: Tensor, dx: Tensor) -> Tensor:
         """Evolves ``x`` along the Lie group G in the direction ``dx``.
 
-        This function implements the inverse of ``state_difference()``
+        This function implements the inverse of :py:meth:`state_difference`
         by returning q * exp(dq).
 
         Args:
@@ -362,10 +362,10 @@ class StateSpace(ABC):
         return self.x(q_new, v_new)
 
     def project_state(self, x: Tensor) -> Tensor:
-        """Projects a tensor of size (*, n_x) onto the state space G x g.
+        """Projects a tensor of size (\*, n_x) onto the state space G x g.
 
         This function has the same basic requirements as
-        ``project_configuration()`` translated to the lie group G x g.
+        :py:meth:`project_configuration` translated to the lie group G x g.
 
         Args:
             x: ``(*, n_x)`` vectors to project onto G x g.
@@ -402,7 +402,7 @@ class StateSpace(ABC):
 class FloatingBaseSpace(StateSpace):
     """State space with configurations in SE(3) x R^n_joints.
 
-    Called ``FloatingBaseSpace`` as it is the state space of an open
+    Called :py:class:`FloatingBaseSpace` as it is the state space of an open
     kinematic chain with a free-floating base body.
 
     Coordinates for SO(3) are unit quaternions, with remaining states
@@ -410,7 +410,7 @@ class FloatingBaseSpace(StateSpace):
     """
 
     def __init__(self, n_joints: int) -> None:
-        """Inits ```FloatingBaseSpace`` of prescribed size.
+        """Inits `:py:class:`FloatingBaseSpace` of prescribed size.
 
         The floating base has configurations in SE(3), with 4 quaternion + 3
         world-axes position configuration coordinates and 3 body-axes angular
@@ -466,7 +466,7 @@ class FloatingBaseSpace(StateSpace):
     def exponential(self, q: Tensor, dq: Tensor) -> Tensor:
         """Implements exponential perturbation for a floating-base rigid chain.
 
-        This function implements the inverse of ``configuration_difference()``
+        This function implements the inverse of :py:meth:`configuration_difference`
         by rotating ``quat(q)`` around the body-axis rotation vector in
         ``dq``, and adding a linear offset to the remaining coordinates.
 
@@ -509,7 +509,7 @@ class FloatingBaseSpace(StateSpace):
 
         Returns:
             Concatenation of identity quaternion [1, 0, 0, 0] with
-              ``(n_joints + 3)`` zeros.
+            ``(n_joints + 3)`` zeros.
         """
         # pylint: disable=E1103
         zero = torch.zeros((self.n_x,))
@@ -575,7 +575,7 @@ class FloatingBaseSpace(StateSpace):
 class FixedBaseSpace(StateSpace):
     """State space with configurations in R^n_joints.
 
-    Called ``FixedBaseSpace`` as it is the state space of an open
+    Called :py:class:`FixedBaseSpace` as it is the state space of an open
     kinematic chain with fixed base body.
 
     As the Lie group R^n_joints is equivalent to its own algebra, the state
@@ -586,7 +586,7 @@ class FixedBaseSpace(StateSpace):
     """
 
     def __init__(self, n_joints: int) -> None:
-        """Inits ```FixedBaseSpace`` of prescribed size.
+        """Inits :py:class:`FixedBaseSpace` of prescribed size.
 
         Args:
             n_joints: number of joints in chain (>= 0)
@@ -604,7 +604,7 @@ class FixedBaseSpace(StateSpace):
             q_2: ``(*, n_q)`` "ending" configuration in R^n_joints
 
         Returns:
-            (*, n_v) difference of configurations
+            (\*, n_v) difference of configurations
         """
         assert q_1.shape[-1] == self.n_q
         assert q_2.shape[-1] == self.n_q
@@ -654,7 +654,7 @@ class ProductSpace(StateSpace):
     as long as each constituent subspace does as well."""
 
     def __init__(self, spaces: List[StateSpace]) -> None:
-        """Inits ``ProductSpace`` from given factors
+        """Inits :py:class:`ProductSpace` from given factors.
 
         The coordinates of each space in ``spaces`` are concatenated to
         construct the product space's coordinates, and similar for
@@ -664,7 +664,7 @@ class ProductSpace(StateSpace):
         n_xs = [space.n_x for space in spaces]
         n_q = sum(n_qs)
         n_v = sum(n_vs)
-        # pdb.set_trace()
+
         super().__init__(n_q, n_v)
         # pylint: disable=E1103
         self.q_splits = torch.cumsum(torch.tensor(n_qs), 0)[:-1]
@@ -707,8 +707,8 @@ class ProductSpace(StateSpace):
         return torch.cat(diffs, dim=-1)
 
     def exponential(self, q: Tensor, dq: Tensor) -> Tensor:
-        """Constructs perturbed configuration as concatenation of
-        perturbed subspace configurations"""
+        """Constructs perturbed configuration as concatenation of perturbed
+        subspace configurations"""
         assert q.shape[-1] == self.n_q
         assert dq.shape[-1] == self.n_v
         exps = [
@@ -719,8 +719,8 @@ class ProductSpace(StateSpace):
         return torch.cat(exps, dim=-1)
 
     def project_configuration(self, q: Tensor) -> Tensor:
-        """Projects configuration onto Lie group by projecting each
-        subspace's configuration onto its respective subgroup."""
+        """Projects configuration onto Lie group by projecting each subspace's
+        configuration onto its respective subgroup."""
         assert q.shape[-1] == self.n_q
         projections = [
             space.project_configuration(qi)
@@ -751,9 +751,8 @@ class WhiteNoiser:
     r"""Helper class for adding artificial noise to state batches.
 
     Defines an interface for noise distortion of a batch of states. Noise is
-    modeled as a zero-mean distribution on the Lie algebra of the state
-    space, :math:`\mathbb{R}^{2 n_v}`\ . Note that this means that
-    velocities receive
+    modeled as a zero-mean distribution on the Lie algebra of the state space,
+    :math:`\mathbb{R}^{2 n_v}`. Note that this means that velocities receive
     noise independent to the configuration, and thus may break the
     finite-difference relationship in a trajectory."""
     space: StateSpace
@@ -764,12 +763,12 @@ class WhiteNoiser:
                  space: StateSpace,
                  unit_noise: Callable[[Size], Tensor],
                  variance_factor: float = 1) -> None:
-        """Inits a ``WhiteNoiser`` of specified distribution.
+        """Inits a :py:class:`WhiteNoiser` of specified distribution.
 
         Args:
             space: State space upon which
             unit_noise: Callback, returns coordinate-independent noise of
-            nominal unit size.
+              nominal unit size.
             variance_factor: Variance of a single coordinate's unit-scale noise.
         """
         super().__init__()
@@ -812,20 +811,20 @@ class WhiteNoiser:
 
         Returns:
             ``(2 * space.n_v, 2 * space.n_v)`` covariance matrix on state space
-              Lie algebra.
+            Lie algebra.
         """
         return torch.diag(self.variance_factor * (ranges**2))
 
 
 class UniformWhiteNoiser(WhiteNoiser):
-    """Convenience ``WhiteNoiser`` class for uniform noise."""
+    """Convenience :py:class:`WhiteNoiser` class for uniform noise."""
 
     def __init__(self, space: StateSpace) -> None:
         super().__init__(space, centered_uniform, 1. / 3.)
 
 
 class GaussianWhiteNoiser(WhiteNoiser):
-    """Convenience ``WhiteNoiser`` class for Gaussian noise."""
+    """Convenience :py:class:`WhiteNoiser` class for Gaussian noise."""
 
     def __init__(self, space: StateSpace) -> None:
         super().__init__(space, torch.randn)
@@ -836,7 +835,7 @@ class StateSpaceSampler(ABC):
     space: StateSpace
 
     def __init__(self, space: StateSpace) -> None:
-        """Inits ``StateSpaceSampler`` on prescribed space.
+        """Inits :py:class:`StateSpaceSampler` on prescribed space.
 
         Args:
             space: State space of sampler.
@@ -858,7 +857,7 @@ class StateSpaceSampler(ABC):
 
         Interprets the distribution in logarithmic coordinates (the Lie
         algebra of the state space), and returns a covariance matrix in
-        :math:`\mathbb{R}^{2 n_v \times 2 n_v}`\ .
+        :math:`\mathbb{R}^{2 n_v \times 2 n_v}`.
 
         Returns:
             (2 * space.n_v, 2 * space.n_v) distribution covariance.
@@ -866,17 +865,18 @@ class StateSpaceSampler(ABC):
 
 
 class ConstantSampler(StateSpaceSampler):
-    """Convenience ``StateSpaceSampler`` for returning constant state."""
+    """Convenience :py:class:`StateSpaceSampler` for returning constant
+    state."""
     space: StateSpace
     x_0: Tensor
 
     def __init__(self, space: StateSpace, x_0: Tensor) -> None:
-        """Inits ``ConstantSampler`` with specified constant state.
+        """Inits :py:class:`ConstantSampler` with specified constant state.
 
         Args:
             space: Sampler's state space.
             x_0: ``(space.n_x,)`` singleton support of underlying probability
-            distribution.
+              distribution.
         """
         super().__init__(space)
         self.x_0 = x_0
@@ -891,7 +891,7 @@ class ConstantSampler(StateSpaceSampler):
 
 
 class ZeroSampler(ConstantSampler):
-    """Convenience ``ConstantSampler`` for returning zero state."""
+    """Convenience :py:class:`ConstantSampler` for returning zero state."""
 
     def __init__(self, space: StateSpace) -> None:
         super().__init__(space, space.zero_state())
@@ -912,16 +912,17 @@ class CenteredSampler(StateSpaceSampler):
                  ranges: Tensor,
                  unit_noise: Callable[[Size], Tensor] = torch.randn,
                  x_0: Tensor = None) -> None:
-        """Inits ``CenteredSampler`` with specified distribution
+        """Inits :py:class:`CenteredSampler` with specified distribution
 
         Args:
             space: Sampler's state space.
             ranges: ``(2 * space.n_v,)`` multiplicative scale on noise
-            distribution standard deviation.
+              distribution standard deviation.
             unit_noise: Callback, returns coordinate-independent noise of
-            nominal unit size.
+              nominal unit size.
             x_0: ``(space.n_x,)`` center of distribution, around which Lie
-            algebra perturbation is applied by underlying ``WhiteNoiser``.
+              algebra perturbation is applied by underlying
+              :py:class:`WhiteNoiser`.
         """
         super().__init__(space)
         if x_0 is None:
@@ -941,14 +942,14 @@ class CenteredSampler(StateSpaceSampler):
 
 
 class UniformSampler(CenteredSampler):
-    """Convenience ``CenteredSampler`` for uniform noise."""
+    """Convenience :py:class:`CenteredSampler` for uniform noise."""
 
     def __init__(self, space: StateSpace, ranges: Tensor, x_0: Tensor = None):
         super().__init__(space, ranges, centered_uniform, x_0)
 
 
 class GaussianSampler(CenteredSampler):
-    """Convenience ``CenteredSampler`` for Gaussian noise."""
+    """Convenience :py:class:`CenteredSampler` for Gaussian noise."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
