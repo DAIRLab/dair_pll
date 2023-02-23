@@ -118,8 +118,8 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-EPOCHS = 200            # change this (originally 500)
-PATIENCE = 100       # change this (originally EPOCHS)
+EPOCHS = 500            # change this (originally 500)
+PATIENCE = 200       # change this (originally EPOCHS)
 # BATCH_SIZE = 256  <-- updated to scale with commandline argument for dataset_size
 
 
@@ -306,6 +306,14 @@ def main(name: str = None,
                            + f'\ttrain_loss: {train_loss}\n\n')
             txt_file.close()
 
+    def log_and_regen_callback(epoch: int,
+                     learned_system: MultibodyLearnableSystem,
+                     train_loss: Tensor,
+                     best_valid_loss: Tensor) -> None:
+        log_callback(epoch, learned_system, train_loss, best_valid_loss)
+        learned_system.generate_updated_urdfs(storage_name)
+        
+
     # Save all parameters so far in experiment directory.
     # with open(f'{storage_name}/params.pickle', 'wb') as pickle_file:
     #     pickle.dump(experiment_config, pickle_file)
@@ -345,7 +353,7 @@ def main(name: str = None,
 
     # Trains system.
     _, _, learned_system = experiment.train(
-        regenerate_callback if regenerate else log_callback #default_epoch_callback
+        log_and_regen_callback if regenerate else log_callback #default_epoch_callback
     )
 
     # Save the final urdf.
