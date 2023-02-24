@@ -3,6 +3,7 @@ import time
 from dataclasses import field, dataclass
 from enum import Enum
 from typing import List, Optional, cast, Dict
+import pdb
 
 import torch
 from torch import Tensor
@@ -131,12 +132,16 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_diss.append(loss_diss.clone().detach())
 
         # Calculate average and scale by hyperparameter weights.
-        avg_loss_pred = cast(Tensor, sum(losses_pred) / len(losses_pred)).sum()
-        avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) / len(losses_comp)).sum()
-        avg_loss_pen = W_PEN*cast(Tensor, sum(losses_pen) / len(losses_pen)).sum()
-        avg_loss_diss = W_DISS*cast(Tensor, sum(losses_diss) / len(losses_diss)).sum()
+        avg_loss_pred = cast(Tensor, sum(losses_pred) / len(losses_pred)).mean()
+        avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) / len(losses_comp)).mean()
+        avg_loss_pen = W_PEN*cast(Tensor, sum(losses_pen) / len(losses_pen)).mean()
+        avg_loss_diss = W_DISS*cast(Tensor, sum(losses_diss) / len(losses_diss)).mean()
 
-        loss_breakdown = {'loss_pred': avg_loss_pred,
+        avg_loss_total = torch.sum(avg_loss_pred + avg_loss_comp + \
+                                   avg_loss_pen + avg_loss_diss)
+
+        loss_breakdown = {'loss_total': avg_loss_total,
+                          'loss_pred': avg_loss_pred,
                           'loss_comp': avg_loss_comp,
                           'loss_pen': avg_loss_pen,
                           'loss_diss': avg_loss_diss}
