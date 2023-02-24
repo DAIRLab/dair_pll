@@ -25,7 +25,7 @@ from dair_pll.dataset_management import SystemDataManager, \
     DataConfig, TrajectorySliceDataset, TrajectorySet
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import StateSpace
-from dair_pll.system import System
+from dair_pll.system import System, SystemSummary
 from dair_pll.tensorboard_manager import TensorboardManager
 
 TRAIN_SET = 'train'
@@ -369,19 +369,22 @@ class SupervisedLearningExperiment(ABC):
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
-    def write_to_tensorboard(self, epoch: int, learned_system: System,
-                             statistics: Dict) -> None:
+    def build_epoch_vars_and_system_summary(self, learned_system: System,
+                                            statistics: Dict) -> \
+                                            Tuple[Dict, SystemSummary]:
         """Extracts and writes summary of training progress to Tensorboard.
 
         Args:
-            epoch: Current epoch.
             learned_system: System being trained.
             statistics: Summary statistics for learning process.
-        """
 
+        Returns:
+            Scalars dictionary.
+            Videos and meshes packaged into a ``SystemSummary``.
+        """
         # begin recording wall-clock logging time.
-        assert self.tensorboard_manager is not None
         start_log_time = time.time()
+
         epoch_vars = {}
         for stats_set in TRAIN_TIME_SETS:
             for variable in EVALUATION_VARIABLES:
@@ -397,6 +400,23 @@ class SupervisedLearningExperiment(ABC):
         statistics[LOGGING_DURATION] = logging_duration
         epoch_vars.update(
             {duration: statistics[duration] for duration in ALL_DURATIONS})
+
+        return epoch_vars, system_summary
+
+    def write_to_tensorboard(self, epoch: int, learned_system: System,
+                             statistics: Dict) -> None:
+        """Extracts and writes summary of training progress to Tensorboard.
+
+        Args:
+            epoch: Current epoch.
+            learned_system: System being trained.
+            statistics: Summary statistics for learning process.
+        """
+        assert self.tensorboard_manager is not None
+
+        epoch_vars, system_summary = self.build_epoch_vars_and_system_summary(
+                                            learned_system, statistics)
+        
         self.tensorboard_manager.update(epoch, epoch_vars,
                                         system_summary.videos,
                                         system_summary.meshes)

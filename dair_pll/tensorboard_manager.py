@@ -5,7 +5,7 @@ import subprocess
 import os
 import os.path as op
 import socket
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import git
 
@@ -111,7 +111,8 @@ class TensorboardManager:
 
 	def update(self, epoch: int, scalars: Dict[str, float],
 			   videos: Dict[str, Tuple[np.ndarray, int]],
-			   meshes: Dict[str, MeshSummary]) -> None:
+			   meshes: Dict[str, MeshSummary],
+			   overlaid_scalars: List[Dict[str, float]] = None) -> None:
 		"""Write new epoch summary to Tensorboard.
 
 		Args:
@@ -125,6 +126,8 @@ class TensorboardManager:
 		if videos is not None:
 			self.__write_videos(epoch, videos)
 		self.__write_meshes(epoch, meshes)
+		if overlaid_scalars is not None:
+			self.__write_overlaid_scalars(epoch, overlaid_scalars)
 
 		# Should just have to flush--for some reason, need to close??
 		self.writer.close()
@@ -167,3 +170,8 @@ class TensorboardManager:
 								 colors,
 								 faces,
 								 global_step=epoch)
+
+	def __write_overlaid_scalars(self, epoch: int, overlaid_scalars:
+								 List[Dict[str, float]]) -> None:
+		loss_breakdown = overlaid_scalars[0]
+		self.writer.add_scalars('valid_loss_breakdown', loss_breakdown, epoch)

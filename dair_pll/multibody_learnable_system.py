@@ -44,6 +44,14 @@ from dair_pll.system import System, \
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz
 
 
+
+# Some hyperparameters for weight-tuning.  Assume w_pred = 1, and all the below
+# weights are relative to that.
+W_COMP = 1e-1
+W_DISS = 1e0
+W_PEN = 1e1
+
+
 class MultibodyLearnableSystem(System):
     """``System`` interface for dynamics associated with ``MultibodyTerms``."""
     multibody_terms: MultibodyTerms
@@ -184,21 +192,58 @@ class MultibodyLearnableSystem(System):
         Returns:
             (*,) loss batch.
         """
+        loss_pred, loss_comp, loss_pen, loss_diss = \
+            self.calculate_contactnets_loss_terms(x, u, x_plus)
+
+        loss = loss_pred + (W_COMP * loss_comp) + (W_PEN * loss_pen) + \
+               (W_DISS * loss_diss)
+
+        return loss
+
+    def calculate_contactnets_loss_terms(self,
+                         x: Tensor,
+                         u: Tensor,
+                         x_plus: Tensor) -> \
+                         Tuple[Tensor, Tensor, Tensor, Tensor]:
+        """Helper function for
+        :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
+        individual pre-weighted loss contributions:
+
+            * Prediction
+            * Complementarity
+            * Penetration
+            * Dissipation
+
+        Args:
+            x: (*, space.n_x) current state batch.
+            u: (*, ?) input batch.
+            x_plus: (*, space.n_x) current state batch.
+
+        Returns:
+            (*,) prediction error loss.
+            (*,) complementarity violation loss.
+            (*,) penetration loss.
+            (*,) dissipation violation loss.
+        """
         # pylint: disable-msg=too-many-locals
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
         eps = 1e-3
 
-        # Some hyperparameters for weight-tuning.  Assume w_pred = 1, and all
-        # the below weights are relative to that.
-        w_comp = 1e-1
-        w_diss = 1e0
-        w_pen = 1e1
-
         # Begin loss calculation.
         delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
             q_plus, v_plus, u)
+
+        # Calculate some additional quantities for inertia-agnostic loss.
+        massless_delassus = pbmm(J,
+                                 torch.linalg.solve(pbmm(M, M),
+                                                    J.transpose(-1, -2)))
+        try:
+            M_inv = torch.inverse((M))
+        except:
+            print(f'M: {M}')
+            pdb.set_trace()
 
         n_contacts = phi.shape[-1]
         n = n_contacts * 3
@@ -222,32 +267,24 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        try:
-            L = torch.linalg.cholesky(torch.inverse((M)))
-        except:
-            pdb.set_trace()
-            print(f'M matrix: {M}')
-            
-        Q = delassus + eps * torch.eye(3 * n_contacts)
+        L = torch.linalg.cholesky(M_inv)
+
+        Q = massless_delassus + eps * torch.eye(3 * n_contacts)
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
-        q_pred = -pbmm(J, dv.transpose(-1, -2))
-        q_comp = w_comp * (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
-        q_diss = w_diss * torch.cat((sliding_speeds, sliding_velocities),
-                                    dim=-2)
+        q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+        q_comp = (1/dt) * pbmm(delassus,
+                                        torch.abs(phi_then_zero).unsqueeze(-1))
+        q_diss = pbmm(delassus, torch.cat((sliding_speeds, sliding_velocities),
+                      dim=-2))
         q = q_pred + q_comp + q_diss
 
-
-        penetration_penalty = (torch.maximum(
-            -phi, torch.zeros_like(phi))**2).sum(dim=-1)
-
-        penetration_penalty = w_pen * penetration_penalty.reshape(
-            penetration_penalty.shape + (1, 1))
-
-        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(
-            -1, -2))) + penetration_penalty
+        constant_pen = (torch.maximum(
+                            -phi, torch.zeros_like(phi))**2).sum(dim=-1)
+        constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
+        constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
@@ -263,13 +300,18 @@ class MultibodyLearnableSystem(System):
                             dim=-2,
                             keepdim=True)
 
-        constant[invalid] *= 0.
+        constant_pen[invalid] *= 0.
+        constant_pred[invalid] *= 0.
         force[invalid.expand(force.shape)] = 0.
 
-        loss = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) + pbmm(
-            force.transpose(-1, -2), q) + constant
+        loss_pred = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) \
+                    + pbmm(force.transpose(-1, -2), q_pred) + constant_pred
+        loss_comp = pbmm(force.transpose(-1, -2), q_comp)
+        loss_pen = constant_pen
+        loss_diss = pbmm(force.transpose(-1, -2), q_diss)
 
-        return loss.squeeze(-1).squeeze(-1)
+        return loss_pred.reshape(-1), loss_comp.reshape(-1), \
+               loss_pen.reshape(-1), loss_diss.reshape(-1)
 
     def forward_dynamics(self,
                          q: Tensor,

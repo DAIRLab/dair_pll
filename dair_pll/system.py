@@ -14,7 +14,7 @@ such as a UKF estimator or an RNN.
 """
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Tuple, Callable, Optional, Dict
+from typing import Tuple, Callable, Optional, Dict, List
 
 import numpy as np
 import torch
@@ -42,6 +42,7 @@ class SystemSummary:
     scalars: Dict[str, float] = field(default_factory=dict)
     videos: Dict[str, Tuple[np.ndarray, int]] = field(default_factory=dict)
     meshes: Dict[str, MeshSummary] = field(default_factory=dict)
+    overlaid_scalars: Optional[List[Dict[str, float]]] = None
 
 
 class System(ABC, Module):

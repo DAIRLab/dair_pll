@@ -1,18 +1,23 @@
 """Wrappers for Drake/ContactNets multibody experiments."""
+import time
 from dataclasses import field, dataclass
 from enum import Enum
 from typing import List, Optional, cast, Dict
 
 import torch
 from torch import Tensor
+from torch.utils.data import DataLoader
 
+from dair_pll.dataset_management import TrajectorySliceDataset, TrajectorySet
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.experiment import SupervisedLearningExperiment, \
     SystemConfig, \
-    SupervisedLearningExperimentConfig
+    SupervisedLearningExperimentConfig, \
+    LOGGING_DURATION
 from dair_pll.multibody_learnable_system import \
-    MultibodyLearnableSystem
+    MultibodyLearnableSystem, \
+    W_COMP, W_PEN, W_DISS
 from dair_pll.system import System
 
 
@@ -71,6 +76,82 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         return MultibodyLearnableSystem(learnable_config.urdfs,
                                         self.config.data_config.dt,
                                         learnable_config.inertia_mode)
+
+    def write_to_tensorboard(self, epoch: int, learned_system: System,
+                             statistics: Dict) -> None:
+        """In addition to extracting and writing training progress summary via
+        the parent :py:meth:`Experiment.write_to_tensorboard` method, also make
+        a breakdown plot of loss contributions for the ContactNets loss
+        formulation.
+
+        Args:
+            epoch: Current epoch.
+            learned_system: System being trained.
+            statistics: Summary statistics for learning process.
+        """
+        assert self.tensorboard_manager is not None
+
+        # Begin recording wall-clock logging time.
+        start_log_time = time.time()
+        epoch_vars, system_summary = self.build_epoch_vars_and_system_summary(
+                                            learned_system, statistics)
+
+        # Start computing individual loss components.
+        # First get the training set.
+        train_traj_set, _, _ = self.data_manager.get_trajectory_split()
+        n_train_eval = min(len(train_traj_set.trajectories),
+                          self.config.full_evaluation_samples)
+
+        dummy_train_slice_set = TrajectorySliceDataset(
+            train_traj_set.trajectories[:1])
+
+        train_eval_set = TrajectorySet(
+            trajectories=train_traj_set.trajectories[:n_train_eval],
+            slices=dummy_train_slice_set)
+
+        train_dataloader = DataLoader(train_eval_set.slices, batch_size=128,
+                                      shuffle=False)
+
+        # Calculate the average loss components.
+        losses_pred, losses_comp, losses_pen, losses_diss = [], [], [], []
+        for xy_i in train_dataloader:
+            x_i: Tensor = xy_i[0]
+            y_i: Tensor = xy_i[1]
+
+            x = x_i[..., -1, :]
+            x_plus = y_i[..., 0, :]
+            u = torch.zeros(x.shape[:-1] + (0,))
+
+            loss_pred, loss_comp, loss_pen, loss_diss = \
+                learned_system.calculate_contactnets_loss_terms(x, u, x_plus)
+
+            losses_pred.append(loss_pred.clone().detach())
+            losses_comp.append(loss_comp.clone().detach())
+            losses_pen.append(loss_pen.clone().detach())
+            losses_diss.append(loss_diss.clone().detach())
+
+        # Calculate average and scale by hyperparameter weights.
+        avg_loss_pred = cast(Tensor, sum(losses_pred) / len(losses_pred)).sum()
+        avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) / len(losses_comp)).sum()
+        avg_loss_pen = W_PEN*cast(Tensor, sum(losses_pen) / len(losses_pen)).sum()
+        avg_loss_diss = W_DISS*cast(Tensor, sum(losses_diss) / len(losses_diss)).sum()
+
+        loss_breakdown = {'loss_pred': avg_loss_pred,
+                          'loss_comp': avg_loss_comp,
+                          'loss_pen': avg_loss_pen,
+                          'loss_diss': avg_loss_diss}
+
+        # Include the loss breakdown into system summary.
+        system_summary.overlaid_scalars = [loss_breakdown]
+        
+        # Overwrite the logging time.
+        logging_duration = time.time() - start_log_time
+        epoch_vars[LOGGING_DURATION] = logging_duration
+
+        self.tensorboard_manager.update(epoch, epoch_vars,
+                                        system_summary.videos,
+                                        system_summary.meshes,
+                                        system_summary.overlaid_scalars)
 
     def contactnets_loss(self,
                          x_past: Tensor,
