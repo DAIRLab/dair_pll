@@ -369,6 +369,28 @@ class SupervisedLearningExperiment(ABC):
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
+    def calculate_loss_no_grad_step(self, data: DataLoader, system: System) \
+        -> Tensor:
+        """Evaluate learned model, without taking any gradient steps.
+
+        Args:
+            data: Training dataset.
+            system: System to be trained.
+            optimizer: Optimizer which trains system.
+
+        Returns:
+            Scalar average training loss observed during evaluation.
+        """
+        losses = []
+        for xy_i in data:
+            x_i: Tensor = xy_i[0]
+            y_i: Tensor = xy_i[1]
+            loss = self.batch_loss(x_i, y_i, system)
+            losses.append(loss.clone().detach())
+        avg_loss = cast(Tensor, sum(losses) / len(losses))
+        return avg_loss
+
+
     def build_epoch_vars_and_system_summary(self, learned_system: System,
                                             statistics: Dict) -> \
                                             Tuple[Dict, SystemSummary]:
@@ -535,9 +557,11 @@ class SupervisedLearningExperiment(ABC):
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
         learned_system.eval()
-        self.per_epoch_evaluation(0, learned_system, torch.tensor(torch.nan), 0.)
+        init_training_loss = self.calculate_loss_no_grad_step(train_dataloader,
+                                                              learned_system)
+        self.per_epoch_evaluation(0, learned_system, init_training_loss, 0.)
         learned_system.train()
-        epoch_callback(0, learned_system, torch.tensor(torch.nan),
+        epoch_callback(0, learned_system, init_training_loss,
                        torch.tensor(torch.nan))
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
