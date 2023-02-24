@@ -16,7 +16,6 @@ from typing import Tuple
 
 import numpy as np
 import time
-import pdb
 
 from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
 from pydrake.math import RigidTransform  # type: ignore

@@ -13,9 +13,12 @@ slurm-*
 # startup scripts
 examples/startup_*
 
+<<<<<<< HEAD
 # test bash script
 examples/test.bash
 
+=======
+>>>>>>> upstream/main
 # Sphinx
 docsrc/source/dair_pll.*
 docsrc/source/modules.rst
@@ -100,7 +103,11 @@ instance/
 # Scrapy stuff:
 .scrapy
 
+<<<<<<< HEAD
 # Drake stuff:
+=======
+# special Drake version:
+>>>>>>> upstream/main
 drake-dev*.deb
 
 # Sphinx documentation
