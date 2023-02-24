@@ -187,13 +187,16 @@ class LagrangianTerms(Module):
         # invariance.
         orig = self.original_pi_cm_params
         orig_m = orig[0,0].item()
-        curr_m = curr_pi_cm[0,0].item()
 
         # Explicitly overwrite the mass of the first link, since this value is
         # unobservable.  All of the remaining inertial parameters are
         # detectable when this value is fixed.  Use direct assignment to zero
         # the parameter gradient.
         curr_pi_cm[0,0] = orig_m
+
+        # # TEMPORARY:  test if overwriting all masses helps.
+        # orig_ms = orig[:,0].detach()
+        # curr_pi_cm[:,0] = orig_ms
 
         # Overwrite more parameters based on the inertia mode.
         mode = self.inertia_mode_txt
