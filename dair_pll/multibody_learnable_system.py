@@ -45,8 +45,8 @@ from dair_pll.tensor_utils import pbmm, broadcast_lorentz
 
 
 
-# Some hyperparameters for weight-tuning.  Assume w_pred = 1, and all the below
-# weights are relative to that.
+# Some hyperparameters for weight-tuning.
+W_PRED = 1e0   # Suggest not to change this one and just tweak others relative.
 W_COMP = 1e-1
 W_DISS = 1e0
 W_PEN = 1e1
@@ -198,8 +198,8 @@ class MultibodyLearnableSystem(System):
         loss_pred, loss_comp, loss_pen, loss_diss = \
             self.calculate_contactnets_loss_terms(x, u, x_plus)
 
-        loss = loss_pred + (W_COMP * loss_comp) + (W_PEN * loss_pen) + \
-               (W_DISS * loss_diss)
+        loss = (W_PRED * loss_pred) + (W_COMP * loss_comp) + \
+               (W_PEN * loss_pen) + (W_DISS * loss_diss)
 
         return loss
 
@@ -270,15 +270,19 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        L = torch.linalg.cholesky(M_inv)
-
         ## inertia-agnostic version
         Q = massless_delassus + eps * torch.eye(3 * n_contacts)
         ## power version
         # Q = delassus + eps * torch.eye(3 * n_contacts)
         ##
 
-        J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
+        ## inertia-agnostic version
+        half_delassus = pbmm(J, M_inv)
+        ## power version
+        L = torch.linalg.cholesky(M_inv)
+        half_delassus = pbmm(J, L)
+        #
+        J_bar = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
