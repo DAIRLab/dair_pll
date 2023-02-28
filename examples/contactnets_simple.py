@@ -87,17 +87,22 @@ DT = 0.0068
 
 # Generation configuration.
 # N_POP = 256  <-- replaced with a commandline argument
-CUBE_X_0 = torch.tensor([
-    -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
-    0.014, 1.291, -0.212
-])
+# CUBE_X_0 = torch.tensor([
+#     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
+#     0.014, 1.291, -0.212
+# ])
+CUBE_X_0 = torch.tensor(
+    [1., 0., 0., 0., 0., 0., 0.21 + .015, 0., 0., 0., 0., 0., -.075])
 ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
 X_0S = {CUBE_SYSTEM: CUBE_X_0, ELBOW_SYSTEM: ELBOW_X_0}
-CUBE_SAMPLER_RANGE = 0.1 * torch.ones(CUBE_X_0.nelement() - 1)
+# CUBE_SAMPLER_RANGE = 0.1 * torch.ones(CUBE_X_0.nelement() - 1)
+CUBE_SAMPLER_RANGE = torch.tensor([
+    2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, 6., 6., 6., 1.5, 1.5, .075
+])
 ELBOW_SAMPLER_RANGE = torch.tensor([
-    2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, np.pi, 6., 6., 6., .5, .5,
-    .075, 6.
+    2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, np.pi, 6., 6., 6., 1.5,
+    1.5, .075, 6.
 ])
 SAMPLER_RANGES = {
     CUBE_SYSTEM: CUBE_SAMPLER_RANGE,
@@ -265,6 +270,7 @@ def main(name: str = None,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
+        full_evaluation_samples=dataset_size,  # use all available data for eval
         run_tensorboard=tb,
         gen_videos=videos
     )
@@ -312,7 +318,7 @@ def main(name: str = None,
                      best_valid_loss: Tensor) -> None:
         log_callback(epoch, learned_system, train_loss, best_valid_loss)
         learned_system.generate_updated_urdfs(storage_name)
-        
+
 
     # Save all parameters so far in experiment directory.
     # with open(f'{storage_name}/params.pickle', 'wb') as pickle_file:
