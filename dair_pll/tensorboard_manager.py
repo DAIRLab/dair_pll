@@ -175,4 +175,4 @@ class TensorboardManager:
 	def __write_overlaid_scalars(self, epoch: int, overlaid_scalars:
 								 List[Dict[str, float]]) -> None:
 		loss_breakdown = overlaid_scalars[0]
-		self.writer.add_scalars('valid_loss_breakdown', loss_breakdown, epoch)
+		self.writer.add_scalars('train_loss_breakdown', loss_breakdown, epoch)
