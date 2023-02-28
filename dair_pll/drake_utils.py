@@ -53,10 +53,10 @@ DEFAULT_DT = 1e-3
 
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
-CAM_FOV = np.pi/5
+CAM_FOV = np.pi/6
 VIDEO_PIXELS = [480, 640]
 FPS = 30
-SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1, 0, 0.2])
+SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [2, 0, 0.2])
 EXP_NAME = file_utils.EXP_NAME
 VIDEO_FILENAME = file_utils.VIDEO_FILENAME
 
