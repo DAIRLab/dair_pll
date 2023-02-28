@@ -116,7 +116,8 @@ class LagrangianTerms(Module):
     inertial_parameters: Parameter
     inertia_mode_txt: str
 
-    def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
+    def __init__(self, plant_diagram: MultibodyPlantDiagram,
+                 inertia_mode: int) -> None:
         """Inits :py:class:`LagrangianTerms` with prescribed parameters and
         functional forms.
 
@@ -675,7 +676,7 @@ class MultibodyTerms(Module):
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration
 
-    def __init__(self, urdfs: Dict[str, str]) -> None:
+    def __init__(self, urdfs: Dict[str, str], inertia_mode: int) -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs
 
         Interpretation is performed as a thin wrapper around
