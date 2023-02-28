@@ -281,7 +281,8 @@ class MultibodyLearnableSystem(System):
         ## power version
         L = torch.linalg.cholesky(M_inv)
         half_delassus = pbmm(J, L)
-        #
+        ##
+        
         J_bar = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
