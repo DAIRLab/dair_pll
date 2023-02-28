@@ -62,7 +62,8 @@ class MultibodyLearnableSystem(System):
     dt: float
     inertia_mode: int
 
-    def __init__(self, urdfs: Dict[str, str], dt: float) -> None:
+    def __init__(self, urdfs: Dict[str, str], dt: float,
+                 inertia_mode: int) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -271,22 +272,39 @@ class MultibodyLearnableSystem(System):
 
         L = torch.linalg.cholesky(M_inv)
 
+        ## inertia-agnostic version
         Q = massless_delassus + eps * torch.eye(3 * n_contacts)
+        ## power version
+        # Q = delassus + eps * torch.eye(3 * n_contacts)
+        ##
+
         J_bar = pbmm(reorder_mat.transpose(-1,-2),pbmm(J,L))
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
+        ## inertia-agnostic version
         q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
         q_comp = (1/dt) * pbmm(delassus,
-                                        torch.abs(phi_then_zero).unsqueeze(-1))
+                               torch.abs(phi_then_zero).unsqueeze(-1))
         q_diss = pbmm(delassus, torch.cat((sliding_speeds, sliding_velocities),
                       dim=-2))
+        ## power version
+        # q_pred = -pbmm(J, dv.transpose(-1, -2))
+        # q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+        # q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        ##
+
         q = q_pred + q_comp + q_diss
 
         constant_pen = (torch.maximum(
                             -phi, torch.zeros_like(phi))**2).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
+
+        ## inertia-agnostic version
         constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
+        ## power version
+        # constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        ##
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
