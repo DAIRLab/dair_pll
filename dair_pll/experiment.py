@@ -474,6 +474,9 @@ class SupervisedLearningExperiment(ABC):
             n_valid_eval = min(len(valid_set.trajectories),
                                self.config.full_evaluation_samples)
 
+            # Already calculated the training loss, so just grab a "dummy"
+            # portion of the training set (the first trajectory) to speed up the
+            # computation.
             dummy_train_slice_set = TrajectorySliceDataset(
                 train_set.trajectories[:1])
 
@@ -552,17 +555,13 @@ class SupervisedLearningExperiment(ABC):
         # model parameters from that epoch.
         # pylint: disable=E1103
         epochs_since_best = 0
-        best_valid_loss = torch.tensor(1e10)
-        training_loss = best_valid_loss.clone()
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
-        learned_system.eval()
         init_training_loss = self.calculate_loss_no_grad_step(train_dataloader,
                                                               learned_system)
-        self.per_epoch_evaluation(0, learned_system, init_training_loss, 0.)
-        learned_system.train()
-        epoch_callback(0, learned_system, init_training_loss,
-                       torch.tensor(torch.nan))
+        best_valid_loss = self.per_epoch_evaluation(0, learned_system,
+                                                    init_training_loss, 0.)
+        epoch_callback(0, learned_system, init_training_loss, best_valid_loss)
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
             if self.config.data_config.dynamic_updates_from is not None:

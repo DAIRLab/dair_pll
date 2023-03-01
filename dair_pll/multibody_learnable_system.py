@@ -238,10 +238,6 @@ class MultibodyLearnableSystem(System):
         delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
             q_plus, v_plus, u)
 
-        # Calculate some additional quantities for inertia-agnostic loss.
-        massless_delassus = pbmm(J,
-                                 torch.linalg.solve(pbmm(M, M),
-                                                    J.transpose(-1, -2)))
         try:
             M_inv = torch.inverse((M))
         except:
@@ -271,6 +267,8 @@ class MultibodyLearnableSystem(System):
                                                         dim=-1, keepdim=True)
 
         ## inertia-agnostic version
+        massless_delassus = pbmm(pbmm(J, M_inv),
+                                 pbmm(M_inv, J.transpose(-1, -2)))
         Q = massless_delassus + eps * torch.eye(3 * n_contacts)
         ## power version
         # Q = delassus + eps * torch.eye(3 * n_contacts)
@@ -279,10 +277,10 @@ class MultibodyLearnableSystem(System):
         ## inertia-agnostic version
         half_delassus = pbmm(J, M_inv)
         ## power version
-        L = torch.linalg.cholesky(M_inv)
-        half_delassus = pbmm(J, L)
+        # L = torch.linalg.cholesky(M_inv)
+        # half_delassus = pbmm(J, L)
         ##
-        
+
         J_bar = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)

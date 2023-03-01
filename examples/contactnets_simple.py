@@ -172,7 +172,7 @@ def main(name: str = None,
     storage_name = os.path.join(REPO_DIR, 'results', name)
     print(f'\nStoring data at {storage_name}')
 
-    BATCH_SIZE = int(dataset_size/2)
+    batch_size = int(dataset_size/2)
 
     # First step, clear out data on disk for a fresh start.
     simulation = source == SIM_SOURCE
@@ -189,7 +189,7 @@ def main(name: str = None,
     optimizer_config.wd.value = WDS[system]
     optimizer_config.patience = PATIENCE
     optimizer_config.epochs = EPOCHS
-    optimizer_config.batch_size.value = BATCH_SIZE
+    optimizer_config.batch_size.value = batch_size
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
@@ -270,7 +270,7 @@ def main(name: str = None,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
-        full_evaluation_samples=dataset_size,  # use all available data for eval
+        # full_evaluation_samples=dataset_size,  # use all available data for eval
         run_tensorboard=tb,
         gen_videos=videos
     )

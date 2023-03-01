@@ -98,12 +98,12 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                             learned_system, statistics)
 
         # Start computing individual loss components.
-        # First get the full training set.
+        # First get a batch sized portion of the shuffled training set.
         train_traj_set, _, _ = self.data_manager.get_trajectory_split()
         train_dataloader = DataLoader(
             train_traj_set.slices,
             batch_size=self.config.optimizer_config.batch_size.value,
-            shuffle=False)
+            shuffle=True)
 
         # Calculate the average loss components.
         losses_pred, losses_comp, losses_pen, losses_diss = [], [], [], []
