@@ -267,9 +267,9 @@ class MultibodyLearnableSystem(System):
                                                         dim=-1, keepdim=True)
 
         ## inertia-agnostic version
-        massless_delassus = pbmm(pbmm(J, M_inv),
-                                 pbmm(M_inv, J.transpose(-1, -2)))
-        Q = massless_delassus + eps * torch.eye(3 * n_contacts)
+        double_M_inv_delassus = pbmm(pbmm(J, M_inv),
+                                     pbmm(M_inv, J.transpose(-1, -2)))
+        Q = double_M_inv_delassus + eps * torch.eye(3 * n_contacts)
         ## power version
         # Q = delassus + eps * torch.eye(3 * n_contacts)
         ##
