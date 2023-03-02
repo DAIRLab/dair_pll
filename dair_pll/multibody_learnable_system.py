@@ -41,7 +41,8 @@ from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.system import System, \
     SystemSummary
-from dair_pll.tensor_utils import pbmm, broadcast_lorentz
+from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
+    one_vector_block_diagonal
 
 
 
@@ -244,6 +245,7 @@ class MultibodyLearnableSystem(System):
             print(f'M: {M}')
             pdb.set_trace()
 
+        # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
         n_contacts = phi.shape[-1]
         n = n_contacts * 3
         reorder_mat = torch.zeros((n, n))
@@ -255,6 +257,15 @@ class MultibodyLearnableSystem(System):
             (1,) * (delassus.dim() -2) + reorder_mat.shape).expand(
                 delassus.shape)
         J_t = J[..., n_contacts:, :]
+
+        # Construct a scaling vector (3*n_contacts, 3*n_contacts) S s.t.
+        # S @ lambda_CN = scaled lambdas in units [m/s] instead of [N s].
+        delassus_diag_vec = torch.diagonal(delassus, dim1=-2, dim2=-1)
+        contact_weights = pbmm(one_vector_block_diagonal(n_contacts, 3).t(),
+                               pbmm(reorder_mat.transpose(-1, -2),
+                                    delassus_diag_vec.unsqueeze(-1)))
+        contact_weights = contact_weights.repeat(1, 3, 1).squeeze(-1)
+        S = torch.diag_embed(contact_weights)
 
         # pylint: disable=E1103
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
@@ -287,10 +298,8 @@ class MultibodyLearnableSystem(System):
 
         ## inertia-agnostic version
         q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
-        q_comp = (1/dt) * pbmm(delassus,
-                               torch.abs(phi_then_zero).unsqueeze(-1))
-        q_diss = pbmm(delassus, torch.cat((sliding_speeds, sliding_velocities),
-                      dim=-2))
+        q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
+        q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),dim=-2))
         ## power version
         # q_pred = -pbmm(J, dv.transpose(-1, -2))
         # q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
