@@ -16,6 +16,7 @@ implemented in :py:class:`MultibodyPlantDiagram`.
 [1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
 multibody dynamics,” Mathematical Programming, 2006,
 https://doi.org/10.1007/s10107-005-0590-7
+
 [2] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning Discontinuous
 Contact Dynamics with Smooth, Implicit Representations," Conference on
 Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
@@ -77,9 +78,9 @@ class MultibodyLearnableSystem(System):
               :py:class:`MultibodyTerms`.
             dt: Time step of system in seconds.
             inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
-            inertial parameters the model can learn.  The higher the number
-            the more inertial parameters are free to be learned, and 0
-            corresponds to learning no inertial parameters.
+              inertial parameters the model can learn.  The higher the number
+              the more inertial parameters are free to be learned, and 0
+              corresponds to learning no inertial parameters.
         """
         multibody_terms = MultibodyTerms(urdfs, inertia_mode)
         space = multibody_terms.plant_diagram.space
@@ -352,7 +353,7 @@ class MultibodyLearnableSystem(System):
                          dynamics_pool: Optional[pool.Pool] = None) -> Tensor:
         """Calculates delta velocity from current state and input.
 
-        Implement's Anitescu's [1] convex formulation in dual form, derived
+        Implements Anitescu's [1] convex formulation in dual form, derived
         similarly to Tedrake [2] and described here.
 
         Let v_minus be the contact-free next velocity, i.e.::
@@ -390,9 +391,11 @@ class MultibodyLearnableSystem(System):
             [1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
             multibody dynamics,” Mathematical Programming, 2006,
             https://doi.org/10.1007/s10107-005-0590-7
+
             [2] R. Tedrake. Underactuated Robotics: Algorithms for Walking,
             Running, Swimming, Flying, and Manipulation (Course Notes for MIT
             6.832), https://underactuated.mit.edu
+
             [3] S. Z. N'emeth, G. Zhang, "Conic optimization and
             complementarity problems," arXiv,
             https://doi.org/10.48550/arXiv.1607.05161
@@ -492,18 +495,21 @@ class MultibodyLearnableSystem(System):
 
         if videos:
             videos = {}
-            for set_name in ['train', 'valid']:
-                traj_num = 0
-                target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{TARGET_NAME}'
-                prediction_key = f'{set_name}_{LEARNED_SYSTEM_NAME}_{PREDICTION_NAME}'
-                if not target_key in statistics:
-                    continue
-                target_trajectory = Tensor(statistics[target_key][0])
-                prediction_trajectory = Tensor(statistics[prediction_key][0])
-                video, framerate = self.visualize(target_trajectory,
-                                                  prediction_trajectory)
-                videos[f'{set_name}_trajectory_prediction_{traj_num}'] = (video,
-                                                                          framerate)
+            for traj_num in [0]:
+                for set_name in ['train', 'valid']:
+                    target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}' + \
+                                 f'_{TARGET_NAME}'
+                    prediction_key = f'{set_name}_{LEARNED_SYSTEM_NAME}' + \
+                                     f'_{PREDICTION_NAME}'
+                    if not target_key in statistics:
+                        continue
+                    target_trajectory = Tensor(statistics[target_key][traj_num])
+                    prediction_trajectory = Tensor(
+                        statistics[prediction_key][traj_num])
+                    video, framerate = self.visualize(target_trajectory,
+                                                      prediction_trajectory)
+                    videos[f'{set_name}_trajectory_prediction_{traj_num}'] = \
+                        (video, framerate)
         else:
             videos = None
 
