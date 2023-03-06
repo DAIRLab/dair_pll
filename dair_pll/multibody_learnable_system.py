@@ -265,7 +265,7 @@ class MultibodyLearnableSystem(System):
         contact_weights = pbmm(one_vector_block_diagonal(n_contacts, 3).t(),
                                pbmm(reorder_mat.transpose(-1, -2),
                                     delassus_diag_vec.unsqueeze(-1)))
-        contact_weights = contact_weights.repeat(1, 3, 1).squeeze(-1)
+        contact_weights = broadcast_lorentz(contact_weights)
         S = torch.diag_embed(contact_weights)
 
         # pylint: disable=E1103
