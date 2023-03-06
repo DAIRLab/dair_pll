@@ -505,8 +505,11 @@ class SupervisedLearningExperiment(ABC):
             self.write_to_tensorboard(epoch, learned_system, statistics)
 
         # pylint: disable=E1103
-        valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
-                         f'_{AVERAGE_TAG}'
+        # valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
+        #                  f'_{AVERAGE_TAG}'
+        # Use validation set mean rollout error as validation loss.
+        valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}' \
+                         + f'_{TRAJECTORY_ERROR_NAME}_{AVERAGE_TAG}'
         valid_loss = 0.0 \
             if not valid_loss_key in statistics \
             else statistics[valid_loss_key]
