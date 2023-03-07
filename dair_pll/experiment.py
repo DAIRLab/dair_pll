@@ -105,6 +105,9 @@ class SupervisedLearningExperimentConfig:
     """How many trajectories to save in full for experiment's summary."""
     gen_videos: bool = False
     """Whether to use ``VideoWriter`` to generate toss videos."""
+    update_geometry_in_videos: bool = False
+    """Whether to use learned geometry in rollout videos, primarily for
+    debugging purposes.  Does nothing if ``gen_videos == True``."""
 
 
 #:
@@ -415,7 +418,9 @@ class SupervisedLearningExperiment(ABC):
                 if var_key in statistics:
                     epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
 
-        system_summary = learned_system.summary(statistics, videos=self.config.gen_videos)
+        system_summary = learned_system.summary(statistics,
+            videos=self.config.gen_videos,
+            new_geometry=self.config.update_geometry_in_videos)
 
         epoch_vars.update(system_summary.scalars)
         logging_duration = time.time() - start_log_time

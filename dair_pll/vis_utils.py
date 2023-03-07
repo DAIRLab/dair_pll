@@ -28,7 +28,7 @@ from dair_pll.drake_system import DrakeSystem
 from dair_pll import file_utils
 
 RESOLUTION = [640, 480]
-RED = Rgba(0.6, 0.0, 0.0, 0.7)
+RED = Rgba(0.6, 0.0, 0.0, 0.5)
 BLUE = Rgba(0.0, 0.0, 0.6, 0.7)
 BASE_SYSTEM_DEFAULT_COLOR = RED
 LEARNED_SYSTEM_DEFAULT_COLOR = BLUE
@@ -39,6 +39,7 @@ LEARNED_TAG = '__learned__'
 
 def generate_visualization_system(
         base_system: DrakeSystem,
+        learned_system: DrakeSystem = None,
         base_system_color: Rgba = BASE_SYSTEM_DEFAULT_COLOR,
         learned_system_color: Rgba = LEARNED_SYSTEM_DEFAULT_COLOR
 ) -> DrakeSystem:
@@ -49,23 +50,38 @@ def generate_visualization_system(
     base system has a copy. Each illustration geometry element in these two
     copies is uniformly colored to be visually distinguishable.
 
+    The copy of the base system can optionally be rendered in its learned
+    geometry.
+
     Args:
         base_system: System to be visualized.
+        learned_system: Optionally, the learned system so the predicted
+          trajectory is rendered with the learned geometry.
         base_system_color: Color to repaint every thing in base system.
         learned_system_color: Color to repaint every thing in duplicated system.
 
     Returns:
         New ``DrakeSystem`` with doubled state and repainted elements.
     """
-    # Creates duplicated system
+    # Start with true base system.
     double_urdfs = deepcopy(base_system.urdfs)
-    double_urdfs.update({
-        (k + LEARNED_TAG): v for k, v in base_system.urdfs.items()
-    })
     double_urdfs.update({
         k: file_utils.get_geometrically_accurate_urdf(v) for k, v in \
         double_urdfs.items()
     })
+
+    # Either copy the base system's geometry or optionally use the learned
+    # geometry.
+    if learned_system is None:
+        double_urdfs.update({
+            (k + LEARNED_TAG): file_utils.get_geometrically_accurate_urdf(v) \
+            for k, v in double_urdfs.items()
+        })
+
+    else:
+        double_urdfs.update({
+            (k + LEARNED_TAG): v for k, v in learned_system.urdfs.items()
+        })
 
     visualization_system = DrakeSystem(double_urdfs,
                                        base_system.dt,

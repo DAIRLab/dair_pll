@@ -121,7 +121,7 @@ CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
-ELBOW_WD = 1e-4
+ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500            # change this (originally 500)
 PATIENCE = 200       # change this (originally EPOCHS)
@@ -272,7 +272,8 @@ def main(name: str = None,
         full_evaluation_period=EPOCHS if dynamic else 1,
         # full_evaluation_samples=dataset_size,  # use all available data for eval
         run_tensorboard=tb,
-        gen_videos=videos
+        gen_videos=videos,
+        update_geometry_in_videos=True
     )
 
     # Makes experiment.
@@ -339,6 +340,7 @@ def main(name: str = None,
             + f'\n\tregenerate: {regenerate}' \
             + f'\n\trunning locally: {local}' \
             + f'\n\tdoing videos: {videos}' \
+            + f'\n\twith learned geometry: {experiment_config.update_geometry_in_videos}' \
             + f'\n\tand inertia learning mode: {inertia_params}' \
             + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
             + f'\n\tand starting with "true" URDF: {true_sys}.' \
