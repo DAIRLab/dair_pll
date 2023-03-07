@@ -57,7 +57,7 @@ CAM_FOV = np.pi/5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
 SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [2, 0, 0.2])
-VIDEO_FILENAME = file_utils.get_temporary_video_filename()
+VIDEO_FILENAME = file_utils.get_experiment_video_filename()
 
 DrakeTemplateType = Mapping[Type, Type]
 MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)
