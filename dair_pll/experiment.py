@@ -666,7 +666,7 @@ class SupervisedLearningExperiment(ABC):
                                        len(trajectories))
             slices_loader = DataLoader(trajectory_set.slices,
                                        batch_size=128,
-                                       shuffle=False)
+                                       shuffle=True)
             slices = trajectory_set.slices[:]
             all_x = cast(List[Tensor], slices[0])
             all_y = cast(List[Tensor], slices[1])
