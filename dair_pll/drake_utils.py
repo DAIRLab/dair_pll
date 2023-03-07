@@ -56,9 +56,8 @@ GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 CAM_FOV = np.pi/5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
-SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [1, 0, 0.2])
-EXP_NAME = file_utils.EXP_NAME
-VIDEO_FILENAME = file_utils.VIDEO_FILENAME
+SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [2, 0, 0.2])
+VIDEO_FILENAME = file_utils.get_temporary_video_filename()
 
 DrakeTemplateType = Mapping[Type, Type]
 MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)

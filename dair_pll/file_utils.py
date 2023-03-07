@@ -272,8 +272,12 @@ def sweep_summary_file(storage_name: str,
 
 
 
-# Some hard-coded video-related parameters.
-# TODO Can build in a more elegant solution in the future.
-EXP_NAME = os.environ['PLL_EXPERIMENT'] if 'PLL_EXPERIMENT' in os.environ else ''
-VIDEO_FILENAME = path.join(temp_dir(path.join(RESULTS_DIR, EXP_NAME)),
-                           'output.gif')
+
+def get_temporary_video_filename() -> str:
+    # Some hard-coded video-related parameters.
+    # TODO Can build in a more elegant solution in the future.
+    exp_name = os.environ['PLL_EXPERIMENT'] if 'PLL_EXPERIMENT' in os.environ \
+               else ''
+    video_filename = path.join(temp_dir(path.join(RESULTS_DIR, exp_name)),
+                               'output.gif')
+    return video_filename
