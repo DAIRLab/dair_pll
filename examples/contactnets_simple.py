@@ -79,7 +79,7 @@ CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
-ELBOW_WD = 1e-4
+ELBOW_WD = 0.0
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500
 PATIENCE = EPOCHS
@@ -187,7 +187,8 @@ def main(system: str = CUBE_SYSTEM,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
-        full_evaluation_period=EPOCHS if dynamic else 1
+        full_evaluation_period=EPOCHS if dynamic else 1,
+        update_geometry_in_videos=True
     )
 
     # Makes experiment.
