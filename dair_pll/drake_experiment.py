@@ -124,10 +124,14 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_diss.append(loss_diss.clone().detach())
 
         # Calculate average and scale by hyperparameter weights.
-        avg_loss_pred = cast(Tensor, sum(losses_pred) / len(losses_pred)).mean()
-        avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) / len(losses_comp)).mean()
-        avg_loss_pen = W_PEN*cast(Tensor, sum(losses_pen) / len(losses_pen)).mean()
-        avg_loss_diss = W_DISS*cast(Tensor, sum(losses_diss) / len(losses_diss)).mean()
+        avg_loss_pred = cast(Tensor, sum(losses_pred) \
+                            / len(losses_pred)).mean()
+        avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) \
+                            / len(losses_comp)).mean()
+        avg_loss_pen = W_PEN*cast(Tensor, sum(losses_pen) \
+                            / len(losses_pen)).mean()
+        avg_loss_diss = W_DISS*cast(Tensor, sum(losses_diss) \
+                            / len(losses_diss)).mean()
 
         avg_loss_total = torch.sum(avg_loss_pred + avg_loss_comp + \
                                    avg_loss_pen + avg_loss_diss)
