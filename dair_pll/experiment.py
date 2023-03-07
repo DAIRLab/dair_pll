@@ -560,11 +560,11 @@ class SupervisedLearningExperiment(ABC):
         epochs_since_best = 0
         best_learned_system_state = deepcopy(learned_system.state_dict())
 
-        init_training_loss = self.calculate_loss_no_grad_step(train_dataloader,
+        training_loss = self.calculate_loss_no_grad_step(train_dataloader,
                                                               learned_system)
         best_valid_loss = self.per_epoch_evaluation(0, learned_system,
-                                                    init_training_loss, 0.)
-        epoch_callback(0, learned_system, init_training_loss, best_valid_loss)
+                                                    training_loss, 0.)
+        epoch_callback(0, learned_system, training_loss, best_valid_loss)
 
         for epoch in range(1, self.config.optimizer_config.epochs + 1):
             if self.config.data_config.dynamic_updates_from is not None:
