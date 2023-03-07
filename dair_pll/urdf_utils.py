@@ -27,6 +27,7 @@ _ORIGIN = "origin"
 _MASS = "mass"
 _INERTIA = "inertia"
 _INERTIAL = "inertial"
+_VISUAL = "visual"
 _COLLISION = "collision"
 _GEOMETRY = "geometry"
 _BOX = "box"
@@ -63,6 +64,7 @@ _URDF_DEFAULT_TREE: Dict[str, List] = {
     _INERTIA: [],
     _INERTIAL: [_ORIGIN, _MASS, _INERTIA],
     _GEOMETRY: [],
+    _VISUAL: [_GEOMETRY, _ORIGIN],
     _COLLISION: [_GEOMETRY, _ORIGIN],
     _BOX: [],
     _SPHERE: [],
@@ -92,6 +94,7 @@ _URDF_DEFAULT_ATTRIBUTES: Dict[str, Dict] = {
         _LENGTH: _ZERO_FLOAT
     },
     _GEOMETRY: {},
+    _VISUAL: {},
     _COLLISION: {}
 }
 """Default element attributes for URDFs.
@@ -277,16 +280,19 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
     body_inertia_element.attrib = dict(zip(_INERTIAL_ATTRIBUTES, I_BBcm_B))
 
     for geometry in geometries:
-        collision_element = \
-            UrdfFindOrDefault.find(element, _COLLISION)
-        geometry_element = \
-            UrdfFindOrDefault.find(collision_element,
-                                   _GEOMETRY)
+        collision_element = UrdfFindOrDefault.find(element, _COLLISION)
+        visual_element = UrdfFindOrDefault.find(element, _VISUAL)
+        geometry_elements = [
+            UrdfFindOrDefault.find(collision_element, _GEOMETRY),
+            UrdfFindOrDefault.find(visual_element, _GEOMETRY)
+        ]
+        
         (shape_tag, shape_attributes) = \
             UrdfGeometryRepresentationFactory.representation(geometry,
                                                              output_dir)
-        shape_element = UrdfFindOrDefault.find(geometry_element, shape_tag)
-        shape_element.attrib = shape_attributes
+        for geometry_element in geometry_elements:
+            shape_element = UrdfFindOrDefault.find(geometry_element, shape_tag)
+            shape_element.attrib = shape_attributes
 
 
 def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
