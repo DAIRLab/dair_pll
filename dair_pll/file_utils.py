@@ -340,3 +340,4 @@ def get_temporary_video_filename() -> str:
     video_filename = path.join(temp_dir(path.join(RESULTS_DIR, exp_name)),
                                'output.gif')
     return video_filename
+
