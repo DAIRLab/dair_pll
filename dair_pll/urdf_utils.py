@@ -34,11 +34,11 @@ _BOX = "box"
 _SPHERE = "sphere"
 _CYLINDER = "cylinder"
 _MESH = "mesh"
-_DRAKE = "{https://drake.mit.edu/}"
+_DRAKE_URL = "https://drake.mit.edu/"
 _PROXIMITY_PROPERTIES = "proximity_properties"
-_DRAKE_PROXIMITY_PROPERTIES = _DRAKE + _PROXIMITY_PROPERTIES
+_DRAKE_PROXIMITY_PROPERTIES = '{' + _DRAKE_URL + '}' + _PROXIMITY_PROPERTIES
 _FRICTION = "mu_static"
-_DRAKE_FRICTION = _DRAKE + _FRICTION
+_DRAKE_FRICTION = '{' + _DRAKE_URL + '}' + _FRICTION
 
 # attributes
 _VALUE = "value"
@@ -375,7 +375,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                                                 body_geometries, body_frictions,
                                                 output_dir)
 
-        register_namespace('drake', 'https://drake.mit.edu/')
+        register_namespace('drake', _DRAKE_URL)
         system_urdf_representation = ElementTree.tostring(
             urdf_tree.getroot(), encoding="utf-8").decode("utf-8")
         urdf_xml[
