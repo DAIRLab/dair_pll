@@ -256,7 +256,7 @@ class UrdfGeometryRepresentationFactory:
 
 def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
                                     geometries: List[CollisionGeometry],
-                                    frictions: Tensor,
+                                    friction_coeffs: Tensor,
                                     output_dir: str) -> None:
     """Convert pytorch inertial and geometric representations to URDF elements.
 
@@ -265,8 +265,8 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
         pi_cm: (10,) inertial representation of link in ``pi_cm``
                 parameterization.
         geometries: All geometries attached to body.
-        frictions: All friction coefficients associated with each geometry.  The
-          ``Tensor`` will be of shape ``(len(geometries),)``.
+        friction_coeffs: All friction coefficients associated with each
+          geometry.  The ``Tensor`` will be of shape ``(len(geometries),)``.
         output_dir: File directory to store helper files (e.g., meshes).
 
     Warning:
@@ -283,7 +283,7 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
         InertialParameterConverter.pi_cm_to_urdf(pi_cm)
 
     # This will have to change when function can handle more than one geometry.
-    mu = str(frictions.item())
+    mu = str(friction_coeffs.item())
 
     body_inertial_element = UrdfFindOrDefault.find(element, _INERTIAL)
 
@@ -367,12 +367,13 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                          multibody_terms.contact_terms.geometries[index])
                     for index in body_geometry_indices
                 ]
-                body_frictions = \
+                body_friction_coeffs = \
                     multibody_terms.contact_terms.friction_coefficients[
                         body_geometry_indices
                     ]
                 fill_link_with_parameterization(element, pi_cm[body_index, :],
-                                                body_geometries, body_frictions,
+                                                body_geometries,
+                                                body_friction_coeffs,
                                                 output_dir)
 
         register_namespace('drake', _DRAKE_URL)
