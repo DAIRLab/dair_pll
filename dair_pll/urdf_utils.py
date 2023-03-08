@@ -34,6 +34,11 @@ _BOX = "box"
 _SPHERE = "sphere"
 _CYLINDER = "cylinder"
 _MESH = "mesh"
+_DRAKE = "{https://drake.mit.edu/}"
+_PROXIMITY_PROPERTIES = "proximity_properties"
+_DRAKE_PROXIMITY_PROPERTIES = _DRAKE + _PROXIMITY_PROPERTIES
+_FRICTION = "mu_static"
+_DRAKE_FRICTION = _DRAKE + _FRICTION
 
 # attributes
 _VALUE = "value"
@@ -64,8 +69,10 @@ _URDF_DEFAULT_TREE: Dict[str, List] = {
     _INERTIA: [],
     _INERTIAL: [_ORIGIN, _MASS, _INERTIA],
     _GEOMETRY: [],
+    _DRAKE_FRICTION: [],
+    _DRAKE_PROXIMITY_PROPERTIES: [_DRAKE_FRICTION],
     _VISUAL: [_GEOMETRY, _ORIGIN],
-    _COLLISION: [_GEOMETRY, _ORIGIN],
+    _COLLISION: [_GEOMETRY, _ORIGIN, _DRAKE_PROXIMITY_PROPERTIES],
     _BOX: [],
     _SPHERE: [],
     _CYLINDER: []
@@ -95,7 +102,9 @@ _URDF_DEFAULT_ATTRIBUTES: Dict[str, Dict] = {
     },
     _GEOMETRY: {},
     _VISUAL: {},
-    _COLLISION: {}
+    _COLLISION: {},
+    _DRAKE_PROXIMITY_PROPERTIES: {},
+    _DRAKE_FRICTION: _SCALAR_ATTR
 }
 """Default element attributes for URDFs.
 
@@ -247,6 +256,7 @@ class UrdfGeometryRepresentationFactory:
 
 def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
                                     geometries: List[CollisionGeometry],
+                                    frictions: Tensor,
                                     output_dir: str) -> None:
     """Convert pytorch inertial and geometric representations to URDF elements.
 
@@ -255,6 +265,8 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
         pi_cm: (10,) inertial representation of link in ``pi_cm``
                 parameterization.
         geometries: All geometries attached to body.
+        frictions: All friction coefficients associated with each geometry.  The
+          ``Tensor`` will be of shape ``(len(geometries),)``.
         output_dir: File directory to store helper files (e.g., meshes).
 
     Warning:
@@ -269,6 +281,9 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
                                   "per body not implemented yet.")
     mass, p_BoBcm_B, I_BBcm_B = \
         InertialParameterConverter.pi_cm_to_urdf(pi_cm)
+
+    # This will have to change when function can handle more than one geometry.
+    mu = str(frictions.item())
 
     body_inertial_element = UrdfFindOrDefault.find(element, _INERTIAL)
 
@@ -293,6 +308,11 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
         for geometry_element in geometry_elements:
             shape_element = UrdfFindOrDefault.find(geometry_element, shape_tag)
             shape_element.attrib = shape_attributes
+
+        prox_props_element = UrdfFindOrDefault.find(collision_element,
+            _DRAKE_PROXIMITY_PROPERTIES)
+        UrdfFindOrDefault.find(prox_props_element, _DRAKE_FRICTION).set(
+            _VALUE, mu)
 
 
 def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
@@ -341,15 +361,19 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                     continue
                 body_index = all_body_ids.index(body_id)
                 body_geometry_indices = \
-                    multibody_terms.geometry_body_assignment[
-                        body_id]
+                    multibody_terms.geometry_body_assignment[body_id]
                 body_geometries = [
                     cast(CollisionGeometry,
                          multibody_terms.contact_terms.geometries[index])
                     for index in body_geometry_indices
                 ]
+                body_frictions = \
+                    multibody_terms.contact_terms.friction_coefficients[
+                        body_geometry_indices
+                    ]
                 fill_link_with_parameterization(element, pi_cm[body_index, :],
-                                                body_geometries, output_dir)
+                                                body_geometries, body_frictions,
+                                                output_dir)
 
         register_namespace('drake', 'https://drake.mit.edu/')
         system_urdf_representation = ElementTree.tostring(
