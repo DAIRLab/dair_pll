@@ -122,6 +122,8 @@ class MultibodyLearnableSystem(System):
             New :py:class:`DrakeSystem` with doubled state and repainted
             elements.
         """
+        # Generate a new visualization system if it needs to use the updated
+        # geometry, or if it hasn't been created yet.
         if new_geometry or not self.visualization_system:
             learned_system = None
             if new_geometry:

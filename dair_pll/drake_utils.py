@@ -56,8 +56,10 @@ GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 CAM_FOV = np.pi/5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
+
+# TODO currently hard-coded camera pose could eventually be dynamically chosen
+# to fit the actual trajectory.
 SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [2, 0, 0.2])
-VIDEO_FILENAME = file_utils.get_experiment_video_filename()
 
 DrakeTemplateType = Mapping[Type, Type]
 MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)
@@ -250,13 +252,10 @@ class MultibodyPlantDiagram:
         # re-initialization to produce erroneous visualizations.
         visualizer = None
         if enable_visualizer:
-            visualizer = VideoWriter.AddToBuilder(filename=VIDEO_FILENAME,
-                                                  builder=builder,
-                                                  sensor_pose=SENSOR_POSE,
-                                                  fps=FPS,
-                                                  width=VIDEO_PIXELS[1],
-                                                  height=VIDEO_PIXELS[0],
-                                                  fov_y=CAM_FOV)
+            visualizer = VideoWriter.AddToBuilder(
+                filename=file_utils.get_experiment_video_filename(),
+                builder=builder, sensor_pose=SENSOR_POSE, fps=FPS,
+                width=VIDEO_PIXELS[1], height=VIDEO_PIXELS[0], fov_y=CAM_FOV)
 
         # Adds ground plane at ``z = 0``
         halfspace_transform = RigidTransform()
