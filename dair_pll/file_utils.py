@@ -271,9 +271,29 @@ def sweep_summary_file(storage_name: str,
     return path.join(directory, str(n_run) + STATS_EXTENSION)
 
 
+def experiment_storage_dir() -> str:
+    """Based on the value of the environment variable ``PLL_EXPERIMENT``, return
+    the default storage directory.
 
-# Some hard-coded video-related parameters.
-# TODO Can build in a more elegant solution in the future.
-EXP_NAME = os.environ['PLL_EXPERIMENT'] if 'PLL_EXPERIMENT' in os.environ else ''
-VIDEO_FILENAME = path.join(temp_dir(path.join(RESULTS_DIR, EXP_NAME)),
-                           'output.gif')
+    Notes:
+        This is a bit of a hack.  TODO can build in a more elegant solution in
+        the future.
+    """
+    exp_name = os.environ['PLL_EXPERIMENT'] if 'PLL_EXPERIMENT' in os.environ \
+               else ''
+    return assure_created(path.join(RESULTS_DIR, exp_name))
+
+
+def get_experiment_video_filename() -> str:
+    """Return the filepath of the temporary rollout video gif.  This calls
+    :py:func:`experiment_storage_dir`, which relies on the environment variable
+    ``PLL_EXPERIMENT`` to be set."""
+    return path.join(temp_dir(experiment_storage_dir()), 'output.gif')
+
+
+def get_experiment_urdf_dir() -> str:
+    """Return the filepath of the urdf directory for the current experiment.
+    This calls :py:func:`experiment_storage_dir`, which relies on the
+    environment variable ``PLL_EXPERIMENT`` to be set."""
+    return urdf_dir(experiment_storage_dir())
+

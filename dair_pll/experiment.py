@@ -102,6 +102,9 @@ class SupervisedLearningExperimentConfig:
     """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
     """How many trajectories to save in full for experiment's summary."""
+    update_geometry_in_videos: bool = False
+    """Whether to use learned geometry in rollout videos, primarily for
+    debugging purposes."""
 
 
 #:
@@ -385,7 +388,8 @@ class SupervisedLearningExperiment(ABC):
                 if var_key in statistics:
                     epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
 
-        system_summary = learned_system.summary(statistics)
+        system_summary = learned_system.summary(statistics,
+            new_geometry=self.config.update_geometry_in_videos)
 
         epoch_vars.update(system_summary.scalars)
         logging_duration = time.time() - start_log_time

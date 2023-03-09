@@ -187,7 +187,8 @@ def main(system: str = CUBE_SYSTEM,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
-        full_evaluation_period=EPOCHS if dynamic else 1
+        full_evaluation_period=EPOCHS if dynamic else 1,
+        update_geometry_in_videos=True
     )
 
     # Makes experiment.
