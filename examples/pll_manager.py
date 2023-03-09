@@ -171,7 +171,7 @@ def cli():
 			  default=False,
 			  help="whether running script locally or on cluster.")
 @click.option('--videos/--no-videos',
-			  default=False,
+			  default=True,
 			  help="whether to generate videos or not.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
@@ -255,7 +255,7 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 			  default=False,
 			  help="whether running script locally or on cluster.")
 @click.option('--videos/--no-videos',
-			  default=False,
+			  default=True,
 			  help="whether to generate videos or not.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
@@ -267,8 +267,7 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 def sweep_command(sweep_name: str, system: str, source: str,
 				  contactnets: bool, box: bool, regenerate: bool,
 				  local: bool, inertia_params: str, true_sys: bool):
-	"""Starts a series of instances, sweeping over dataset size.  Note, this
-	defaults to not generating any videos."""
+	"""Starts a series of instances, sweeping over dataset size."""
 
 	# Check if git repository has uncommitted changes.
 	repo = git.Repo(search_parent_directories=True)
