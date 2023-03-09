@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="elbow">
+<robot name="elbow" xmlns:drake="https://drake.mit.edu/">
     <link name="elbow_1">
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0"/>
