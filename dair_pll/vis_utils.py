@@ -12,7 +12,7 @@ The main contents of this file are as follows:
       captures a visualization video, and outputs it as a numpy ndarray.
 """
 from copy import deepcopy
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 import time
@@ -39,7 +39,7 @@ LEARNED_TAG = '__learned__'
 
 def generate_visualization_system(
         base_system: DrakeSystem,
-        learned_system: DrakeSystem = None,
+        learned_system: Optional[DrakeSystem] = None,
         base_system_color: Rgba = BASE_SYSTEM_DEFAULT_COLOR,
         learned_system_color: Rgba = LEARNED_SYSTEM_DEFAULT_COLOR
 ) -> DrakeSystem:
