@@ -37,8 +37,8 @@ _MESH = "mesh"
 _DRAKE_URL = "https://drake.mit.edu/"
 _PROXIMITY_PROPERTIES = "proximity_properties"
 _DRAKE_PROXIMITY_PROPERTIES = '{' + _DRAKE_URL + '}' + _PROXIMITY_PROPERTIES
-_FRICTION = "mu_static"
-_DRAKE_FRICTION = '{' + _DRAKE_URL + '}' + _FRICTION
+_MU_STATIC = "mu_static"
+_DRAKE_MU_STATIC = '{' + _DRAKE_URL + '}' + _MU_STATIC
 
 # attributes
 _VALUE = "value"
@@ -69,8 +69,8 @@ _URDF_DEFAULT_TREE: Dict[str, List] = {
     _INERTIA: [],
     _INERTIAL: [_ORIGIN, _MASS, _INERTIA],
     _GEOMETRY: [],
-    _DRAKE_FRICTION: [],
-    _DRAKE_PROXIMITY_PROPERTIES: [_DRAKE_FRICTION],
+    _DRAKE_MU_STATIC: [],
+    _DRAKE_PROXIMITY_PROPERTIES: [_DRAKE_MU_STATIC],
     _VISUAL: [_GEOMETRY, _ORIGIN],
     _COLLISION: [_GEOMETRY, _ORIGIN, _DRAKE_PROXIMITY_PROPERTIES],
     _BOX: [],
@@ -104,7 +104,7 @@ _URDF_DEFAULT_ATTRIBUTES: Dict[str, Dict] = {
     _VISUAL: {},
     _COLLISION: {},
     _DRAKE_PROXIMITY_PROPERTIES: {},
-    _DRAKE_FRICTION: _SCALAR_ATTR
+    _DRAKE_MU_STATIC: _SCALAR_ATTR
 }
 """Default element attributes for URDFs.
 
@@ -311,7 +311,7 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
 
         prox_props_element = UrdfFindOrDefault.find(collision_element,
             _DRAKE_PROXIMITY_PROPERTIES)
-        UrdfFindOrDefault.find(prox_props_element, _DRAKE_FRICTION).set(
+        UrdfFindOrDefault.find(prox_props_element, _DRAKE_MU_STATIC).set(
             _VALUE, mu)
 
 
