@@ -230,14 +230,15 @@ class UrdfGeometryRepresentationFactory:
     @staticmethod
     def box_representation(box: Box) -> Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``box`` tag with full-length sizes."""
-        size = ' '.join([str(2 * i.item()) for i in box.half_lengths.view(-1)])
+        size = ' '.join([str(2 * i.item()) for i in \
+                         box.get_half_lengths().view(-1)])
         return _BOX, {_SIZE: size}
 
     @staticmethod
     def sphere_representation(sphere: Sphere) -> Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``sphere`` tag with radius
         attribute."""
-        return _SPHERE, {_RADIUS: str(sphere.radius.item())}
+        return _SPHERE, {_RADIUS: str(sphere.get_radius().item())}
 
     @staticmethod
     def mesh_representation(convex: DeepSupportConvex, output_dir: str) -> \

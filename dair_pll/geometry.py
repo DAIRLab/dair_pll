@@ -365,8 +365,14 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
 
 
 class Box(SparseVertexConvexCollisionGeometry):
-    """Implementation of cuboid geometry as a sparse vertex convex hull."""
-    half_lengths: Parameter
+    """Implementation of cuboid geometry as a sparse vertex convex hull.
+
+    To prevent learning negative box lengths, the learned parameters are stored
+    as :py:attr:`length_params`, and the box's half lengths can be computed
+    as their absolute value.  The desired half lengths can be accessed via
+    :py:meth:`get_half_lengths`.
+    """
+    length_params: Parameter
     unit_vertices: Tensor
 
     def __init__(self, half_lengths: Tensor, n_query: int) -> None:
@@ -381,21 +387,27 @@ class Box(SparseVertexConvexCollisionGeometry):
 
         assert half_lengths.numel() == 3
 
-        self.half_lengths = Parameter(half_lengths.clone().view(1, -1),
-                                      requires_grad=True)
+        self.length_params = Parameter(half_lengths.clone().view(1, -1),
+                                       requires_grad=True)
         self.unit_vertices = _UNIT_BOX_VERTICES.clone()
+
+    def get_half_lengths(self) -> Tensor:
+        """From the stored :py:attr:`length_params`, compute the half lengths of
+        the box as its absolute value."""
+        return torch.abs(self.length_params)
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Returns view of cuboid's static vertex set."""
         return (self.unit_vertices *
-                self.half_lengths).expand(directions.shape[:-1] +
-                                          self.unit_vertices.shape)
+                self.get_half_lengths()).expand(directions.shape[:-1] +
+                                                self.unit_vertices.shape)
 
     def scalars(self) -> Dict[str, float]:
         """Returns each axis's full length as a scalar."""
         scalars = {
             f'len_{axis}': 2 * value.item()
-            for axis, value in zip(['x', 'y', 'z'], self.half_lengths.view(-1))
+            for axis, value in zip(['x', 'y', 'z'],
+                self.get_half_lengths().view(-1))
         }
         return scalars
 
@@ -405,13 +417,25 @@ class Sphere(BoundedConvexCollisionGeometry):
 
     It is trivial to calculate the witness point for a sphere contact as
     simply the product of the sphere's radius and the support direction.
+
+    To prevent learning a negative radius, the learned parameter is stored as
+    :py:attr:`length_param`, and the sphere's radius can be computed as its
+    absolute value.  The desired radius can be accessed via
+    :py:meth:`get_radius`.
     """
+    length_param: Parameter
 
     def __init__(self, radius: Tensor) -> None:
         super().__init__()
         assert radius.numel == 1
 
-        self.radius = Parameter(radius.clone().view(()), requires_grad=True)
+        self.length_param = Parameter(radius.clone().view(()),
+                                      requires_grad=True)
+
+    def get_radius(self) -> Tensor:
+        """From the stored :py:attr:`length_param`, compute the radius of the
+        sphere as its absolute value."""
+        return torch.abs(self.length_param)
 
     def support_points(self, directions: Tensor) -> Tensor:
         """Implements ``BoundedConvexCollisionGeometry.support_points()``
@@ -425,11 +449,11 @@ class Sphere(BoundedConvexCollisionGeometry):
         Returns:
             (\*, 1, 3) corresponding witness point sets of cardinality 1.
         """
-        return (directions.clone() * self.radius).unsqueeze(-2)
+        return (directions.clone() * self.get_radius()).unsqueeze(-2)
 
     def scalars(self) -> Dict[str, float]:
         """Logs radius as a scalar."""
-        return {'radius': self.radius.item()}
+        return {'radius': self.get_radius().item()}
 
 
 class PydrakeToCollisionGeometryFactory:
