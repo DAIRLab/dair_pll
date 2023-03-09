@@ -504,6 +504,8 @@ class MultibodyLearnableSystem(System):
 
         Args:
             statistics: Updated evaluation statistics for the model.
+            new_geometry: Whether to use new learned geometry or the original
+              URDF's geometry in the rollout videos.
 
         Returns:
             Scalars and videos packaged into a ``SystemSummary``.
