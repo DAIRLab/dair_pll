@@ -65,21 +65,13 @@ def generate_visualization_system(
     """
     # Start with true base system.
     double_urdfs = deepcopy(base_system.urdfs)
-    double_urdfs.update({
-        k: v for k, v in base_system.urdfs.items()
-    })
 
     # Either copy the base system's geometry or optionally use the learned
     # geometry.
-    if learned_system is None:
-        double_urdfs.update({
-            (k + LEARNED_TAG): v for k, v in base_system.urdfs.items()
-        })
-
-    else:
-        double_urdfs.update({
-            (k + LEARNED_TAG): v for k, v in learned_system.urdfs.items()
-        })
+    system_to_add = learned_system if learned_system else base_system
+    double_urdfs.update({
+        (k + LEARNED_TAG): v for k, v in system_to_add.urdfs.items()
+    })
 
     visualization_system = DrakeSystem(double_urdfs,
                                        base_system.dt,
