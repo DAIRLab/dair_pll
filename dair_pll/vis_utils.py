@@ -160,6 +160,10 @@ def visualize_trajectory(drake_system: DrakeSystem,
     actual_framerate = round((1 / drake_system.dt) / temporal_downsample)
     x_trajectory = x_trajectory[::temporal_downsample, :]
 
+    # Clear the images before iterating through the trajectory (by default the
+    # video starts with one image of the systems at the origin).
+    vis._pil_images = []
+
     # Simulate the system according to the provided data.
     _, carry = drake_system.sample_initial_condition()
     for x_current in x_trajectory:
