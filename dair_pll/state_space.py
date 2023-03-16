@@ -121,7 +121,7 @@ class StateSpace(ABC):
 
         Returns:
             ``(*, n_v)`` element of Lie algebra g defining the transformation
-              from ``q_1`` to ``q_2``
+            from ``q_1`` to ``q_2``
         """
 
     @abstractmethod

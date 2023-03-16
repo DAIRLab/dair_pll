@@ -53,6 +53,15 @@ W_COMP = 1e-1
 W_DISS = 1e0
 W_PEN = 1e1
 
+# Scaling factors to equalize translation and rotation errors.
+# For rotation versus linear scaling:  penalize 0.1 meters same as 90 degrees.
+ROTATION_SCALING = 0.2/torch.pi
+# For articulation versus linear/rotation scaling:  penalize the scenario where
+# one elbow link is in the right place and the other is 180 degrees flipped the
+# same, whether link 1 or link 2 are in the right place.
+ELBOW_COM_TO_AXIS_DISTANCE = 0.035
+JOINT_SCALING = 2*ELBOW_COM_TO_AXIS_DISTANCE/torch.pi + ROTATION_SCALING
+
 
 class MultibodyLearnableSystem(System):
     """:py:class:`System` interface for dynamics associated with
@@ -275,14 +284,22 @@ class MultibodyLearnableSystem(System):
                 delassus.shape)
         J_t = J[..., n_contacts:, :]
 
-        # Construct a scaling vector (3*n_contacts, 3*n_contacts) S s.t.
-        # S @ lambda_CN = scaled lambdas in units [m/s] instead of [N s].
+        # Construct a diagonal scaling matrix (3*n_contacts, 3*n_contacts) S
+        # s.t. S @ lambda_CN = scaled lambdas in units [m/s] instead of [N s].
         delassus_diag_vec = torch.diagonal(delassus, dim1=-2, dim2=-1)
         contact_weights = pbmm(one_vector_block_diagonal(n_contacts, 3).t(),
                                pbmm(reorder_mat.transpose(-1, -2),
                                     delassus_diag_vec.unsqueeze(-1)))
         contact_weights = broadcast_lorentz(contact_weights.squeeze(-1))
         S = torch.diag_embed(contact_weights)
+
+        # Construct a diagonal scaling matrix (n_velocity, n_velocity) P s.t.
+        # velocity errors are scaled to relate translation and rotation errors
+        # in a thoughful way.
+        P_diag = torch.ones_like(v)
+        P_diag[..., :3] *= ROTATION_SCALING
+        P_diag[..., 6:] *= JOINT_SCALING
+        P = torch.diag_embed(P_diag)
 
         # pylint: disable=E1103
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
@@ -295,26 +312,27 @@ class MultibodyLearnableSystem(System):
                                                         dim=-1, keepdim=True)
 
         ## inertia-agnostic version
-        double_M_inv_delassus = pbmm(pbmm(J, M_inv),
-                                     pbmm(M_inv, J.transpose(-1, -2)))
-        Q = double_M_inv_delassus + eps * torch.eye(3 * n_contacts)
-        ## power version
-        # Q = delassus + eps * torch.eye(3 * n_contacts)
-        ##
-
-        ## inertia-agnostic version
-        half_delassus = pbmm(J, M_inv)
+        # half_delassus = pbmm(J, M_inv)
+        ## balanced version
+        half_delassus = pbmm(pbmm(J, M_inv), P)
         ## power version
         # L = torch.linalg.cholesky(M_inv)
         # half_delassus = pbmm(J, L)
         ##
+
+        Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
+            eps * torch.eye(3 * n_contacts)
 
         J_bar = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         ## inertia-agnostic version
-        q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+        # q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+        # q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
+        # q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),dim=-2))
+        ## balanced version
+        q_pred = -pbmm(J, pbmm(M_inv, pbmm(pbmm(P, P), dv.transpose(-1, -2))))
         q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
         q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),dim=-2))
         ## power version
@@ -330,7 +348,10 @@ class MultibodyLearnableSystem(System):
         constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
 
         ## inertia-agnostic version
-        constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
+        # constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
+        ## balanced version
+        balanced_dv = pbmm(dv, P)
+        constant_pred = 0.5 * pbmm(balanced_dv, balanced_dv.transpose(-1, -2))
         ## power version
         # constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
         ##
