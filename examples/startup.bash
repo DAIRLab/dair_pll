@@ -2,8 +2,6 @@
 #SBATCH --gpus=0
 #SBATCH --mem-per-cpu=10G
 #SBATCH --time=12:00:00
-#SBATCH --qos=posa-high
-#SBATCH --partition=posa-compute
 #SBATCH --job-name=pll_{name}
 #SBATCH --output={pll_dir}/logs/slurm_{name}.txt
 
