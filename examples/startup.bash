@@ -7,7 +7,7 @@
 
 echo "display" >> {pll_dir}/logs/start_{name}.txt
 #Xvfb :6 -screen 0 800x600x24 &
-source {pll_dir}/../bin/activate;
+source {pll_dir}/pll_env/bin/activate;
 export PYTHONPATH={pll_dir};
 export PLL_EXPERIMENT={name};
 export DISPLAY=:5;

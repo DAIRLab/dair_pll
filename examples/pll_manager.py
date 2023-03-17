@@ -89,7 +89,9 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
         of.write(script)
 
     train_cmd = ['bash', out_file] if local else ['sbatch', out_file]
+    print(f'Creating and queuing {out_file}')
     ec = subprocess.run(train_cmd)
+    print(f'Queued file.')
 
 
 def get_slurm_from_instances(instances: List[str], prefix='pll'):
@@ -109,6 +111,7 @@ def get_slurm_from_instances(instances: List[str], prefix='pll'):
 
 
 def attach_tb(name: str, local: bool = False):
+    print(f'Working to attach tensorboard...')
     repo = git.Repo(search_parent_directories=True)
     git_folder = repo.git.rev_parse("--show-toplevel")
     git_folder = op.normpath(git_folder)
@@ -139,6 +142,8 @@ def attach_tb(name: str, local: bool = False):
                       op.join(git_folder, 'results', name, 'tensorboard'), name]
         print(f'Starting local TensorBoard command:  {tboard_cmd}')
         ec = subprocess.run(tboard_cmd)
+
+    print(f'Ran tensorboard command.')
 
 
 
