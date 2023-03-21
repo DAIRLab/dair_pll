@@ -97,8 +97,10 @@ class SupervisedLearningExperimentConfig:
     """Configuration for system to be learned."""
     optimizer_config: OptimizerConfig = field(default_factory=OptimizerConfig)
     """Configuration for experiment's optimization process."""
-    name: str = 'experiment'
-    """Unique identifier for experiment."""
+    storage: str = './'
+    """Folder for results/data storage. Defaults to working directory."""
+    run_name: str = 'experiment_run'
+    """Unique identifier for experiment run."""
     run_tensorboard: bool = True
     """Whether to run Tensorboard logging."""
     full_evaluation_period: int = 1
@@ -187,14 +189,16 @@ class SupervisedLearningExperiment(ABC):
             None:
         super().__init__()
         self.config = config
-        file_utils.assure_storage_tree_created(config.data_config.storage)
+        file_utils.assure_storage_tree_created(config.storage)
         base_system = self.get_base_system()
         self.space = base_system.space
-        self.data_manager = SystemDataManager(base_system, config.data_config)
+        self.data_manager = SystemDataManager(base_system, config.storage,
+                                              config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
         if config.run_tensorboard:
             self.tensorboard_manager = TensorboardManager(
-                self.data_manager.get_tensorboard_folder())
+                file_utils.tensorboard_dir(self.config.storage,
+                                           self.config.run_name))
 
     @abstractmethod
     def get_base_system(self) -> System:

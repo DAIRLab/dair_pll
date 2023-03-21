@@ -7,6 +7,7 @@ from typing import Optional, cast, Dict
 import torch
 from torch import Tensor
 
+from dair_pll import file_utils
 from dair_pll import vis_utils
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
@@ -32,19 +33,10 @@ class MultibodyLosses(Enum):
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss."""
-    urdfs_output_directory: str = "./"
-    """Where to store learned URDFs"""
 
 
 @dataclass
-class DrakeExperimentConfig(SupervisedLearningExperimentConfig):
-    joint_visualization_file: str = "./{TRAJECTORY_GIF_DEFAULT_NAME}"
-    """GIF file location for visualizing overlay between ground-truth 
-    and predicted trajectories."""
-
-
-@dataclass
-class DrakeMultibodyLearnableExperimentConfig(DrakeExperimentConfig):
+class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig):
     visualize_learned_geometry: bool = True
     """Whether to use learned geometry in trajectory overlay visualization."""
 
@@ -53,7 +45,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
     base_drake_system: Optional[DrakeSystem]
     visualization_system: Optional[DrakeSystem]
 
-    def __init__(self, config: DrakeExperimentConfig) -> None:
+    def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
         super().__init__(config)
         self.base_drake_system = None
 
@@ -82,7 +74,10 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
         """
         return None
 
-    def do_force_visualizer_regeneration(self) -> bool:
+    def visualizer_regeneration_is_required(self) -> bool:
+        """Checks if visualizer should be regenerated, e.g. if learned
+        geometries have been updated and need to be pushed to the visulizer.
+        """
         return False
 
     def get_visualization_system(self, visualization_file: str,
@@ -100,7 +95,6 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
 
         Args:
             visualization_file: Output GIF filename for trajectory video.
-            new_geometry: Whether to use learned geometry.
             learned_system: Current trained learnable system.
 
         Returns:
@@ -109,12 +103,8 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
         """
         # Generate a new visualization system if it needs to use the updated
         # geometry, or if it hasn't been created yet.
-        force_regeneration = self.do_force_visualizer_regeneration()
-        if force_regeneration or self.visualization_system is None:
-            # learned_system = None
-            # if new_geometry:
-            #    new_urdfs = self.generate_updated_urdfs()
-            #    learned_system = DrakeSystem(new_urdfs, self.dt)
+        regeneration_is_required = self.visualizer_regeneration_is_required()
+        if regeneration_is_required or self.visualization_system is None:
             base_system = self.get_drake_system()
             self.visualization_system = \
                 vis_utils.generate_visualization_system(
@@ -128,9 +118,14 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
     def joint_system_summary(self, statistics: Dict, learned_system: System) \
             -> SystemSummary:
 
+        joint_visualization_file = file_utils.get_trajectory_video_filename(
+            self.config.storage, self.config.run_name
+        )
+
         visualization_system = self.get_visualization_system(
-            cast(DrakeExperimentConfig, self.config).joint_visualization_file,
-            learned_system)
+            joint_visualization_file,
+            learned_system
+        )
 
         space = self.get_drake_system().space
         videos = {}
@@ -172,12 +167,13 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
         learnable_config = cast(MultibodyLearnableSystemConfig,
                                 self.config.learnable_config)
-        output_dir = learnable_config.urdfs_output_directory
+        output_dir = file_utils.get_learned_urdf_dir(self.config.storage,
+                                                     self.config.run_name)
         return MultibodyLearnableSystem(learnable_config.urdfs,
                                         self.config.data_config.dt,
                                         output_urdfs_dir=output_dir)
 
-    def do_force_visualizer_regeneration(self) -> bool:
+    def visualizer_regeneration_is_required(self) -> bool:
         return cast(DrakeMultibodyLearnableExperimentConfig,
                     self.config).visualize_learned_geometry
 

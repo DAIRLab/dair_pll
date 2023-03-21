@@ -6,14 +6,16 @@ summary information about the content of this directory.
 """
 import glob
 import os
-import time
 from os import path
 from typing import List, Optional, Callable
 
 TRAJ_EXTENSION = '.pt'  # trajectory file
 HYPERPARAMETERS_EXTENSION = '.json'  # hyperparameter set file
 STATS_EXTENSION = '.pkl'  # experiment statistics
+DATA_SUBFOLDER_NAME = 'data'
+RUNS_SUBFOLDER_NAME = 'runs'
 URDFS_SUBFOLDER_NAME = 'urdfs'
+TENSORBOARD_SUBFOLDER_NAME = 'tensorboard'
 TRAJECTORY_GIF_DEFAULT_NAME = 'trajectory.gif'
 """str: extensions for saved files"""
 
@@ -72,8 +74,8 @@ def assure_storage_tree_created(storage_name: str) -> None:
     Args:
         storage_name: name of storage directory.
     """
-    storage_directories = [data_dir, tensorboard_dir,
-                           temp_dir]  # type: List[Callable[[str],str]]
+    storage_directories = [data_dir,
+                           all_runs_dir]  # type: List[Callable[[str],str]]
 
     for directory in storage_directories:
         assure_created(directory(storage_name))
@@ -92,7 +94,7 @@ def import_data_to_storage(storage_name: str, import_data_dir: str) -> None:
                                                 TRAJ_EXTENSION)
     data_traj_count = get_numeric_file_count(import_data_dir, TRAJ_EXTENSION)
 
-    # overwrite in case of any discrepeancies
+    # overwrite in case of any discrepancies
     if storage_traj_count != data_traj_count:
         os.system(f'rm -r {storage_data_dir}')
         os.system(f'cp -r {import_data_dir} {storage_data_dir}')
@@ -106,40 +108,14 @@ def storage_dir(storage_name: str) -> str:
 
 def data_dir(storage_name: str) -> str:
     """Absolute path of training/validation/test trajectories directory"""
-    return assure_created(path.join(storage_dir(storage_name), 'data'))
+    return assure_created(path.join(storage_dir(storage_name),
+                                    DATA_SUBFOLDER_NAME))
 
 
-def tensorboard_dir(storage_name: str) -> str:
+def all_runs_dir(storage_name: str) -> str:
     """Absolute path of tensorboard storage folder"""
-    return assure_created(path.join(storage_dir(storage_name), 'tensorboard'))
-
-
-def temp_dir(storage_name: str) -> str:
-    """Absolute path of temp storage folder"""
-    return assure_created(path.join(storage_dir(storage_name), 'temp'))
-
-
-def wait_for_temp(storage_name: str,
-                  basename_regex: str = "*",
-                  duration: float = 20) -> Optional[str]:
-    """Waits for unique temporary file matching regular expression to appear.
-
-    Args:
-        storage_name: Name of storage folder
-        basename_regex: Regular expression to isolate basename
-        duration: Wait duration in seconds
-
-    Returns:
-        file basename if it exists and is unique at any time before duration
-        runs out.
-    """
-    start = time.time()
-    search_dir = temp_dir(storage_name)
-    while time.time() - start < duration:
-        files = glob.glob1(search_dir, basename_regex)
-        if len(files) == 1:
-            return files[0]
-    return None
+    return assure_created(path.join(storage_dir(storage_name),
+                                    RUNS_SUBFOLDER_NAME))
 
 
 def delete(file_name: str) -> None:
@@ -262,12 +238,24 @@ def sweep_summary_file(storage_name: str,
     return path.join(directory, str(n_run) + STATS_EXTENSION)
 
 
-def get_trajectory_video_filename(results_directory: str) -> str:
+def run_dir(storage_name: str, run_name: str) -> str:
+    """Absolute path of tensorboard storage folder"""
+    return assure_created(path.join(all_runs_dir(storage_name),
+                                    run_name))
+
+
+def get_trajectory_video_filename(storage_name: str, run_name: str) -> str:
     """Return the filepath of the temporary rollout video gif."""
-    return path.join(assure_created(results_directory),
+    return path.join(run_dir(storage_name, run_name),
                      TRAJECTORY_GIF_DEFAULT_NAME)
 
 
-def get_learned_urdf_dir(results_directory: str) -> str:
+def get_learned_urdf_dir(storage_name: str, run_name: str) -> str:
     """Absolute path of learned model URDF storage directory."""
-    return assure_created(path.join(results_directory, URDFS_SUBFOLDER_NAME))
+    return assure_created(path.join(run_dir(storage_name, run_name),
+                                    URDFS_SUBFOLDER_NAME))
+
+def tensorboard_dir(storage_name: str, run_name: str) -> str:
+    """Absolute path of tensorboard storage folder"""
+    return assure_created(path.join(run_dir(storage_name, run_name),
+                                    TENSORBOARD_SUBFOLDER_NAME))
