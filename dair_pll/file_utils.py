@@ -8,11 +8,13 @@ import glob
 import os
 import time
 from os import path
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 TRAJ_EXTENSION = '.pt'  # trajectory file
 HYPERPARAMETERS_EXTENSION = '.json'  # hyperparameter set file
 STATS_EXTENSION = '.pkl'  # experiment statistics
+URDFS_SUBFOLDER_NAME = 'urdfs'
+TRAJECTORY_GIF_DEFAULT_NAME = 'trajectory.gif'
 """str: extensions for saved files"""
 
 
@@ -33,9 +35,7 @@ def assure_created(directory: str) -> str:
 
 
 MAIN_DIR = path.dirname(path.dirname(__file__))
-RESULTS_DIR = assure_created(os.path.join(MAIN_DIR, 'results'))
 ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, 'assets'))
-PLOTS_DIR = assure_created(os.path.join(MAIN_DIR, 'plots'))
 # str: locations of key static directories
 
 
@@ -72,12 +72,8 @@ def assure_storage_tree_created(storage_name: str) -> None:
     Args:
         storage_name: name of storage directory.
     """
-    storage_directories = [
-        urdf_dir,
-        data_dir,
-        tensorboard_dir,
-        temp_dir
-    ]  # type: List[Callable[[str],str]]
+    storage_directories = [data_dir, tensorboard_dir,
+                           temp_dir]  # type: List[Callable[[str],str]]
 
     for directory in storage_directories:
         assure_created(directory(storage_name))
@@ -106,11 +102,6 @@ def storage_dir(storage_name: str) -> str:
     """Absolute path of storage directory"""
     # return assure_created(os.path.join(RESULTS_DIR, storage_name))
     return assure_created(storage_name)
-
-
-def urdf_dir(storage_name: str) -> str:
-    """Absolute path of learned model URDF storage directory"""
-    return assure_created(path.join(storage_dir(storage_name), 'urdf'))
 
 
 def data_dir(storage_name: str) -> str:
@@ -271,29 +262,12 @@ def sweep_summary_file(storage_name: str,
     return path.join(directory, str(n_run) + STATS_EXTENSION)
 
 
-def experiment_storage_dir() -> str:
-    """Based on the value of the environment variable ``PLL_EXPERIMENT``, return
-    the default storage directory.
-
-    Notes:
-        This is a bit of a hack.  TODO can build in a more elegant solution in
-        the future.
-    """
-    exp_name = os.environ['PLL_EXPERIMENT'] if 'PLL_EXPERIMENT' in os.environ \
-               else ''
-    return assure_created(path.join(RESULTS_DIR, exp_name))
+def get_trajectory_video_filename(results_directory: str) -> str:
+    """Return the filepath of the temporary rollout video gif."""
+    return path.join(assure_created(results_directory),
+                     TRAJECTORY_GIF_DEFAULT_NAME)
 
 
-def get_experiment_video_filename() -> str:
-    """Return the filepath of the temporary rollout video gif.  This calls
-    :py:func:`experiment_storage_dir`, which relies on the environment variable
-    ``PLL_EXPERIMENT`` to be set."""
-    return path.join(temp_dir(experiment_storage_dir()), 'output.gif')
-
-
-def get_experiment_urdf_dir() -> str:
-    """Return the filepath of the urdf directory for the current experiment.
-    This calls :py:func:`experiment_storage_dir`, which relies on the
-    environment variable ``PLL_EXPERIMENT`` to be set."""
-    return urdf_dir(experiment_storage_dir())
-
+def get_learned_urdf_dir(results_directory: str) -> str:
+    """Absolute path of learned model URDF storage directory."""
+    return assure_created(path.join(results_directory, URDFS_SUBFOLDER_NAME))

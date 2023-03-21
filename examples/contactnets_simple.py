@@ -12,9 +12,9 @@ from dair_pll.dataset_management import DataConfig, \
     DataGenerationConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
-    MultibodyLearnableSystemConfig, MultibodyLosses
-from dair_pll.experiment import SupervisedLearningExperimentConfig, \
-    OptimizerConfig, default_epoch_callback
+    MultibodyLearnableSystemConfig, MultibodyLosses, \
+    DrakeMultibodyLearnableExperimentConfig
+from dair_pll.experiment import OptimizerConfig, default_epoch_callback
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
 
@@ -42,8 +42,11 @@ CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET, BOX_TYPE: CUBE_BOX_URDF_ASSET}
 ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET, BOX_TYPE: ELBOW_BOX_URDF_ASSET}
 URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 
-STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
-                            CUBE_DATA_ASSET)
+DATA_STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
+                                 CUBE_DATA_ASSET)
+
+RESULTS_STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'results',
+                                    CUBE_DATA_ASSET)
 
 # Data configuration.
 DT = 0.0068
@@ -110,7 +113,12 @@ def main(system: str = CUBE_SYSTEM,
     data_asset = DATA_ASSETS[system]
     storage_name = os.path.join(os.path.dirname(__file__), 'storage',
                                 data_asset)
+
+    results_dir = os.path.join(os.path.dirname(__file__), 'results',
+                                     data_asset)
+
     os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+    os.system(f'rm -r {results_dir}')
 
     # Next, build the configuration of the learning experiment.
 
@@ -137,7 +145,11 @@ def main(system: str = CUBE_SYSTEM,
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
+    learnable_config = MultibodyLearnableSystemConfig(
+        urdfs=urdfs,
+        loss=loss,
+        urdfs_output_directory=file_utils.get_learned_urdf_dir(results_dir)
+    )
 
     # Describe data source
     data_generation_config = None
@@ -182,13 +194,16 @@ def main(system: str = CUBE_SYSTEM,
         t_prediction=1 if contactnets else T_PREDICTION)
 
     # Combines everything into config for entire experiment.
-    experiment_config = SupervisedLearningExperimentConfig(
+    video_filename = file_utils.get_trajectory_video_filename(results_dir)
+    experiment_config = DrakeMultibodyLearnableExperimentConfig(
+        name=system,
         base_config=base_config,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
-        update_geometry_in_videos=True
+        visualize_learned_geometry=True,
+        joint_visualization_file=video_filename
     )
 
     # Makes experiment.

@@ -24,7 +24,7 @@ from dair_pll.dataset_management import SystemDataManager, \
     DataConfig, TrajectorySliceDataset, TrajectorySet
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import StateSpace
-from dair_pll.system import System
+from dair_pll.system import System, SystemSummary
 from dair_pll.tensorboard_manager import TensorboardManager
 
 TRAIN_SET = 'train'
@@ -86,6 +86,7 @@ class OptimizerConfig:
 class SupervisedLearningExperimentConfig:
     """:py:class:`~dataclasses.dataclass` defining setup of a
     :py:class:`SupervisedLearningExperiment`"""
+    #  pylint: disable=too-many-instance-attributes
     data_config: DataConfig = field(default_factory=DataConfig)
     """Configuration for experiment's
     :py:class:`~dair_pll.system_data_manager.SystemDataManager`."""
@@ -96,6 +97,8 @@ class SupervisedLearningExperimentConfig:
     """Configuration for system to be learned."""
     optimizer_config: OptimizerConfig = field(default_factory=OptimizerConfig)
     """Configuration for experiment's optimization process."""
+    name: str = 'experiment'
+    """Unique identifier for experiment."""
     run_tensorboard: bool = True
     """Whether to run Tensorboard logging."""
     full_evaluation_period: int = 1
@@ -119,8 +122,7 @@ Args:
 """
 
 #:
-LossCallbackCallable = Callable[[Tensor, Tensor, System, Optional[bool]],
-                                Tensor]
+LossCallbackCallable = Callable[[Tensor, Tensor, System, bool], Tensor]
 """Callback to evaluate loss on batch of trajectory slices.
 
 By default, set to prediction loss (
@@ -367,6 +369,21 @@ class SupervisedLearningExperiment(ABC):
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
+    def joint_system_summary(self, statistics: Dict,
+                             learned_system: System) -> SystemSummary:
+        """Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares
+        the base system to the learned system.
+
+        Args:
+            statistics: Dictionary of training statistics.
+            learned_system: Most updated version of system during training.
+
+        Returns:
+            Summary of comparison between systems.
+        """
+        # pylint: disable=unused-argument
+        return SystemSummary()
+
     def write_to_tensorboard(self, epoch: int, learned_system: System,
                              statistics: Dict) -> None:
         """Extracts and writes summary of training progress to Tensorboard.
@@ -388,17 +405,26 @@ class SupervisedLearningExperiment(ABC):
                 if var_key in statistics:
                     epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
 
-        system_summary = learned_system.summary(statistics,
-            new_geometry=self.config.update_geometry_in_videos)
+        learned_system_summary = learned_system.summary(statistics)
 
-        epoch_vars.update(system_summary.scalars)
+        joint_system_summary = self.joint_system_summary(
+            statistics, learned_system)
+
+        epoch_vars.update(learned_system_summary.scalars)
         logging_duration = time.time() - start_log_time
         statistics[LOGGING_DURATION] = logging_duration
         epoch_vars.update(
             {duration: statistics[duration] for duration in ALL_DURATIONS})
+
+        epoch_vars.update(joint_system_summary.scalars)
+
+        learned_system_summary.videos.update(joint_system_summary.videos)
+
+        learned_system_summary.meshes.update(joint_system_summary.meshes)
+
         self.tensorboard_manager.update(epoch, epoch_vars,
-                                        system_summary.videos,
-                                        system_summary.meshes)
+                                        learned_system_summary.videos,
+                                        learned_system_summary.meshes)
 
     def per_epoch_evaluation(self, epoch: int, learned_system: System,
                              train_loss: Tensor,
@@ -426,7 +452,7 @@ class SupervisedLearningExperiment(ABC):
         if epoch > 0 and (epoch % self.config.full_evaluation_period) == 0:
             train_set, valid_set, _ = self.data_manager.get_trajectory_split()
             n_train_eval = min(len(train_set.trajectories),
-                              self.config.full_evaluation_samples)
+                               self.config.full_evaluation_samples)
 
             n_valid_eval = min(len(valid_set.trajectories),
                                self.config.full_evaluation_samples)

@@ -19,18 +19,20 @@ or :py:class:`~dair_pll.state_space.FixedBaseSpace`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple, Dict, List, Optional, Mapping, cast, Union, Type
+from typing import Tuple, Dict, List, Optional, Union, Type, cast, \
+    TypeAlias
 
 import numpy as np
-import os
-import os.path as op
-
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
+# pylint: disable-next=import-error
 from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
+# pylint: disable-next=import-error
 from pydrake.geometry import SceneGraphInspector_, GeometryId  # type: ignore
-from pydrake.math import RigidTransform, RollPitchYaw  # type: ignore
+from pydrake.math import RigidTransform, RollPitchYaw, \
+    RigidTransform_  # type: ignore
 from pydrake.multibody.parsing import Parser  # type: ignore
-from pydrake.multibody.plant import AddMultibodyPlantSceneGraph  # type: ignore
+from pydrake.multibody.plant import AddMultibodyPlantSceneGraph, \
+    CoulombFriction_  # type: ignore
 from pydrake.multibody.plant import CoulombFriction  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant_  # type: ignore
@@ -39,11 +41,12 @@ from pydrake.multibody.tree import SpatialInertia_  # type: ignore
 from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
-from pydrake.systems.framework import DiagramBuilder  # type: ignore
+from pydrake.systems.framework import DiagramBuilder, \
+    DiagramBuilder_  # type: ignore
+# pylint: disable-next=import-error
 from pydrake.visualization import VideoWriter  # type: ignore
 
 from dair_pll import state_space
-from dair_pll import file_utils
 
 WORLD_GROUND_PLANE_NAME = "world_ground_plane"
 DRAKE_MATERIAL_GROUP = 'material'
@@ -53,32 +56,45 @@ DEFAULT_DT = 1e-3
 
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
-CAM_FOV = np.pi/5
+CAM_FOV = np.pi / 5
 VIDEO_PIXELS = [480, 640]
 FPS = 30
 
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
 # to fit the actual trajectory.
-SENSOR_POSE = RigidTransform(RollPitchYaw([-np.pi/2, 0, np.pi/2]), [2, 0, 0.2])
+SENSOR_RPY = np.array([-np.pi / 2, 0, np.pi / 2])
+SENSOR_POSITION = np.array([2., 0., 0.2])
+SENSOR_POSE = RigidTransform(
+    RollPitchYaw(SENSOR_RPY).ToQuaternion(), SENSOR_POSITION)
 
-DrakeTemplateType = Mapping[Type, Type]
-MultibodyPlant_ = cast(DrakeTemplateType, MultibodyPlant_)
-Body_ = cast(DrakeTemplateType, Body_)
-SceneGraphInspector_ = cast(DrakeTemplateType, SceneGraphInspector_)
-SpatialInertia_ = cast(DrakeTemplateType, SpatialInertia_)
+MultibodyPlantFloat: TypeAlias = cast(Type, MultibodyPlant_[float])
+MultibodyPlantAutoDiffXd: TypeAlias = cast(Type, MultibodyPlant_[AutoDiffXd])
+MultibodyPlantExpression: TypeAlias = cast(Type, MultibodyPlant_[Expression])
+DrakeMultibodyPlant = Union[MultibodyPlantFloat, MultibodyPlantAutoDiffXd,
+                            MultibodyPlantExpression]
 
-#:
-DrakeMultibodyPlant = Union[MultibodyPlant_[float], MultibodyPlant_[AutoDiffXd],
-                            MultibodyPlant_[Expression]]
-#:
-DrakeBody = Union[Body_[float], Body_[AutoDiffXd], Body_[Expression]]
+BodyFloat: TypeAlias = cast(Type, Body_[float])
+BodyAutoDiffXd: TypeAlias = cast(Type, Body_[AutoDiffXd])
+BodyExpression: TypeAlias = cast(Type, Body_[Expression])
+DrakeBody = Union[BodyFloat, BodyAutoDiffXd, BodyExpression]
 
+SpatialInertiaFloat: TypeAlias = cast(Type, SpatialInertia_[float])
+SpatialInertiaAutoDiffXd: TypeAlias = cast(Type, SpatialInertia_[AutoDiffXd])
+SpatialInertiaExpression: TypeAlias = cast(Type, SpatialInertia_[Expression])
+DrakeSpatialInertia = Union[SpatialInertiaFloat, SpatialInertiaAutoDiffXd,
+                            SpatialInertiaExpression]
 #:
-DrakeSceneGraphInspector = Union[SceneGraphInspector_[float],
-                                 SceneGraphInspector_[AutoDiffXd]]
+SceneGraphInspectorFloat: TypeAlias = cast(Type, SceneGraphInspector_[float])
+SceneGraphInspectorAutoDiffXd: TypeAlias = cast(
+    Type, SceneGraphInspector_[AutoDiffXd])
+DrakeSceneGraphInspector = Union[SceneGraphInspectorFloat,
+                                 SceneGraphInspectorAutoDiffXd]
 #:
-DrakeSpatialInertia = Union[SpatialInertia_[float], SpatialInertia_[AutoDiffXd],
-                            SpatialInertia_[Expression]]
+DiagramBuilderFloat: TypeAlias = cast(Type, DiagramBuilder_[float])
+DiagramBuilderAutoDiffXd: TypeAlias = cast(Type, DiagramBuilder_[AutoDiffXd])
+DiagramBuilderExpression: TypeAlias = cast(Type, DiagramBuilder_[Expression])
+DrakeDiagramBuilder = Union[DiagramBuilderFloat, DiagramBuilderAutoDiffXd,
+                            DiagramBuilderExpression]
 #:
 UniqueBodyIdentifier = str
 
@@ -112,7 +128,7 @@ def unique_body_identifier(plant: DrakeMultibodyPlant,
 
 def get_all_bodies(
     plant: DrakeMultibodyPlant, model_instance_indices: List[ModelInstanceIndex]
-) -> Tuple[List[Body_], List[UniqueBodyIdentifier]]:
+) -> Tuple[List[DrakeBody], List[UniqueBodyIdentifier]]:
     """Get all bodies in plant's models."""
     bodies = []
     for model_instance_index in model_instance_indices:
@@ -179,7 +195,7 @@ def get_collision_geometry_set(
 
 
 def add_plant_from_urdfs(
-        builder: DiagramBuilder, urdfs: Dict[str, str], dt: float
+        builder: DrakeDiagramBuilder, urdfs: Dict[str, str], dt: float
 ) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
     """Add plant to builder with prescribed URDF models.
 
@@ -232,7 +248,7 @@ class MultibodyPlantDiagram:
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
-                 enable_visualizer: bool = False) -> None:
+                 visualization_file: Optional[str] = None) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
         trigger a state update every ``dt``.
@@ -242,7 +258,8 @@ class MultibodyPlantDiagram:
         Args:
             urdfs: Names and corresponding URDFs to add as models to plant.
             dt: Time step of plant in seconds.
-            enable_visualizer: Whether to add visualization system to diagram.
+            visualization_file: Optional output GIF filename for trajectory
+              visualization.
         """
         builder = DiagramBuilder()
         model_ids, plant, scene_graph = add_plant_from_urdfs(builder, urdfs, dt)
@@ -251,15 +268,18 @@ class MultibodyPlantDiagram:
         # to False, in the hopes of saving computation time; may cause
         # re-initialization to produce erroneous visualizations.
         visualizer = None
-        if enable_visualizer:
-            visualizer = VideoWriter.AddToBuilder(
-                filename=file_utils.get_experiment_video_filename(),
-                builder=builder, sensor_pose=SENSOR_POSE, fps=FPS,
-                width=VIDEO_PIXELS[1], height=VIDEO_PIXELS[0], fov_y=CAM_FOV)
+        if visualization_file:
+            visualizer = VideoWriter.AddToBuilder(filename=visualization_file,
+                                                  builder=builder,
+                                                  sensor_pose=SENSOR_POSE,
+                                                  fps=FPS,
+                                                  width=VIDEO_PIXELS[1],
+                                                  height=VIDEO_PIXELS[0],
+                                                  fov_y=CAM_FOV)
 
         # Adds ground plane at ``z = 0``
-        halfspace_transform = RigidTransform()
-        friction = CoulombFriction(1.0, 1.0)
+        halfspace_transform = RigidTransform_[float]()
+        friction = CoulombFriction_[float](1.0, 1.0)
         plant.RegisterCollisionGeometry(plant.world_body(), halfspace_transform,
                                         HalfSpace(), WORLD_GROUND_PLANE_NAME,
                                         friction)
