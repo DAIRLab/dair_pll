@@ -1,6 +1,8 @@
 # results
 results/*
 examples/storage/*
+examples/results/*
+examples/wandb/*
 logs/*
 plots/*
 

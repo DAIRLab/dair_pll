@@ -28,7 +28,7 @@ from dair_pll.dataset_management import SystemDataManager, \
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System, SystemSummary
-from dair_pll.tensorboard_manager import TensorboardManager
+from dair_pll.wandb_manager import WeightsAndBiasesManager
 
 TRAIN_SET = 'train'
 VALID_SET = 'valid'
@@ -185,7 +185,7 @@ class SupervisedLearningExperiment(ABC):
     """State space of experiment, inferred from base system."""
     loss_callback: Optional[LossCallbackCallable]
     """Callback function for loss, defaults to prediction loss."""
-    tensorboard_manager: Optional[TensorboardManager]
+    tensorboard_manager: Optional[WeightsAndBiasesManager]
     """Optional tensorboard interface."""
 
     def __init__(self, config: SupervisedLearningExperimentConfig) -> \
@@ -199,9 +199,7 @@ class SupervisedLearningExperiment(ABC):
                                               config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
         if config.run_tensorboard:
-            self.tensorboard_manager = TensorboardManager(
-                file_utils.tensorboard_dir(self.config.storage,
-                                           self.config.run_name))
+            self.tensorboard_manager = WeightsAndBiasesManager(config.name)
 
     @abstractmethod
     def get_base_system(self) -> System:
@@ -590,12 +588,6 @@ class SupervisedLearningExperiment(ABC):
 
         # Reload best parameters.
         learned_system.load_state_dict(best_learned_system_state)
-
-        # kill tensorboard.
-        print("killing tensorboard")
-        if self.tensorboard_manager is not None:
-            self.tensorboard_manager.stop()
-
         return training_loss, best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(
