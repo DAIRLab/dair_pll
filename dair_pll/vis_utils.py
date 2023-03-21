@@ -15,17 +15,13 @@ from copy import deepcopy
 from typing import Tuple, Optional
 
 import numpy as np
-import time
-
+from PIL import Image
 from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
 from pydrake.math import RigidTransform  # type: ignore
 from pydrake.visualization import VideoWriter  # type: ignore
-
 from torch import Tensor
-from PIL import Image
 
 from dair_pll.drake_system import DrakeSystem
-from dair_pll import file_utils
 
 RESOLUTION = [640, 480]
 RED = Rgba(0.6, 0.0, 0.0, 0.5)
