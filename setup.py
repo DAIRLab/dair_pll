@@ -10,7 +10,7 @@ install_reqs = [
     'mujoco-py',
     'optuna',
     'numpy',
-    'scipy==1.7.3',
+    'scipy',
     'typing_extensions',
     'matplotlib',
     'threadpoolctl',
@@ -18,6 +18,7 @@ install_reqs = [
     'pywavefront',
     'python-fcl',
     'gitpython',
+    'protobuf==3.20.*',
     # documentation
     'networkx',
     'protobuf==3.19.6',

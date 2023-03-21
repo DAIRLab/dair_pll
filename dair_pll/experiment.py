@@ -10,7 +10,7 @@ Current supported experiment types include:
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Tuple, Callable, Optional, Dict, cast, Type, Union
 import pdb
 
@@ -87,15 +87,15 @@ class OptimizerConfig:
 class SupervisedLearningExperimentConfig:
     """:py:class:`~dataclasses.dataclass` defining setup of a
     :py:class:`SupervisedLearningExperiment`"""
-    data_config: DataConfig = DataConfig()
+    data_config: DataConfig = field(default_factory=DataConfig)
     """Configuration for experiment's
     :py:class:`~dair_pll.system_data_manager.SystemDataManager`."""
-    base_config: SystemConfig = SystemConfig()
+    base_config: SystemConfig = field(default_factory=SystemConfig)
     """Configuration for experiment's "base" system, from which trajectories
     are modeled and optionally generated."""
-    learnable_config: SystemConfig = SystemConfig()
+    learnable_config: SystemConfig = field(default_factory=SystemConfig)
     """Configuration for system to be learned."""
-    optimizer_config: OptimizerConfig = OptimizerConfig()
+    optimizer_config: OptimizerConfig = field(default_factory=OptimizerConfig)
     """Configuration for experiment's optimization process."""
     run_tensorboard: bool = True
     """Whether to run Tensorboard logging."""

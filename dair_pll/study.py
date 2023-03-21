@@ -80,7 +80,7 @@ class Study:
                                                       N_train)
             with open(save_file, 'wb') as f:
                 pickle.dump(stats, f)
-        print("done! ")
+        print("done!")
         sys.stdout.flush()
 
     def run_datasweep_sample(self, hps: hyperparameter.ValueDict,
