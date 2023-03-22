@@ -376,8 +376,8 @@ class SupervisedLearningExperiment(ABC):
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
-    def joint_system_summary(self, statistics: Dict,
-                             learned_system: System) -> SystemSummary:
+    def base_and_learned_comparison_summary(
+            self, statistics: Dict, learned_system: System) -> SystemSummary:
         """Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares
         the base system to the learned system.
 
@@ -414,7 +414,7 @@ class SupervisedLearningExperiment(ABC):
 
         learned_system_summary = learned_system.summary(statistics)
 
-        joint_system_summary = self.joint_system_summary(
+        comparison_summary = self.base_and_learned_comparison_summary(
             statistics, learned_system)
 
         epoch_vars.update(learned_system_summary.scalars)
@@ -423,11 +423,11 @@ class SupervisedLearningExperiment(ABC):
         epoch_vars.update(
             {duration: statistics[duration] for duration in ALL_DURATIONS})
 
-        epoch_vars.update(joint_system_summary.scalars)
+        epoch_vars.update(comparison_summary.scalars)
 
-        learned_system_summary.videos.update(joint_system_summary.videos)
+        learned_system_summary.videos.update(comparison_summary.videos)
 
-        learned_system_summary.meshes.update(joint_system_summary.meshes)
+        learned_system_summary.meshes.update(comparison_summary.meshes)
 
         self.tensorboard_manager.update(epoch, epoch_vars,
                                         learned_system_summary.videos,

@@ -29,7 +29,7 @@ import torch
 from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 
-from dair_pll import urdf_utils
+from dair_pll import urdf_utils, tensor_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
@@ -134,13 +134,7 @@ class MultibodyLearnableSystem(System):
             q_plus, v_plus, u)
 
         n_contacts = phi.shape[-1]
-        n_force = n_contacts * 3
-        # pylint: disable=no-member
-        reorder_mat = torch.zeros((n_force, n_force))
-        for contact in range(n_contacts):
-            reorder_mat[contact][3 * contact + 2] = 1
-            reorder_mat[n_contacts + 2 * contact][3 * contact] = 1
-            reorder_mat[n_contacts + 2 * contact + 1][3 * contact + 1] = 1
+        reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
         reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
                                           reorder_mat.shape).expand(
                                               delassus.shape)
@@ -275,17 +269,10 @@ class MultibodyLearnableSystem(System):
                                      contact_filter.transpose(-1,
                                                               -2).int()).bool()
 
-        n_force = n_contacts * 3
-        # pylint: disable=no-member
-        reorder_mat = torch.zeros((n_force, n_force))
-        for contact in range(n_contacts):
-            reorder_mat[contact][3 * contact + 2] = 1
-            reorder_mat[n_contacts + 2 * contact][3 * contact] = 1
-            reorder_mat[n_contacts + 2 * contact + 1][3 * contact + 1] = 1
+        reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
         reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
                                           reorder_mat.shape).expand(
                                               delassus.shape)
-
         J_M = pbmm(reorder_mat.transpose(-1, -2),
                    pbmm(J, torch.linalg.cholesky(torch.inverse((M)))))
 
