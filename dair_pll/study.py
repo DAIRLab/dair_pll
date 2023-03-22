@@ -76,7 +76,7 @@ class Study:
 
         data_min = log_data_size_range[0]
         data_max = log_data_size_range[1] + 1
-        for sweep_run in range(config.sweep_runs):
+        for sweep_run in range(config.n_sweep_runs):
             for log_N_train in range(data_min, data_max):
                 N_train = 2**log_N_train
                 print(f"running sweep example for N_train = {N_train}")
