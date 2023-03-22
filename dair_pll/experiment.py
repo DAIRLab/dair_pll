@@ -7,6 +7,9 @@ Current supported experiment types include:
       dataset of trajectories.
 
 """
+import json
+import os
+import pickle
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -490,7 +493,7 @@ class SupervisedLearningExperiment(ABC):
         valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
                          f'_{AVERAGE_TAG}'
         valid_loss = 0.0 \
-            if not valid_loss_key in statistics \
+            if valid_loss_key not in statistics \
             else statistics[valid_loss_key]
         return torch.tensor(valid_loss)
 
@@ -589,7 +592,7 @@ class SupervisedLearningExperiment(ABC):
         learned_system.load_state_dict(best_learned_system_state)
 
         # kill tensorboard.
-        print("killing tboard")
+        print("killing tensorboard")
         if self.tensorboard_manager is not None:
             self.tensorboard_manager.stop()
 
@@ -710,7 +713,7 @@ class SupervisedLearningExperiment(ABC):
 
     def evaluation(self, learned_system: System) -> StatisticsDict:
         r"""Evaluate both oracle and learned system on training, validation,
-        and testing data.
+        and testing data, and saves results to disk.
 
         Implemented as a wrapper for :meth:`evaluate_systems_on_sets`.
 
@@ -728,4 +731,34 @@ class SupervisedLearningExperiment(ABC):
             ORACLE_SYSTEM_NAME: self.get_oracle_system(),
             LEARNED_SYSTEM_NAME: learned_system
         }
-        return self.evaluate_systems_on_sets(systems, sets)
+        evaluation = self.evaluate_systems_on_sets(systems, sets)
+        evaluation_filename = file_utils.get_final_evaluation_filename(
+            self.config.storage, self.config.run_name)
+        with open(evaluation_filename, 'wb') as evaluation_file:
+            pickle.dump(evaluation, evaluation_file)
+        return evaluation
+
+    def get_results(
+        self,
+        epoch_callback: EpochCallbackCallable = default_epoch_callback,
+    ) -> StatisticsDict:
+        r"""Gets final results/statistics of experiment. This will return
+        previously saved results on disk if they already exist, or run the
+        experiment to generate them if they don't.
+
+        Args:
+            epoch_callback: Callback function at end of each epoch.
+
+        Returns:
+            Statistics dictionary.
+        """
+        evaluation_filename = file_utils.get_final_evaluation_filename(
+            self.config.storage, self.config.run_name)
+
+        if os.path.exists(evaluation_filename):
+            with open(evaluation_filename, 'r', encoding="utf8") as file:
+                evaluation = json.load(file)
+            return evaluation
+
+        _, _, learned_system = self.train(epoch_callback)
+        return self.evaluation(learned_system)
