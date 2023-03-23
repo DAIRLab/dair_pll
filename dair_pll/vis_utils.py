@@ -16,9 +16,8 @@ from typing import Tuple, Optional
 
 import numpy as np
 from PIL import Image
+# pylint: disable-next=import-error
 from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
-from pydrake.math import RigidTransform  # type: ignore
-from pydrake.visualization import VideoWriter  # type: ignore
 from torch import Tensor
 
 from dair_pll.drake_system import DrakeSystem
@@ -34,10 +33,11 @@ LEARNED_TAG = '__learned__'
 
 
 def generate_visualization_system(
-        base_system: DrakeSystem,
-        learned_system: Optional[DrakeSystem] = None,
-        base_system_color: Rgba = BASE_SYSTEM_DEFAULT_COLOR,
-        learned_system_color: Rgba = LEARNED_SYSTEM_DEFAULT_COLOR
+    base_system: DrakeSystem,
+    visualization_file: str,
+    learned_system: Optional[DrakeSystem] = None,
+    base_system_color: Rgba = BASE_SYSTEM_DEFAULT_COLOR,
+    learned_system_color: Rgba = LEARNED_SYSTEM_DEFAULT_COLOR,
 ) -> DrakeSystem:
     """Generate a dummy ``DrakeSystem`` for visualizing comparisons between two
     trajectories of ``base_system``.
@@ -51,6 +51,7 @@ def generate_visualization_system(
 
     Args:
         base_system: System to be visualized.
+        visualization_file: Output GIF filename for trajectory video.
         learned_system: Optionally, the learned system so the predicted
           trajectory is rendered with the learned geometry.
         base_system_color: Color to repaint every thing in base system.
@@ -59,6 +60,7 @@ def generate_visualization_system(
     Returns:
         New ``DrakeSystem`` with doubled state and repainted elements.
     """
+    # pylint: disable=too-many-locals
     # Start with true base system.
     double_urdfs = deepcopy(base_system.urdfs)
 
@@ -71,14 +73,14 @@ def generate_visualization_system(
 
     visualization_system = DrakeSystem(double_urdfs,
                                        base_system.dt,
-                                       enable_visualizer=True)
+                                       visualization_file=visualization_file)
 
     # Recolors every perception geometry to default colors
     plant_diagram = visualization_system.plant_diagram
     plant = plant_diagram.plant
     scene_graph = plant_diagram.scene_graph
     scene_graph_context = scene_graph.GetMyContextFromRoot(
-                            plant_diagram.sim.get_mutable_context())
+        plant_diagram.sim.get_mutable_context())
     inspector = scene_graph.model_inspector()
     for model_id in plant_diagram.model_ids:
         model_name = plant.GetModelInstanceName(model_id)
@@ -98,12 +100,13 @@ def generate_visualization_system(
                         learned_system_color
                         if LEARNED_TAG in model_name else base_system_color)
                     # Tells ``scene_graph`` to update the color.
-                    scene_graph.RemoveRole(scene_graph_context,
-                                           plant.get_source_id(), geometry_id,
-                                           Role.kPerception)
-                    scene_graph.AssignRole(scene_graph_context,
-                                           plant.get_source_id(), geometry_id,
-                                           props, RoleAssign.kNew)
+                    plant_source_id = plant.get_source_id()
+                    assert plant_source_id is not None
+
+                    scene_graph.RemoveRole(scene_graph_context, plant_source_id,
+                                           geometry_id, Role.kPerception)
+                    scene_graph.AssignRole(scene_graph_context, plant_source_id,
+                                           geometry_id, props, RoleAssign.kNew)
 
     # Changing perception properties requires the ``Simulator`` to be
     # re-initialized.
@@ -114,9 +117,8 @@ def generate_visualization_system(
 
 def visualize_trajectory(drake_system: DrakeSystem,
                          x_trajectory: Tensor,
-                         framerate: int = 30
-) -> Tuple[np.ndarray, int]:
-    """Visualizes trajectory of system.
+                         framerate: int = 30) -> Tuple[np.ndarray, int]:
+    r"""Visualizes trajectory of system.
 
     Specifies a ``framerate`` for output video, though should be noted that
     this framerate is only approximately represented by homogeneous integer
@@ -134,9 +136,16 @@ def visualize_trajectory(drake_system: DrakeSystem,
         (1, T, 3, H, W) ndarray video capture of trajectory with resolution
         H x W, which are set to 480x640 in :py:mod:`dair_pll.drake_utils`.
         The true framerate, rounded to an integer.
+
+    Todo:
+        Only option for implementation at the moment is to access various
+        protected members of :py:class:`pydrake.visualization.VideoWriter`\ .
+        This function should be updated as `pydrake` has this functionality
+        properly exposed.
     """
     assert drake_system.plant_diagram.visualizer is not None
     assert x_trajectory.dim() == 2
+    # pylint: disable=protected-access
 
     vis = drake_system.plant_diagram.visualizer
     sim = drake_system.plant_diagram.sim
@@ -148,7 +157,7 @@ def visualize_trajectory(drake_system: DrakeSystem,
 
     # Clear the images before iterating through the trajectory (by default the
     # video starts with one image of the systems at the origin).
-    vis._pil_images = []
+    vis._pil_images = []  # type: ignore
 
     # Simulate the system according to the provided data.
     _, carry = drake_system.sample_initial_condition()
@@ -161,21 +170,20 @@ def visualize_trajectory(drake_system: DrakeSystem,
         vis._publish(video_context)
 
     # Compose a video ndarray of shape (T, H, W, 4[rgba]).
-    video = np.stack([np.asarray(frame) for frame in vis._pil_images])
+    video = np.stack([np.asarray(frame) for frame in vis._pil_images
+                     ])  # type: ignore
     vis.Save()
 
     # Since Drake's VideoWriter defaults to not looping gifs, re-load and re-
     # save the gif to ensure it loops.  This gif is only for debugging purposes,
     # as the gif gets overwritten with every trajectory.  The actual output of
     # this function is a numpy array.
-    im = Image.open(vis._filename)
-    new_name = vis._filename.split('.')[0] + '_.gif'
-    im.save(new_name, save_all=True, loop=0)
-    im.close()
+    vizualization_image = Image.open(vis._filename)  # type: ignore
+    new_name = vis._filename.split('.')[0] + '_.gif'  # type: ignore
+    vizualization_image.save(new_name, save_all=True, loop=0)
+    vizualization_image.close()
 
     # Remove alpha channel and reorder axes to output type.
-    height = video.shape[1]
     video = np.expand_dims(np.moveaxis(video, 3, 1), 0)
     video = video[:, :, :3, :, :]
     return video, actual_framerate
-

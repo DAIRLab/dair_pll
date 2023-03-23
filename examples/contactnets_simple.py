@@ -1,6 +1,8 @@
 """Simple ContactNets/differentiable physics learning examples."""
 # pylint: disable=E1103
 import os
+import time
+from typing import cast
 
 import click
 import numpy as np
@@ -12,11 +14,12 @@ from dair_pll.dataset_management import DataConfig, \
     DataGenerationConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
-    MultibodyLearnableSystemConfig, MultibodyLosses
-from dair_pll.experiment import SupervisedLearningExperimentConfig, \
-    OptimizerConfig, default_epoch_callback
+    MultibodyLearnableSystemConfig, MultibodyLosses, \
+    DrakeMultibodyLearnableExperimentConfig
+from dair_pll.experiment import OptimizerConfig, default_epoch_callback
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
+from dair_pll.system import System
 
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
@@ -41,9 +44,6 @@ BOX_TYPE = 'box'
 CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET, BOX_TYPE: CUBE_BOX_URDF_ASSET}
 ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET, BOX_TYPE: ELBOW_BOX_URDF_ASSET}
 URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
-
-STORAGE_NAME = os.path.join(os.path.dirname(__file__), 'storage',
-                            CUBE_DATA_ASSET)
 
 # Data configuration.
 DT = 0.0068
@@ -108,8 +108,12 @@ def main(system: str = CUBE_SYSTEM,
     dynamic = source == DYNAMIC_SOURCE
 
     data_asset = DATA_ASSETS[system]
+    # where to store data
     storage_name = os.path.join(os.path.dirname(__file__), 'storage',
                                 data_asset)
+
+    run_name = f'run_{str(int(time.time()))}'
+
     os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
     # Next, build the configuration of the learning experiment.
@@ -137,7 +141,10 @@ def main(system: str = CUBE_SYSTEM,
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
+    learnable_config = MultibodyLearnableSystemConfig(
+        urdfs=urdfs,
+        loss=loss
+    )
 
     # Describe data source
     data_generation_config = None
@@ -170,8 +177,6 @@ def main(system: str = CUBE_SYSTEM,
 
     # Describes configuration of the data
     data_config = DataConfig(
-        storage=storage_name,
-        # where to store data
         dt=DT,
         train_fraction=1.0 if dynamic else 0.5,
         valid_fraction=0.0 if dynamic else 0.25,
@@ -179,33 +184,35 @@ def main(system: str = CUBE_SYSTEM,
         generation_config=data_generation_config,
         import_directory=import_directory,
         dynamic_updates_from=dynamic_updates_from,
-        t_prediction=1 if contactnets else T_PREDICTION)
+        t_prediction=1 if contactnets else T_PREDICTION
+    )
 
     # Combines everything into config for entire experiment.
-    experiment_config = SupervisedLearningExperimentConfig(
+    experiment_config = DrakeMultibodyLearnableExperimentConfig(
+        storage=storage_name,
+        run_name=run_name,
         base_config=base_config,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
-        update_geometry_in_videos=True
+        visualize_learned_geometry=True,
     )
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
     def regenerate_callback(epoch: int,
-                            learned_system: MultibodyLearnableSystem,
+                            learned_system: System,
                             train_loss: Tensor,
                             best_valid_loss: Tensor) -> None:
-        default_epoch_callback(
-            epoch, learned_system, train_loss, best_valid_loss)
-        learned_system.generate_updated_urdfs(storage_name)
+        default_epoch_callback(epoch, learned_system, train_loss,
+                               best_valid_loss)
+        cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
     # Trains system.
     experiment.train(
-        regenerate_callback if regenerate else default_epoch_callback
-    )
+        regenerate_callback if regenerate else default_epoch_callback)
 
 
 @click.command()
@@ -227,7 +234,7 @@ def main(system: str = CUBE_SYSTEM,
 def main_command(system: str, source: str, contactnets: bool, box: bool,
                  regenerate: bool):
     """Executes main function with argument interface."""
-    if system == ELBOW_SYSTEM and source==REAL_SOURCE:
+    if system == ELBOW_SYSTEM and source == REAL_SOURCE:
         raise NotImplementedError('Elbow real-world data not supported!')
     main(system, source, contactnets, box, regenerate)
 

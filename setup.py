@@ -25,7 +25,6 @@ install_reqs = [
     'sphinx-autodoc-typehints',
     'sphinx-rtd-theme',
     'sphinx-toolbox',
-    'sphinxcontrib-napoleon',
     'sphinxcontrib-bibtex',
     # development
     'yapf',

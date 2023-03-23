@@ -7,7 +7,7 @@ Interfacing with Drake is done by massaging a drake system into the
 A large portion of the internal implementation of ``DrakeSystem`` is contained
 in ``MultibodyPlantDiagram`` in ``drake_utils.py``.
 """
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 
 import torch
 from torch import Tensor
@@ -35,15 +35,16 @@ class DrakeSystem(System):
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float,
-                 enable_visualizer: bool = False) -> None:
+                 visualization_file: Optional[str] = None) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
         Args:
             urdfs: Names and corresponding URDFs to add as models to plant.
             dt: Time step of plant in seconds.
-            enable_visualizer: Whether to add visualization system to diagram.
+            visualization_file: Optional output GIF filename for trajectory
+              visualization.
         """
-        plant_diagram = MultibodyPlantDiagram(urdfs, dt, enable_visualizer)
+        plant_diagram = MultibodyPlantDiagram(urdfs, dt, visualization_file)
 
         space = plant_diagram.generate_state_space()
         integrator = StateIntegrator(space, self.sim_step, dt)
