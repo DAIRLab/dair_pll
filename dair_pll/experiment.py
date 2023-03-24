@@ -394,8 +394,8 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=unused-argument
         return SystemSummary()
 
-    def write_to_tensorboard(self, epoch: int, learned_system: System,
-                             statistics: Dict) -> None:
+    def write_to_wandb(self, epoch: int, learned_system: System,
+                       statistics: Dict) -> None:
         """Extracts and writes summary of training progress to Tensorboard.
 
         Args:
@@ -490,7 +490,7 @@ class SupervisedLearningExperiment(ABC):
         statistics[EVALUATION_DURATION] = time.time() - start_eval_time
 
         if self.wandb_manager is not None:
-            self.write_to_tensorboard(epoch, learned_system, statistics)
+            self.write_to_wandb(epoch, learned_system, statistics)
 
         # pylint: disable=E1103
         valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
