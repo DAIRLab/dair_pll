@@ -16,7 +16,7 @@ DATA_SUBFOLDER_NAME = 'data'
 RUNS_SUBFOLDER_NAME = 'runs'
 STUDIES_SUBFOLDER_NAME = 'studies'
 URDFS_SUBFOLDER_NAME = 'urdfs'
-TENSORBOARD_SUBFOLDER_NAME = 'tensorboard'
+WANDB_SUBFOLDER_NAME = 'wandb'
 TRAJECTORY_GIF_DEFAULT_NAME = 'trajectory.gif'
 FINAL_EVALUATION_NAME = f'statistics{STATS_EXTENSION}'
 HYPERPARAMETERS_FILENAME = f'optimal_hyperparameters{HYPERPARAMETERS_EXTENSION}'
@@ -63,7 +63,8 @@ def assure_storage_tree_created(storage_name: str) -> None:
         storage_name: name of storage directory.
     """
     storage_directories = [data_dir,
-                           all_runs_dir]  # type: List[Callable[[str],str]]
+                           all_runs_dir,
+                           all_studies_dir]  # type: List[Callable[[str],str]]
 
     for directory in storage_directories:
         assure_created(directory(storage_name))
@@ -172,10 +173,10 @@ def get_learned_urdf_dir(storage_name: str, run_name: str) -> str:
                                     URDFS_SUBFOLDER_NAME))
 
 
-def tensorboard_dir(storage_name: str, run_name: str) -> str:
+def wandb_dir(storage_name: str, run_name: str) -> str:
     """Absolute path of tensorboard storage folder"""
     return assure_created(path.join(run_dir(storage_name, run_name),
-                                    TENSORBOARD_SUBFOLDER_NAME))
+                                    WANDB_SUBFOLDER_NAME))
 
 
 def get_evaluation_filename(storage_name: str, run_name: str) -> str:

@@ -1,9 +1,10 @@
 """Interface for logging training progress to Weights and Biases."""
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional, Any
 
 import numpy as np
 import wandb
 
+from dair_pll.hyperparameter import hyperparameter_values
 from dair_pll.system import MeshSummary
 
 
@@ -37,15 +38,31 @@ class WeightsAndBiasesManager:
     Given a set of scalars, videos, and meshes, writes to Weights and Biases
     at https://wandb.ai .
     """
-    experiment_name: str
-    """Unique identifier for Weights and Biases experiment."""
+    run_name: str
+    """Unique name for Weights and Biases experiment run."""
+    directory: str
+    """Absolute path to store metadata."""
+    project_name: Optional[str]
+    """Unique name for W&B project, analogous to a ``dair_pll`` experiment."""
 
-    def __init__(self, experiment_name: str):
-        self.experiment_name = experiment_name
+    def __init__(self, run_name: str, directory: str,
+                 project_name: Optional[str]):
+        self.run_name = run_name
+        self.directory = directory
+        self.project_name = project_name
 
     def launch(self) -> None:
         """Launches experiment run on Weights & Biases."""
-        wandb.init(project=self.experiment_name)
+        wandb.init(project=self.project_name,
+                   dir=self.directory,
+                   name=self.run_name,
+                   id=self.run_name)
+
+    @staticmethod
+    def log_config(config: Any):
+        """Log experiment hyperparameter values."""
+        wandb.log(hyperparameter_values(config))
+        wandb.log({"config": str(config)})
 
     @staticmethod
     def update(epoch: int, scalars: Dict[str, float],
