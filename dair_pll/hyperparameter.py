@@ -22,20 +22,18 @@ The following hyperparameters types and priors are supported:
 from abc import abstractmethod, ABC
 from dataclasses import is_dataclass
 from typing import Tuple, TypeVar, Sequence, List, Union, Optional, \
-    Dict, Generic
+    Dict, Generic, Callable, Any
 
 from optuna.trial import Trial
 
 ValueType = Union[int, float, str]
 ValueDict = Dict[str, ValueType]
 
-ScalarType = TypeVar('ScalarType', int, float)
+ScalarT = TypeVar('ScalarT', int, float)
 r"""Templating type hint for :py:class:`Scalar`\ s."""
 
 
-# While this class only has one method, the common typing is useful and
-# inheriting classes will define more.
-class Hyperparameter(ABC):  # pylint: disable=too-few-public-methods
+class Hyperparameter(ABC):
     """Class for declaring and sampling hyperparameters.
 
     Hyperparameters have both a :py:attr:`value` and a
@@ -65,6 +63,14 @@ class Hyperparameter(ABC):  # pylint: disable=too-few-public-methods
         self.distribution = distribution
         self.value = value
 
+    def set(self, value: ValueType):
+        """Setter for underlying hyperparameter value."""
+        self.value = value
+
+    def __repr__(self) -> str:
+        """Human-readable representation of underlying hyperparameter value."""
+        return f'{type(self).__qualname__}({str(self.value)})'
+
     @abstractmethod
     def suggest(self, trial: Trial, name: str) -> ValueType:
         r"""Suggests a value for the hyperparameter.
@@ -81,7 +87,7 @@ class Hyperparameter(ABC):  # pylint: disable=too-few-public-methods
         """
 
 
-class Scalar(Hyperparameter, ABC, Generic[ScalarType]):
+class Scalar(Hyperparameter, ABC, Generic[ScalarT]):
     r"""Abstract scalar hyperparameter type.
 
     Defines a uniform or log-uniform distribution over a scalar type, such as
@@ -91,16 +97,16 @@ class Scalar(Hyperparameter, ABC, Generic[ScalarType]):
     :py:attr:`distribution` attribute, or set as a default based on the
     provided :py:attr:`value` in the abstract method :py:meth:`default_range`\ .
     """
-    value: ScalarType
+    value: ScalarT
     """Scalar value of hyperparameter."""
-    distribution: Tuple[ScalarType, ScalarType]
+    distribution: Tuple[ScalarT, ScalarT]
     """Bounds of scalar distribution in format (lower, upper)."""
     log: bool
     """Whether the distribution is uniform or log-uniform."""
 
     def __init__(self,
-                 value: ScalarType,
-                 distribution: Optional[Tuple[ScalarType, ScalarType]] = None,
+                 value: ScalarT,
+                 distribution: Optional[Tuple[ScalarT, ScalarT]] = None,
                  log: bool = False):
         if not distribution:
             distribution = self.default_range(value, log)
@@ -112,8 +118,8 @@ class Scalar(Hyperparameter, ABC, Generic[ScalarType]):
         self.log = log
 
     @abstractmethod
-    def default_range(self, value: ScalarType,
-                      log: bool) -> Tuple[ScalarType, ScalarType]:
+    def default_range(self, value: ScalarT,
+                      log: bool) -> Tuple[ScalarT, ScalarT]:
         """Returns default range for Scalar, depending on provided value."""
 
 
@@ -198,10 +204,38 @@ def is_dataclass_instance(obj) -> bool:
     return is_dataclass(obj) and not isinstance(obj, type)
 
 
-def generate_suggestion(config,
-                        trial: Trial,
-                        out_dict: Optional[ValueDict] = None,
-                        namespace: str = "") -> ValueDict:
+def traverse_config(config: Any,
+                    callback: Callable[[str, Hyperparameter], None],
+                    namespace: str = '') -> None:
+    r"""Recursively searches through ``config`` and its member
+    :py:func:`~dataclasses.dataclass`\ es, for member
+    :py:class:`Hyperparameter` objects.
+
+    While traversing the tree, maintains a `namespace` constructed from a
+    concatenation of the attributes' names.
+
+    When a :py:class:`Hyperparameter` 'h' under attribute name `attr` is
+    encountered, this function calls :py:arg:`callback` with inputs
+    ``(namespace + attr, h)``\ .
+
+    Args:
+        config: Configuration :py:func:`~dataclasses.dataclass` \ .
+        callback: Callback performed on each :py:class:`Hyperparameter`\ .
+        namespace: (Optional/internal) prefix for naming hyperparameters.
+    """
+    assert is_dataclass_instance(config)
+
+    for field in config.__dataclass_fields__:
+        value = getattr(config, field)
+        if is_dataclass_instance(value):
+            subspace = f'{namespace}{field}.'
+            traverse_config(value, callback, subspace)
+        if isinstance(value, Hyperparameter):
+            name = namespace + field
+            callback(name, value)
+
+
+def generate_suggestion(config, trial: Trial) -> ValueDict:
     r"""Suggests a value all hyperparameters in configuration (but does not
     set these values).
 
@@ -212,31 +246,23 @@ def generate_suggestion(config,
     Args:
         config: Configuration :py:func:`~dataclasses.dataclass` \ .
         trial: Optuna trial in which parameters are being suggested.
-        out_dict: Dictionary of named hyperparameters
-        namespace: (internal) prefix for naming hyperparameters.
 
     Returns:
-        Hyperparameter dictionary.
+        Suggested hyperparameter value dictionary.
     """
     assert is_dataclass_instance(config)
-    if out_dict is None:
-        out_dict = {}
 
-    for field in config.__dataclass_fields__:
-        value = getattr(config, field)
-        if is_dataclass_instance(value):
-            print(f'recurse to {field}')
-            subspace = f'{namespace}{field}.'
-            generate_suggestion(value, trial, out_dict, subspace)
-        if isinstance(value, Hyperparameter):
-            print(f'suggest for {field}')
-            name = namespace + field
-            out_dict[name] = value.suggest(trial, name)
+    out_dict = {}
+
+    def callback(name: str, hyperparameter: Hyperparameter):
+        out_dict[name] = hyperparameter.suggest(trial, name)
+
+    traverse_config(config, callback)
 
     return out_dict
 
 
-def load_suggestion(config, suggestion: ValueDict, namespace: str = "") -> None:
+def load_suggestion(config: Any, suggestion: ValueDict) -> None:
     r"""Fill all hyperparameters in configuration with suggestions.
 
     Recursively searches through ``config`` and its member
@@ -249,14 +275,35 @@ def load_suggestion(config, suggestion: ValueDict, namespace: str = "") -> None:
     Args:
         config: Configuration :py:func:`~dataclasses.dataclass` \ .
         suggestion: Suggested hyperparameter set.
-        namespace: (internal) prefix for naming hyperparameters.
     """
     assert is_dataclass_instance(config)
-    for field in config.__dataclass_fields__:
-        value = getattr(config, field)
-        if is_dataclass_instance(value):
-            subspace = f'{namespace}{field}.'
-            load_suggestion(value, suggestion, subspace)
-        if isinstance(value, Hyperparameter):
-            name = namespace + field
-            setattr(config, field, suggestion[name])
+
+    def callback(name: str, hyperparameter: Hyperparameter):
+        hyperparameter.set(suggestion[name])
+
+    traverse_config(config, callback)
+
+
+def hyperparameter_values(config: Any) -> ValueDict:
+    r"""Lists current values for all hyperparameters in configuration.
+
+    Recursively searches through ``config`` and its member
+    :py:func:`~dataclasses.dataclass`\ es, and records value for each contained
+    :py:class:`Hyperparameter`\ .
+
+    Args:
+        config: Configuration :py:func:`~dataclasses.dataclass` \ .
+
+    Returns:
+        Hyperparameter value dictionary.
+    """
+    assert is_dataclass_instance(config)
+
+    out_dict = {}
+
+    def callback(name: str, hyperparameter: Hyperparameter):
+        out_dict[name] = hyperparameter.value
+
+    traverse_config(config, callback)
+
+    return out_dict

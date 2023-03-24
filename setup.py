@@ -5,8 +5,7 @@ install_reqs = [
     'torch',
     'moviepy',
     'Pillow',
-    'tensorboard==2.1.0',
-    'tensorboardX==1.9',
+    'wandb',
     'mujoco-py',
     'optuna',
     'numpy',
@@ -17,7 +16,6 @@ install_reqs = [
     'click',
     'pywavefront',
     'python-fcl',
-    'protobuf==3.20.*',
     # documentation
     'networkx',
     'pydeps==1.10.12',

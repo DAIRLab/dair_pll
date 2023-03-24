@@ -28,7 +28,7 @@ from dair_pll.dataset_management import SystemDataManager, \
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System, SystemSummary
-from dair_pll.tensorboard_manager import TensorboardManager
+from dair_pll.wandb_manager import WeightsAndBiasesManager
 
 TRAIN_SET = 'train'
 VALID_SET = 'valid'
@@ -104,8 +104,10 @@ class SupervisedLearningExperimentConfig:
     """Folder for results/data storage. Defaults to working directory."""
     run_name: str = 'experiment_run'
     """Unique identifier for experiment run."""
-    run_tensorboard: bool = True
-    """Whether to run Tensorboard logging."""
+    run_wandb: bool = True
+    """Whether to run Weights and Biases logging."""
+    wandb_project: Optional[str] = None
+    """Optionally, a project to store results under on Weights and Biases."""
     full_evaluation_period: int = 1
     """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
@@ -185,7 +187,7 @@ class SupervisedLearningExperiment(ABC):
     """State space of experiment, inferred from base system."""
     loss_callback: Optional[LossCallbackCallable]
     """Callback function for loss, defaults to prediction loss."""
-    tensorboard_manager: Optional[TensorboardManager]
+    wandb_manager: Optional[WeightsAndBiasesManager]
     """Optional tensorboard interface."""
 
     def __init__(self, config: SupervisedLearningExperimentConfig) -> \
@@ -198,10 +200,11 @@ class SupervisedLearningExperiment(ABC):
         self.data_manager = SystemDataManager(base_system, config.storage,
                                               config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
-        if config.run_tensorboard:
-            self.tensorboard_manager = TensorboardManager(
-                file_utils.tensorboard_dir(self.config.storage,
-                                           self.config.run_name))
+        if config.run_wandb:
+            wandb_directory = file_utils.wandb_dir(config.storage,
+                                                   config.run_name)
+            self.wandb_manager = WeightsAndBiasesManager(
+                config.run_name, wandb_directory, config.wandb_project)
 
     @abstractmethod
     def get_base_system(self) -> System:
@@ -391,8 +394,8 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=unused-argument
         return SystemSummary()
 
-    def write_to_tensorboard(self, epoch: int, learned_system: System,
-                             statistics: Dict) -> None:
+    def write_to_wandb(self, epoch: int, learned_system: System,
+                       statistics: Dict) -> None:
         """Extracts and writes summary of training progress to Tensorboard.
 
         Args:
@@ -402,7 +405,7 @@ class SupervisedLearningExperiment(ABC):
         """
 
         # begin recording wall-clock logging time.
-        assert self.tensorboard_manager is not None
+        assert self.wandb_manager is not None
         start_log_time = time.time()
         epoch_vars = {}
         for stats_set in TRAIN_TIME_SETS:
@@ -429,9 +432,9 @@ class SupervisedLearningExperiment(ABC):
 
         learned_system_summary.meshes.update(comparison_summary.meshes)
 
-        self.tensorboard_manager.update(epoch, epoch_vars,
-                                        learned_system_summary.videos,
-                                        learned_system_summary.meshes)
+        self.wandb_manager.update(epoch, epoch_vars,
+                                  learned_system_summary.videos,
+                                  learned_system_summary.meshes)
 
     def per_epoch_evaluation(self, epoch: int, learned_system: System,
                              train_loss: Tensor,
@@ -486,8 +489,8 @@ class SupervisedLearningExperiment(ABC):
         statistics[TRAINING_DURATION] = training_duration
         statistics[EVALUATION_DURATION] = time.time() - start_eval_time
 
-        if self.tensorboard_manager is not None:
-            self.write_to_tensorboard(epoch, learned_system, statistics)
+        if self.wandb_manager is not None:
+            self.write_to_wandb(epoch, learned_system, statistics)
 
         # pylint: disable=E1103
         valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
@@ -533,8 +536,9 @@ class SupervisedLearningExperiment(ABC):
             torch.cat(train_set.trajectories))
         optimizer = self.get_optimizer(learned_system)
 
-        if self.tensorboard_manager is not None:
-            self.tensorboard_manager.launch()
+        if self.wandb_manager is not None:
+            self.wandb_manager.launch()
+            self.wandb_manager.log_config(self.config)
 
         # Track epochs since best validation-set loss has been seen, and save
         # model parameters from that epoch.
@@ -590,12 +594,6 @@ class SupervisedLearningExperiment(ABC):
 
         # Reload best parameters.
         learned_system.load_state_dict(best_learned_system_state)
-
-        # kill tensorboard.
-        print("killing tensorboard")
-        if self.tensorboard_manager is not None:
-            self.tensorboard_manager.stop()
-
         return training_loss, best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(
