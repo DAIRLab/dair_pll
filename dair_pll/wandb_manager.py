@@ -56,13 +56,14 @@ class WeightsAndBiasesManager:
         wandb.init(project=self.project_name,
                    dir=self.directory,
                    name=self.run_name,
-                   id=self.run_name)
+                   id=self.run_name,
+                   config={})
 
     @staticmethod
     def log_config(config: Any):
         """Log experiment hyperparameter values."""
-        wandb.log(hyperparameter_values(config))
-        wandb.log({"config": str(config)})
+        wandb.config.update(hyperparameter_values(config))
+        wandb.config.update({"ExperimentConfig": str(config)})
 
     @staticmethod
     def update(epoch: int, scalars: Dict[str, float],
