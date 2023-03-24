@@ -15,7 +15,7 @@ from xml.etree.ElementTree import register_namespace
 
 from torch import Tensor
 
-from dair_pll import drake_utils
+from dair_pll import drake_utils, file_utils
 from dair_pll.deep_support_function import extract_obj
 from dair_pll.geometry import CollisionGeometry, Box, Sphere, Polygon, \
     DeepSupportConvex
@@ -245,12 +245,9 @@ class UrdfGeometryRepresentationFactory:
             Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``mesh`` tag with name of saved
         mesh file."""
-        #pdb.set_trace()
         mesh_name = "test.obj"
         mesh_path = os.path.join(output_dir, mesh_name)
-        #print(mesh_path)
-        with open(mesh_path, 'w', encoding="utf8") as new_obj_file:
-            new_obj_file.write(extract_obj(convex.network))
+        file_utils.save_string(mesh_path, extract_obj(convex.network))
 
         return _MESH, {_FILENAME: mesh_name}
 
@@ -277,6 +274,7 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
     Raises:
         NotImplementedError: when multiple geometries are provided.
     """
+    # pylint: disable=too-many-locals
     if len(geometries) > 1:
         raise NotImplementedError("generating a URDF with multiple geometries"
                                   "per body not implemented yet.")
@@ -302,7 +300,7 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
             UrdfFindOrDefault.find(collision_element, _GEOMETRY),
             UrdfFindOrDefault.find(visual_element, _GEOMETRY)
         ]
-        
+
         (shape_tag, shape_attributes) = \
             UrdfGeometryRepresentationFactory.representation(geometry,
                                                              output_dir)
@@ -353,10 +351,12 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
 
         for element in urdf_tree.iter():
             if element.tag == "link":
+                assert element.get("name") is not None
                 body_id = drake_utils.unique_body_identifier(
                     multibody_terms.plant_diagram.plant,
                     multibody_terms.plant_diagram.plant.GetBodyByName(
-                        element.get("name"), model_instance_index))
+                        cast(str, element.get("name")),
+                        model_instance_index))
                 if body_id not in all_body_ids:
                     # body does not have inertial attributes,
                     # for instance, the world body.

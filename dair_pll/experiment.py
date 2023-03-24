@@ -7,14 +7,10 @@ Current supported experiment types include:
       dataset of trajectories.
 
 """
-import json
-import os
-import pickle
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from dataclasses import dataclass, field
-from typing import List, Tuple, Callable, Optional, Dict, cast, Type, Union
+from typing import List, Tuple, Callable, Optional, Dict, cast, Union
 
 import numpy as np
 import torch
@@ -24,8 +20,8 @@ from torch.utils.data import DataLoader
 
 from dair_pll import file_utils
 from dair_pll.dataset_management import SystemDataManager, \
-    DataConfig, TrajectorySliceDataset, TrajectorySet
-from dair_pll.hyperparameter import Float, Int
+    TrajectorySliceDataset, TrajectorySet
+from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System, SystemSummary
 from dair_pll.wandb_manager import WeightsAndBiasesManager
@@ -58,64 +54,6 @@ PREDICTION_NAME = 'prediction_sample'
 AVERAGE_TAG = 'mean'
 
 EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME]
-
-
-@dataclass
-class SystemConfig:
-    """Dummy base :py:class:`~dataclasses.dataclass` for parameters for
-    learning dynamics; all inheriting classes are expected to contain all
-    necessary configuration attributes."""
-
-
-@dataclass
-class OptimizerConfig:
-    """:func:`~dataclasses.dataclass` defining setup and usage opf a Pytorch
-    :func:`~torch.optim.Optimizer` for learning."""
-    optimizer: Type[Optimizer] = torch.optim.Adam
-    """Subclass of :py:class:`~torch.optim.Optimizer` to use."""
-    lr: Float = Float(1e-5, log=True)
-    """Learning rate."""
-    wd: Float = Float(4e-5, log=True)
-    """Weight decay."""
-    epochs: int = 10000
-    """Maximum number of epochs to optimize."""
-    patience: int = 30
-    """Number of epochs to wait for early stopping."""
-    batch_size: Int = Int(64, log=True)
-    """Size of batch for an individual gradient step."""
-
-
-@dataclass
-class SupervisedLearningExperimentConfig:
-    """:py:class:`~dataclasses.dataclass` defining setup of a
-    :py:class:`SupervisedLearningExperiment`"""
-    #  pylint: disable=too-many-instance-attributes
-    data_config: DataConfig = field(default_factory=DataConfig)
-    """Configuration for experiment's
-    :py:class:`~dair_pll.system_data_manager.SystemDataManager`."""
-    base_config: SystemConfig = field(default_factory=SystemConfig)
-    """Configuration for experiment's "base" system, from which trajectories
-    are modeled and optionally generated."""
-    learnable_config: SystemConfig = field(default_factory=SystemConfig)
-    """Configuration for system to be learned."""
-    optimizer_config: OptimizerConfig = field(default_factory=OptimizerConfig)
-    """Configuration for experiment's optimization process."""
-    storage: str = './'
-    """Folder for results/data storage. Defaults to working directory."""
-    run_name: str = 'experiment_run'
-    """Unique identifier for experiment run."""
-    run_wandb: bool = True
-    """Whether to run Weights and Biases logging."""
-    wandb_project: Optional[str] = None
-    """Optionally, a project to store results under on Weights and Biases."""
-    full_evaluation_period: int = 1
-    """How many epochs should pass between full evaluations."""
-    full_evaluation_samples: int = 5
-    """How many trajectories to save in full for experiment's summary."""
-    update_geometry_in_videos: bool = False
-    """Whether to use learned geometry in rollout videos, primarily for
-    debugging purposes."""
-
 
 #:
 EpochCallbackCallable = Callable[[int, System, Tensor, Tensor], None]
@@ -200,11 +138,14 @@ class SupervisedLearningExperiment(ABC):
         self.data_manager = SystemDataManager(base_system, config.storage,
                                               config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
+
         if config.run_wandb:
             wandb_directory = file_utils.wandb_dir(config.storage,
                                                    config.run_name)
             self.wandb_manager = WeightsAndBiasesManager(
                 config.run_name, wandb_directory, config.wandb_project)
+
+        file_utils.save_configuration(config.storage, config.run_name, config)
 
     @abstractmethod
     def get_base_system(self) -> System:
@@ -517,7 +458,8 @@ class SupervisedLearningExperiment(ABC):
 
             Best-seen validation set loss.
 
-            Fully-trained system, with parameters corresponding to
+            Fully-trained system, with parameters corresponding to best-seen
+            validation loss.
         """
 
         # get train/test/val trajectories
@@ -730,10 +672,8 @@ class SupervisedLearningExperiment(ABC):
             LEARNED_SYSTEM_NAME: learned_system
         }
         evaluation = self.evaluate_systems_on_sets(systems, sets)
-        evaluation_filename = file_utils.get_final_evaluation_filename(
-            self.config.storage, self.config.run_name)
-        with open(evaluation_filename, 'wb') as evaluation_file:
-            pickle.dump(evaluation, evaluation_file)
+        file_utils.save_evaluation(self.config.storage, self.config.run_name,
+                                   evaluation)
         return evaluation
 
     def get_results(
@@ -750,13 +690,9 @@ class SupervisedLearningExperiment(ABC):
         Returns:
             Statistics dictionary.
         """
-        evaluation_filename = file_utils.get_final_evaluation_filename(
-            self.config.storage, self.config.run_name)
-
-        if os.path.exists(evaluation_filename):
-            with open(evaluation_filename, 'r', encoding="utf8") as file:
-                evaluation = json.load(file)
-            return evaluation
-
-        _, _, learned_system = self.train(epoch_callback)
-        return self.evaluation(learned_system)
+        try:
+            return file_utils.load_evaluation(self.config.storage,
+                                              self.config.run_name)
+        except FileNotFoundError:
+            _, _, learned_system = self.train(epoch_callback)
+            return self.evaluation(learned_system)

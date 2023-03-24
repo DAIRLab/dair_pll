@@ -1,5 +1,4 @@
 import copy
-import json
 import logging
 import os.path
 import sys
@@ -8,6 +7,7 @@ from typing import Tuple, Type, Dict, Any
 
 import optuna
 import optuna.logging
+from torch import Tensor
 from torch.nn import Module
 
 from dair_pll import file_utils, hyperparameter
@@ -15,9 +15,13 @@ from dair_pll.dataset_management import DataConfig
 from dair_pll.drake_experiment import DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, DrakeMultibodyLearnableExperiment
 from dair_pll.experiment import SupervisedLearningExperiment
-from dair_pll.experiment import SupervisedLearningExperimentConfig
+from dair_pll.experiment_config import SupervisedLearningExperimentConfig
+from dair_pll.system import System
 
 OPTUNA_ENVIRONMENT_VARIABLE = 'OPTUNA_SERVER'
+
+OPTUNA_TRIAL_FINISHED_STATES = [optuna.trial.TrialState.COMPLETE,
+                               optuna.trial.TrialState.PRUNED]
 
 
 @dataclass
@@ -40,11 +44,11 @@ class Study:
     def __init__(self, config: StudyConfig) -> None:
         self.config = config
 
-    def optimize(self, trial: optuna.trial.Trial) -> None:
+    def optimize(self, trial: optuna.trial.Trial) -> float:
 
-        def epoch_callback(epoch: int, model: Module, train_loss: float,
-                           best_valid_loss: float) -> None:
-            trial.report(best_valid_loss, step=epoch)
+        def epoch_callback(epoch: int, _system: System, _train_loss: Tensor,
+                           best_valid_loss: Tensor) -> None:
+            trial.report(best_valid_loss.item(), step=epoch)
             if trial.should_prune():
                 raise optuna.TrialPruned()
 
@@ -65,14 +69,16 @@ class Study:
 
         experiment = config.experiment_type(trial_experiment_config)
         _, best_valid_loss, _ = experiment.train(epoch_callback)
-        return best_valid_loss
+        return best_valid_loss.item()
 
     def study(self) -> None:
         config = self.config
         log_data_size_range = config.log_data_size_range
         # N_train = config.default_experiment_config.data_config.N_train
 
-        hps = self.get_hpopt()
+        hps = file_utils.load_hyperparameters(
+            self.config.default_experiment_config.storage,
+            self.config.study_name)
 
         data_min = log_data_size_range[0]
         data_max = log_data_size_range[1] + 1
@@ -105,18 +111,16 @@ class Study:
 
     def is_complete(self, study: optuna.study.Study) -> bool:
         trials = study.trials
-        completed = [
+        finished = [
             trial for trial in trials
-            if trial.state == optuna.trial.TrialState.COMPLETE or
-            trial.state == optuna.trial.TrialState.PRUNED
+            if trial.state in OPTUNA_TRIAL_FINISHED_STATES
         ]
-        return len(completed) >= self.config.n_trials
+        return len(finished) >= self.config.n_trials
 
     def stop_if_complete(self, study: optuna.study.Study,
                          _: optuna.trial._frozen.FrozenTrial) -> None:
         if self.is_complete(study):
             study.stop()
-        return
 
     def optimize_hyperparameters(self) -> Dict[str, Any]:
         config = self.config
@@ -147,28 +151,11 @@ class Study:
                            n_trials=config.n_trials,
                            callbacks=[self.stop_if_complete])
         print("Study completed!")
-        self.best_params = study.best_params
         print(study.best_value)
-        self.save_hpopt()
+        file_utils.save_hyperparameters(
+            self.config.default_experiment_config.storage,
+            self.config.study_name, study.best_params)
         return study.best_params
-
-    def save_hpopt(self) -> None:
-        storage = self.config.default_experiment_config.storage
-        study_name = self.config.study_name
-        file = file_utils.get_hyperparameter_filename(storage, study_name)
-        with open(file, 'w') as f:
-            json.dump(self.best_params, f)
-
-    def get_hpopt(self) -> Dict[str, Any]:
-        storage = self.config.default_experiment_config.storage
-        study_name = self.config.study_name
-        file = file_utils.get_hyperparameter_filename(storage, study_name)
-        if os.path.exists(file):
-            with open(file, 'r') as f:
-                hps = json.load(f)
-            return hps
-        else:
-            return self.optimize_hyperparameters()
 
 
 if __name__ == '__main__':
