@@ -11,9 +11,10 @@ from dair_pll import file_utils
 from dair_pll import vis_utils
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
-from dair_pll.experiment import SystemConfig, \
-    SupervisedLearningExperimentConfig, SupervisedLearningExperiment, \
+from dair_pll.experiment import SupervisedLearningExperiment, \
     LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME
+from dair_pll.experiment_config import SystemConfig, \
+    SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem
 from dair_pll.system import System, SystemSummary

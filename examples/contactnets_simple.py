@@ -16,7 +16,8 @@ from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, MultibodyLosses, \
     DrakeMultibodyLearnableExperimentConfig
-from dair_pll.experiment import OptimizerConfig, default_epoch_callback
+from dair_pll.experiment import default_epoch_callback
+from dair_pll.experiment_config import OptimizerConfig
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
 from dair_pll.system import System
