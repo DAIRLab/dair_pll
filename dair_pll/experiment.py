@@ -7,9 +7,12 @@ Current supported experiment types include:
       dataset of trajectories.
 
 """
+import dataclasses
+import signal
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import List, Tuple, Callable, Optional, Dict, cast, Union
 
 import numpy as np
@@ -25,6 +28,26 @@ from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System, SystemSummary
 from dair_pll.wandb_manager import WeightsAndBiasesManager
+
+
+@dataclass
+class TrainingState:
+    """Dataclass to store a complete summary of the state of training
+    process."""
+    best_learned_system_state: dict
+    """State of learned system when it had the best validation loss so far."""
+    current_learned_system_state: dict
+    """Current state of learned system."""
+    optimizer_state: dict
+    r"""Current state of training :py:class:`torch.optim.Optimizer`\ ."""
+    epoch: int = 1
+    """Current epoch."""
+    epochs_since_best: int = 0
+    """Number of epochs since best validation loss so far was achieved."""
+    best_valid_loss: Tensor = field(
+        default_factory=lambda: torch.tensor(1e10)) # pylint: disable=no-member
+    """Value of best validation loss so far."""
+
 
 TRAIN_SET = 'train'
 VALID_SET = 'valid'
@@ -138,12 +161,6 @@ class SupervisedLearningExperiment(ABC):
         self.data_manager = SystemDataManager(base_system, config.storage,
                                               config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
-
-        if config.run_wandb:
-            wandb_directory = file_utils.wandb_dir(config.storage,
-                                                   config.run_name)
-            self.wandb_manager = WeightsAndBiasesManager(
-                config.run_name, wandb_directory, config.wandb_project)
 
         file_utils.save_configuration(config.storage, config.run_name, config)
 
@@ -478,65 +495,98 @@ class SupervisedLearningExperiment(ABC):
             torch.cat(train_set.trajectories))
         optimizer = self.get_optimizer(learned_system)
 
-        if self.wandb_manager is not None:
-            self.wandb_manager.launch()
-            self.wandb_manager.log_config(self.config)
-
         # Track epochs since best validation-set loss has been seen, and save
         # model parameters from that epoch.
         # pylint: disable=E1103
-        epochs_since_best = 0
-        best_valid_loss = torch.tensor(1e10)
-        training_loss = best_valid_loss.clone()
-        best_learned_system_state = deepcopy(learned_system.state_dict())
+        checkpoint_filename = file_utils.get_model_filename(
+            self.config.storage, self.config.run_name)
+
+        try:
+            # if a checkpoint is saved from disk, attempt to load it.
+            checkpoint_dict = torch.load(checkpoint_filename)
+            training_state = TrainingState(**checkpoint_dict)
+            learned_system.load_state_dict(
+                training_state.current_learned_system_state)
+            optimizer.load_state_dict(training_state.optimizer_state)
+            print("Resumed from disk.")
+        except FileNotFoundError:
+            training_state = TrainingState(
+                deepcopy(learned_system.state_dict()),
+                deepcopy(learned_system.state_dict()),
+                deepcopy(optimizer.state_dict()))
+
+        if self.config.run_wandb:
+            wandb_directory = file_utils.wandb_dir(self.config.storage,
+                                                   self.config.run_name)
+            self.wandb_manager = WeightsAndBiasesManager(
+                self.config.run_name, wandb_directory,
+                self.config.wandb_project)
+            self.wandb_manager.launch()
+            self.wandb_manager.log_config(self.config)
 
         learned_system.eval()
         self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
         learned_system.train()
+        try:
+            while training_state.epoch <= self.config.optimizer_config.epochs:
+                if self.config.data_config.dynamic_updates_from is not None:
+                    # reload training data
 
-        for epoch in range(1, self.config.optimizer_config.epochs + 1):
-            if self.config.data_config.dynamic_updates_from is not None:
-                # reload training data
+                    # get train/test/val trajectories
+                    train_set, _, _ = \
+                        self.data_manager.get_trajectory_split()
 
-                # get train/test/val trajectories
-                train_set, _, _ = \
-                    self.data_manager.get_trajectory_split()
+                    # Prepare sets for training.
+                    train_dataloader = DataLoader(
+                        train_set.slices,
+                        batch_size=self.config.optimizer_config.batch_size.
+                        value,
+                        shuffle=True)
 
-                # Prepare sets for training.
-                train_dataloader = DataLoader(
-                    train_set.slices,
-                    batch_size=self.config.optimizer_config.batch_size.value,
-                    shuffle=True)
+                learned_system.train()
+                start_train_time = time.time()
+                training_loss = self.train_epoch(train_dataloader,
+                                                 learned_system, optimizer)
+                training_duration = time.time() - start_train_time
+                learned_system.eval()
+                valid_loss = self.per_epoch_evaluation(training_state.epoch,
+                                                       learned_system,
+                                                       training_loss,
+                                                       training_duration)
 
-            learned_system.train()
-            start_train_time = time.time()
-            training_loss = self.train_epoch(train_dataloader, learned_system,
-                                             optimizer)
-            training_duration = time.time() - start_train_time
-            learned_system.eval()
-            valid_loss = self.per_epoch_evaluation(epoch, learned_system,
-                                                   training_loss,
-                                                   training_duration)
+                # Check for validation loss improvement.
+                if valid_loss < training_state.best_valid_loss:
+                    training_state.best_valid_loss = valid_loss
+                    training_state.best_learned_system_state = deepcopy(
+                        learned_system.state_dict())
+                    training_state.epochs_since_best = 0
+                else:
+                    training_state.epochs_since_best += 1
 
-            # Check for validation loss improvement.
-            if valid_loss < best_valid_loss:
-                best_valid_loss = valid_loss
-                best_learned_system_state = deepcopy(
-                    learned_system.state_dict())
-                epochs_since_best = 0
-            else:
-                epochs_since_best += 1
+                # Decide to early-stop or not.
+                if training_state.epochs_since_best >= self.config.optimizer_config.patience:
+                    break
 
-            # Decide to early-stop or not.
-            if epochs_since_best >= self.config.optimizer_config.patience:
-                break
+                epoch_callback(training_state.epoch, learned_system,
+                               training_loss, training_state.best_valid_loss)
 
-            epoch_callback(epoch, learned_system, training_loss,
-                           best_valid_loss)
+                training_state.current_learned_system_state = \
+                    learned_system.state_dict()
+                training_state.optimizer_state = optimizer.state_dict()
+                training_state.epoch += 1
+        finally:
+            # this code should execute, even if a program exit is triggered
+            # in the above try block.
+
+            # Stop SIGINT (Ctrl+C) from exiting during saving.
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            print("Saving training state...")
+            torch.save(dataclasses.asdict(training_state), checkpoint_filename)
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Reload best parameters.
-        learned_system.load_state_dict(best_learned_system_state)
-        return training_loss, best_valid_loss, learned_system
+        learned_system.load_state_dict(training_state.best_learned_system_state)
+        return training_loss, training_state.best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(
             self, systems: Dict[str, System],

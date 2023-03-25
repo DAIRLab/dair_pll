@@ -52,12 +52,24 @@ class WeightsAndBiasesManager:
         self.project_name = project_name
 
     def launch(self) -> None:
-        """Launches experiment run on Weights & Biases."""
+        r"""Launches experiment run on Weights & Biases.
+
+        Todo:
+            Because we manage local storage separate from remote,
+            it's possible that a crash at just the wrong time could cause
+            ``dair_pll`` to think it's resuming a run, while W&B never
+            got notified of the run. To handle this discrepancy, we set
+            ``resume="allow"``\ , which may cause unexpected behavior if a
+            new run is given the same name as an old run on W&B. Some way of
+            rectifying this behavior, such as moving the resume detection
+            fully to W&B, should eventually be implemented.
+        """
         wandb.init(project=self.project_name,
                    dir=self.directory,
                    name=self.run_name,
                    id=self.run_name,
-                   config={})
+                   config={},
+                   resume="allow")
 
     @staticmethod
     def log_config(config: Any):
