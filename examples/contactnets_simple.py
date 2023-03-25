@@ -87,19 +87,24 @@ PATIENCE = EPOCHS
 BATCH_SIZE = 256
 
 
-def main(system: str = CUBE_SYSTEM,
+def main(run_name: str = "",
+         system: str = CUBE_SYSTEM,
          source: str = SIM_SOURCE,
          contactnets: bool = True,
          box: bool = True,
-         regenerate: bool = False):
+         regenerate: bool = False,
+         clear_data: bool = False):
+    # pylint: disable=too-many-arguments
     """Execute ContactNets basic example on a system.
 
     Args:
+        run_name: name of experiment run.
         system: Which system to learn.
         source: Where to get data from.
         contactnets: Whether to use ContactNets or prediction loss
         box: Whether to represent geometry as box or mesh.
         regenerate: Whether save updated URDF's each epoch.
+        clear_data: Whether to clear storage folder before running.
     """
     # pylint: disable=too-many-locals
 
@@ -112,10 +117,11 @@ def main(system: str = CUBE_SYSTEM,
     # where to store data
     storage_name = os.path.join(os.path.dirname(__file__), 'storage',
                                 data_asset)
+    if run_name == "":
+        run_name = f'run_{str(int(time.time()))}'
 
-    run_name = f'run_{str(int(time.time()))}'
-
-    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+    if clear_data:
+        os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
     # Next, build the configuration of the learning experiment.
 
@@ -142,10 +148,7 @@ def main(system: str = CUBE_SYSTEM,
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=urdfs,
-        loss=loss
-    )
+    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
 
     # Describe data source
     data_generation_config = None
@@ -177,16 +180,14 @@ def main(system: str = CUBE_SYSTEM,
         dynamic_updates_from = DYNAMIC_UPDATES_FROM
 
     # Describes configuration of the data
-    data_config = DataConfig(
-        dt=DT,
-        train_fraction=1.0 if dynamic else 0.5,
-        valid_fraction=0.0 if dynamic else 0.25,
-        test_fraction=0.0 if dynamic else 0.25,
-        generation_config=data_generation_config,
-        import_directory=import_directory,
-        dynamic_updates_from=dynamic_updates_from,
-        t_prediction=1 if contactnets else T_PREDICTION
-    )
+    data_config = DataConfig(dt=DT,
+                             train_fraction=1.0 if dynamic else 0.5,
+                             valid_fraction=0.0 if dynamic else 0.25,
+                             test_fraction=0.0 if dynamic else 0.25,
+                             generation_config=data_generation_config,
+                             import_directory=import_directory,
+                             dynamic_updates_from=dynamic_updates_from,
+                             t_prediction=1 if contactnets else T_PREDICTION)
 
     # Combines everything into config for entire experiment.
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
@@ -203,8 +204,7 @@ def main(system: str = CUBE_SYSTEM,
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
-    def regenerate_callback(epoch: int,
-                            learned_system: System,
+    def regenerate_callback(epoch: int, learned_system: System,
                             train_loss: Tensor,
                             best_valid_loss: Tensor) -> None:
         default_epoch_callback(epoch, learned_system, train_loss,
@@ -217,6 +217,7 @@ def main(system: str = CUBE_SYSTEM,
 
 
 @click.command()
+@click.option('--run-name', default="")
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -232,12 +233,16 @@ def main(system: str = CUBE_SYSTEM,
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether save updated URDF's each epoch.")
-def main_command(system: str, source: str, contactnets: bool, box: bool,
-                 regenerate: bool):
+@click.option('--clear-data',
+              default=False,
+              help="Whether to clear storage folder before running.")
+def main_command(run_name: str, system: str, source: str, contactnets: bool,
+                 box: bool, regenerate: bool, clear_data: bool):
+    # pylint: disable=too-many-arguments
     """Executes main function with argument interface."""
     if system == ELBOW_SYSTEM and source == REAL_SOURCE:
         raise NotImplementedError('Elbow real-world data not supported!')
-    main(system, source, contactnets, box, regenerate)
+    main(run_name, system, source, contactnets, box, regenerate, clear_data)
 
 
 if __name__ == '__main__':

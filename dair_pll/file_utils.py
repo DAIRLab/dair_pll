@@ -17,7 +17,7 @@ TRAJ_EXTENSION = '.pt'  # trajectory file
 HYPERPARAMETERS_EXTENSION = '.json'  # hyperparameter set file
 STATS_EXTENSION = '.pkl'  # experiment statistics
 CONFIG_EXTENSION = '.pkl'
-MODEL_EXTENSION = '.pt'
+CHECKPOINT_EXTENSION = '.pt'
 DATA_SUBFOLDER_NAME = 'data'
 RUNS_SUBFOLDER_NAME = 'runs'
 STUDIES_SUBFOLDER_NAME = 'studies'
@@ -27,7 +27,7 @@ TRAJECTORY_GIF_DEFAULT_NAME = 'trajectory.gif'
 FINAL_EVALUATION_NAME = f'statistics{STATS_EXTENSION}'
 HYPERPARAMETERS_FILENAME = f'optimal_hyperparameters{HYPERPARAMETERS_EXTENSION}'
 CONFIG_FILENAME = f'config{CONFIG_EXTENSION}'
-MODEL_FILENAME = f'model{MODEL_EXTENSION}'
+CHECKPOINT_FILENAME = f'checkpoint{CHECKPOINT_EXTENSION}'
 """str: extensions for saved files"""
 
 
@@ -191,7 +191,7 @@ def get_configuration_filename(storage_name: str, run_name: str) -> str:
 
 def get_model_filename(storage_name: str, run_name: str) -> str:
     """Absolute path of experiment configuration."""
-    return path.join(run_dir(storage_name, run_name), MODEL_FILENAME)
+    return path.join(run_dir(storage_name, run_name), CHECKPOINT_FILENAME)
 
 
 def study_dir(storage_name: str, study_name: str) -> str:
@@ -245,7 +245,7 @@ def save_string(
         value: Any,
         save_callback: Optional[Callable[[Any, TextIO], None]] = None) -> None:
     """Save text file."""
-    with open(filename, 'r', encoding='utf8') as file:
+    with open(filename, 'w', encoding='utf8') as file:
         if save_callback:
             save_callback(value, file)
         else:
