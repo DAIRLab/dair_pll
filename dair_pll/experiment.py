@@ -22,8 +22,8 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from dair_pll import file_utils
-from dair_pll.dataset_management import SystemDataManager, \
-    TrajectorySliceDataset, TrajectorySet
+from dair_pll.dataset_management import ExperimentDataManager, \
+    TrajectorySet
 from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System, SystemSummary
@@ -34,6 +34,8 @@ from dair_pll.wandb_manager import WeightsAndBiasesManager
 class TrainingState:
     """Dataclass to store a complete summary of the state of training
     process."""
+    trajectory_set_split: Tuple[Tensor, Tensor, Tensor]
+    """Which trajectories are in train/valid/test sets."""
     best_learned_system_state: dict
     """State of learned system when it had the best validation loss so far."""
     current_learned_system_state: dict
@@ -44,8 +46,7 @@ class TrainingState:
     """Current epoch."""
     epochs_since_best: int = 0
     """Number of epochs since best validation loss so far was achieved."""
-    best_valid_loss: Tensor = field(
-        default_factory=lambda: torch.tensor(1e10)) # pylint: disable=no-member
+    best_valid_loss: Tensor = field(default_factory=lambda: torch.tensor(1e10))  # pylint: disable=no-member
     """Value of best validation loss so far."""
 
 
@@ -125,7 +126,7 @@ class SupervisedLearningExperiment(ABC):
     learned to capture a dataset of trajectories.
 
     The dataset of trajectories is encapsulated in a
-    :class:`~dair_pll.system_data_manager.SystemDataManager`
+    :class:`~dair_pll.dataset_management.ExperimentDataManager`
     object. This dataset is either stored to disc by the user,
     or alternatively is generated from the experiment's *base system*\ .
 
@@ -142,8 +143,6 @@ class SupervisedLearningExperiment(ABC):
     """
     config: SupervisedLearningExperimentConfig
     """Configuration of the experiment."""
-    data_manager: SystemDataManager
-    """Data manager constructed from details in :attr:`config`"""
     space: StateSpace
     """State space of experiment, inferred from base system."""
     loss_callback: Optional[LossCallbackCallable]
@@ -158,8 +157,6 @@ class SupervisedLearningExperiment(ABC):
         file_utils.assure_storage_tree_created(config.storage)
         base_system = self.get_base_system()
         self.space = base_system.space
-        self.data_manager = SystemDataManager(base_system, config.storage,
-                                              config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
 
         file_utils.save_configuration(config.storage, config.run_name, config)
@@ -238,7 +235,7 @@ class SupervisedLearningExperiment(ABC):
         assert system.carry_callback is not None
         carries = torch.stack([system.carry_callback() for _ in x_past])
         prediction, _ = system.simulate(x_past, carries,
-                                        data_config.t_prediction)
+                                        data_config.slice_config.t_prediction)
         future = prediction[..., 1:, :]
         return future
 
@@ -259,7 +256,7 @@ class SupervisedLearningExperiment(ABC):
             List of ``(T - t_skip - 1, space.n_x)`` target trajectories.
 
         """
-        t_skip = self.config.data_config.t_skip
+        t_skip = self.config.data_config.slice_config.t_skip
         t_begin = t_skip + 1
         x_0 = [x_i[..., :t_begin, :] for x_i in x]
         targets = [x_i[..., t_begin:, :] for x_i in x]
@@ -395,6 +392,7 @@ class SupervisedLearningExperiment(ABC):
                                   learned_system_summary.meshes)
 
     def per_epoch_evaluation(self, epoch: int, learned_system: System,
+                             data_manager: ExperimentDataManager,
                              train_loss: Tensor,
                              training_duration: float) -> Tensor:
         """Evaluates and logs training progress at end of an epoch.
@@ -408,32 +406,35 @@ class SupervisedLearningExperiment(ABC):
         Args:
             epoch: Current epoch.
             learned_system: System being trained.
+            data_manager: Manager of train/valid/test data.
             train_loss: Scalar training loss of epoch.
             training_duration: Duration of epoch training in seconds.
 
         Returns:
             Scalar validation set loss.
         """
-        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals,too-many-arguments
         start_eval_time = time.time()
         statistics = {}
         if epoch > 0 and (epoch % self.config.full_evaluation_period) == 0:
-            train_set, valid_set, _ = self.data_manager.get_trajectory_split()
+            train_set, valid_set, _ = data_manager.get_updated_trajectory_sets()
             n_train_eval = min(len(train_set.trajectories),
                                self.config.full_evaluation_samples)
 
             n_valid_eval = min(len(valid_set.trajectories),
                                self.config.full_evaluation_samples)
 
-            dummy_train_slice_set = TrajectorySliceDataset(
-                train_set.trajectories[:1])
+            train_eval_set = data_manager.make_empty_trajectory_set()
+            train_eval_set.add_trajectories(
+                train_set.trajectories[:n_train_eval],
+                train_set.indices[:n_train_eval]
+            )
 
-            train_eval_set = TrajectorySet(
-                trajectories=train_set.trajectories[:n_train_eval],
-                slices=dummy_train_slice_set)
-            valid_eval_set = TrajectorySet(
-                trajectories=valid_set.trajectories[:n_valid_eval],
-                slices=valid_set.slices)
+            valid_eval_set = data_manager.make_empty_trajectory_set()
+            valid_eval_set.add_trajectories(
+                valid_set.trajectories[:n_valid_eval],
+                valid_set.indices[:n_valid_eval]
+            )
 
             statistics = self.evaluate_systems_on_sets(
                 {LEARNED_SYSTEM_NAME: learned_system}, {
@@ -458,10 +459,76 @@ class SupervisedLearningExperiment(ABC):
             else statistics[valid_loss_key]
         return torch.tensor(valid_loss)
 
+    def setup_training(self) -> Tuple[ExperimentDataManager, System,
+                                      Optimizer, TrainingState]:
+        r"""Sets up initial condition for training process.
+
+        Attempts to load initial condition from disk as a
+        :py:class:`TrainingState`\ . Otherwise, a fresh training process is
+        started.
+
+        Returns:
+            Manager of experiment data.
+            Initial learned system.
+            Pytorch optimizer.
+            Current state of training process.
+        """
+        is_resumed = False
+        training_state = None
+        checkpoint_filename = file_utils.get_model_filename(
+            self.config.storage, self.config.run_name)
+        try:
+            # if a checkpoint is saved from disk, attempt to load it.
+            checkpoint_dict = torch.load(checkpoint_filename)
+            training_state = TrainingState(**checkpoint_dict)
+            print("Resumed from disk.")
+            is_resumed = True
+            data_manager = ExperimentDataManager(
+                self.config.storage, self.config.data_config,
+                training_state.trajectory_set_split)
+        except FileNotFoundError:
+            data_manager = ExperimentDataManager(self.config.storage,
+                                                 self.config.data_config)
+
+        train_set, _, _ = data_manager.get_updated_trajectory_sets()
+
+        # Setup optimization.
+        # pylint: disable=E1103
+        learned_system = self.get_learned_system(
+            torch.cat(train_set.trajectories))
+        optimizer = self.get_optimizer(learned_system)
+
+        if is_resumed:
+            assert training_state is not None
+            learned_system.load_state_dict(
+                training_state.current_learned_system_state)
+            optimizer.load_state_dict(training_state.optimizer_state)
+        else:
+            training_state = TrainingState(
+                data_manager.trajectory_set_indices(),
+                deepcopy(learned_system.state_dict()),
+                deepcopy(learned_system.state_dict()),
+                deepcopy(optimizer.state_dict()))
+
+        if self.config.run_wandb:
+            wandb_directory = file_utils.wandb_dir(self.config.storage,
+                                                   self.config.run_name)
+            self.wandb_manager = WeightsAndBiasesManager(
+                self.config.run_name, wandb_directory,
+                self.config.wandb_project)
+            self.wandb_manager.launch()
+            self.wandb_manager.log_config(self.config)
+
+        learned_system.eval()
+        self.per_epoch_evaluation(0, learned_system, data_manager,
+                                  torch.tensor(0.), 0.)
+        learned_system.train()
+        return data_manager, learned_system, optimizer, training_state
+
     def train(
         self,
         epoch_callback: EpochCallbackCallable = default_epoch_callback,
-    ) -> Tuple[Tensor, Tensor, System]:
+    ) -> Tuple[Tensor, Tensor, System, ExperimentDataManager]:
         """Run training process for experiment.
 
         Terminates training with early stopping, parameters for which are set in
@@ -478,10 +545,13 @@ class SupervisedLearningExperiment(ABC):
             Fully-trained system, with parameters corresponding to best-seen
             validation loss.
         """
+        checkpoint_filename = file_utils.get_model_filename(
+            self.config.storage, self.config.run_name)
 
-        # get train/test/val trajectories
-        train_set, _, _ = \
-            self.data_manager.get_trajectory_split()
+        data_manager, learned_system, optimizer, training_state = \
+            self.setup_training()
+
+        train_set, _, _ = data_manager.get_updated_trajectory_sets()
 
         # Prepare sets for training.
         train_dataloader = DataLoader(
@@ -489,52 +559,16 @@ class SupervisedLearningExperiment(ABC):
             batch_size=self.config.optimizer_config.batch_size.value,
             shuffle=True)
 
-        # Setup optimization.
-        # pylint: disable=E1103
-        learned_system = self.get_learned_system(
-            torch.cat(train_set.trajectories))
-        optimizer = self.get_optimizer(learned_system)
+        patience = self.config.optimizer_config.patience
 
-        # Track epochs since best validation-set loss has been seen, and save
-        # model parameters from that epoch.
-        # pylint: disable=E1103
-        checkpoint_filename = file_utils.get_model_filename(
-            self.config.storage, self.config.run_name)
-
-        try:
-            # if a checkpoint is saved from disk, attempt to load it.
-            checkpoint_dict = torch.load(checkpoint_filename)
-            training_state = TrainingState(**checkpoint_dict)
-            learned_system.load_state_dict(
-                training_state.current_learned_system_state)
-            optimizer.load_state_dict(training_state.optimizer_state)
-            print("Resumed from disk.")
-        except FileNotFoundError:
-            training_state = TrainingState(
-                deepcopy(learned_system.state_dict()),
-                deepcopy(learned_system.state_dict()),
-                deepcopy(optimizer.state_dict()))
-
-        if self.config.run_wandb:
-            wandb_directory = file_utils.wandb_dir(self.config.storage,
-                                                   self.config.run_name)
-            self.wandb_manager = WeightsAndBiasesManager(
-                self.config.run_name, wandb_directory,
-                self.config.wandb_project)
-            self.wandb_manager.launch()
-            self.wandb_manager.log_config(self.config)
-
-        learned_system.eval()
-        self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
-        learned_system.train()
         try:
             while training_state.epoch <= self.config.optimizer_config.epochs:
-                if self.config.data_config.dynamic_updates_from is not None:
+                if self.config.data_config.update_dynamically:
                     # reload training data
 
                     # get train/test/val trajectories
                     train_set, _, _ = \
-                        self.data_manager.get_trajectory_split()
+                        data_manager.get_updated_trajectory_sets()
 
                     # Prepare sets for training.
                     train_dataloader = DataLoader(
@@ -542,6 +576,9 @@ class SupervisedLearningExperiment(ABC):
                         batch_size=self.config.optimizer_config.batch_size.
                         value,
                         shuffle=True)
+
+                    training_state.trajectory_set_split = \
+                        data_manager.trajectory_set_indices()
 
                 learned_system.train()
                 start_train_time = time.time()
@@ -551,6 +588,7 @@ class SupervisedLearningExperiment(ABC):
                 learned_system.eval()
                 valid_loss = self.per_epoch_evaluation(training_state.epoch,
                                                        learned_system,
+                                                       data_manager,
                                                        training_loss,
                                                        training_duration)
 
@@ -564,7 +602,7 @@ class SupervisedLearningExperiment(ABC):
                     training_state.epochs_since_best += 1
 
                 # Decide to early-stop or not.
-                if training_state.epochs_since_best >= self.config.optimizer_config.patience:
+                if training_state.epochs_since_best >= patience:
                     break
 
                 epoch_callback(training_state.epoch, learned_system,
@@ -586,7 +624,8 @@ class SupervisedLearningExperiment(ABC):
 
         # Reload best parameters.
         learned_system.load_state_dict(training_state.best_learned_system_state)
-        return training_loss, training_state.best_valid_loss, learned_system
+        return training_loss, training_state.best_valid_loss, learned_system,\
+               data_manager
 
     def evaluate_systems_on_sets(
             self, systems: Dict[str, System],
@@ -701,7 +740,8 @@ class SupervisedLearningExperiment(ABC):
         stats.update(summary_stats)
         return stats
 
-    def evaluation(self, learned_system: System) -> StatisticsDict:
+    def _evaluation(self, learned_system: System,
+                    data_manager: ExperimentDataManager) -> StatisticsDict:
         r"""Evaluate both oracle and learned system on training, validation,
         and testing data, and saves results to disk.
 
@@ -716,7 +756,7 @@ class SupervisedLearningExperiment(ABC):
         Warnings:
             Currently assumes prediction horizon of 1.
         """
-        sets = dict(zip(ALL_SETS, self.data_manager.get_trajectory_split()))
+        sets = dict(zip(ALL_SETS, data_manager.get_updated_trajectory_sets()))
         systems = {
             ORACLE_SYSTEM_NAME: self.get_oracle_system(),
             LEARNED_SYSTEM_NAME: learned_system
@@ -744,5 +784,5 @@ class SupervisedLearningExperiment(ABC):
             return file_utils.load_evaluation(self.config.storage,
                                               self.config.run_name)
         except FileNotFoundError:
-            _, _, learned_system = self.train(epoch_callback)
-            return self.evaluation(learned_system)
+            _, _, learned_system, data_manager = self.train(epoch_callback)
+            return self._evaluation(learned_system, data_manager)

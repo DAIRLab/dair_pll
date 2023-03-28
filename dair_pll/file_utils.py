@@ -19,6 +19,8 @@ STATS_EXTENSION = '.pkl'  # experiment statistics
 CONFIG_EXTENSION = '.pkl'
 CHECKPOINT_EXTENSION = '.pt'
 DATA_SUBFOLDER_NAME = 'data'
+LEARNING_DATA_SUBFOLDER_NAME = 'learning'
+GROUND_TRUTH_DATA_SUBFOLDER_NAME = 'ground_truth'
 RUNS_SUBFOLDER_NAME = 'runs'
 STUDIES_SUBFOLDER_NAME = 'studies'
 URDFS_SUBFOLDER_NAME = 'urdfs'
@@ -85,15 +87,20 @@ def import_data_to_storage(storage_name: str, import_data_dir: str) -> None:
         import_data_dir: Directory to import data from.
     """
     # check if data is synchronized already
-    storage_data_dir = data_dir(storage_name)
-    storage_traj_count = get_numeric_file_count(storage_data_dir,
-                                                TRAJ_EXTENSION)
-    data_traj_count = get_numeric_file_count(import_data_dir, TRAJ_EXTENSION)
+    output_directories = [
+        ground_truth_data_dir(storage_name),
+        learning_data_dir(storage_name)
+    ]
+    for output_directory in output_directories:
+        storage_traj_count = get_numeric_file_count(output_directory,
+                                                    TRAJ_EXTENSION)
+        data_traj_count = get_numeric_file_count(import_data_dir,
+                                                 TRAJ_EXTENSION)
 
-    # overwrite in case of any discrepancies
-    if storage_traj_count != data_traj_count:
-        os.system(f'rm -r {storage_data_dir}')
-        os.system(f'cp -r {import_data_dir} {storage_data_dir}')
+        # overwrite in case of any discrepancies
+        if storage_traj_count != data_traj_count:
+            os.system(f'rm -r {output_directory}')
+            os.system(f'cp -r {import_data_dir} {output_directory}')
 
 
 def storage_dir(storage_name: str) -> str:
@@ -103,9 +110,22 @@ def storage_dir(storage_name: str) -> str:
 
 
 def data_dir(storage_name: str) -> str:
-    """Absolute path of training/validation/test trajectories directory"""
+    """Absolute path of data folder."""
     return assure_created(
         path.join(storage_dir(storage_name), DATA_SUBFOLDER_NAME))
+
+
+def learning_data_dir(storage_name: str) -> str:
+    """Absolute path of folder for data preprocessed for
+    training/validation."""
+    return assure_created(
+        path.join(data_dir(storage_name), LEARNING_DATA_SUBFOLDER_NAME))
+
+
+def ground_truth_data_dir(storage_name: str) -> str:
+    """Absolute path of folder for raw unprocessed trajectories."""
+    return assure_created(
+        path.join(data_dir(storage_name), GROUND_TRUTH_DATA_SUBFOLDER_NAME))
 
 
 def all_runs_dir(storage_name: str) -> str:
@@ -145,14 +165,14 @@ def get_numeric_file_count(directory: str,
     return len(glob.glob(path.join(directory, './[0-9]*' + extension)))
 
 
-def get_trajectory_count(storage_name: str):
-    """Count number of trajectories on disc in storage directory"""
-    return get_numeric_file_count(data_dir(storage_name), TRAJ_EXTENSION)
+def get_trajectory_count(trajectory_dir: str):
+    """Count number of trajectories on disk in given directory."""
+    return get_numeric_file_count(trajectory_dir, TRAJ_EXTENSION)
 
 
-def trajectory_file(storage_name: str, num_trajectory: int) -> str:
+def trajectory_file(trajectory_dir: str, num_trajectory: int) -> str:
     """Absolute path of specific trajectory in storage"""
-    return path.join(data_dir(storage_name),
+    return path.join(trajectory_dir,
                      f'{num_trajectory}{TRAJ_EXTENSION}')
 
 
