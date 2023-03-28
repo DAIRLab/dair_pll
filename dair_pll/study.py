@@ -68,7 +68,7 @@ class Study:
         trial_experiment_config.run_name = run_name
 
         experiment = config.experiment_type(trial_experiment_config)
-        _, best_valid_loss, _ = experiment.train(epoch_callback)
+        _, best_valid_loss, _, _ = experiment.train(epoch_callback)
         return best_valid_loss.item()
 
     def study(self) -> None:
@@ -96,6 +96,8 @@ class Study:
         sample_experiment_config = copy.deepcopy(
             self.config.default_experiment_config)
         hyperparameter.load_suggestion(sample_experiment_config, hps)
+        # TODO: reengineer training fractions to have concrete values as
+        #  options.
         sample_experiment_config.data_config.n_train = N_train
 
         sample_experiment_config.run_name = file_utils.sweep_run_name(
