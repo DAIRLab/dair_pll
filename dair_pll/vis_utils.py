@@ -22,6 +22,7 @@ from pydrake.visualization import VideoWriter  # type: ignore
 from torch import Tensor
 
 from dair_pll.drake_system import DrakeSystem
+from dair_pll import file_utils
 
 RESOLUTION = [640, 480]
 RED = Rgba(0.6, 0.0, 0.0, 0.5)
