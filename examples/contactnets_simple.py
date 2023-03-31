@@ -1,6 +1,8 @@
 """Simple ContactNets/differentiable physics learning examples."""
 # pylint: disable=E1103
 import os
+import time
+from typing import cast
 
 import sys
 import pdb
@@ -13,15 +15,16 @@ import pickle
 import git
 
 from dair_pll import file_utils
-from dair_pll.dataset_management import DataConfig, DataGenerationConfig
-from dair_pll.drake_experiment import DrakeMultibodyLearnableExperiment, \
-                                      DrakeSystemConfig, \
-                                      MultibodyLearnableSystemConfig, \
-                                      MultibodyLosses
-from dair_pll.experiment import SupervisedLearningExperimentConfig, \
-                                OptimizerConfig, default_epoch_callback
+from dair_pll.dataset_management import DataConfig, \
+    DataGenerationConfig
+from dair_pll.drake_experiment import \
+    DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
+    MultibodyLearnableSystemConfig, MultibodyLosses, \
+    DrakeMultibodyLearnableExperimentConfig
+from dair_pll.experiment import OptimizerConfig, default_epoch_callback
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler
+from dair_pll.system import System
 
 
 # Possible systems on which to run PLL
@@ -80,7 +83,8 @@ ELBOW_WRONG_URDFS = {'bad': ELBOW_BOX_URDF_ASSET_BAD,
 WRONG_URDFS = {CUBE_SYSTEM: CUBE_WRONG_URDFS, ELBOW_SYSTEM: ELBOW_WRONG_URDFS}
 
 
-REPO_DIR = os.path.normpath(git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
+REPO_DIR = os.path.normpath(
+    git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
 
 # Data configuration.
 DT = 0.0068
@@ -137,10 +141,8 @@ def main(name: str = None,
          regenerate: bool = False,
          dataset_size: int = 512,
          local: bool = True,
-         videos: bool = False,
          inertia_params: str = '4',
-         true_sys: bool = False,
-         tb: bool = True):
+         true_sys: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -164,7 +166,6 @@ def main(name: str = None,
          + f'\n\twith box: {box}' \
          + f'\n\tregenerate: {regenerate}' \
          + f'\n\trunning locally: {local}' \
-         + f'\n\tdoing videos: {videos}' \
          + f'\n\tand inertia learning mode: {inertia_params}' \
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
@@ -180,6 +181,10 @@ def main(name: str = None,
     dynamic = source == DYNAMIC_SOURCE
 
     data_asset = TRUE_DATA_ASSETS[system]
+
+    run_name = f'run_{str(int(time.time()))}'
+
+    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
     # Next, build the configuration of the learning experiment.
 
@@ -251,8 +256,6 @@ def main(name: str = None,
 
     # Describes configuration of the data
     data_config = DataConfig(
-        storage=storage_name,
-        # where to store data
         dt=DT,
         train_fraction=1.0 if dynamic else 0.5,
         valid_fraction=0.0 if dynamic else 0.25,
@@ -261,31 +264,32 @@ def main(name: str = None,
         import_directory=import_directory,
         dynamic_updates_from=dynamic_updates_from,
         t_prediction=1 if contactnets else T_PREDICTION,
-        n_import=dataset_size if real else None)
+        n_import=dataset_size if real else None
+    )
 
     # Combines everything into config for entire experiment.
-    experiment_config = SupervisedLearningExperimentConfig(
+    experiment_config = DrakeMultibodyLearnableExperimentConfig(
+        storage=storage_name,
+        run_name=run_name,
         base_config=base_config,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
         # full_evaluation_samples=dataset_size,  # use all available data for eval
-        run_tensorboard=tb,
-        gen_videos=videos,
-        update_geometry_in_videos=True
+        visualize_learned_geometry=True
     )
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
     def regenerate_callback(epoch: int,
-                            learned_system: MultibodyLearnableSystem,
+                            learned_system: System,
                             train_loss: Tensor,
                             best_valid_loss: Tensor) -> None:
-        default_epoch_callback(
-            epoch, learned_system, train_loss, best_valid_loss)
-        learned_system.generate_updated_urdfs(storage_name)
+        default_epoch_callback(epoch, learned_system, train_loss,
+                               best_valid_loss)
+        cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
     def log_callback(epoch: int,
                      learned_system: MultibodyLearnableSystem,
@@ -327,25 +331,16 @@ def main(name: str = None,
     # with open(f'{storage_name}/dataset.pickle', 'wb') as pickle_file:
     #     pickle.dump(experiment.data_manager.orig_data, pickle_file)
     with open(f'{storage_name}/params.txt', 'a') as txt_file:
-        if source == REAL_SOURCE:
-            orig_data = f'experiment_config.data_manager.orig_data:' \
-                        + f'{experiment.data_manager.orig_data}\n\n'
-        else:
-            orig_data = ''
-
         txt_file.write(f'Starting test with name \'{name}\':' \
             + f'\n\tPerforming on system: {system}\n\twith source: {source}' \
             + f'\n\tusing ContactNets: {contactnets}' \
             + f'\n\twith box: {box}' \
             + f'\n\tregenerate: {regenerate}' \
             + f'\n\trunning locally: {local}' \
-            + f'\n\tdoing videos: {videos}' \
             + f'\n\twith learned geometry: {experiment_config.update_geometry_in_videos}' \
             + f'\n\tand inertia learning mode: {inertia_params}' \
             + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
-            + f'\n\tand starting with "true" URDF: {true_sys}.' \
-            + f'\n\nexperiment_config: {experiment_config}\n\n' \
-            + orig_data \
+            + f'\n\tand starting with "true" URDF: {true_sys}.\n\n' \
             + f'optimizer_config.lr:  {optimizer_config.lr.value}\n' \
             + f'optimizer_config.wd:  {optimizer_config.wd.value}\n' \
             + f'optimizer_config.batch_size:  {optimizer_config.batch_size.value}\n\n')
@@ -393,9 +388,6 @@ def main(name: str = None,
 @click.option('--local/--cluster',
               default=False,
               help="whether running script locally or on cluster.")
-@click.option('--videos/--no-videos',
-              default=False,
-              help="whether to generate videos or not.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
@@ -403,18 +395,14 @@ def main(name: str = None,
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-@click.option('--tb/--no-tb',
-              default=False,
-              help="whether to start tensorboard webpage.")
 def main_command(name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 videos: bool, inertia_params: str, true_sys: bool,
-                 tb: bool):
+                 inertia_params: str, true_sys: bool):
     """Executes main function with argument interface."""
     assert name is not None
 
     main(name, system, source, contactnets, box, regenerate, dataset_size,
-         local, videos, inertia_params, true_sys, tb)
+         local, inertia_params, true_sys)
 
 
 if __name__ == '__main__':

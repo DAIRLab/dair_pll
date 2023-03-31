@@ -41,8 +41,7 @@ INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 def create_instance(name: str, system: str, source: str, contactnets: bool,
                     box: bool, regenerate: bool, dataset_size: int, local: bool,
-                    videos: bool, inertia_params: str, true_sys: bool,
-                    tb: bool):
+                    inertia_params: str, true_sys: bool):
     print(f'Generating experiment {name}')
 
     base_file = 'startup'
@@ -65,11 +64,9 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
     train_options += ' --box' if box else ' --mesh'
     train_options += ' --contactnets' if contactnets else ' --prediction'
     train_options += ' --regenerate' if regenerate else ' --no-regenerate'
-    train_options += ' --videos' if videos else ' --no-videos'
     train_options += ' --local' if local else ' --cluster'
     train_options += f' --inertia-params={inertia_params}'
     train_options += ' --true-sys' if true_sys else ' --wrong-sys'
-    train_options += ' --tb' if tb else ' --no-tb'
 
     script = script.replace('{train_args}', train_options)
 
@@ -175,9 +172,6 @@ def cli():
 @click.option('--local/--cluster',
               default=False,
               help="whether running script locally or on cluster.")
-@click.option('--videos/--no-videos',
-              default=True,
-              help="whether to generate videos or not.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
@@ -185,13 +179,9 @@ def cli():
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-@click.option('--tb/--no-tb',
-              default=False,
-              help="start tensorboard webpage or not (made False if local).")
 def create_command(name: str, system: str, source: str, contactnets: bool,
                    box: bool, regenerate: bool, dataset_size: int, local: bool,
-                   videos: bool, inertia_params: str, true_sys: bool,
-                   tb: bool):
+                   inertia_params: str, true_sys: bool):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -226,16 +216,9 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
     storage_name = os.path.join(repo_dir, 'results', name)
     os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
-    # Don't open tensorboard webpage if running locally.
-    if local:
-        print(f'Running locally, so won\'t open tensorboard webpage -- ' + \
-              f'can run pll_manager.py attach if want to start tensorboard.')
-        tb = False
-
     # Continue creating PLL instance.
     create_instance(name, system, source, contactnets, box, regenerate,
-                    dataset_size, local, videos, inertia_params, true_sys,
-                    tb)
+                    dataset_size, local, inertia_params, true_sys)
 
 
 
@@ -259,9 +242,6 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
 @click.option('--local/--cluster',
               default=False,
               help="whether running script locally or on cluster.")
-@click.option('--videos/--no-videos',
-              default=True,
-              help="whether to generate videos or not.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
@@ -305,13 +285,12 @@ def sweep_command(sweep_name: str, system: str, source: str,
 
     # Create a PLL instance for every dataset size from 4 to 512 (2^2 to
     # 2^9).
-    tb = False
     for dataset_exponent in range(2, 10):
         dataset_size = 2**dataset_exponent
         exp_name = f'{sweep_name}-{dataset_exponent}'
         create_instance(exp_name, system, source, contactnets, box,
-                        regenerate, dataset_size, local, videos,
-                        inertia_params, true_sys, tb)
+                        regenerate, dataset_size, local, inertia_params,
+                        true_sys)
 
 
 

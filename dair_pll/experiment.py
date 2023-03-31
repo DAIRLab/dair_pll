@@ -7,6 +7,9 @@ Current supported experiment types include:
       dataset of trajectories.
 
 """
+import json
+import os
+import pickle
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
@@ -26,7 +29,7 @@ from dair_pll.dataset_management import SystemDataManager, \
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import StateSpace
 from dair_pll.system import System, SystemSummary
-from dair_pll.tensorboard_manager import TensorboardManager
+from dair_pll.wandb_manager import WeightsAndBiasesManager
 
 TRAIN_SET = 'train'
 VALID_SET = 'valid'
@@ -87,6 +90,7 @@ class OptimizerConfig:
 class SupervisedLearningExperimentConfig:
     """:py:class:`~dataclasses.dataclass` defining setup of a
     :py:class:`SupervisedLearningExperiment`"""
+    #  pylint: disable=too-many-instance-attributes
     data_config: DataConfig = field(default_factory=DataConfig)
     """Configuration for experiment's
     :py:class:`~dair_pll.system_data_manager.SystemDataManager`."""
@@ -97,8 +101,14 @@ class SupervisedLearningExperimentConfig:
     """Configuration for system to be learned."""
     optimizer_config: OptimizerConfig = field(default_factory=OptimizerConfig)
     """Configuration for experiment's optimization process."""
-    run_tensorboard: bool = True
-    """Whether to run Tensorboard logging."""
+    storage: str = './'
+    """Folder for results/data storage. Defaults to working directory."""
+    run_name: str = 'experiment_run'
+    """Unique identifier for experiment run."""
+    run_wandb: bool = True
+    """Whether to run Weights and Biases logging."""
+    wandb_project: Optional[str] = None
+    """Optionally, a project to store results under on Weights and Biases."""
     full_evaluation_period: int = 1
     """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
@@ -122,8 +132,7 @@ Args:
 """
 
 #:
-LossCallbackCallable = Callable[[Tensor, Tensor, System, Optional[bool]],
-                                Tensor]
+LossCallbackCallable = Callable[[Tensor, Tensor, System, bool], Tensor]
 """Callback to evaluate loss on batch of trajectory slices.
 
 By default, set to prediction loss (
@@ -181,7 +190,7 @@ class SupervisedLearningExperiment(ABC):
     """State space of experiment, inferred from base system."""
     loss_callback: Optional[LossCallbackCallable]
     """Callback function for loss, defaults to prediction loss."""
-    tensorboard_manager: Optional[TensorboardManager]
+    wandb_manager: Optional[WeightsAndBiasesManager]
     """Optional tensorboard interface."""
 
     def __init__(self, config: SupervisedLearningExperimentConfig) -> \
@@ -189,15 +198,18 @@ class SupervisedLearningExperiment(ABC):
         super().__init__()
 
         self.config = config
-        file_utils.assure_storage_tree_created(config.data_config.storage)
+        file_utils.assure_storage_tree_created(config.storage)
         base_system = self.get_base_system()
         self.space = base_system.space
-        self.data_manager = SystemDataManager(base_system, config.data_config)
+        self.data_manager = SystemDataManager(base_system, config.storage,
+                                              config.data_config)
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
-        # if config.run_tensorboard:
-        self.tensorboard_manager = TensorboardManager(
-            self.data_manager.get_tensorboard_folder(),
-            log_only = not config.run_tensorboard)
+
+        if config.run_wandb:
+            wandb_directory = file_utils.wandb_dir(config.storage,
+                                                   config.run_name)
+            self.wandb_manager = WeightsAndBiasesManager(
+                config.run_name, wandb_directory, config.wandb_project)
 
     @abstractmethod
     def get_base_system(self) -> System:
@@ -393,10 +405,23 @@ class SupervisedLearningExperiment(ABC):
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
+    def base_and_learned_comparison_summary(
+            self, statistics: Dict, learned_system: System) -> SystemSummary:
+        """Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares
+        the base system to the learned system.
 
-    def build_epoch_vars_and_system_summary(self, learned_system: System,
-                                            statistics: Dict) -> \
-                                            Tuple[Dict, SystemSummary]:
+        Args:
+            statistics: Dictionary of training statistics.
+            learned_system: Most updated version of system during training.
+
+        Returns:
+            Summary of comparison between systems.
+        """
+        # pylint: disable=unused-argument
+        return SystemSummary()
+
+    def write_to_wandb(self, epoch: int, learned_system: System,
+                       statistics: Dict) -> None:
         """Extracts and writes summary of training progress to Tensorboard.
 
         Args:
@@ -408,6 +433,7 @@ class SupervisedLearningExperiment(ABC):
             Videos and meshes packaged into a ``SystemSummary``.
         """
         # begin recording wall-clock logging time.
+        assert self.wandb_manager is not None
         start_log_time = time.time()
 
         epoch_vars = {}
@@ -418,35 +444,26 @@ class SupervisedLearningExperiment(ABC):
                 if var_key in statistics:
                     epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
 
-        system_summary = learned_system.summary(statistics,
-            videos=self.config.gen_videos,
-            new_geometry=self.config.update_geometry_in_videos)
+        learned_system_summary = learned_system.summary(statistics)
 
-        epoch_vars.update(system_summary.scalars)
+        comparison_summary = self.base_and_learned_comparison_summary(
+            statistics, learned_system)
+
+        epoch_vars.update(learned_system_summary.scalars)
         logging_duration = time.time() - start_log_time
         statistics[LOGGING_DURATION] = logging_duration
         epoch_vars.update(
             {duration: statistics[duration] for duration in ALL_DURATIONS})
 
-        return epoch_vars, system_summary
+        epoch_vars.update(comparison_summary.scalars)
 
-    def write_to_tensorboard(self, epoch: int, learned_system: System,
-                             statistics: Dict) -> None:
-        """Extracts and writes summary of training progress to Tensorboard.
+        learned_system_summary.videos.update(comparison_summary.videos)
 
-        Args:
-            epoch: Current epoch.
-            learned_system: System being trained.
-            statistics: Summary statistics for learning process.
-        """
-        assert self.tensorboard_manager is not None
+        learned_system_summary.meshes.update(comparison_summary.meshes)
 
-        epoch_vars, system_summary = self.build_epoch_vars_and_system_summary(
-                                            learned_system, statistics)
-        
-        self.tensorboard_manager.update(epoch, epoch_vars,
-                                        system_summary.videos,
-                                        system_summary.meshes)
+        self.wandb_manager.update(epoch, epoch_vars,
+                                  learned_system_summary.videos,
+                                  learned_system_summary.meshes)
 
     def per_epoch_evaluation(self, epoch: int, learned_system: System,
                              train_loss: Tensor,
@@ -474,7 +491,7 @@ class SupervisedLearningExperiment(ABC):
         if (epoch % self.config.full_evaluation_period) == 0:
             train_set, valid_set, _ = self.data_manager.get_trajectory_split()
             n_train_eval = min(len(train_set.trajectories),
-                              self.config.full_evaluation_samples)
+                               self.config.full_evaluation_samples)
 
             n_valid_eval = min(len(valid_set.trajectories),
                                self.config.full_evaluation_samples)
@@ -506,8 +523,8 @@ class SupervisedLearningExperiment(ABC):
 
         self.statistics = statistics
 
-        if self.tensorboard_manager is not None:
-            self.write_to_tensorboard(epoch, learned_system, statistics)
+        if self.wandb_manager is not None:
+            self.write_to_wandb(epoch, learned_system, statistics)
 
         # pylint: disable=E1103
         # valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
@@ -516,7 +533,7 @@ class SupervisedLearningExperiment(ABC):
         valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}' \
                          + f'_{TRAJECTORY_ERROR_NAME}_{AVERAGE_TAG}'
         valid_loss = 0.0 \
-            if not valid_loss_key in statistics \
+            if valid_loss_key not in statistics \
             else statistics[valid_loss_key]
         return torch.tensor(valid_loss)
 
@@ -556,8 +573,9 @@ class SupervisedLearningExperiment(ABC):
             torch.cat(train_set.trajectories))
         optimizer = self.get_optimizer(learned_system)
 
-        if self.tensorboard_manager is not None:
-            self.tensorboard_manager.launch()
+        if self.wandb_manager is not None:
+            self.wandb_manager.launch()
+            self.wandb_manager.log_config(self.config)
 
         # Track epochs since best validation-set loss has been seen, and save
         # model parameters from that epoch.
@@ -613,12 +631,6 @@ class SupervisedLearningExperiment(ABC):
 
         # Reload best parameters.
         learned_system.load_state_dict(best_learned_system_state)
-
-        # kill tensorboard.
-        print("killing tboard")
-        if self.tensorboard_manager is not None:
-            self.tensorboard_manager.stop()
-
         return training_loss, best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(
@@ -736,7 +748,7 @@ class SupervisedLearningExperiment(ABC):
 
     def evaluation(self, learned_system: System) -> StatisticsDict:
         r"""Evaluate both oracle and learned system on training, validation,
-        and testing data.
+        and testing data, and saves results to disk.
 
         Implemented as a wrapper for :meth:`evaluate_systems_on_sets`.
 
@@ -754,5 +766,35 @@ class SupervisedLearningExperiment(ABC):
             ORACLE_SYSTEM_NAME: self.get_oracle_system(),
             LEARNED_SYSTEM_NAME: learned_system
         }
-        return self.evaluate_systems_on_sets(systems, sets)
-        
+
+        evaluation = self.evaluate_systems_on_sets(systems, sets)
+        evaluation_filename = file_utils.get_final_evaluation_filename(
+            self.config.storage, self.config.run_name)
+        with open(evaluation_filename, 'wb') as evaluation_file:
+            pickle.dump(evaluation, evaluation_file)
+        return evaluation
+
+    def get_results(
+        self,
+        epoch_callback: EpochCallbackCallable = default_epoch_callback,
+    ) -> StatisticsDict:
+        r"""Gets final results/statistics of experiment. This will return
+        previously saved results on disk if they already exist, or run the
+        experiment to generate them if they don't.
+
+        Args:
+            epoch_callback: Callback function at end of each epoch.
+
+        Returns:
+            Statistics dictionary.
+        """
+        evaluation_filename = file_utils.get_final_evaluation_filename(
+            self.config.storage, self.config.run_name)
+
+        if os.path.exists(evaluation_filename):
+            with open(evaluation_filename, 'r', encoding="utf8") as file:
+                evaluation = json.load(file)
+            return evaluation
+
+        _, _, learned_system = self.train(epoch_callback)
+        return self.evaluation(learned_system)

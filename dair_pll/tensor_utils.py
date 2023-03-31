@@ -449,7 +449,7 @@ def project_lorentz(vectors: Tensor) -> Tensor:
 
     projected_vectors[in_polar_mask] *= 0.
 
-    normals_rescaled = ((normals + tangent_norms) / 2)
+    normals_rescaled = (normals + tangent_norms) / 2
     tangent_normalizer = normals_rescaled / tangent_norms
     tangent_rescaled = tangents * tangent_normalizer.unsqueeze(-1).expand(
         tangent_vectors_shape).reshape(tangents.shape)
@@ -458,3 +458,42 @@ def project_lorentz(vectors: Tensor) -> Tensor:
 
     projected_vectors[in_neither_mask] = vectors_rescaled[in_neither_mask]
     return projected_vectors
+
+def sappy_reorder_mat(n_cones: int) -> Tensor:
+    r"""Generates a 0-1 matrix that reorders force variable indices between
+    ``dair_pll`` ordering and ``sappy`` ordering.
+
+    ``dair_pll`` orders force variables as
+
+    .. math::
+
+        \lambda = \begin{bmatrix} \lambda_{n1}; & \cdots \lambda_{nk}; &
+        \lambda_{t1}; &
+        \cdots \lambda_{tk}; \end{bmatrix}\,,
+
+    whereas ``sappy`` accepts decision variables in format
+
+    .. math::
+
+        \lambda_s = \begin{bmatrix} \lambda_{t1}; & \lambda_{n1}; &
+        \cdots & \lambda_{tk}; & \lambda_{nk} \end{bmatrix}\,.
+
+    This function returns matrix :math:`M` to map betweens the two as
+
+    .. math::
+
+        \lambda = M\lambda_s
+
+    Args:
+        n_cones: number of contacts :math:`0`
+
+    Returns:
+        ``(3 * n_cones, 3 * n_cones)`` reordering matrix.
+    """
+    # pylint: disable=E1103
+    matrix = torch.zeros((3 * n_cones, 3 * n_cones))
+    for cone in range(n_cones):
+        matrix[cone][3 * cone + 2] = 1
+        matrix[n_cones + 2 * cone][3 * cone] = 1
+        matrix[n_cones + 2 * cone + 1][3 * cone + 1] = 1
+    return matrix

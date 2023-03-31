@@ -1,6 +1,8 @@
 # results
 results/*
 examples/storage/*
+examples/results/*
+examples/wandb/*
 logs/*
 plots/*
 
@@ -13,12 +15,9 @@ slurm-*
 # startup scripts
 examples/startup_*
 
-<<<<<<< HEAD
 # test bash script
 examples/test.bash
 
-=======
->>>>>>> upstream/main
 # Sphinx
 docsrc/source/dair_pll.*
 docsrc/source/modules.rst
