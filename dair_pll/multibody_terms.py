@@ -261,7 +261,7 @@ class ContactTerms(Module):
     geometry_spatial_jacobians: Optional[ConfigurationCallback]
     geometries: ModuleList
     geometry_local_poses: Parameter
-    friction_coefficients: Parameter
+    friction_params: Parameter
     collision_candidates: Tensor
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
@@ -314,9 +314,14 @@ class ContactTerms(Module):
         mu_static = Tensor(
             [friction.static_friction() for friction in coulomb_frictions])
 
-        self.friction_coefficients = Parameter(mu_static, requires_grad=True)
+        self.friction_params = Parameter(mu_static, requires_grad=True)
 
         self.collision_candidates = Tensor(collision_candidates).t().long()
+
+    def get_friction_coefficients(self) -> Tensor:
+        """From the stored :py:attr:`friction_params`, compute the friction
+        coefficient as its absolute value."""
+        return torch.abs(self.friction_params)
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -458,8 +463,9 @@ class ContactTerms(Module):
             for element_index in indices_b
         ]
 
-        mu_a = self.friction_coefficients[indices_a]
-        mu_b = self.friction_coefficients[indices_b]
+        friction_coefficients = self.get_friction_coefficients()
+        mu_a = friction_coefficients[indices_a]
+        mu_b = friction_coefficients[indices_b]
 
         # combine friction coefficients as in Drake.
         mu = (2 * mu_a * mu_b) / (mu_a + mu_b)
@@ -538,6 +544,8 @@ class MultibodyTerms(Module):
                 self.plant_diagram.plant,
                 self.plant_diagram.model_ids)
 
+        friction_coefficients = self.contact_terms.get_friction_coefficients()
+
         for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(), all_body_ids):
             body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
 
@@ -553,8 +561,8 @@ class MultibodyTerms(Module):
                     for scalar_name, scalar in geometry_scalars.items()
                 })
                 scalars[f'{body_id}_mu'] = \
-                    self.contact_terms.friction_coefficients[
-                        geometry_index].item()
+                    friction_coefficients[geometry_index].item()
+
                 if isinstance(geometry, DeepSupportConvex):
                     geometry_mesh = extract_mesh(geometry.network)
                     meshes[body_id] = geometry_mesh
