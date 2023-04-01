@@ -192,68 +192,6 @@ def symmetric_offdiagonal(vectors: Tensor) -> Tensor:
     return torch.stack((row_1, row_2, row_3), -2)
 
 
-def batch_diagonal(vectors: Tensor) -> Tensor:
-    """Converts vectors to diagonal matrices.
-
-    Take in an arbitrary batch of n-vectors and returns the same sized batch
-    of (n, n) matrices such that::
-
-        output[b_1, ..., b_k, :, :] == torch.diag(vectors[b_1, ..., b_k, :]).
-
-    Code structure comes from thw following address:
-
-        https://discuss.pytorch.org/t/batch-of-diagonal-matrix/13560
-
-    Args:
-        vectors: ``(*, n)`` batch of
-
-    Returns:
-        ``(*, n, n)`` batch of diagonal matrices
-    """
-    # make a zero matrix, which duplicates the last dim of input
-    dims = vectors.shape + (vectors.shape[-1],)
-    # pylint: disable=E1103
-    output = torch.zeros(dims)
-
-    # stride across the first dimensions, and add one to get the diagonal of the
-    # last dimension
-    # pylint: disable=E1103
-    strides = [output.stride(i) for i in torch.arange(vectors.dim() - 1)]
-    strides.append(output.shape[-1] + 1)
-
-    # stride and copy the input to the diagonal
-    output.as_strided(vectors.size(), strides).copy_(vectors)
-    return output
-
-
-def one_vector_block_diagonal(num_blocks: int, vector_length: int) -> Tensor:
-    """Computes a block diagonal matrix with column vectors of ones as blocks.
-
-    Associated with the mathematical symbol :math:`E`.
-
-    Example:
-        ::
-
-            one_vector_block_diagonal(3, 2) == tensor([
-                [1., 0., 0.],
-                [1., 0., 0.],
-                [0., 1., 0.],
-                [0., 1., 0.],
-                [0., 0., 1.],
-                [0., 0., 1.]]).
-
-    Args:
-        num_blocks: number of columns.
-        vector_length: number of ones in each matrix diagonal block.
-
-    Returns:
-        ``(n * vector_length, n)`` 0-1 tensor.
-    """
-    # pylint: disable=E1103
-    return torch.eye(num_blocks).repeat(1, vector_length).reshape(
-        num_blocks * vector_length, num_blocks)
-
-
 def spatial_to_point_jacobian(p_BoP_E: Tensor) -> Tensor:
     r"""Body-fixed translational velocity to spatial velocity Jacobian.
 
@@ -300,6 +238,21 @@ def spatial_to_point_jacobian(p_BoP_E: Tensor) -> Tensor:
 
     # pylint: disable=E1103
     return torch.cat((left, right), dim=-1)
+
+
+def trace_identity(matrices: Tensor) -> Tensor:
+    r"""Converts batch of matrices :math:`M \in \mathbb{R}^{n \times n}` into a
+    batch of tensors equal to :math:`\mathrm{trace} M I_n`\ .
+    Args:
+        matrices: ``(*, n, n)`` matrices to convert.
+
+    Returns:
+        ``(*, n, n)`` diagonal matrices.
+    """
+    assert matrices.shape[-2] == matrices.shape[-1]
+    expand_shape = matrices.shape[:-1]
+    traces = matrices.diagonal(dim1=-1, dim2=-2).sum(-1, keepdim=True)
+    return torch.diag_embed(traces.expand(expand_shape))
 
 
 def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
@@ -456,6 +409,7 @@ def project_lorentz(vectors: Tensor) -> Tensor:
 
     projected_vectors[in_neither_mask] = vectors_rescaled[in_neither_mask]
     return projected_vectors
+
 
 def sappy_reorder_mat(n_cones: int) -> Tensor:
     r"""Generates a 0-1 matrix that reorders force variable indices between
