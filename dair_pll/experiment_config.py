@@ -56,7 +56,7 @@ class SupervisedLearningExperimentConfig:
     run_wandb: bool = True
     """Whether to run Weights and Biases logging."""
     wandb_project: Optional[str] = None
-    """Optionally, a project to store results under on Weights and Biases."""
+    r"""If :py:attr:`run_wandb`\ , a project to store results under on W&B."""
     full_evaluation_period: int = 1
     """How many epochs should pass between full evaluations."""
     full_evaluation_samples: int = 5
@@ -64,3 +64,8 @@ class SupervisedLearningExperimentConfig:
     update_geometry_in_videos: bool = False
     """Whether to use learned geometry in rollout videos, primarily for
     debugging purposes."""
+
+    def __post_init__(self):
+        """Method to check validity of parameters."""
+        if self.run_wandb:
+            assert self.wandb_project is not None

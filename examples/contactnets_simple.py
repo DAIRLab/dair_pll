@@ -70,7 +70,7 @@ SAMPLER_RANGES = {
     CUBE_SYSTEM: CUBE_SAMPLER_RANGE,
     ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE
 }
-TRAJECTORY_DURATIONS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
+TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
 
 # Training data configuration.
 T_PREDICTION = 1
@@ -86,6 +86,8 @@ EPOCHS = 500
 PATIENCE = EPOCHS
 BATCH_SIZE = 256
 
+WANDB_PROJECT = 'dair_pll-examples'
+
 
 def main(run_name: str = "",
          system: str = CUBE_SYSTEM,
@@ -94,7 +96,6 @@ def main(run_name: str = "",
          box: bool = True,
          regenerate: bool = False,
          clear_data: bool = False):
-    # pylint: disable=too-many-arguments
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -106,7 +107,7 @@ def main(run_name: str = "",
         regenerate: Whether save updated URDF's each epoch.
         clear_data: Whether to clear storage folder before running.
     """
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments
 
     # First step, clear out data on disk for a fresh start.
     simulation = source == SIM_SOURCE
@@ -169,6 +170,8 @@ def main(run_name: str = "",
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
         visualize_learned_geometry=True,
+        run_wandb=True,
+        wandb_project=WANDB_PROJECT
     )
 
     # Makes experiment.
@@ -184,8 +187,8 @@ def main(run_name: str = "",
             # timestep.
             n_pop=N_POP,
             # How many trajectories to simulate
-            duration=TRAJECTORY_DURATIONS[system],
-            # trajectory duration
+            trajectory_length=TRAJECTORY_LENGTHS[system],
+            # trajectory length
             x_0=x_0,
             # A nominal initial state
             sampler_type=UniformSampler,
@@ -243,7 +246,7 @@ def main(run_name: str = "",
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether save updated URDF's each epoch.")
-@click.option('--clear-data',
+@click.option('--clear-data/--keep-data',
               default=False,
               help="Whether to clear storage folder before running.")
 def main_command(run_name: str, system: str, source: str, contactnets: bool,

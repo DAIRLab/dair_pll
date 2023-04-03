@@ -16,6 +16,8 @@ from dair_pll.state_space import CenteredSampler, UniformSampler, \
     GaussianWhiteNoiser, UniformWhiteNoiser
 from dair_pll.system import System
 
+DEFAULT_TRAJECTORY_BATCH_SIZE = 30
+"""Number of trajectories to simulate before intermediate save-to-disk."""
 
 @dataclass
 class DataGenerationConfig:
@@ -26,7 +28,7 @@ class DataGenerationConfig:
     r"""Time step, ``> 0``\ ."""
     n_pop: float = 16384
     r"""Total number of trajectories to select from, ``>= 0``\ ."""
-    duration: int = 80
+    trajectory_length: int = 80
     r"""Trajectory length, ``>= 1``\ ."""
     x_0: Tensor = Tensor()
     """Nominal initial states."""
@@ -48,7 +50,7 @@ class DataGenerationConfig:
         """Method to check validity of parameters."""
         assert self.dt > 0.
         assert self.n_pop >= 0
-        assert self.duration >= 1
+        assert self.trajectory_length >= 1
         assert self.sampler_ranges.nelement() == self.static_noise.nelement()
         assert self.static_noise.nelement() == self.dynamic_noise.nelement()
 
@@ -79,7 +81,7 @@ class ExperimentDatasetGenerator:
         ground_truth_dir = file_utils.ground_truth_data_dir(config.storage)
         learning_dir = file_utils.learning_data_dir(config.storage)
         n_on_disk = file_utils.get_trajectory_count(ground_truth_dir)
-        n_to_add = 30
+        n_to_add = DEFAULT_TRAJECTORY_BATCH_SIZE
         while n_on_disk < n_pop:
             n_on_disk = file_utils.get_trajectory_count(ground_truth_dir)
             n_to_add = min(n_to_add, max(n_pop - n_on_disk, 0))
@@ -118,7 +120,7 @@ class ExperimentDatasetGenerator:
 
         trajectories = []
         for _ in range(num_trajectories):
-            trajectory, _ = system.sample_trajectory(config.duration)
+            trajectory, _ = system.sample_trajectory(config.trajectory_length)
             trajectories.append(trajectory)
         return trajectories
 

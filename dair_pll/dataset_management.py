@@ -44,6 +44,7 @@ class DataConfig:
     r"""Fraction of testing trajectories to select, ``<= 1, >= 0``\ ."""
     slice_config: TrajectorySliceConfig = field(
         default_factory=TrajectorySliceConfig)
+    r"""Config for arranging trajectories into times slices for training."""
     update_dynamically: bool = False
     """Whether to check for new trajectories after each epoch."""
 
@@ -88,17 +89,17 @@ class TrajectorySliceDataset(Dataset):
         Args:
             trajectory: ``(T, *)`` state trajectory.
         """
-        trajectory_duration = trajectory.shape[0]
+        trajectory_length = trajectory.shape[0]
         first_time_index = self.config.t_skip
-        last_time_index = trajectory_duration - self.config.t_prediction
+        last_time_index = trajectory_length - self.config.t_prediction
         previous_states_length = self.config.t_history
         future_states_length = self.config.t_prediction
         assert first_time_index <= last_time_index
-        for time in range(first_time_index, last_time_index):
+        for index in range(first_time_index, last_time_index):
             self.previous_states_slices.append(
-                trajectory[(time + 1 - previous_states_length):(time + 1), :])
+                trajectory[(index + 1 - previous_states_length):(index + 1), :])
             self.future_states_slices.append(
-                trajectory[(time + 1):(time + 1 + future_states_length), :])
+                trajectory[(index + 1):(index + 1 + future_states_length), :])
 
     def __len__(self) -> int:
         """Length of dataset as number of total slice pairs."""
@@ -156,21 +157,28 @@ class ExperimentDataManager:
     transformations for each set of data as a :py:class:`TrajectorySet`\ .
     """
     trajectory_dir: str
+    """Directory in which trajectory files are stored."""
     config: DataConfig
+    """Configuration for manipulating data."""
     train_set: TrajectorySet
+    """Training trajectory set."""
     valid_set: TrajectorySet
+    """Validation trajectory set."""
     test_set: TrajectorySet
+    """Test trajectory set."""
     n_sorted: int
+    """Number of files on disk split into (train, valid, test) sets so far."""
 
     def __init__(self, storage: str, config: DataConfig,
                  initial_split: Optional[Tuple[Tensor, Tensor, Tensor]] = None,
                  use_ground_truth: bool = False) -> None:
-        """s
+        """
         Args:
             storage: Storage directory to source trajectories from.
             config: Configuration object.
-            initial_split: Initial apportionment of trajectories into (train,
-              valid, test) sets.
+            initial_split: Optionally, lists of trajectory indices that
+              should be sorted into (train, valid, test) sets from the
+              beginning.
             use_ground_truth: Whether trajectories should be sourced from
               ground-truth or learning data.
         """
