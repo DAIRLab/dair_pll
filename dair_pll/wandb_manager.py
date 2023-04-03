@@ -45,13 +45,13 @@ class WeightsAndBiasesManager:
     at https://wandb.ai .
     """
     run_name: str
-    """Unique name for Weights and Biases experiment run."""
+    """Display name for Weights and Biases experiment run."""
     directory: str
     """Absolute path to store metadata."""
     project_name: str
     """Unique name for W&B project, analogous to a ``dair_pll`` experiment."""
     resume_from_id: Optional[str] = None
-    """Allow W&B to resume a run ID if provided."""
+    """Allow W&B to resume a unique run ID if provided."""
 
     def _setup_wandb_run_id(self) -> str:
         """Generates unique run ID for Weights and Biases by concatenating
@@ -66,11 +66,6 @@ class WeightsAndBiasesManager:
 
     def launch(self) -> str:
         r"""Launches experiment run on Weights & Biases.
-
-        As Weight & Biases does not allow for the creation of a run with the
-        same ID as a deleted run, this method will delete any existing runs
-        associated with the given run name if resumptions is not allowed.
-        See :py:meth:`_setup_wandb_run_id` for more details.
 
         Returns:
             The run ID of the launched run.
