@@ -1,51 +1,39 @@
 r"""Classes for generating and managing datasets for experiments.
 
-Centers around the :class:`SystemDataManager` type, which transforms a set of
-trajectories saved to disc for various tasks encountered during an
-experiment. This module also contains utilities for generating simulation data
-from a :class:`~dair_pll.system.System`\ ."""
-import time
-from dataclasses import dataclass
-from typing import List, Tuple, Union, Type, Optional
+Centers around the :class:`ExperimentDataManager` type, which transforms a
+set of trajectories saved to disk for various tasks encountered during an
+experiment."""
+from dataclasses import dataclass, field
+from typing import List, Tuple, Optional, cast
 
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
 from dair_pll import file_utils
-from dair_pll.state_space import CenteredSampler, \
-    GaussianWhiteNoiser, UniformSampler, UniformWhiteNoiser
-from dair_pll.system import System
 
 
 @dataclass
-class DataGenerationConfig:
-    """:func:`~dataclasses.dataclass` for configuring generation of a
-    trajectory dataset."""
-    # pylint: disable=too-many-instance-attributes
-    n_pop: float = 16384
-    r"""Total number of trajectories to select from, ``>= 0``\ ."""
-    traj_len: int = 80
-    r"""Trajectory length, ``>= 1``\ ."""
-    x_0: Tensor = Tensor()
-    """Nominal initial states."""
-    sampler_type: Type[CenteredSampler] = UniformSampler
-    r"""Distribution for sampling around :attr:`x_0`\ ."""
-    sampler_ranges: Tensor = Tensor()
-    r"""``(2 * n_v)`` size of perturbations sampled around :attr:`x_0`\ ."""
-    noiser_type: Union[Type[GaussianWhiteNoiser], Type[UniformWhiteNoiser]] = \
-        GaussianWhiteNoiser
-    """Type of noise to add to data."""
-    static_noise: Tensor = Tensor()
-    """``(2 * n_v)`` sampler ranges for constant-in-time trajectory noise."""
-    dynamic_noise: Tensor = Tensor()
-    """``(2 * n_v)`` sampler ranges for i.i.d.-in-time trajectory noise."""
+class TrajectorySliceConfig:
+    """:func:`~dataclasses.dataclass` for configuring a trajectory slicing
+    for training process."""
+    t_skip: int = 0
+    """Index of first time to predict from ``>=`` :attr:`t_history` ``- 1``."""
+    t_history: int = 1
+    r"""Number of steps in initial condition for prediction, ``>= 1``\ ."""
+    t_prediction: int = 1
+    r"""Number of future steps to use during training/evaluation, ``>= 1``\ ."""
+
+    def __post_init__(self):
+        """Method to check validity of parameters."""
+        assert self.t_skip + 1 >= self.t_history
+        assert self.t_history >= 1
+        assert self.t_prediction >= 1
 
 
 @dataclass
 class DataConfig:
     """:func:`~dataclasses.dataclass` for configuring a trajectory dataset."""
-    # pylint: disable=too-many-instance-attributes
     dt: float = 1e-3
     r"""Time step, ``> 0``\ ."""
     train_fraction: float = 0.5
@@ -54,234 +42,232 @@ class DataConfig:
     r"""Fraction of validation trajectories to select, ``<= 1, >= 0``\ ."""
     test_fraction: float = 0.25
     r"""Fraction of testing trajectories to select, ``<= 1, >= 0``\ ."""
-    t_skip: int = 0
-    """Index of first time to predict from ``>=`` :attr:`t_history` ``- 1``."""
-    t_history: int = 1
-    r"""Number of steps in initial condition for prediction, ``>= 1``\ ."""
-    t_prediction: int = 1
-    r"""Number of future steps to use during training/evaluation, ``>= 1``\ ."""
-    generation_config: Optional[DataGenerationConfig] = None
-    """Optionally, signals generation of data from given system."""
-    import_directory: Optional[str] = None
-    """Alternatively, signals data import from separate directory."""
-    dynamic_updates_from: Optional[int] = None
-    """Alternatively, loads dynamically, but blocks on initial size set."""
+    slice_config: TrajectorySliceConfig = field(
+        default_factory=TrajectorySliceConfig)
+    r"""Config for arranging trajectories into times slices for training."""
+    update_dynamically: bool = False
+    """Whether to check for new trajectories after each epoch."""
+
+    def __post_init__(self):
+        """Method to check validity of parameters."""
+        fractions = [
+            self.train_fraction, self.valid_fraction, self.test_fraction
+        ]
+        assert all(0. <= fraction <= 1. for fraction in fractions)
+        assert sum(fractions) <= 1
 
 
 class TrajectorySliceDataset(Dataset):
-    """Dataset of trajectory slices for training.
+    r"""Dataset of trajectory slices for training.
 
-    Given a list of trajectories
+    Given a list of trajectories and a :py:class:`TrajectorySliceConfig`\ ,
+    generates sets of (previous states, future states) transition pairs to be
+    used with the training loss of an experiment.
 
+    Extends :py:class:`torch.utils.data.Dataset` type in order to be managed
+    in the training process with a :py:class:`torch.utils.data.DataLoader`\ .
     """
-    in_slices: List[Tensor]
-    out_slices: List[Tensor]
+    config: TrajectorySliceConfig
+    """Slice configuration describing durations and start index."""
+    previous_states_slices: List[Tensor]
+    r"""Initial conditions of duration ``self.config.t_history`` ."""
+    future_states_slices: List[Tensor]
+    r"""Future targets of duration ``self.config.t_prediction`` ."""
 
-    def __init__(self,
-                 trajectories: List[Tensor],
-                 t_skip: int = 0,
-                 t_history: int = 1,
-                 t_prediction: int = 1):
-        """Initialization:
+    def __init__(self, config: TrajectorySliceConfig):
+        """
+        Args:
+            config: configuration object for slice dataset.
+        """
+        self.config = config
+        self.previous_states_slices = []  # type: List[Tensor]
+        self.future_states_slices = []  # type: List[Tensor]
+
+    def add_slices_from_trajectory(self, trajectory: Tensor) -> None:
+        """Incorporate trajectory into dataset as a set of slices.
 
         Args:
-            trajectories: test
-            t_skip:
-            t_history:
-            t_prediction:
+            trajectory: ``(T, *)`` state trajectory.
         """
-        assert t_skip + 1 >= t_history
-        self.t_skip = t_skip
-        self.t_history = t_history
-        self.t_prediction = t_prediction
-        self.in_slices = []  # type: List[Tensor]
-        self.out_slices = []  # type: List[Tensor]
-        for trajectory in trajectories:
-            self.add_sliced_trajectory(trajectory)
-
-    def add_sliced_trajectory(
-            self, traj: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
-        traj_len = traj.shape[0]
-        first = self.t_skip
-        last = traj_len - self.t_prediction
-        in_window = self.t_history
-        out_window = self.t_prediction
-        assert first <= last
-        for i in range(first, last):
-            self.in_slices.append(traj[(i + 1 - in_window):(i + 1), :])
-            self.out_slices.append(traj[(i + 1):(i + 1 + out_window), :])
+        trajectory_length = trajectory.shape[0]
+        first_time_index = self.config.t_skip
+        last_time_index = trajectory_length - self.config.t_prediction
+        previous_states_length = self.config.t_history
+        future_states_length = self.config.t_prediction
+        assert first_time_index <= last_time_index
+        for index in range(first_time_index, last_time_index):
+            self.previous_states_slices.append(
+                trajectory[(index + 1 - previous_states_length):(index + 1), :])
+            self.future_states_slices.append(
+                trajectory[(index + 1):(index + 1 + future_states_length), :])
 
     def __len__(self) -> int:
-        return len(self.in_slices)
+        """Length of dataset as number of total slice pairs."""
+        return len(self.previous_states_slices)
 
     def __getitem__(self, idx) -> Tuple[Tensor, Tensor]:
-        return self.in_slices[idx], self.out_slices[idx]
+        """Retrieve slice pair at index."""
+        return self.previous_states_slices[idx], self.future_states_slices[idx]
 
 
 @dataclass
 class TrajectorySet:
+    """Dataclass encapsulating the various transforms of a set of
+    trajectories that are used during the training and evaluation process,
+    including:
+
+        * Slices for training;
+        * Entire trajectories for evaluation; and
+        * Indices associated with on-disk location for experiment resumption.
+    """
     slices: TrajectorySliceDataset
-    trajectories: List[Tensor]
+    """Trajectories rendered as a dataset of time slices."""
+    trajectories: List[Tensor] = field(default_factory=lambda: [])
+    """Trajectories in their raw format."""
+    indices: Tensor = field(default_factory=lambda: Tensor([]).long())
+    """Indices associated with on-disk filenames."""
+
+    def __post_init__(self):
+        """Validate correspondence between trajectories and indices."""
+        assert self.indices.nelement() == len(self.trajectories)
+        # assure all indices are unique
+        assert self.indices.unique().nelement() == self.indices.nelement()
+
+    def add_trajectories(self, trajectory_list: List[Tensor], indices: Tensor) \
+            -> None:
+        """Add new subset of trajectories to set.
+
+        Args:
+            trajectory_list: List of new ``(T, *)`` state trajectories.
+            indices: indices associated with on-disk filenames.
+        """
+        self.trajectories.extend(trajectory_list)
+        for trajectory in trajectory_list:
+            self.slices.add_slices_from_trajectory(trajectory)
+        # pylint: disable=no-member
+        self.indices = torch.cat([self.indices, indices])
 
 
-class SystemDataManager:
-    system: System
-    storage: str
+class ExperimentDataManager:
+    r"""Management object for maintaining training, validation, and testing
+    data for an experiment.
+
+    Loads trajectories stored in standard location associated with provided
+    storage directory; splits into train/valid/test sets; and instantiates
+    transformations for each set of data as a :py:class:`TrajectorySet`\ .
+    """
+    trajectory_dir: str
+    """Directory in which trajectory files are stored."""
     config: DataConfig
+    """Configuration for manipulating data."""
     train_set: TrajectorySet
+    """Training trajectory set."""
     valid_set: TrajectorySet
+    """Validation trajectory set."""
     test_set: TrajectorySet
-    n_on_disk: int
+    """Test trajectory set."""
+    n_sorted: int
+    """Number of files on disk split into (train, valid, test) sets so far."""
 
-    def __init__(self, system: System, storage: str, config: DataConfig) -> \
-            None:
-        self.system = system
-        self.storage = storage
-        self.config = config
-
-        # ensure only one data source
-        do_generate = config.generation_config is not None
-        do_import = config.import_directory is not None
-        do_dynamics = config.dynamic_updates_from is not None
-        assert (int(do_generate) + int(do_import) + int(do_dynamics)) == 1
-        if do_generate:
-            self.generate()
-
-        elif do_import:
-            file_utils.import_data_to_storage(self.storage,
-                                              config.import_directory)
-
+    def __init__(self, storage: str, config: DataConfig,
+                 initial_split: Optional[Tuple[Tensor, Tensor, Tensor]] = None,
+                 use_ground_truth: bool = False) -> None:
+        """
+        Args:
+            storage: Storage directory to source trajectories from.
+            config: Configuration object.
+            initial_split: Optionally, lists of trajectory indices that
+              should be sorted into (train, valid, test) sets from the
+              beginning.
+            use_ground_truth: Whether trajectories should be sourced from
+              ground-truth or learning data.
+        """
+        if use_ground_truth:
+            self.trajectory_dir = file_utils.ground_truth_data_dir(storage)
         else:
-            print("Waiting for minimum trajectory count...")
-            n_on_disk = file_utils.get_trajectory_count(self.storage)
-            while n_on_disk < config.dynamic_updates_from:
-                n_on_disk = file_utils.get_trajectory_count(self.storage)
-                time.sleep(1)
-            print("Minimum trajectory count reached!")
+            self.trajectory_dir = file_utils.learning_data_dir(storage)
+        self.config = config
+        self.train_set = self.make_empty_trajectory_set()
+        self.valid_set = self.make_empty_trajectory_set()
+        self.test_set = self.make_empty_trajectory_set()
+        self.n_sorted = 0
+        if initial_split:
+            self.extend_trajectory_sets(initial_split)
 
-        self.n_on_disk = file_utils.get_trajectory_count(self.storage)
-
-        self.get_trajectory_split()
-
-    def generate_trajectory_set(self, N: int, T: int) -> List[Tensor]:
-        assert N >= 0
-        assert T >= 1
-        config = self.config
-        assert config.generation_config is not None
-        generation_config = config.generation_config
-        system = self.system
-        starting_state = generation_config.x_0
-        system.set_state_sampler(
-            generation_config.sampler_type(system.space,
-                                           generation_config.sampler_ranges,
-                                           x_0=starting_state))
-
-        trajectories = []
-        for i in range(N):
-            xtraj, carry = system.sample_trajectory(T)
-            trajectories.append(xtraj)
-        return self.noised_trajectories(trajectories)
-
-    def make_trajectory_set(self, trajectories: List[Tensor]) -> TrajectorySet:
-        config = self.config
-        slice_dataset = TrajectorySliceDataset(trajectories, config.t_skip,
-                                               config.t_history,
-                                               config.t_prediction)
-        return TrajectorySet(slices=slice_dataset, trajectories=trajectories)
-
-    def generate(self) -> None:
-        config = self.config
-        assert config.generation_config is not None
-        traj_len = config.generation_config.traj_len
-        n_pop = config.generation_config.n_pop
-        n_generated = file_utils.get_trajectory_count(self.storage)
-        n_set = 30
-        while n_generated < n_pop:
-            traj_i = self.generate_trajectory_set(n_set, traj_len)
-            n_generated = file_utils.get_trajectory_count(self.storage)
-            if n_generated == n_pop:
-                break
-            n_set = min(n_set, n_pop - n_generated)
-            for i in range(n_set):
-                torch.save(
-                    traj_i[i],
-                    file_utils.trajectory_file(self.storage, n_generated + i))
-
-    def get_trajectories(self, N_begin: int, N_end: int,
-                         N_requested: int) -> List[Tensor]:
-        n_on_disk = self.n_on_disk
-        assert n_on_disk >= N_end
-        trajectory_order = torch.randperm(N_end - N_begin) + N_begin
-        selection = trajectory_order[:N_requested]
-
-        data = [
-            torch.load(file_utils.trajectory_file(self.storage, i))
-            for i in selection
-        ]
-        return data
-
-    def noised_trajectories(self, traj_set: List[Tensor]):
-        config = self.config
-        assert config.generation_config is not None
-        generation_config = config.generation_config
-        noiser = generation_config.noiser_type(self.system.space)
-        noised_trajectories = []
-        for traj in traj_set:
-            static_disturbed = noiser.noise(traj,
-                                            generation_config.static_noise,
-                                            independent=False)
-            dynamic_disturbed = noiser.noise(static_disturbed,
-                                             generation_config.dynamic_noise)
-            dynamic_disturbed = self.system.space.project_derivative(
-                dynamic_disturbed, config.dt)
-            noised_trajectories.append(dynamic_disturbed)
-        return noised_trajectories
-
-    def get_trajectory_split(
+    @property
+    def _trajectory_sets(
             self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
-
-        config = self.config
-        n_on_disk = self.n_on_disk
-        if not hasattr(self, 'train_set'):
-            N_train = round(n_on_disk * config.train_fraction)
-            N_valid = round(n_on_disk * config.valid_fraction)
-            N_test = round(n_on_disk * config.test_fraction)
-            N_test = min(N_test, n_on_disk - N_train - N_valid)
-            N_tot = sum([N_train, N_test, N_valid])
-
-            traj_set = self.get_trajectories(0, n_on_disk, N_tot)
-
-            train_traj = traj_set[:N_train]
-            traj_set = traj_set[N_train:]
-
-            valid_traj = traj_set[:N_valid]
-            test_traj = traj_set[N_valid:]
-
-            self.train_set = self.make_trajectory_set(train_traj)
-            self.valid_set = self.make_trajectory_set(valid_traj)
-            self.test_set = self.make_trajectory_set(test_traj)
-        elif config.dynamic_updates_from:
-            # update trajectory sets
-            n_on_disk_new = file_utils.get_trajectory_count(self.storage)
-            if n_on_disk_new != n_on_disk:
-                new_count = n_on_disk_new - n_on_disk
-                self.n_on_disk = n_on_disk_new
-                N_train = round(new_count * config.train_fraction)
-                N_valid = round(new_count * config.valid_fraction)
-                N_test = round(new_count * config.test_fraction)
-                N_tot = sum([N_train, N_test, N_valid])
-                new_traj_set = self.get_trajectories(n_on_disk, n_on_disk_new,
-                                                     N_tot)
-                train_traj = new_traj_set[:N_train]
-                new_traj_set = new_traj_set[N_train:]
-
-                valid_traj = new_traj_set[:N_valid]
-                test_traj = new_traj_set[N_valid:]
-
-                sets = (self.train_set, self.valid_set, self.test_set)
-                trajectory_lists = (train_traj, valid_traj, test_traj)
-                for set, trajectory_list in zip(sets, trajectory_lists):
-                    set.trajectories.extend(trajectory_list)
-                    for trajectory in trajectory_list:
-                        set.slices.add_sliced_trajectory(trajectory)
+        """getter for tuple of (train, valid, test) set."""
         return self.train_set, self.valid_set, self.test_set
+
+    def trajectory_set_indices(self) -> Tuple[Tensor, Tensor, Tensor]:
+        """The sets of indices associated with the (train, valid,
+        test) trajectories."""
+        index_lists = [
+            trajectory_set.indices for trajectory_set in self._trajectory_sets
+        ]
+        return cast(Tuple[Tensor, Tensor, Tensor], tuple(index_lists))
+
+    def make_empty_trajectory_set(self) -> TrajectorySet:
+        r"""Instantiates an empty :py:class:`TrajectorySet` associated with
+        the time slice configuration contained in :py:attr:`config`\ ."""
+        slice_dataset = TrajectorySliceDataset(self.config.slice_config)
+        return TrajectorySet(slices=slice_dataset)
+
+    def extend_trajectory_sets(
+            self, index_lists: Tuple[Tensor, Tensor, Tensor]) -> None:
+        """Supplement each of (train, valid, test) trajectory sets with
+        provided trajectories, listed by their on-disk indices.
+
+        Args:
+            index_lists: Lists of trajectory indices for each set.
+        """
+        for trajectory_set, trajectory_indices in zip(self._trajectory_sets,
+                                                      index_lists):
+            trajectories = [
+                torch.load(
+                    file_utils.trajectory_file(self.trajectory_dir,
+                                               trajectory_index))
+                for trajectory_index in trajectory_indices
+            ]
+            trajectory_set.add_trajectories(trajectories, trajectory_indices)
+            self.n_sorted += trajectory_indices.nelement()
+
+    def get_updated_trajectory_sets(
+            self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
+        """Returns an up-to-date partition of trajectories on disk.
+
+        Checks if some trajectories on disk have yet to be sorted,
+        and supplements the (train, valid, test) sets with these additional
+        trajectories before returning the updated sets.
+
+        Returns:
+            Training set.
+            Validation set.
+            Test set.
+        """
+        config = self.config
+        n_on_disk = file_utils.get_trajectory_count(self.trajectory_dir)
+        if n_on_disk != self.n_sorted:
+            n_unsorted = n_on_disk - self.n_sorted
+            n_train = round(n_unsorted * config.train_fraction)
+            n_valid = round(n_unsorted * config.valid_fraction)
+            n_remaining = n_unsorted - n_valid - n_train
+            n_test = min(n_remaining, round(n_unsorted * config.test_fraction))
+
+            n_requested = n_train + n_valid + n_test
+            assert n_requested <= n_unsorted
+
+            # pylint: disable=no-member
+            trajectory_order = torch.randperm(n_unsorted) + self.n_sorted
+            train_indices = trajectory_order[:n_train]
+            trajectory_order = trajectory_order[n_train:]
+
+            valid_indices = trajectory_order[:n_valid]
+            trajectory_order = trajectory_order[n_valid:]
+            test_indices = trajectory_order[:n_test]
+
+            self.extend_trajectory_sets(
+                (train_indices, valid_indices, test_indices))
+
+        return self._trajectory_sets

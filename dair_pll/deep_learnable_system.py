@@ -7,8 +7,8 @@ from torch import Tensor
 from torch.nn import Module
 
 from dair_pll.deep_learnable_model import DeepLearnableModel, DeepRecurrentModel
-from dair_pll.experiment import SystemConfig, \
-    SupervisedLearningExperiment
+from dair_pll.experiment import SupervisedLearningExperiment
+from dair_pll.experiment_config import SystemConfig
 from dair_pll.integrator import Integrator, VelocityIntegrator
 from dair_pll.system import System
 

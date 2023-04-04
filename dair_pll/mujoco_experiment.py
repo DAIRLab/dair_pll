@@ -7,8 +7,9 @@ import torch
 
 from dair_pll.deep_learnable_system import \
     DeepLearnableSystemConfig, DeepLearnableExperiment
-from dair_pll.experiment import SupervisedLearningExperimentConfig, \
-    OptimizerConfig, DataConfig, TrajectorySliceDataset
+from dair_pll.experiment import DataConfig, TrajectorySliceDataset
+from dair_pll.experiment_config import OptimizerConfig, \
+    SupervisedLearningExperimentConfig
 from dair_pll.mujoco_system import MuJoCoSystem, MuJoCoUKFSystem
 
 

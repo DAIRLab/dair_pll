@@ -10,15 +10,19 @@ import torch
 from torch import Tensor
 
 from dair_pll import file_utils
+from dair_pll.dataset_generation import DataGenerationConfig, \
+    ExperimentDatasetGenerator
 from dair_pll.dataset_management import DataConfig, \
-    DataGenerationConfig
+    TrajectorySliceConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, MultibodyLosses, \
     DrakeMultibodyLearnableExperimentConfig
-from dair_pll.experiment import OptimizerConfig, default_epoch_callback
+from dair_pll.experiment import default_epoch_callback
+from dair_pll.experiment_config import OptimizerConfig
+from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
-from dair_pll.state_space import UniformSampler
+from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
 from dair_pll.system import System
 
 CUBE_SYSTEM = 'cube'
@@ -66,10 +70,7 @@ SAMPLER_RANGES = {
     CUBE_SYSTEM: CUBE_SAMPLER_RANGE,
     ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE
 }
-TRAJ_LENS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
-
-# dynamic load configuration.
-DYNAMIC_UPDATES_FROM = 4
+TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
 
 # Training data configuration.
 T_PREDICTION = 1
@@ -85,46 +86,50 @@ EPOCHS = 500
 PATIENCE = EPOCHS
 BATCH_SIZE = 256
 
+WANDB_PROJECT = 'dair_pll-examples'
 
-def main(system: str = CUBE_SYSTEM,
+
+def main(run_name: str = "",
+         system: str = CUBE_SYSTEM,
          source: str = SIM_SOURCE,
          contactnets: bool = True,
          box: bool = True,
-         regenerate: bool = False):
+         regenerate: bool = False,
+         clear_data: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
+        run_name: name of experiment run.
         system: Which system to learn.
         source: Where to get data from.
         contactnets: Whether to use ContactNets or prediction loss
         box: Whether to represent geometry as box or mesh.
         regenerate: Whether save updated URDF's each epoch.
+        clear_data: Whether to clear storage folder before running.
     """
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments
 
     # First step, clear out data on disk for a fresh start.
     simulation = source == SIM_SOURCE
-    real = source == REAL_SOURCE
     dynamic = source == DYNAMIC_SOURCE
-
     data_asset = DATA_ASSETS[system]
     # where to store data
     storage_name = os.path.join(os.path.dirname(__file__), 'storage',
                                 data_asset)
+    if run_name == "":
+        run_name = f'run_{str(int(time.time()))}'
 
-    run_name = f'run_{str(int(time.time()))}'
-
-    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+    if clear_data:
+        os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
     # Next, build the configuration of the learning experiment.
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
-    optimizer_config = OptimizerConfig()
-    optimizer_config.lr.value = LRS[system]
-    optimizer_config.wd.value = WDS[system]
-    optimizer_config.patience = PATIENCE
-    optimizer_config.epochs = EPOCHS
-    optimizer_config.batch_size.value = BATCH_SIZE
+    optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
+                                       wd=Float(WDS[system]),
+                                       patience=PATIENCE,
+                                       epochs=EPOCHS,
+                                       batch_size=Int(BATCH_SIZE))
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
@@ -141,51 +146,19 @@ def main(system: str = CUBE_SYSTEM,
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=urdfs,
-        loss=loss
-    )
+    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
 
-    # Describe data source
-    data_generation_config = None
-    import_directory = None
-    dynamic_updates_from = None
-    x_0 = X_0S[system]
-    if simulation:
-        # For simulation, specify the following:
-        data_generation_config = DataGenerationConfig(
-            n_pop=N_POP,
-            # How many trajectories to simulate
-            x_0=x_0,
-            # A nominal initial state
-            sampler_ranges=SAMPLER_RANGES[system],
-            # How much to vary initial states around ``x_0``
-            sampler_type=UniformSampler,
-            # use uniform distribution to sample ``x_0``
-            static_noise=torch.zeros(x_0.nelement() - 1),
-            # constant-in-time noise distribution (zero in this case)
-            dynamic_noise=torch.zeros(x_0.nelement() - 1),
-            # i.i.d.-in-time noise distribution (zero in this case)
-            traj_len=TRAJ_LENS[system])
-    elif real:
-        # otherwise, specify directory with [T, n_x] tensor files saved as
-        # 0.pt, 1.pt, ...
-        # See :mod:`dair_pll.state_space` for state format.
-        import_directory = file_utils.get_asset(data_asset)
-    else:
-        dynamic_updates_from = DYNAMIC_UPDATES_FROM
+    # how to slice trajectories into training datapoints
+    slice_config = TrajectorySliceConfig(
+        t_prediction=1 if contactnets else T_PREDICTION)
 
     # Describes configuration of the data
-    data_config = DataConfig(
-        dt=DT,
-        train_fraction=1.0 if dynamic else 0.5,
-        valid_fraction=0.0 if dynamic else 0.25,
-        test_fraction=0.0 if dynamic else 0.25,
-        generation_config=data_generation_config,
-        import_directory=import_directory,
-        dynamic_updates_from=dynamic_updates_from,
-        t_prediction=1 if contactnets else T_PREDICTION
-    )
+    data_config = DataConfig(dt=DT,
+                             train_fraction=1.0 if dynamic else 0.5,
+                             valid_fraction=0.0 if dynamic else 0.25,
+                             test_fraction=0.0 if dynamic else 0.25,
+                             slice_config=slice_config,
+                             update_dynamically=dynamic)
 
     # Combines everything into config for entire experiment.
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
@@ -197,13 +170,54 @@ def main(system: str = CUBE_SYSTEM,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
         visualize_learned_geometry=True,
+        run_wandb=True,
+        wandb_project=WANDB_PROJECT
     )
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
-    def regenerate_callback(epoch: int,
-                            learned_system: System,
+    # Prepare data.
+    x_0 = X_0S[system]
+    if simulation:
+
+        # For simulation, specify the following:
+        data_generation_config = DataGenerationConfig(
+            dt=DT,
+            # timestep.
+            n_pop=N_POP,
+            # How many trajectories to simulate
+            trajectory_length=TRAJECTORY_LENGTHS[system],
+            # trajectory length
+            x_0=x_0,
+            # A nominal initial state
+            sampler_type=UniformSampler,
+            # use uniform distribution to sample ``x_0``
+            sampler_ranges=SAMPLER_RANGES[system],
+            # How much to vary initial states around ``x_0``
+            noiser_type=GaussianWhiteNoiser,
+            # Distribution of noise in trajectory data (Gaussian).
+            static_noise=torch.zeros(x_0.nelement() - 1),
+            # constant-in-time noise standard deviations (zero in this case)
+            dynamic_noise=torch.zeros(x_0.nelement() - 1),
+            # i.i.d.-in-time noise standard deviations (zero in this case)
+            storage=storage_name
+            # where to store trajectories
+        )
+
+        generator = ExperimentDatasetGenerator(experiment.get_base_system(),
+                                               data_generation_config)
+        generator.generate()
+
+    else:
+        # otherwise, specify directory with [T, n_x] tensor files saved as
+        # 0.pt, 1.pt, ...
+        # See :mod:`dair_pll.state_space` for state format.
+        import_directory = file_utils.get_asset(data_asset)
+        file_utils.import_data_to_storage(storage_name,
+                                          import_data_dir=import_directory)
+
+    def regenerate_callback(epoch: int, learned_system: System,
                             train_loss: Tensor,
                             best_valid_loss: Tensor) -> None:
         default_epoch_callback(epoch, learned_system, train_loss,
@@ -216,6 +230,7 @@ def main(system: str = CUBE_SYSTEM,
 
 
 @click.command()
+@click.option('--run-name', default="")
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -231,12 +246,16 @@ def main(system: str = CUBE_SYSTEM,
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether save updated URDF's each epoch.")
-def main_command(system: str, source: str, contactnets: bool, box: bool,
-                 regenerate: bool):
+@click.option('--clear-data/--keep-data',
+              default=False,
+              help="Whether to clear storage folder before running.")
+def main_command(run_name: str, system: str, source: str, contactnets: bool,
+                 box: bool, regenerate: bool, clear_data: bool):
+    # pylint: disable=too-many-arguments
     """Executes main function with argument interface."""
     if system == ELBOW_SYSTEM and source == REAL_SOURCE:
         raise NotImplementedError('Elbow real-world data not supported!')
-    main(system, source, contactnets, box, regenerate)
+    main(run_name, system, source, contactnets, box, regenerate, clear_data)
 
 
 if __name__ == '__main__':
