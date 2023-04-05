@@ -14,9 +14,10 @@ from dair_pll import file_utils
 from dair_pll import vis_utils
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
-from dair_pll.experiment import SystemConfig, \
-    SupervisedLearningExperimentConfig, SupervisedLearningExperiment, \
-    LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME, LOGGING_DURATION
+from dair_pll.experiment import SupervisedLearningExperiment, \
+    LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME
+from dair_pll.experiment_config import SystemConfig, \
+    SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, W_COMP, W_PEN, W_DISS
 from dair_pll.system import System, SystemSummary
@@ -196,8 +197,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         formulation.
 
         Notes:
-            TODO this shouldn't be used after the switch to wandb, which doesn't
-            do the overlaid scalars functionality.
+            TODO this is no longer used after the switch to wandb, which doesn't
+            do the overlaid scalars functionality.  It would be nice to have
+            something like this implemented for debugging purposes.
 
         Args:
             epoch: Current epoch.

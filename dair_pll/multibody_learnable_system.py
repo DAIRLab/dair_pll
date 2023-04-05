@@ -32,7 +32,7 @@ import time
 from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 
-from dair_pll import urdf_utils, tensor_utils
+from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
@@ -123,8 +123,7 @@ class MultibodyLearnableSystem(System):
         for urdf_name, new_urdf_string in new_urdf_strings.items():
             old_urdf_filename = path.basename(old_urdfs[urdf_name])
             new_urdf_path = path.join(self.output_urdfs_dir, old_urdf_filename)
-            with open(new_urdf_path, 'w', encoding="utf8") as new_urdf_file:
-                new_urdf_file.write(new_urdf_string)
+            file_utils.save_string(new_urdf_path, new_urdf_string)
             new_urdfs[urdf_name] = new_urdf_path
 
         return new_urdfs

@@ -1,4 +1,6 @@
 """Interface for logging training progress to Weights and Biases."""
+import time
+from dataclasses import dataclass
 from typing import Dict, Tuple, Optional, Any
 
 import numpy as np
@@ -6,6 +8,9 @@ import wandb
 
 from dair_pll.hyperparameter import hyperparameter_values
 from dair_pll.system import MeshSummary
+
+WANDB_ALLOW = "allow"
+WANDB_NEVER = "never"
 
 
 def _write_scalars(epoch: int, scalars: Dict[str, float]) -> None:
@@ -32,6 +37,7 @@ def _write_meshes(epoch: int, meshes: Dict[str, MeshSummary]) -> None:
     wandb.log(wandb_meshes, step=epoch)
 
 
+@dataclass
 class WeightsAndBiasesManager:
     """Manages logging of the training process.
 
@@ -39,25 +45,42 @@ class WeightsAndBiasesManager:
     at https://wandb.ai .
     """
     run_name: str
-    """Unique name for Weights and Biases experiment run."""
+    """Display name for Weights and Biases experiment run."""
     directory: str
     """Absolute path to store metadata."""
-    project_name: Optional[str]
+    project_name: str
     """Unique name for W&B project, analogous to a ``dair_pll`` experiment."""
+    resume_from_id: Optional[str] = None
+    """Allow W&B to resume a unique run ID if provided."""
 
-    def __init__(self, run_name: str, directory: str,
-                 project_name: Optional[str]):
-        self.run_name = run_name
-        self.directory = directory
-        self.project_name = project_name
+    def _setup_wandb_run_id(self) -> str:
+        """Generates unique run ID for Weights and Biases by concatenating
+        the run name and a timestamp. If resumption is allowed, returns the
+        saved run ID."""
+        if self.resume_from_id is not None:
+            return self.resume_from_id
 
-    def launch(self) -> None:
-        """Launches experiment run on Weights & Biases."""
+        timestamp = str(time.time_ns() // 1000)
+
+        return f"{self.run_name}_{timestamp}"
+
+    def launch(self) -> str:
+        r"""Launches experiment run on Weights & Biases.
+
+        Returns:
+            The run ID of the launched run.
+        """
+        resuming = self.resume_from_id is not None
+        wandb_run_id = self._setup_wandb_run_id()
+
         wandb.init(project=self.project_name,
                    dir=self.directory,
                    name=self.run_name,
-                   id=self.run_name,
-                   config={})
+                   id=wandb_run_id,
+                   config={},
+                   resume=WANDB_ALLOW if resuming else WANDB_NEVER)
+
+        return wandb_run_id
 
     @staticmethod
     def log_config(config: Any):

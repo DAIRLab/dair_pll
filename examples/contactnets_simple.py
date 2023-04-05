@@ -15,15 +15,19 @@ import pickle
 import git
 
 from dair_pll import file_utils
+from dair_pll.dataset_generation import DataGenerationConfig, \
+    ExperimentDatasetGenerator
 from dair_pll.dataset_management import DataConfig, \
-    DataGenerationConfig
+    TrajectorySliceConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, MultibodyLosses, \
     DrakeMultibodyLearnableExperimentConfig
-from dair_pll.experiment import OptimizerConfig, default_epoch_callback
+from dair_pll.experiment import default_epoch_callback
+from dair_pll.experiment_config import OptimizerConfig
+from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
-from dair_pll.state_space import UniformSampler
+from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
 from dair_pll.system import System
 
 
@@ -37,6 +41,14 @@ SIM_SOURCE = 'simulation'
 REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
+
+# Possible results management options
+OVERWRITE_DATA_AND_RUNS = 'data_and_runs'
+OVERWRITE_SINGLE_RUN_KEEP_DATA = 'run'
+OVERWRITE_NOTHING = 'nothing'
+OVERWRITE_RESULTS = [OVERWRITE_DATA_AND_RUNS,
+                     OVERWRITE_SINGLE_RUN_KEEP_DATA,
+                     OVERWRITE_NOTHING]
 
 # Possible inertial parameterizations to learn for the elbow system.
 # The options are:
@@ -90,17 +102,11 @@ REPO_DIR = os.path.normpath(
 DT = 0.0068
 
 # Generation configuration.
-# N_POP = 256  <-- replaced with a commandline argument
-# CUBE_X_0 = torch.tensor([
-#     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
-#     0.014, 1.291, -0.212
-# ])
 CUBE_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, 0., 0., 0., 0., 0., -.075])
 ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
 X_0S = {CUBE_SYSTEM: CUBE_X_0, ELBOW_SYSTEM: ELBOW_X_0}
-# CUBE_SAMPLER_RANGE = 0.1 * torch.ones(CUBE_X_0.nelement() - 1)
 CUBE_SAMPLER_RANGE = torch.tensor([
     2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, 6., 6., 6., 1.5, 1.5, .075
 ])
@@ -112,10 +118,7 @@ SAMPLER_RANGES = {
     CUBE_SYSTEM: CUBE_SAMPLER_RANGE,
     ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE
 }
-TRAJ_LENS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
-
-# dynamic load configuration.
-DYNAMIC_UPDATES_FROM = 4
+TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
 
 # Training data configuration.
 T_PREDICTION = 1
@@ -129,11 +132,12 @@ ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500            # change this (originally 500)
 PATIENCE = 200       # change this (originally EPOCHS)
-# BATCH_SIZE = 256  <-- updated to scale with commandline argument for dataset_size
+
+WANDB_PROJECT = 'dair_pll-examples'
 
 
-
-def main(name: str = None,
+def main(storage_folder_name: str = "",
+         run_name: str = "",
          system: str = CUBE_SYSTEM,
          source: str = SIM_SOURCE,
          contactnets: bool = True,
@@ -142,10 +146,13 @@ def main(name: str = None,
          dataset_size: int = 512,
          local: bool = True,
          inertia_params: str = '4',
-         true_sys: bool = False):
+         true_sys: bool = False,
+         overwrite: str = OVERWRITE_NOTHING):
     """Execute ContactNets basic example on a system.
 
     Args:
+        storage_folder_name: name of outer storage directory.
+        run_name: name of experiment run.
         system: Which system to learn.
         source: Where to get data from.
         contactnets: Whether to use ContactNets or prediction loss.
@@ -153,14 +160,14 @@ def main(name: str = None,
         regenerate: Whether save updated URDF's each epoch.
         dataset_size: Number of trajectories for train/val/test.
         local: Running locally versus on cluster.
-        videos: Generate videos or not.
         inertia_params: What inertial parameters to learn.
         true_sys: Whether to start with the "true" URDF or poor initialization.
-        tb: Start up tensorboard webpage or not.
+        overwrite: Whether to clear data and/or run(s) results before running.
     """
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments
 
-    print(f'\nStarting test with name \'{name}\':' \
+    print(f'Starting test under \'{storage_folder_name}\' ' \
+         + f'with name \'{run_name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith box: {box}' \
@@ -170,31 +177,37 @@ def main(name: str = None,
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
 
-    storage_name = os.path.join(REPO_DIR, 'results', name)
-    print(f'\nStoring data at {storage_name}')
-
-    batch_size = int(dataset_size/2)
-
-    # First step, clear out data on disk for a fresh start.
     simulation = source == SIM_SOURCE
-    real = source == REAL_SOURCE
     dynamic = source == DYNAMIC_SOURCE
 
-    data_asset = TRUE_DATA_ASSETS[system]
+    storage_name = os.path.join(REPO_DIR, 'results', storage_folder_name)
 
-    run_name = f'run_{str(int(time.time()))}'
+    # First, take care of data management and how to keep track of results.
+    if overwrite == OVERWRITE_DATA_AND_RUNS:
+        os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
 
-    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+    elif overwrite == OVERWRITE_SINGLE_RUN_KEEP_DATA:
+        os.system(f'rm -r {file_utils.run_dir(storage_name, run_name)}')
+
+    elif overwrite == OVERWRITE_NOTHING:
+        # Do nothing.  If the experiment and run did not already exist, it will
+        # make it.
+        pass
+
+    else:
+        raise NotImplementedError('Choose 1 of 3 result overwriting options')
+
+    print(f'\nStoring data at {file_utils.data_dir(storage_name)}')
+    print(f'\nStoring results at {file_utils.run_dir(storage_name, run_name)}')
 
     # Next, build the configuration of the learning experiment.
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
-    optimizer_config = OptimizerConfig()
-    optimizer_config.lr.value = LRS[system]
-    optimizer_config.wd.value = WDS[system]
-    optimizer_config.patience = PATIENCE
-    optimizer_config.epochs = EPOCHS
-    optimizer_config.batch_size.value = batch_size
+    optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
+                                       wd=Float(WDS[system]),
+                                       patience=PATIENCE,
+                                       epochs=EPOCHS,
+                                       batch_size=Int(int(dataset_size/2)))
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
@@ -205,11 +218,10 @@ def main(name: str = None,
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
-    # Describes the learnable system. The MultibodyLearnableSystem type
-    # learns a multibody system, which is initialized as the original
-    # system URDF, or as a provided wrong initialization.
-    # For now, this is only implemented with the box geometry
-    # parameterization.
+    # Describes the learnable system. The MultibodyLearnableSystem type learns
+    # a multibody system, which is initialized as the original system URDF, or
+    # as a provided wrong initialization. For now, this is only implemented with
+    # the box geoemtry parameterization.
     if box and not true_sys:
         wrong_urdf_asset = WRONG_URDFS[system]['small']
         wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
@@ -221,51 +233,21 @@ def main(name: str = None,
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
+
     learnable_config = MultibodyLearnableSystemConfig(
         urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params))
 
-    # Describe data source
-    data_generation_config = None
-    import_directory = None
-    dynamic_updates_from = None
-    x_0 = X_0S[system]
-    if simulation:
-        # For simulation, specify the following:
-        data_generation_config = DataGenerationConfig(
-            n_pop=dataset_size,
-            # How many trajectories to simulate
-            x_0=x_0,
-            # A nominal initial state
-            sampler_ranges=SAMPLER_RANGES[system],
-            # How much to vary initial states around ``x_0``
-            sampler_type=UniformSampler,
-            # use uniform distribution to sample ``x_0``
-            static_noise=torch.zeros(x_0.nelement() - 1),
-            # constant-in-time noise distribution (zero in this case)
-            dynamic_noise=torch.zeros(x_0.nelement() - 1),
-            # i.i.d.-in-time noise distribution (zero in this case)
-            traj_len=TRAJ_LENS[system])
-    elif real:
-        # otherwise, specify directory with [T, n_x] tensor files saved as
-        # 0.pt, 1.pt, ...
-        # See :mod:`dair_pll.state_space` for state format.
-        import_directory = file_utils.get_asset(data_asset)
-        print(f'Getting real trajectories from {import_directory}\n')
-    else:
-        dynamic_updates_from = DYNAMIC_UPDATES_FROM
+    # how to slice trajectories into training datapoints
+    slice_config = TrajectorySliceConfig(
+        t_prediction=1 if contactnets else T_PREDICTION)
 
     # Describes configuration of the data
-    data_config = DataConfig(
-        dt=DT,
-        train_fraction=1.0 if dynamic else 0.5,
-        valid_fraction=0.0 if dynamic else 0.25,
-        test_fraction=0.0 if dynamic else 0.25,
-        generation_config=data_generation_config,
-        import_directory=import_directory,
-        dynamic_updates_from=dynamic_updates_from,
-        t_prediction=1 if contactnets else T_PREDICTION,
-        n_import=dataset_size if real else None
-    )
+    data_config = DataConfig(dt=DT,
+                             train_fraction=1.0 if dynamic else 0.5,
+                             valid_fraction=0.0 if dynamic else 0.25,
+                             test_fraction=0.0 if dynamic else 0.25,
+                             slice_config=slice_config,
+                             update_dynamically=dynamic)
 
     # Combines everything into config for entire experiment.
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
@@ -276,97 +258,79 @@ def main(name: str = None,
         optimizer_config=optimizer_config,
         data_config=data_config,
         full_evaluation_period=EPOCHS if dynamic else 1,
-        # full_evaluation_samples=dataset_size,  # use all available data for eval
-        visualize_learned_geometry=True
+        # full_evaluation_samples=dataset_size,  # use all data for eval
+        visualize_learned_geometry=True,
+        run_wandb=True,
+        wandb_project=WANDB_PROJECT
     )
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
-    def regenerate_callback(epoch: int,
-                            learned_system: System,
+    # Prepare data.
+    x_0 = X_0S[system]
+    if simulation:
+
+        # For simulation, specify the following:
+        data_generation_config = DataGenerationConfig(
+            dt=DT,
+            # timestep
+            n_pop=dataset_size,
+            # How many trajectories to simulate
+            trajectory_length=TRAJECTORY_LENGTHS[system],
+            # trajectory length
+            x_0=x_0,
+            # A nominal initial state
+            sampler_type=UniformSampler,
+            # use uniform distribution to sample ``x_0``
+            sampler_ranges=SAMPLER_RANGES[system],
+            # How much to vary initial states around ``x_0``
+            noiser_type=GaussianWhiteNoiser,
+            # Distribution of noise in trajectory data (Gaussian).
+            static_noise=torch.zeros(x_0.nelement() - 1),
+            # constant-in-time noise standard deviations (zero in this case)
+            dynamic_noise=torch.zeros(x_0.nelement() - 1),
+            # i.i.d.-in-time noise standard deviations (zero in this case)
+            storage=storage_name
+            # where to store trajectories
+        )
+
+        generator = ExperimentDatasetGenerator(experiment.get_base_system(),
+                                               data_generation_config)
+        generator.generate()
+
+    else:
+        # otherwise, specify directory with [T, n_x] tensor files saved as
+        # 0.pt, 1.pt, ...
+        # See :mod:`dair_pll.state_space` for state format.
+        data_asset = TRUE_DATA_ASSETS[system]
+        import_directory = file_utils.get_asset(data_asset)
+        print(f'Getting real trajectories from {import_directory}\n')
+        file_utils.import_data_to_storage(storage_name,
+                                          import_data_dir=import_directory,
+                                          num=dataset_size)
+
+    def regenerate_callback(epoch: int, learned_system: System,
                             train_loss: Tensor,
                             best_valid_loss: Tensor) -> None:
         default_epoch_callback(epoch, learned_system, train_loss,
                                best_valid_loss)
         cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
-    def log_callback(epoch: int,
-                     learned_system: MultibodyLearnableSystem,
-                     train_loss: Tensor,
-                     best_valid_loss: Tensor) -> None:
-        default_epoch_callback(epoch, learned_system, train_loss,
-                               best_valid_loss)
-
-        scalars, _ = learned_system.multibody_terms.scalars_and_meshes()
-        stats = {}
-
-        for key in ['train_model_trajectory_mse', 'valid_model_trajectory_mse',
-                    'train_model_trajectory_mse_mean',
-                    'valid_model_trajectory_mse_mean',
-                    'train_delta_v_squared_mean', 'valid_delta_v_squared_mean',
-                    'train_v_plus_squared_mean', 'valid_v_plus_squared_mean',
-                    'train_model_loss_mean', 'valid_model_loss_mean',
-                    'training_duration', 'evaluation_duration',
-                    'logging_duration']:
-            stats[key] = experiment.statistics[key]
-
-        with open(f'{storage_name}/params.txt', 'a') as txt_file:
-            txt_file.write(f'Epoch {epoch}:\n\tscalars: {scalars}\n' \
-                           + f'\tstatistics: {stats}\n' \
-                           + f'\ttrain_loss: {train_loss}\n\n')
-            txt_file.close()
-
-    def log_and_regen_callback(epoch: int,
-                     learned_system: MultibodyLearnableSystem,
-                     train_loss: Tensor,
-                     best_valid_loss: Tensor) -> None:
-        log_callback(epoch, learned_system, train_loss, best_valid_loss)
-        learned_system.generate_updated_urdfs(storage_name)
-
-
-    # Save all parameters so far in experiment directory.
-    # with open(f'{storage_name}/params.pickle', 'wb') as pickle_file:
-    #     pickle.dump(experiment_config, pickle_file)
-    # with open(f'{storage_name}/dataset.pickle', 'wb') as pickle_file:
-    #     pickle.dump(experiment.data_manager.orig_data, pickle_file)
-    with open(f'{storage_name}/params.txt', 'a') as txt_file:
-        txt_file.write(f'Starting test with name \'{name}\':' \
-            + f'\n\tPerforming on system: {system}\n\twith source: {source}' \
-            + f'\n\tusing ContactNets: {contactnets}' \
-            + f'\n\twith box: {box}' \
-            + f'\n\tregenerate: {regenerate}' \
-            + f'\n\trunning locally: {local}' \
-            + f'\n\twith learned geometry: {experiment_config.update_geometry_in_videos}' \
-            + f'\n\tand inertia learning mode: {inertia_params}' \
-            + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
-            + f'\n\tand starting with "true" URDF: {true_sys}.\n\n' \
-            + f'optimizer_config.lr:  {optimizer_config.lr.value}\n' \
-            + f'optimizer_config.wd:  {optimizer_config.wd.value}\n' \
-            + f'optimizer_config.batch_size:  {optimizer_config.batch_size.value}\n\n')
-        
-        train_set, _, _ = experiment.data_manager.get_trajectory_split()
-        if hasattr(experiment.data_manager, 'train_indices'):
-            train_indices = experiment.data_manager.train_indices
-            valid_indices = experiment.data_manager.valid_indices
-            test_indices = experiment.data_manager.test_indices
-            txt_file.write(f'training set data indices:  {train_indices}\n' \
-                + f'validation set data indices:  {valid_indices}\n' \
-                + f'test set data indices:  {test_indices}\n\n')
-
     # Trains system.
     _, _, learned_system = experiment.train(
-        log_and_regen_callback if regenerate else log_callback #default_epoch_callback
+        regenerate_callback if regenerate else default_epoch_callback
     )
 
     # Save the final urdf.
-    print(f'\nSaving the final learned box parameters.')
-    learned_system.generate_updated_urdfs(storage_name)
+    print(f'\nSaving the final learned parameters.')
+    cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
 
 
 @click.command()
-@click.argument('name')
+@click.argument('storage_folder_name')
+@click.argument('run_name')
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -395,14 +359,19 @@ def main(name: str = None,
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-def main_command(name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, dataset_size: int, local: bool,
-                 inertia_params: str, true_sys: bool):
+@click.option('--overwrite',
+              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
+              default=OVERWRITE_NOTHING)
+def main_command(storage_folder_name: str, run_name: str, system: str,
+                 source: str, contactnets: bool, box: bool, regenerate: bool,
+                 dataset_size: int, local: bool, inertia_params: str,
+                 true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
-    assert name is not None
+    assert storage_folder_name is not None
+    assert run_name is not None
 
-    main(name, system, source, contactnets, box, regenerate, dataset_size,
-         local, inertia_params, true_sys)
+    main(storage_folder_name, run_name, system, source, contactnets, box,
+         regenerate, dataset_size, local, inertia_params, true_sys, overwrite)
 
 
 if __name__ == '__main__':
