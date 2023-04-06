@@ -6,10 +6,22 @@ import click
 import subprocess
 import time
 import pdb
+import fnmatch
 from typing import List, Optional
 
 from dair_pll import file_utils
 
+
+# Possible categories for automatic run name generation.
+TEST = 'test'
+DEV = 'dev'
+CATEGORIES = [TEST, DEV]
+
+# Possible run name regex patterns.
+CUBE_TEST_PATTERN = 'tc??'
+ELBOW_TEST_PATTERN = 'te??'
+CUBE_DEV_PATTERN =  'dc??'
+ELBOW_DEV_PATTERN = 'de??'
 
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
@@ -21,6 +33,14 @@ SIM_SOURCE = 'simulation'
 REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
+
+# Possible results management options
+OVERWRITE_DATA_AND_RUNS = 'data_and_runs'
+OVERWRITE_SINGLE_RUN_KEEP_DATA = 'run'
+OVERWRITE_NOTHING = 'nothing'
+OVERWRITE_RESULTS = [OVERWRITE_DATA_AND_RUNS,
+                     OVERWRITE_SINGLE_RUN_KEEP_DATA,
+                     OVERWRITE_NOTHING]
 
 # Possible inertial parameterizations to learn for the elbow system.
 # The options are:
@@ -39,14 +59,14 @@ INERTIA_PARAM_DESCRIPTIONS = [
 INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 
-def create_instance(name: str, system: str, source: str, contactnets: bool,
-                    box: bool, regenerate: bool, dataset_size: int, local: bool,
-                    inertia_params: str, true_sys: bool):
-    print(f'Generating experiment {name}')
+def create_instance(storage_folder_name: str, run_name: str, system: str,
+                    source: str, contactnets: bool, box: bool, regenerate: bool,
+                    dataset_size: int, local: bool, inertia_params: str,
+                    true_sys: bool):
+    print(f'Generating experiment {storage_folder_name}/{run_name}')
 
     base_file = 'startup'
-
-    out_file = base_file + '_' + name + '.bash'
+    out_file = f'{base_file}_{storage_folder_name}_{run_name}.bash'
 
     # use local template if running locally
     base_file += '_local.bash' if local else '.bash'
@@ -57,22 +77,18 @@ def create_instance(name: str, system: str, source: str, contactnets: bool,
 
     script = open(base_file, 'r').read()
 
-    script = script.replace('{name}', name)
+    script = script.replace('{storage_folder_name}', storage_folder_name)
+    script = script.replace('{run_name}', run_name)
     
     train_options = f' --system={system} --source={source}' + \
-                    f' --dataset-size={dataset_size}'
-    train_options += ' --box' if box else ' --mesh'
+                    f' --dataset-size={dataset_size}' + \
+                    f' --inertia-params={inertia_params}'
     train_options += ' --contactnets' if contactnets else ' --prediction'
+    train_options += ' --box' if box else ' --mesh'
     train_options += ' --regenerate' if regenerate else ' --no-regenerate'
-    train_options += ' --local' if local else ' --cluster'
-    train_options += f' --inertia-params={inertia_params}'
     train_options += ' --true-sys' if true_sys else ' --wrong-sys'
 
     script = script.replace('{train_args}', train_options)
-
-    if not local:
-        firefox_dir = '/mnt/beegfs/scratch/bibit/firefox'
-        script = script.replace('{firefox_dir}', firefox_dir)
 
     repo = git.Repo(search_parent_directories=True)
     git_folder = repo.git.rev_parse("--show-toplevel")
@@ -143,6 +159,87 @@ def attach_tb(name: str, local: bool = False):
     print(f'Ran tensorboard command.')
 
 
+def take_care_of_file_management(overwrite: str, storage_name: str,
+                                 run_name: str) -> None:
+    """Take care of file management.
+
+    Todo:
+        This isn't fool-proof.  Even if overwrite is set to nothing or to keep
+        data, the data gets overwritten if the dataset size is different.
+    """
+    if overwrite == OVERWRITE_DATA_AND_RUNS:
+        os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+
+    elif overwrite == OVERWRITE_SINGLE_RUN_KEEP_DATA:
+        os.system(f'rm -r {file_utils.run_dir(storage_name, run_name)}')
+
+    elif overwrite == OVERWRITE_NOTHING:
+        # Do nothing.  If the experiment and run did not already exist, it will
+        # make it.  Otherwise it will continue the experiment run.
+        pass
+
+    else:
+        raise NotImplementedError('Choose 1 of 3 result overwriting options')
+
+
+def experiment_class_command(category: str, run_name: str, system: str,
+    contactnets: bool, box: bool, regenerate: bool, local: bool,
+    inertia_params: str, true_sys: bool, overwrite: str):
+    """Executes main function with argument interface."""
+
+    assert category in CATEGORIES
+
+    def get_run_name_pattern(category, system):
+        run_name_pattern = 't' if category == TEST else 'd'
+        run_name_pattern += 'c' if system == CUBE_SYSTEM else 'e'
+        run_name_pattern += '??'
+        return run_name_pattern
+
+    # Check if git repository has uncommitted changes.
+    repo = git.Repo(search_parent_directories=True)
+
+    commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
+    if commits_ahead > 0:
+        if not click.confirm(f'You are {commits_ahead} commits ahead of' \
+                             + f' main branch, continue?'):
+            raise RuntimeError('Make sure you have pushed commits!')
+
+    changed_files = [item.a_path for item in repo.index.diff(None)]
+    if len(changed_files) > 0:
+        print('Uncommitted changes to:')
+        print(changed_files)
+        if not click.confirm('Continue?'):
+            raise RuntimeError('Make sure you have committed changes!')
+
+    # First, take care of data management and how to keep track of results.
+    storage_folder_name = f'{category}_{system}'
+    repo_dir = repo.git.rev_parse("--show-toplevel")
+    storage_name = op.join(repo_dir, 'results', storage_folder_name)
+    if run_name is None:
+        last_run_num = int(os.listdir(storage_name)[-1].split('t')[-1])
+        run_name = category[0]
+        run_name += 'c' if system==CUBE_SYSTEM else 'e'
+        run_name += str(last_run_num+1).zfill(2)
+    run_name_pattern = get_run_name_pattern(category, system)
+    assert fnmatch.fnmatch(run_name, run_name_pattern)
+
+    print(f'\nOverwrite set to {overwrite}.')
+
+    if op.isdir(op.join(storage_name, 'runs', run_name)):
+        if not click.confirm(f'\nPause!  Experiment \'' \
+                             + f'{storage_folder_name}/{run_name}\'' \
+                             + f' already taken, continue?'):
+            raise RuntimeError('Choose a new run name next time.')
+
+    take_care_of_file_management(overwrite, storage_name, run_name)
+    dataset_size = 4 if category == TEST else 64
+    source = SIM_SOURCE
+
+    # Continue creating PLL instance.
+    create_instance(storage_folder_name, run_name, system, source, contactnets,
+                    box, regenerate, dataset_size, local, inertia_params,
+                    true_sys)
+
 
 @click.group()
 def cli():
@@ -150,7 +247,8 @@ def cli():
 
 
 @cli.command('create')
-@click.argument('name')
+@click.argument('storage_folder_name')
+@click.argument('run_name')
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -179,9 +277,13 @@ def cli():
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-def create_command(name: str, system: str, source: str, contactnets: bool,
-                   box: bool, regenerate: bool, dataset_size: int, local: bool,
-                   inertia_params: str, true_sys: bool):
+@click.option('--overwrite',
+              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
+              default=OVERWRITE_NOTHING)
+def create_command(storage_folder_name: str, run_name: str, system: str,
+                   source: str, contactnets: bool, box: bool, regenerate: bool,
+                   dataset_size: int, local: bool, inertia_params: str,
+                   true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -200,26 +302,122 @@ def create_command(name: str, system: str, source: str, contactnets: bool,
         if not click.confirm('Continue?'):
             raise RuntimeError('Make sure you have committed changes!')
 
+    # First, take care of data management and how to keep track of results.
+    assert storage_folder_name is not None
+    assert run_name is not None
+    assert '-' not in run_name
+    repo_dir = repo.git.rev_parse("--show-toplevel")
+    storage_name = op.join(repo_dir, 'results', storage_folder_name)
+
+    print(f'\nOverwrite set to {overwrite}.')
+
+    if op.isdir(op.join(storage_name, 'runs', run_name)):
+        if not click.confirm(f'\nPause!  Experiment \'' \
+                             + f'{storage_folder_name}/{run_name}\'' \
+                             + f' already taken, continue?'):
+            raise RuntimeError('Choose a new run name next time.')
+    elif op.isdir(storage_name):
+        dataset_size_in_folder = file_utils.get_numeric_file_count(
+            file_utils.learning_data_dir(storage_name))
+        if not click.confirm(f'\nPause!  Experiment storage \'' \
+                             + f'{storage_folder_name}\'' \
+                             + f' already taken with {dataset_size_in_folder}' \
+                             + f' dataset size, continue?'):
+            raise RuntimeError('Choose a new storage name next time.')
+
+    take_care_of_file_management(overwrite, storage_name, run_name)
+
     # Check if experiment name was given and if it already exists.  We also
     # don't want hyphens in the name since that's how the sweep instances
     # are created.
-    assert name is not None
-    assert '-' not in name
+    assert storage_folder_name is not None
+    assert '-' not in run_name
     repo_dir = repo.git.rev_parse("--show-toplevel")
-    storage_name = op.join(repo_dir, 'results', name)
+    storage_name = op.join(repo_dir, 'results', storage_folder_name, run_name)
     if op.isdir(storage_name):
-        if not click.confirm(f'\nPause!  Experiment name \'{name}\'' \
+        if not click.confirm(f'\nPause!  Experiment name \'' \
+                             + f'{storage_folder_name}/{run_name}\'' \
                              + f' already taken, continue (overwrite)?'):
             raise RuntimeError('Choose a new name next time.')
 
     # clear the results directory, per user input
-    storage_name = os.path.join(repo_dir, 'results', name)
-    os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
+    os.system(f'rm -r {file_utils.run_dir(storage_folder_name, run_name)}')
 
     # Continue creating PLL instance.
-    create_instance(name, system, source, contactnets, box, regenerate,
-                    dataset_size, local, inertia_params, true_sys)
+    create_instance(storage_folder_name, run_name, system, source, contactnets,
+                    box, regenerate, dataset_size, local, inertia_params,
+                    true_sys)
 
+
+@cli.command('test')
+@click.argument('run_name')
+@click.option('--system',
+              type=click.Choice(SYSTEMS, case_sensitive=True),
+              default=CUBE_SYSTEM)
+@click.option('--contactnets/--prediction',
+              default=True,
+              help="whether to train on ContactNets or prediction loss.")
+@click.option('--box/--mesh',
+              default=True,
+              help="whether to represent geometry as box or mesh.")
+@click.option('--regenerate/--no-regenerate',
+              default=False,
+              help="whether to save updated URDF's each epoch or not.")
+@click.option('--local/--cluster',
+              default=False,
+              help="whether running script locally or on cluster.")
+@click.option('--inertia-params',
+              type=click.Choice(INERTIA_PARAM_CHOICES),
+              default='4',
+              help="what inertia parameters to learn.")
+@click.option('--true-sys/--wrong-sys',
+              default=False,
+              help="whether to start with correct or poor URDF.")
+@click.option('--overwrite',
+              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
+              default=OVERWRITE_NOTHING)
+def test_command(run_name: str, system: str, contactnets: bool, box: bool,
+                 regenerate: bool, local: bool, inertia_params: str,
+                 true_sys: bool, overwrite: str):
+    """Executes main function with argument interface."""
+    experiment_class_command('test', run_name, system, contactnets, box,
+                             regenerate, local, inertia_params, true_sys,
+                             overwrite)
+
+@cli.command('dev')
+@click.argument('run_name')
+@click.option('--system',
+              type=click.Choice(SYSTEMS, case_sensitive=True),
+              default=CUBE_SYSTEM)
+@click.option('--contactnets/--prediction',
+              default=True,
+              help="whether to train on ContactNets or prediction loss.")
+@click.option('--box/--mesh',
+              default=True,
+              help="whether to represent geometry as box or mesh.")
+@click.option('--regenerate/--no-regenerate',
+              default=False,
+              help="whether to save updated URDF's each epoch or not.")
+@click.option('--local/--cluster',
+              default=False,
+              help="whether running script locally or on cluster.")
+@click.option('--inertia-params',
+              type=click.Choice(INERTIA_PARAM_CHOICES),
+              default='4',
+              help="what inertia parameters to learn.")
+@click.option('--true-sys/--wrong-sys',
+              default=False,
+              help="whether to start with correct or poor URDF.")
+@click.option('--overwrite',
+              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
+              default=OVERWRITE_NOTHING)
+def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
+                regenerate: bool, local: bool, inertia_params: str,
+                true_sys: bool, overwrite: str):
+    """Executes main function with argument interface."""
+    experiment_class_command('dev', run_name, system, contactnets, box,
+                             regenerate, local, inertia_params, true_sys,
+                             overwrite)
 
 
 @cli.command('sweep')

@@ -42,14 +42,6 @@ REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
-# Possible results management options
-OVERWRITE_DATA_AND_RUNS = 'data_and_runs'
-OVERWRITE_SINGLE_RUN_KEEP_DATA = 'run'
-OVERWRITE_NOTHING = 'nothing'
-OVERWRITE_RESULTS = [OVERWRITE_DATA_AND_RUNS,
-                     OVERWRITE_SINGLE_RUN_KEEP_DATA,
-                     OVERWRITE_NOTHING]
-
 # Possible inertial parameterizations to learn for the elbow system.
 # The options are:
 # 0 - none (0 parameters)
@@ -144,10 +136,8 @@ def main(storage_folder_name: str = "",
          box: bool = True,
          regenerate: bool = False,
          dataset_size: int = 512,
-         local: bool = True,
          inertia_params: str = '4',
-         true_sys: bool = False,
-         overwrite: str = OVERWRITE_NOTHING):
+         true_sys: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -159,10 +149,8 @@ def main(storage_folder_name: str = "",
         box: Whether to represent geometry as box or mesh.
         regenerate: Whether save updated URDF's each epoch.
         dataset_size: Number of trajectories for train/val/test.
-        local: Running locally versus on cluster.
         inertia_params: What inertial parameters to learn.
         true_sys: Whether to start with the "true" URDF or poor initialization.
-        overwrite: Whether to clear data and/or run(s) results before running.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -172,7 +160,6 @@ def main(storage_folder_name: str = "",
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith box: {box}' \
          + f'\n\tregenerate: {regenerate}' \
-         + f'\n\trunning locally: {local}' \
          + f'\n\tand inertia learning mode: {inertia_params}' \
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
@@ -182,23 +169,11 @@ def main(storage_folder_name: str = "",
 
     storage_name = os.path.join(REPO_DIR, 'results', storage_folder_name)
 
-    # First, take care of data management and how to keep track of results.
-    if overwrite == OVERWRITE_DATA_AND_RUNS:
-        os.system(f'rm -r {file_utils.storage_dir(storage_name)}')
-
-    elif overwrite == OVERWRITE_SINGLE_RUN_KEEP_DATA:
-        os.system(f'rm -r {file_utils.run_dir(storage_name, run_name)}')
-
-    elif overwrite == OVERWRITE_NOTHING:
-        # Do nothing.  If the experiment and run did not already exist, it will
-        # make it.
-        pass
-
-    else:
-        raise NotImplementedError('Choose 1 of 3 result overwriting options')
+    # If this script is used in conjuction with pll_manager.py, then the file
+    # management is taken care of there.
 
     print(f'\nStoring data at {file_utils.data_dir(storage_name)}')
-    print(f'\nStoring results at {file_utils.run_dir(storage_name, run_name)}')
+    print(f'Storing results at {file_utils.run_dir(storage_name, run_name)}')
 
     # Next, build the configuration of the learning experiment.
 
@@ -349,9 +324,6 @@ def main(storage_folder_name: str = "",
 @click.option('--dataset-size',
               default=512,
               help="dataset size")
-@click.option('--local/--cluster',
-              default=False,
-              help="whether running script locally or on cluster.")
 @click.option('--inertia-params',
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
@@ -359,19 +331,15 @@ def main(storage_folder_name: str = "",
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-@click.option('--overwrite',
-              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
-              default=OVERWRITE_NOTHING)
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, contactnets: bool, box: bool, regenerate: bool,
-                 dataset_size: int, local: bool, inertia_params: str,
-                 true_sys: bool, overwrite: str):
+                 dataset_size: int, inertia_params: str, true_sys: bool):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, contactnets, box,
-         regenerate, dataset_size, local, inertia_params, true_sys, overwrite)
+         regenerate, dataset_size, inertia_params, true_sys)
 
 
 if __name__ == '__main__':
