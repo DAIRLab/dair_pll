@@ -392,7 +392,13 @@ class ContactTerms(Module):
     def get_friction_coefficients(self) -> Tensor:
         """From the stored :py:attr:`friction_params`, compute the friction
         coefficient as its absolute value."""
-        return torch.abs(self.friction_params)
+        positive_friction_params = torch.abs(self.friction_params)
+
+        # Overwrite the friction parameter associated with the ground.
+        # HACK: TODO BIBIT this hard codes the ground as [1] in self.geometries
+        positive_friction_params[1] = 1.0
+
+        return positive_friction_params
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -411,11 +417,11 @@ class ContactTerms(Module):
 
         Returns:
             List of :py:class:`CollisionGeometry` models with one-to-one
-            correspondence with provided geometries.
+              correspondence with provided geometries.
             List[(3,3)] of corresponding rotation matrices R_WG
             List[(3,)] of corresponding geometry frame origins p_WoGo_W
             List[(6,n_v)] of geometry spatial jacobians w.r.t. drake velocity
-            coordinates, J(v_drake)_V_WG_W
+              coordinates, J(v_drake)_V_WG_W
         """
         world_frame = plant.world_frame()
         geometries = []

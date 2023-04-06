@@ -172,7 +172,7 @@ def main(storage_folder_name: str = "",
     # If this script is used in conjuction with pll_manager.py, then the file
     # management is taken care of there.
 
-    print(f'\nStoring data at {file_utils.data_dir(storage_name)}')
+    print(f'\nStoring data at    {file_utils.data_dir(storage_name)}')
     print(f'Storing results at {file_utils.run_dir(storage_name, run_name)}')
 
     # Next, build the configuration of the learning experiment.
