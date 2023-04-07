@@ -122,7 +122,7 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-EPOCHS = 2            # change this (originally 500)
+EPOCHS = 500            # change this (originally 500)
 PATIENCE = 200       # change this (originally EPOCHS)
 
 WANDB_PROJECT = 'dair_pll-examples'
