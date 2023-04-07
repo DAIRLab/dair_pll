@@ -119,7 +119,7 @@ def import_data_to_storage(storage_name: str, import_data_dir: str,
             # Copy entire directory if all trajectories are desired.
             if target_traj_number == data_traj_count:
                 for output_dir in output_directories:
-                    os.system(f'rm -r {output_directory}')
+                    os.system(f'rm -r {output_dir}')
                     os.system(f'cp -r {import_data_dir} {output_dir}')
 
             # Copy a random subset of trajectories if want a smaller number.
@@ -127,14 +127,14 @@ def import_data_to_storage(storage_name: str, import_data_dir: str,
                 random.shuffle(run_indices)
                 run_indices = run_indices[:target_traj_number]
                 for output_dir in output_directories:
-                    os.system(f'rm -r {output_directory}')
-                    os.system(f'mkdir {output_directory}')
+                    os.system(f'rm -r {output_dir}')
+                    os.system(f'mkdir {output_dir}')
 
                     # Copy over a random selection of trajectories, numbering
                     # from 0.
-                    for i, run in zip(range(n_traj), run_indices):
-                        os.system(f'cp -r {import_data_dir}/{run}.pt ' + \
-                                  f'{output_directory}/{i}.pt')
+                    for i, run in zip(range(target_traj_number), run_indices):
+                        os.system(f'cp {import_data_dir}/{run}.pt ' + \
+                                  f'{output_dir}/{i}.pt')
 
             # Can terminate outer loop over output directories since all output
             # directories are written to at once.
