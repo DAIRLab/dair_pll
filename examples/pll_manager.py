@@ -17,16 +17,20 @@ TEST = 'test'
 DEV = 'dev'
 CATEGORIES = [TEST, DEV]
 
+# Possible systems on which to run PLL
+CUBE_SYSTEM = 'cube'
+ELBOW_SYSTEM = 'elbow'
+SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+
 # Possible run name regex patterns.
 CUBE_TEST_PATTERN = 'tc??'
 ELBOW_TEST_PATTERN = 'te??'
 CUBE_DEV_PATTERN =  'dc??'
 ELBOW_DEV_PATTERN = 'de??'
-
-# Possible systems on which to run PLL
-CUBE_SYSTEM = 'cube'
-ELBOW_SYSTEM = 'elbow'
-SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+RUN_PREFIX_TO_FOLDER_NAME = {'tc': f'{TEST}_{CUBE_SYSTEM}',
+                             'te': f'{TEST}_{ELBOW_SYSTEM}',
+                             'dc': f'{DEV}_{CUBE_SYSTEM}',
+                             'de': f'{DEV}_{ELBOW_SYSTEM}'}
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -59,10 +63,17 @@ INERTIA_PARAM_DESCRIPTIONS = [
 INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 
-def create_instance(storage_folder_name: str, run_name: str, system: str,
-                    source: str, contactnets: bool, box: bool, regenerate: bool,
-                    dataset_size: int, local: bool, inertia_params: str,
-                    true_sys: bool):
+def create_instance(storage_folder_name: str, run_name: str,
+                    system: str = CUBE_SYSTEM,
+                    source: str = SIM_SOURCE,
+                    contactnets: bool = True,
+                    box: bool = True,
+                    regenerate: bool = True,
+                    dataset_size: int = 0,
+                    local: bool = False,
+                    inertia_params: str = '4',
+                    true_sys: bool = True,
+                    restart: bool = False):
     print(f'Generating experiment {storage_folder_name}/{run_name}')
 
     base_file = 'startup'
@@ -79,14 +90,18 @@ def create_instance(storage_folder_name: str, run_name: str, system: str,
 
     script = script.replace('{storage_folder_name}', storage_folder_name)
     script = script.replace('{run_name}', run_name)
+    script = script.replace('{restart}', 'true' if restart else 'false')
+
+    train_options = ''
     
-    train_options = f' --system={system} --source={source}' + \
-                    f' --dataset-size={dataset_size}' + \
-                    f' --inertia-params={inertia_params}'
-    train_options += ' --contactnets' if contactnets else ' --prediction'
-    train_options += ' --box' if box else ' --mesh'
-    train_options += ' --regenerate' if regenerate else ' --no-regenerate'
-    train_options += ' --true-sys' if true_sys else ' --wrong-sys'
+    if not restart:
+        train_options = f' --system={system} --source={source}' + \
+                        f' --dataset-size={dataset_size}' + \
+                        f' --inertia-params={inertia_params}'
+        train_options += ' --contactnets' if contactnets else ' --prediction'
+        train_options += ' --box' if box else ' --mesh'
+        train_options += ' --regenerate' if regenerate else ' --no-regenerate'
+        train_options += ' --true-sys' if true_sys else ' --wrong-sys'
 
     script = script.replace('{train_args}', train_options)
 
@@ -182,22 +197,8 @@ def take_care_of_file_management(overwrite: str, storage_name: str,
         raise NotImplementedError('Choose 1 of 3 result overwriting options')
 
 
-def experiment_class_command(category: str, run_name: str, system: str,
-    contactnets: bool, box: bool, regenerate: bool, local: bool,
-    inertia_params: str, true_sys: bool, overwrite: str):
-    """Executes main function with argument interface."""
-
-    assert category in CATEGORIES
-
-    def get_run_name_pattern(category, system):
-        run_name_pattern = 't' if category == TEST else 'd'
-        run_name_pattern += 'c' if system == CUBE_SYSTEM else 'e'
-        run_name_pattern += '??'
-        return run_name_pattern
-
-    # Check if git repository has uncommitted changes.
-    repo = git.Repo(search_parent_directories=True)
-
+def check_for_git_updates(repo):
+    """Check for git updates."""
     commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
     if commits_ahead > 0:
         if not click.confirm(f'You are {commits_ahead} commits ahead of' \
@@ -210,6 +211,24 @@ def experiment_class_command(category: str, run_name: str, system: str,
         print(changed_files)
         if not click.confirm('Continue?'):
             raise RuntimeError('Make sure you have committed changes!')
+
+
+def experiment_class_command(category: str, run_name: str, system: str,
+    contactnets: bool, box: bool, regenerate: bool, local: bool,
+    inertia_params: str, true_sys: bool, overwrite: str):
+    """Executes main function with argument interface."""
+
+    assert category in CATEGORIES
+
+    def get_run_name_pattern(category, system):
+        run_name_pattern = category[0]  # t for test or d for dev
+        run_name_pattern += system[0]   # c for cube or e for elbow
+        run_name_pattern += '??'
+        return run_name_pattern
+
+    # Check if git repository has uncommitted changes.
+    repo = git.Repo(search_parent_directories=True)
+    check_for_git_updates(repo)
 
     # First, take care of data management and how to keep track of results.
     storage_folder_name = f'{category}_{system}'
@@ -238,7 +257,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
     # Continue creating PLL instance.
     create_instance(storage_folder_name, run_name, system, source, contactnets,
                     box, regenerate, dataset_size, local, inertia_params,
-                    true_sys)
+                    true_sys, False)
 
 
 @click.group()
@@ -288,19 +307,7 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
 
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
-
-    commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
-    if commits_ahead > 0:
-        if not click.confirm(f'You are {commits_ahead} commits ahead of' \
-                             + f' main branch, continue?'):
-            raise RuntimeError('Make sure you have pushed commits!')
-
-    changed_files = [item.a_path for item in repo.index.diff(None)]
-    if len(changed_files) > 0:
-        print('Uncommitted changes to:')
-        print(changed_files)
-        if not click.confirm('Continue?'):
-            raise RuntimeError('Make sure you have committed changes!')
+    check_for_git_updates(repo)
 
     # First, take care of data management and how to keep track of results.
     assert storage_folder_name is not None
@@ -337,16 +344,13 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
     if op.isdir(storage_name):
         if not click.confirm(f'\nPause!  Experiment name \'' \
                              + f'{storage_folder_name}/{run_name}\'' \
-                             + f' already taken, continue (overwrite)?'):
+                             + f' already taken, continue this run?'):
             raise RuntimeError('Choose a new name next time.')
-
-    # clear the results directory, per user input
-    os.system(f'rm -r {file_utils.run_dir(storage_folder_name, run_name)}')
 
     # Continue creating PLL instance.
     create_instance(storage_folder_name, run_name, system, source, contactnets,
                     box, regenerate, dataset_size, local, inertia_params,
-                    true_sys)
+                    true_sys, False)
 
 
 @cli.command('test')
@@ -380,9 +384,11 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
                  regenerate: bool, local: bool, inertia_params: str,
                  true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
-    experiment_class_command('test', run_name, system, contactnets, box,
-                             regenerate, local, inertia_params, true_sys,
-                             overwrite)
+    experiment_class_command('test', run_name, system=system,
+                             contactnets=contactnets, box=box,
+                             regenerate=regenerate, local=local, 
+                             inertia_params=inertia_params, true_sys=true_sys,
+                             overwrite=overwrite, restart=False)
 
 @cli.command('dev')
 @click.argument('run_name')
@@ -415,9 +421,50 @@ def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
                 regenerate: bool, local: bool, inertia_params: str,
                 true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
-    experiment_class_command('dev', run_name, system, contactnets, box,
-                             regenerate, local, inertia_params, true_sys,
-                             overwrite)
+    experiment_class_command('dev', run_name, system=system,
+                             contactnets=contactnets, box=box,
+                             regenerate=regenerate, local=local, 
+                             inertia_params=inertia_params, true_sys=true_sys,
+                             overwrite=overwrite, restart=False)
+
+
+@cli.command('restart')
+@click.argument('run_name')
+@click.option('--storage-folder-name',
+              type=str,
+              default='')
+@click.option('--local/--cluster',
+              default=False,
+              help="whether running script locally or on cluster.")
+def restart_command(run_name: str, storage_folder_name: str, local: bool):
+    """Restarts a previously started run."""
+
+    # Check if git repository has uncommitted changes.
+    repo = git.Repo(search_parent_directories=True)
+    check_for_git_updates(repo)
+
+    # Figure out the storage folder name if not provided
+    if storage_folder_name == '':
+        assert len(run_name) == 4
+        assert run_name[0] in ['t', 'd']
+        assert run_name[1] in ['c', 'e']
+        assert int(run_name[2:]) + 1
+
+        storage_folder_name = RUN_PREFIX_TO_FOLDER_NAME[run_name[:2]]
+
+    # Check that both the storage folder name and run name exist.
+    repo_dir = repo.git.rev_parse("--show-toplevel")
+    storage_name = op.join(repo_dir, 'results', storage_folder_name)
+
+    if not op.isdir(op.join(storage_name, 'runs', run_name)):
+        raise RuntimeError(f'Error!  Could not find run under ' + \
+                           f'{storage_folder_name} with run {run_name}.')
+
+    print(f'Found experiment run \'{run_name}\' in \'{storage_folder_name}\'')
+
+    create_instance(storage_folder_name, run_name, local=local, restart=True)
+
+
 
 
 @cli.command('sweep')
@@ -447,26 +494,18 @@ def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
+@click.option('--overwrite',
+              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
+              default=OVERWRITE_NOTHING)
 def sweep_command(sweep_name: str, system: str, source: str,
                   contactnets: bool, box: bool, regenerate: bool,
-                  local: bool, inertia_params: str, true_sys: bool):
+                  local: bool, inertia_params: str, true_sys: bool,
+                  overwrite: str):
     """Starts a series of instances, sweeping over dataset size."""
 
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
-
-    commits_ahead = sum(1 for _ in repo.iter_commits('origin/main..main'))
-    if commits_ahead > 0:
-        if not click.confirm(f'You are {commits_ahead} commits ahead of' \
-                             + f' main branch, continue?'):
-            raise RuntimeError('Make sure you have pushed commits!')
-
-    changed_files = [item.a_path for item in repo.index.diff(None)]
-    if len(changed_files) > 0:
-        print('Uncommitted changes to:')
-        print(changed_files)
-        if not click.confirm('Continue?'):
-            raise RuntimeError('Make sure you have committed changes!')
+    check_for_git_updates(repo)
 
     # Check if experiment name was given and if it already exists.
     assert sweep_name is not None
@@ -488,7 +527,7 @@ def sweep_command(sweep_name: str, system: str, source: str,
         exp_name = f'{sweep_name}-{dataset_exponent}'
         create_instance(exp_name, system, source, contactnets, box,
                         regenerate, dataset_size, local, inertia_params,
-                        true_sys)
+                        true_sys, False)
 
 
 

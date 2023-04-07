@@ -292,8 +292,8 @@ def main(storage_folder_name: str = "",
                                best_valid_loss)
         cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
-    # Trains system.
-    _, _, learned_system = experiment.train(
+    # Trains system and saves final results.
+    _, _, learned_system = experiment.get_results(
         regenerate_callback if regenerate else default_epoch_callback
     )
 

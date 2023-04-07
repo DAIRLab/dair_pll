@@ -8,5 +8,10 @@ export PLL_EXPERIMENT={run_name};
 
 echo "repo at hash {hash}"
 
-echo "train"
-python {pll_dir}/examples/contactnets_simple.py {storage_folder_name} {run_name} {train_args}
+if {restart}; then
+	echo "restarting"
+	python {pll_dir}/examples/restart_run.py {storage_folder_name} {run_name} {train_args}
+else
+	echo "train"
+	python {pll_dir}/examples/contactnets_simple.py {storage_folder_name} {run_name} {train_args}
+fi
