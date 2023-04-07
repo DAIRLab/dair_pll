@@ -113,7 +113,9 @@ class System(ABC, Module):
 
         # If batching is more dimensions than allowed, iterate over outer
         # dimension.
-        if self.max_batch_dim and (x_0.dim() - 2) > self.max_batch_dim:
+        if self.max_batch_dim is not None and \
+            (x_0.dim() - 2) > self.max_batch_dim:
+            
             x_carry_list = [
                 self.simulate(x0i, c0i) for x0i, c0i in zip(x_0, carry_0)
             ]
