@@ -352,7 +352,6 @@ class SupervisedLearningExperiment(ABC):
         Args:
             data: Training dataset.
             system: System to be trained.
-            optimizer: Optimizer which trains system.
 
         Returns:
             Scalar average training loss observed during evaluation.
