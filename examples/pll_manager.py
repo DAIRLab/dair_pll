@@ -235,7 +235,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     repo_dir = repo.git.rev_parse("--show-toplevel")
     storage_name = op.join(repo_dir, 'results', storage_folder_name)
     if run_name is None:
-        last_run_num = int(os.listdir(storage_name)[-1].split('t')[-1])
+        runs_dir = file_utils.all_runs_dir(storage_name)
+        last_run_num = int(sorted(os.listdir(runs_dir))[-1][2:])
         run_name = category[0]
         run_name += 'c' if system==CUBE_SYSTEM else 'e'
         run_name += str(last_run_num+1).zfill(2)
@@ -255,9 +256,11 @@ def experiment_class_command(category: str, run_name: str, system: str,
     source = SIM_SOURCE
 
     # Continue creating PLL instance.
-    create_instance(storage_folder_name, run_name, system, source, contactnets,
-                    box, regenerate, dataset_size, local, inertia_params,
-                    true_sys, False)
+    create_instance(storage_folder_name, run_name, system=system, source=source,
+                    contactnets=contactnets, box=box, regenerate=regenerate,
+                    dataset_size=dataset_size, local=local,
+                    inertia_params=inertia_params, true_sys=true_sys,
+                    restart=False)
 
 
 @click.group()
@@ -354,7 +357,9 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
 
 
 @cli.command('test')
-@click.argument('run_name')
+@click.option('--run_name',
+              type=str,
+              default=None)
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -388,10 +393,12 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
                              contactnets=contactnets, box=box,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params, true_sys=true_sys,
-                             overwrite=overwrite, restart=False)
+                             overwrite=overwrite)
 
 @cli.command('dev')
-@click.argument('run_name')
+@click.option('--run_name',
+              type=str,
+              default=None)
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -425,7 +432,7 @@ def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
                              contactnets=contactnets, box=box,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params, true_sys=true_sys,
-                             overwrite=overwrite, restart=False)
+                             overwrite=overwrite)
 
 
 @cli.command('restart')
@@ -494,13 +501,9 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-@click.option('--overwrite',
-              type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
-              default=OVERWRITE_NOTHING)
 def sweep_command(sweep_name: str, system: str, source: str,
                   contactnets: bool, box: bool, regenerate: bool,
-                  local: bool, inertia_params: str, true_sys: bool,
-                  overwrite: str):
+                  local: bool, inertia_params: str, true_sys: bool):
     """Starts a series of instances, sweeping over dataset size."""
 
     # Check if git repository has uncommitted changes.
@@ -517,17 +520,16 @@ def sweep_command(sweep_name: str, system: str, source: str,
                            + f'\'{sweep_name}\' is already taken.  Choose' \
                            + f' a new name next time.')
 
-    # No need to clear the results directory because it should be assured
-    # to be empty.
-
     # Create a PLL instance for every dataset size from 4 to 512 (2^2 to
     # 2^9).
     for dataset_exponent in range(2, 10):
         dataset_size = 2**dataset_exponent
         exp_name = f'{sweep_name}-{dataset_exponent}'
-        create_instance(exp_name, system, source, contactnets, box,
-                        regenerate, dataset_size, local, inertia_params,
-                        true_sys, False)
+        create_instance(exp_name, exp_name, system=system, source=source,
+                        contactnets=contactnets, box=box,
+                        regenerate=regenerate, dataset_size=dataset_size,
+                        local=local, inertia_params=inertia_params,
+                        true_sys=true_sys, restart=False)
 
 
 
