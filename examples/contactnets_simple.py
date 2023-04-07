@@ -122,7 +122,7 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-EPOCHS = 2            # change this (originally 500)
+EPOCHS = 3            # change this (originally 500)
 PATIENCE = 200       # change this (originally EPOCHS)
 
 WANDB_PROJECT = 'dair_pll-examples'
@@ -299,13 +299,13 @@ def main(storage_folder_name: str = "",
 
     learned_system = cast(MultibodyLearnableSystem, learned_system)
 
-    # Save the final urdf.
-    print(f'\nSaving the final learned parameters.')
-    learned_system.generate_updated_urdfs()
+    # # Save the final urdf.
+    # print(f'\nSaving the final learned parameters.')
+    # learned_system.generate_updated_urdfs()
 
-    # Save final statistics.
-    print(f'\nSaving the final performance statistics.')
-    stats = experiment.get_results(default_epoch_callback)
+    # # Save final statistics.
+    # print(f'\nSaving the final performance statistics.')
+    # stats = experiment.get_results(default_epoch_callback)
     print(f'Done!')
 
 
