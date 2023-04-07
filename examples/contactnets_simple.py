@@ -225,7 +225,13 @@ def main(run_name: str = "",
         cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
     # Trains system.
+    print("Training.")
     experiment.train(
+        regenerate_callback if regenerate else default_epoch_callback)
+
+    # Store the results of the trained system.
+    print("Evaluating trained model.")
+    experiment.get_results(
         regenerate_callback if regenerate else default_epoch_callback)
 
 
