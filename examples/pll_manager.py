@@ -15,7 +15,8 @@ from dair_pll import file_utils
 # Possible categories for automatic run name generation.
 TEST = 'test'
 DEV = 'dev'
-CATEGORIES = [TEST, DEV]
+SWEEP = 'sweep'
+CATEGORIES = [TEST, DEV, SWEEP]
 
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
@@ -27,10 +28,14 @@ CUBE_TEST_PATTERN = 'tc??'
 ELBOW_TEST_PATTERN = 'te??'
 CUBE_DEV_PATTERN =  'dc??'
 ELBOW_DEV_PATTERN = 'de??'
+CUBE_SWEEP_PATTERN = 'sc??'
+ELBOW_SWEEP_PATTERN = 'se??'
 RUN_PREFIX_TO_FOLDER_NAME = {'tc': f'{TEST}_{CUBE_SYSTEM}',
                              'te': f'{TEST}_{ELBOW_SYSTEM}',
                              'dc': f'{DEV}_{CUBE_SYSTEM}',
-                             'de': f'{DEV}_{ELBOW_SYSTEM}'}
+                             'de': f'{DEV}_{ELBOW_SYSTEM}',
+                             'sc': f'{SWEEP}_{CUBE_SYSTEM}',
+                             'se': f'{SWEEP}_{ELBOW_SYSTEM}'}
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -215,31 +220,38 @@ def check_for_git_updates(repo):
 
 def experiment_class_command(category: str, run_name: str, system: str,
     contactnets: bool, box: bool, regenerate: bool, local: bool,
-    inertia_params: str, true_sys: bool, overwrite: str):
+    inertia_params: str, true_sys: bool, overwrite: str,
+    dataset_exponent: int = None, last_run_num: int = None):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
+    if dataset_exponent is not None:
+        assert dataset_exponent in range(2, 10)
 
     def get_run_name_pattern(category, system):
-        run_name_pattern = category[0]  # t for test or d for dev
+        run_name_pattern = category[0]  # t for test, d for dev, s for sweep
         run_name_pattern += system[0]   # c for cube or e for elbow
         run_name_pattern += '??'
+        run_name_pattern += '-?' if category==SWEEP else ''
         return run_name_pattern
-
-    # Check if git repository has uncommitted changes.
-    repo = git.Repo(search_parent_directories=True)
-    check_for_git_updates(repo)
 
     # First, take care of data management and how to keep track of results.
     storage_folder_name = f'{category}_{system}'
+    storage_folder_name += f'-{dataset_exponent}' if category==SWEEP else ''
+
+    repo = git.Repo(search_parent_directories=True)
     repo_dir = repo.git.rev_parse("--show-toplevel")
     storage_name = op.join(repo_dir, 'results', storage_folder_name)
+    
     if run_name is None:
-        runs_dir = file_utils.all_runs_dir(storage_name)
-        last_run_num = int(sorted(os.listdir(runs_dir))[-1][2:])
+        if last_run_num is None:
+            runs_dir = file_utils.all_runs_dir(storage_name)
+            last_run_num = int(sorted(os.listdir(runs_dir))[-1][2:])
         run_name = category[0]
         run_name += 'c' if system==CUBE_SYSTEM else 'e'
         run_name += str(last_run_num+1).zfill(2)
+        run_name += f'-{dataset_exponent}' if category==SWEEP else ''
+
     run_name_pattern = get_run_name_pattern(category, system)
     assert fnmatch.fnmatch(run_name, run_name_pattern)
 
@@ -252,8 +264,10 @@ def experiment_class_command(category: str, run_name: str, system: str,
             raise RuntimeError('Choose a new run name next time.')
 
     take_care_of_file_management(overwrite, storage_name, run_name)
-    dataset_size = 4 if category == TEST else 64
-    source = SIM_SOURCE
+    dataset_size = 4 if category == TEST else \
+                  64 if category == DEV else \
+                  2**dataset_exponent
+    source = REAL_SOURCE if category == SWEEP else SIM_SOURCE
 
     # Continue creating PLL instance.
     create_instance(storage_folder_name, run_name, system=system, source=source,
@@ -389,6 +403,10 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
                  regenerate: bool, local: bool, inertia_params: str,
                  true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
+    # Check if git repository has uncommitted changes.
+    repo = git.Repo(search_parent_directories=True)
+    check_for_git_updates(repo)
+
     experiment_class_command('test', run_name, system=system,
                              contactnets=contactnets, box=box,
                              regenerate=regenerate, local=local, 
@@ -428,6 +446,10 @@ def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
                 regenerate: bool, local: bool, inertia_params: str,
                 true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
+    # Check if git repository has uncommitted changes.
+    repo = git.Repo(search_parent_directories=True)
+    check_for_git_updates(repo)
+
     experiment_class_command('dev', run_name, system=system,
                              contactnets=contactnets, box=box,
                              regenerate=regenerate, local=local, 
@@ -475,13 +497,12 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 
 
 @cli.command('sweep')
-@click.argument('sweep_name')
+@click.option('--sweep_name',
+              type=str,
+              default=None)
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
-@click.option('--source',
-              type=click.Choice(DATA_SOURCES, case_sensitive=True),
-              default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
@@ -501,36 +522,40 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-def sweep_command(sweep_name: str, system: str, source: str,
-                  contactnets: bool, box: bool, regenerate: bool,
-                  local: bool, inertia_params: str, true_sys: bool):
+def sweep_command(sweep_name: str, system: str, contactnets: bool, box: bool,
+                  regenerate: bool, local: bool, inertia_params: str,
+                  true_sys: bool):
     """Starts a series of instances, sweeping over dataset size."""
+    assert sweep_name is None or '-' not in sweep_name
 
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
     check_for_git_updates(repo)
 
-    # Check if experiment name was given and if it already exists.
-    assert sweep_name is not None
-    assert '-' not in sweep_name
+    # First determine what run number to use so they are consistent for each
+    # dataset size.
+    last_run_num = -1
+    repo = git.Repo(search_parent_directories=True)
     repo_dir = repo.git.rev_parse("--show-toplevel")
-    storage_name = op.join(repo_dir, 'results', f'{sweep_name}-2')
-    if op.isdir(storage_name):
-        raise RuntimeError(f'It appears the sweep experiment name ' \
-                           + f'\'{sweep_name}\' is already taken.  Choose' \
-                           + f' a new name next time.')
-
-    # Create a PLL instance for every dataset size from 4 to 512 (2^2 to
-    # 2^9).
+    partial_storage_name = op.join(repo_dir, 'results', f'sweep_{system}')
+    
     for dataset_exponent in range(2, 10):
-        dataset_size = 2**dataset_exponent
-        exp_name = f'{sweep_name}-{dataset_exponent}'
-        create_instance(exp_name, exp_name, system=system, source=source,
-                        contactnets=contactnets, box=box,
-                        regenerate=regenerate, dataset_size=dataset_size,
-                        local=local, inertia_params=inertia_params,
-                        true_sys=true_sys, restart=False)
+        storage_name = f'{partial_storage_name}-{dataset_exponent}'
+        if op.isdir(storage_name):
+            runs_dir = file_utils.all_runs_dir(storage_name)
+            runs_list = sorted(os.listdir(runs_dir))
+            last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
 
+    # Create a pll instance for every dataset size from 4 to 512
+    for dataset_exponent in range(2, 10):
+        experiment_class_command('sweep', sweep_name, system=system,
+                                 contactnets=contactnets, box=box,
+                                 regenerate=regenerate, local=local, 
+                                 inertia_params=inertia_params,
+                                 true_sys=true_sys,
+                                 dataset_exponent=dataset_exponent,
+                                 last_run_num=last_run_num,
+                                 overwrite=OVERWRITE_NOTHING)
 
 
 @cli.command('detach')
