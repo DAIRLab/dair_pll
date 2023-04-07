@@ -604,8 +604,6 @@ class SupervisedLearningExperiment(ABC):
             batch_size=self.config.optimizer_config.batch_size.value,
             shuffle=True)
 
-        patience = self.config.optimizer_config.patience
-
         # Calculate the training loss before any parameter updates.
         learned_system.eval()
         training_loss = self.calculate_loss_no_grad_step(train_dataloader,
@@ -623,6 +621,8 @@ class SupervisedLearningExperiment(ABC):
                 0, learned_system, training_loss, 0.)
             epoch_callback(0, learned_system, training_loss,
                            training_state.best_valid_loss)
+
+        patience = self.config.optimizer_config.patience
 
         # Start training loop.
         try:
