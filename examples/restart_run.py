@@ -52,17 +52,14 @@ def main(storage_folder_name: str = "", run_name: str = ""):
         cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
     # Trains system and saves final results.
-    _, _, learned_system = experiment.train(regenerate_callback)
-
-    learned_system = cast(MultibodyLearnableSystem, learned_system)
+    print(f'\nTraining the model.')
+    learned_system, stats = experiment.generate_results(
+        regenerate_callback if regenerate else default_epoch_callback)
 
     # Save the final urdf.
-    print(f'\nSaving the final learned parameters.')
+    print(f'\nSaving the final learned URDF.')
+    learned_system = cast(MultibodyLearnableSystem, learned_system)
     learned_system.generate_updated_urdfs()
-
-    # Save final statistics.
-    print(f'\nSaving the final performance statistics.')
-    stats = experiment.get_results(default_epoch_callback)
     print(f'Done!')
 
 
