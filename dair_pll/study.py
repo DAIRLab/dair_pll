@@ -109,7 +109,7 @@ class Study:
                      best_valid_loss: float) -> None:
             pass
 
-        experiment.get_results(epoch_cb)
+        experiment.generate_results(epoch_cb)
 
     def is_complete(self, study: optuna.study.Study) -> bool:
         trials = study.trials

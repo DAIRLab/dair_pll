@@ -812,23 +812,29 @@ class SupervisedLearningExperiment(ABC):
                                    evaluation)
         return evaluation
 
-    def get_results(
+    def generate_results(
         self,
         epoch_callback: EpochCallbackCallable = default_epoch_callback,
-    ) -> StatisticsDict:
-        r"""Gets final results/statistics of experiment. This will return
-        previously saved results on disk if they already exist, or run the
-        experiment to generate them if they don't.
+    ) -> Tuple[Tensor, StatisticsDict]:
+        r"""Get the final learned model and results/statistics of experiment.
+        Along with the model corresponding to best validation loss, this will
+        return previously saved results on disk if they already exist, or run
+        the experiment to generate them if they don't.
 
         Args:
             epoch_callback: Callback function at end of each epoch.
 
         Returns:
+            Fully-trained system, with parameters corresponding to best-seen
+              validation loss.
             Statistics dictionary.
         """
+        _, _, learned_system = self.train(epoch_callback)
+
         try:
-            return file_utils.load_evaluation(self.config.storage,
-                                              self.config.run_name)
+            statistics = file_utils.load_evaluation(self.config.storage,
+                                                    self.config.run_name)
         except FileNotFoundError:
-            _, _, learned_system = self.train(epoch_callback)
-            return self._evaluation(learned_system)
+            statistics = self._evaluation(learned_system)
+
+        return learned_system, statistics
