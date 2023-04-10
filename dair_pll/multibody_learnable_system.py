@@ -254,13 +254,13 @@ class MultibodyLearnableSystem(System):
                                                         dim=-1, keepdim=True)
 
         # Calculate "half delassus" based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+        if self.loss_variation_txt == LOSS_POWER:
+            L = torch.linalg.cholesky(M_inv)
+            half_delassus = pbmm(J, L)
+        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
             half_delassus = pbmm(J, M_inv)
         elif self.loss_variation_txt == LOSS_BALANCED:
             half_delassus = pbmm(pbmm(J, M_inv), P)
-        elif self.loss_variation_txt == LOSS_POWER:
-            L = torch.linalg.cholesky(M_inv)
-            half_delassus = pbmm(J, L)
 
         Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
             eps * torch.eye(3 * n_contacts)
@@ -270,7 +270,11 @@ class MultibodyLearnableSystem(System):
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         # Calculate q vectors based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+        if self.loss_variation_txt == LOSS_POWER:
+            q_pred = -pbmm(J, dv.transpose(-1, -2))
+            q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+            q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
             q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
             q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
             q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
@@ -281,10 +285,6 @@ class MultibodyLearnableSystem(System):
             q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
             q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
                           dim=-2))
-        elif self.loss_variation_txt == LOSS_POWER:
-            q_pred = -pbmm(J, dv.transpose(-1, -2))
-            q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
-            q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
 
         q = q_pred + q_comp + q_diss
 
@@ -293,14 +293,14 @@ class MultibodyLearnableSystem(System):
         constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
 
         # Calculate the prediction constant based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+        if self.loss_variation_txt == LOSS_POWER:
+            constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
             constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
         elif self.loss_variation_txt == LOSS_BALANCED:
             balanced_dv = pbmm(dv, P)
             constant_pred = 0.5 * pbmm(balanced_dv,
                                        balanced_dv.transpose(-1, -2))
-        elif self.loss_variation_txt == LOSS_POWER:
-            constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
