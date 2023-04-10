@@ -319,8 +319,9 @@ class SupervisedLearningExperiment(ABC):
         return self.loss_callback(x_past, x_future, system, keep_batch)
 
     def train_epoch(self, data: DataLoader, system: System,
-                    optimizer: Optimizer) -> Tensor:
-        """Train learned model for a single epoch.
+                    optimizer: Optional[Optimizer] = None) -> Tensor:
+        """Train learned model for a single epoch.  Takes gradient steps in the
+        learned parameters if ``optimizer`` is provided.
 
         Args:
             data: Training dataset.
@@ -334,31 +335,17 @@ class SupervisedLearningExperiment(ABC):
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
-            optimizer.zero_grad()
+    
+            if optimizer is not None:
+                optimizer.zero_grad()
+    
             loss = self.batch_loss(x_i, y_i, system)
             losses.append(loss.clone().detach())
-            loss.backward()
-            optimizer.step()
-        avg_loss = cast(Tensor, sum(losses) / len(losses))
-        return avg_loss
 
-    def calculate_loss_no_grad_step(self, data: DataLoader, system: System) \
-        -> Tensor:
-        """Evaluate learned model, without taking any gradient steps.
-
-        Args:
-            data: Training dataset.
-            system: System to be trained.
-
-        Returns:
-            Scalar average training loss observed during evaluation.
-        """
-        losses = []
-        for xy_i in data:
-            x_i: Tensor = xy_i[0]
-            y_i: Tensor = xy_i[1]
-            loss = self.batch_loss(x_i, y_i, system)
-            losses.append(loss.clone().detach())
+            if optimizer is not None:
+                loss.backward()
+                optimizer.step()
+    
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
@@ -593,10 +580,11 @@ class SupervisedLearningExperiment(ABC):
             batch_size=self.config.optimizer_config.batch_size.value,
             shuffle=True)
 
-        # Calculate the training loss before any parameter updates.
+        # Calculate the training loss before any parameter updates.  Calls
+        # ``train_epoch`` without providing an optimizer, so no gradient steps
+        # will be taken.
         learned_system.eval()
-        training_loss = self.calculate_loss_no_grad_step(train_dataloader,
-                                                         learned_system)
+        training_loss = self.train_epoch(train_dataloader, learned_system)
 
         # Terminate if the training state indicates training already finished.
         if training_state.finished_training:
