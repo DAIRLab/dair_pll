@@ -839,7 +839,7 @@ class SupervisedLearningExperiment(ABC):
     def generate_results(
         self,
         epoch_callback: EpochCallbackCallable = default_epoch_callback,
-    ) -> Tuple[Tensor, StatisticsDict]:
+    ) -> Tuple[System, StatisticsDict]:
         r"""Get the final learned model and results/statistics of experiment.
         Along with the model corresponding to best validation loss, this will
         return previously saved results on disk if they already exist, or run
