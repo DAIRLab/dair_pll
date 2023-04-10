@@ -10,8 +10,8 @@ echo "repo at hash {hash}"
 
 if {restart}; then
 	echo "restarting"
-	python {pll_dir}/examples/restart_run.py {storage_folder_name} {run_name} {train_args}
+	PYTHONFAULTHANDLER=1 python {pll_dir}/examples/restart_run.py {storage_folder_name} {run_name} {train_args}
 else
 	echo "train"
-	python {pll_dir}/examples/contactnets_simple.py {storage_folder_name} {run_name} {train_args}
+	PYTHONFAULTHANDLER=1 python {pll_dir}/examples/contactnets_simple.py {storage_folder_name} {run_name} {train_args}
 fi
