@@ -224,9 +224,16 @@ def main(run_name: str = "",
                                best_valid_loss)
         cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
-    # Trains system.
-    experiment.train(
+    # Trains system and saves final results.
+    print(f'\nTraining the model.')
+    learned_system, stats = experiment.generate_results(
         regenerate_callback if regenerate else default_epoch_callback)
+
+    # Save the final urdf.
+    print(f'\nSaving the final learned URDF.')
+    learned_system = cast(MultibodyLearnableSystem, learned_system)
+    learned_system.generate_updated_urdfs()
+    print(f'Done!')
 
 
 @click.command()

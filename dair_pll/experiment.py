@@ -51,6 +51,8 @@ class TrainingState:
     """Value of best validation loss so far."""
     wandb_run_id: Optional[str] = None
     """If using W&B, the ID of the run associated with this experiment."""
+    finished_training: bool = False
+    """Whether training has finished."""
 
 
 TRAIN_SET = 'train'
@@ -317,8 +319,9 @@ class SupervisedLearningExperiment(ABC):
         return self.loss_callback(x_past, x_future, system, keep_batch)
 
     def train_epoch(self, data: DataLoader, system: System,
-                    optimizer: Optimizer) -> Tensor:
-        """Train learned model for a single epoch.
+                    optimizer: Optional[Optimizer] = None) -> Tensor:
+        """Train learned model for a single epoch.  Takes gradient steps in the
+        learned parameters if ``optimizer`` is provided.
 
         Args:
             data: Training dataset.
@@ -332,11 +335,17 @@ class SupervisedLearningExperiment(ABC):
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
-            optimizer.zero_grad()
+    
+            if optimizer is not None:
+                optimizer.zero_grad()
+    
             loss = self.batch_loss(x_i, y_i, system)
             losses.append(loss.clone().detach())
-            loss.backward()
-            optimizer.step()
+
+            if optimizer is not None:
+                loss.backward()
+                optimizer.step()
+    
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
@@ -421,7 +430,7 @@ class SupervisedLearningExperiment(ABC):
         assert self.learning_data_manager is not None
         start_eval_time = time.time()
         statistics = {}
-        if epoch > 0 and (epoch % self.config.full_evaluation_period) == 0:
+        if (epoch % self.config.full_evaluation_period) == 0:
             train_set, valid_set, _ = \
                 self.learning_data_manager.get_updated_trajectory_sets()
             n_train_eval = min(len(train_set.trajectories),
@@ -534,9 +543,6 @@ class SupervisedLearningExperiment(ABC):
             training_state.wandb_run_id = self.wandb_manager.launch()
             self.wandb_manager.log_config(self.config)
 
-        learned_system.eval()
-        self.per_epoch_evaluation(0, learned_system, torch.tensor(0.), 0.)
-        learned_system.train()
         return learned_system, optimizer, training_state
 
     def train(
@@ -574,8 +580,28 @@ class SupervisedLearningExperiment(ABC):
             batch_size=self.config.optimizer_config.batch_size.value,
             shuffle=True)
 
+        # Calculate the training loss before any parameter updates.  Calls
+        # ``train_epoch`` without providing an optimizer, so no gradient steps
+        # will be taken.
+        learned_system.eval()
+        training_loss = self.train_epoch(train_dataloader, learned_system)
+
+        # Terminate if the training state indicates training already finished.
+        if training_state.finished_training:
+            learned_system.load_state_dict(
+                training_state.best_learned_system_state)
+            return training_loss, training_state.best_valid_loss, learned_system
+
+        # Report losses before any parameter updates.
+        if training_state.epoch == 1:
+            training_state.best_valid_loss = self.per_epoch_evaluation(
+                0, learned_system, training_loss, 0.)
+            epoch_callback(0, learned_system, training_loss,
+                           training_state.best_valid_loss)
+
         patience = self.config.optimizer_config.patience
 
+        # Start training loop.
         try:
             while training_state.epoch <= self.config.optimizer_config.epochs:
                 if self.config.data_config.update_dynamically:
@@ -626,6 +652,11 @@ class SupervisedLearningExperiment(ABC):
                     learned_system.state_dict()
                 training_state.optimizer_state = optimizer.state_dict()
                 training_state.epoch += 1
+
+            # Mark training as completed, whether by early stopping or by
+            # reaching the epoch limit.
+            training_state.finished_training = True
+
         finally:
             # this code should execute, even if a program exit is triggered
             # in the above try block.
@@ -781,23 +812,29 @@ class SupervisedLearningExperiment(ABC):
                                    evaluation)
         return evaluation
 
-    def get_results(
+    def generate_results(
         self,
         epoch_callback: EpochCallbackCallable = default_epoch_callback,
-    ) -> StatisticsDict:
-        r"""Gets final results/statistics of experiment. This will return
-        previously saved results on disk if they already exist, or run the
-        experiment to generate them if they don't.
+    ) -> Tuple[System, StatisticsDict]:
+        r"""Get the final learned model and results/statistics of experiment.
+        Along with the model corresponding to best validation loss, this will
+        return previously saved results on disk if they already exist, or run
+        the experiment to generate them if they don't.
 
         Args:
             epoch_callback: Callback function at end of each epoch.
 
         Returns:
+            Fully-trained system, with parameters corresponding to best-seen
+              validation loss.
             Statistics dictionary.
         """
+        _, _, learned_system = self.train(epoch_callback)
+
         try:
-            return file_utils.load_evaluation(self.config.storage,
-                                              self.config.run_name)
+            statistics = file_utils.load_evaluation(self.config.storage,
+                                                    self.config.run_name)
         except FileNotFoundError:
-            _, _, learned_system = self.train(epoch_callback)
-            return self._evaluation(learned_system)
+            statistics = self._evaluation(learned_system)
+
+        return learned_system, statistics
