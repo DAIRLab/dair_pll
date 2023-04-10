@@ -125,7 +125,7 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500            # change this (originally 500)
 PATIENCE = 200       # change this (originally EPOCHS)
 
-WANDB_PROJECT = 'dair_pll-examples'
+WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
 
 
 def main(storage_folder_name: str = "",
@@ -137,7 +137,8 @@ def main(storage_folder_name: str = "",
          regenerate: bool = False,
          dataset_size: int = 512,
          inertia_params: str = '4',
-         true_sys: bool = False):
+         true_sys: bool = False,
+         wandb_project: str = WANDB_DEFAULT_PROJECT):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -236,7 +237,7 @@ def main(storage_folder_name: str = "",
         # full_evaluation_samples=dataset_size,  # use all data for eval
         visualize_learned_geometry=True,
         run_wandb=True,
-        wandb_project=WANDB_PROJECT
+        wandb_project=wandb_project
     )
 
     # Makes experiment.
@@ -338,15 +339,20 @@ def main(storage_folder_name: str = "",
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
+@click.option('--wandb-project',
+              type = str,
+              default=WANDB_DEFAULT_PROJECT,
+              help="what W&B project to save results under.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, contactnets: bool, box: bool, regenerate: bool,
-                 dataset_size: int, inertia_params: str, true_sys: bool):
+                 dataset_size: int, inertia_params: str, true_sys: bool,
+                 wandb_project: str):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, contactnets, box,
-         regenerate, dataset_size, inertia_params, true_sys)
+         regenerate, dataset_size, inertia_params, true_sys, wandb_project)
 
 
 if __name__ == '__main__':

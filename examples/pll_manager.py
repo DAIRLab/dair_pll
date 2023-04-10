@@ -51,6 +51,12 @@ OVERWRITE_RESULTS = [OVERWRITE_DATA_AND_RUNS,
                      OVERWRITE_SINGLE_RUN_KEEP_DATA,
                      OVERWRITE_NOTHING]
 
+# Possible W&B project names.
+WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
+WANDB_PROJECT_LOCAL = 'dair_pll-dev'
+WANDB_PROJECTS = {True: WANDB_PROJECT_LOCAL,
+                  False: WANDB_PROJECT_CLUSTER}
+
 # Possible inertial parameterizations to learn for the elbow system.
 # The options are:
 # 0 - learn no inertial parameters (0 for elbow)
@@ -107,6 +113,7 @@ def create_instance(storage_folder_name: str, run_name: str,
         train_options += ' --box' if box else ' --mesh'
         train_options += ' --regenerate' if regenerate else ' --no-regenerate'
         train_options += ' --true-sys' if true_sys else ' --wrong-sys'
+        train_options += f' --wandb-project={WANDB_PROJECTS[local]}'
 
     script = script.replace('{train_args}', train_options)
 
