@@ -11,6 +11,9 @@ from typing import List, Optional
 
 from dair_pll import file_utils
 
+from dair_pll.multibody_learnable_system import LOSS_INERTIA_AGNOSTIC, \
+    LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
+
 
 # Possible categories for automatic run name generation.
 TEST = 'test'
@@ -64,7 +67,7 @@ WANDB_PROJECTS = {True: WANDB_PROJECT_LOCAL,
 # 2 - learn the locations of all links' centers of mass (6 for elbow)
 # 3 - learn second and beyond masses and all centers of mass (7 for elbow)
 # 4 - learn all parameters except mass of first link (19 for elbow)
-INERTIA_PARAM_CHOICES = ['0', '1', '2', '3', '4']
+INERTIA_PARAM_CHOICES = [str(i) for i in range(5)]
 INERTIA_PARAM_DESCRIPTIONS = [
     'learn no inertial parameters (0 * n_bodies)',
     'learn only masses and not the first mass (n_bodies - 1)',
@@ -83,6 +86,7 @@ def create_instance(storage_folder_name: str, run_name: str,
                     dataset_size: int = 0,
                     local: bool = False,
                     inertia_params: str = '4',
+                    loss_variation: str = '0',
                     true_sys: bool = True,
                     restart: bool = False):
     print(f'Generating experiment {storage_folder_name}/{run_name}')
@@ -108,7 +112,8 @@ def create_instance(storage_folder_name: str, run_name: str,
     if not restart:
         train_options = f' --system={system} --source={source}' + \
                         f' --dataset-size={dataset_size}' + \
-                        f' --inertia-params={inertia_params}'
+                        f' --inertia-params={inertia_params}' + \
+                        f' --loss-variation={loss_variation}'
         train_options += ' --contactnets' if contactnets else ' --prediction'
         train_options += ' --box' if box else ' --mesh'
         train_options += ' --regenerate' if regenerate else ' --no-regenerate'
@@ -227,7 +232,7 @@ def check_for_git_updates(repo):
 
 def experiment_class_command(category: str, run_name: str, system: str,
     contactnets: bool, box: bool, regenerate: bool, local: bool,
-    inertia_params: str, true_sys: bool, overwrite: str,
+    inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
     dataset_exponent: int = None, last_run_num: int = None):
     """Executes main function with argument interface."""
 
@@ -280,7 +285,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     create_instance(storage_folder_name, run_name, system=system, source=source,
                     contactnets=contactnets, box=box, regenerate=regenerate,
                     dataset_size=dataset_size, local=local,
-                    inertia_params=inertia_params, true_sys=true_sys,
+                    inertia_params=inertia_params,
+                    loss_variation=loss_variation, true_sys=true_sys,
                     restart=False)
 
 
@@ -317,6 +323,10 @@ def cli():
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--loss-variation',
+              type=click.Choice(LOSS_VARIATION_NUMBERS),
+              default='0',
+              help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
@@ -326,7 +336,7 @@ def cli():
 def create_command(storage_folder_name: str, run_name: str, system: str,
                    source: str, contactnets: bool, box: bool, regenerate: bool,
                    dataset_size: int, local: bool, inertia_params: str,
-                   true_sys: bool, overwrite: str):
+                   loss_variation: str, true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -334,6 +344,7 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
     check_for_git_updates(repo)
 
     # First, take care of data management and how to keep track of results.
+    assert loss_variation in LOSS_VARIATION_NUMBERS
     assert storage_folder_name is not None
     assert run_name is not None
     assert '-' not in run_name
@@ -374,7 +385,7 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
     # Continue creating PLL instance.
     create_instance(storage_folder_name, run_name, system, source, contactnets,
                     box, regenerate, dataset_size, local, inertia_params,
-                    true_sys, False)
+                    loss_variation, true_sys, False)
 
 
 @cli.command('test')
@@ -400,6 +411,10 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--loss-variation',
+              type=click.Choice(LOSS_VARIATION_NUMBERS),
+              default='0',
+              help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
@@ -408,7 +423,7 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
               default=OVERWRITE_NOTHING)
 def test_command(run_name: str, system: str, contactnets: bool, box: bool,
                  regenerate: bool, local: bool, inertia_params: str,
-                 true_sys: bool, overwrite: str):
+                 loss_variation: str, true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -417,7 +432,8 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
     experiment_class_command('test', run_name, system=system,
                              contactnets=contactnets, box=box,
                              regenerate=regenerate, local=local, 
-                             inertia_params=inertia_params, true_sys=true_sys,
+                             inertia_params=inertia_params,
+                             loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite)
 
 @cli.command('dev')
@@ -443,6 +459,10 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--loss-variation',
+              type=click.Choice(LOSS_VARIATION_NUMBERS),
+              default='0',
+              help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
@@ -451,7 +471,7 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
               default=OVERWRITE_NOTHING)
 def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
                 regenerate: bool, local: bool, inertia_params: str,
-                true_sys: bool, overwrite: str):
+                loss_variation: str, true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -460,7 +480,8 @@ def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
     experiment_class_command('dev', run_name, system=system,
                              contactnets=contactnets, box=box,
                              regenerate=regenerate, local=local, 
-                             inertia_params=inertia_params, true_sys=true_sys,
+                             inertia_params=inertia_params, 
+                             loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite)
 
 
@@ -526,12 +547,16 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--loss-variation',
+              type=click.Choice(LOSS_VARIATION_NUMBERS),
+              default='0',
+              help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
 def sweep_command(sweep_name: str, system: str, contactnets: bool, box: bool,
                   regenerate: bool, local: bool, inertia_params: str,
-                  true_sys: bool):
+                  loss_variation: str, true_sys: bool):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -559,6 +584,7 @@ def sweep_command(sweep_name: str, system: str, contactnets: bool, box: bool,
                                  contactnets=contactnets, box=box,
                                  regenerate=regenerate, local=local, 
                                  inertia_params=inertia_params,
+                                 loss_variation=loss_variation,
                                  true_sys=true_sys,
                                  dataset_exponent=dataset_exponent,
                                  last_run_num=last_run_num,

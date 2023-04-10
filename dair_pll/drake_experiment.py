@@ -19,7 +19,9 @@ from dair_pll.experiment import SupervisedLearningExperiment, \
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import \
-    MultibodyLearnableSystem, W_COMP, W_PEN, W_DISS
+    MultibodyLearnableSystem, W_PRED, W_COMP, W_PEN, W_DISS, \
+    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, \
+    LOSS_VARIATION_NUMBERS
 from dair_pll.system import System, SystemSummary
 
 
@@ -39,6 +41,8 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Whether to use ContactNets or prediction loss."""
     inertia_mode: int = 4
     """What inertial parameters to learn."""
+    loss_variation: str = LOSS_POWER
+    """What loss variation to use."""
 
 
 @dataclass
@@ -187,6 +191,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         return MultibodyLearnableSystem(learnable_config.urdfs,
                                         self.config.data_config.dt,
                                         learnable_config.inertia_mode,
+                                        learnable_config.loss_variation,
                                         output_urdfs_dir=output_dir)
 
     def write_to_tensorboard(self, epoch: int, learned_system: System,
@@ -240,7 +245,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_diss.append(loss_diss.clone().detach())
 
         # Calculate average and scale by hyperparameter weights.
-        avg_loss_pred = cast(Tensor, sum(losses_pred) \
+        avg_loss_pred = W_PRED*cast(Tensor, sum(losses_pred) \
                             / len(losses_pred)).mean()
         avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) \
                             / len(losses_comp)).mean()

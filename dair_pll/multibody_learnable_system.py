@@ -43,6 +43,14 @@ from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
 
 
 
+# Loss variations options
+LOSS_POWER = 'loss_power'
+LOSS_INERTIA_AGNOSTIC = 'loss_inertia_agnostic'
+LOSS_BALANCED = 'loss_balanced'
+LOSS_VARIATIONS = [LOSS_POWER, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED]
+LOSS_VARIATION_NUMBERS = [str(LOSS_VARIATIONS.index(loss_variation)) \
+                          for loss_variation in LOSS_VARIATIONS]
+
 # Some hyperparameters for weight-tuning.
 W_PRED = 1e0   # Suggest not to change this one and just tweak others relative.
 W_COMP = 1e-1
@@ -69,11 +77,13 @@ class MultibodyLearnableSystem(System):
     solver: SAPSolver
     dt: float
     inertia_mode: int
+    loss_variation_txt: str
 
     def __init__(self,
                  init_urdfs: Dict[str, str],
                  dt: float,
                  inertia_mode: int,
+                 loss_variation: int,
                  output_urdfs_dir: Optional[str] = None) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
@@ -90,13 +100,19 @@ class MultibodyLearnableSystem(System):
               inertial parameters the model can learn.  The higher the number
               the more inertial parameters are free to be learned, and 0
               corresponds to learning no inertial parameters.
+            loss_variation: An integer 0, 1, or 2 representing the loss
+              variation to use. 0 indicates power loss, 1 inertia-agnostic, and
+              2 balanced inertia-agnostic.
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
         """
+        assert str(loss_variation) in LOSS_VARIATION_NUMBERS
+
         multibody_terms = MultibodyTerms(init_urdfs, inertia_mode)
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super().__init__(space, integrator)
+        self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
         self.multibody_terms = multibody_terms
         self.init_urdfs = init_urdfs
         self.output_urdfs_dir = output_urdfs_dir
@@ -237,14 +253,14 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        ## inertia-agnostic version
-        # half_delassus = pbmm(J, M_inv)
-        ## balanced version
-        half_delassus = pbmm(pbmm(J, M_inv), P)
-        ## power version
-        # L = torch.linalg.cholesky(M_inv)
-        # half_delassus = pbmm(J, L)
-        ##
+        # Calculate "half delassus" based on loss formulation mode.
+        if self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+            half_delassus = pbmm(J, M_inv)
+        elif self.loss_variation_txt == LOSS_BALANCED:
+            half_delassus = pbmm(pbmm(J, M_inv), P)
+        elif self.loss_variation_txt == LOSS_POWER:
+            L = torch.linalg.cholesky(M_inv)
+            half_delassus = pbmm(J, L)
 
         Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
             eps * torch.eye(3 * n_contacts)
@@ -253,19 +269,22 @@ class MultibodyLearnableSystem(System):
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
-        ## inertia-agnostic version
-        # q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
-        # q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
-        # q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),dim=-2))
-        ## balanced version
-        q_pred = -pbmm(J, pbmm(M_inv, pbmm(pbmm(P, P), dv.transpose(-1, -2))))
-        q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
-        q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),dim=-2))
-        ## power version
-        # q_pred = -pbmm(J, dv.transpose(-1, -2))
-        # q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
-        # q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
-        ##
+        # Calculate q vectors based on loss formulation mode.
+        if self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+            q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+            q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
+            q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
+                          dim=-2))
+        elif self.loss_variation_txt == LOSS_BALANCED:
+            q_pred = -pbmm(J, pbmm(M_inv, pbmm(pbmm(P, P), 
+                                               dv.transpose(-1, -2))))
+            q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
+            q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
+                          dim=-2))
+        elif self.loss_variation_txt == LOSS_POWER:
+            q_pred = -pbmm(J, dv.transpose(-1, -2))
+            q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+            q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
 
         q = q_pred + q_comp + q_diss
 
@@ -273,14 +292,15 @@ class MultibodyLearnableSystem(System):
                             -phi, torch.zeros_like(phi))**2).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
 
-        ## inertia-agnostic version
-        # constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
-        ## balanced version
-        balanced_dv = pbmm(dv, P)
-        constant_pred = 0.5 * pbmm(balanced_dv, balanced_dv.transpose(-1, -2))
-        ## power version
-        # constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
-        ##
+        # Calculate the prediction constant based on loss formulation mode.
+        if self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+            constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
+        elif self.loss_variation_txt == LOSS_BALANCED:
+            balanced_dv = pbmm(dv, P)
+            constant_pred = 0.5 * pbmm(balanced_dv,
+                                       balanced_dv.transpose(-1, -2))
+        elif self.loss_variation_txt == LOSS_POWER:
+            constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.

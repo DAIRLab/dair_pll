@@ -26,7 +26,9 @@ from dair_pll.drake_experiment import \
 from dair_pll.experiment import default_epoch_callback
 from dair_pll.experiment_config import OptimizerConfig
 from dair_pll.hyperparameter import Float, Int
-from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
+from dair_pll.multibody_learnable_system import MultibodyLearnableSystem, \
+    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, \
+    LOSS_VARIATION_NUMBERS
 from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
 from dair_pll.system import System
 
@@ -49,7 +51,7 @@ DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 # 2 - CoMs (3*n_bodies parameters)
 # 3 - CoMs and masses (4*n_bodies - 1 parameters)
 # 4 - all (10*n_bodies - 1 parameters)
-INERTIA_PARAM_CHOICES = ['0', '1', '2', '3', '4']
+INERTIA_PARAM_CHOICES = [str(i) for i in range(5)]
 INERTIA_PARAM_DESCRIPTIONS = [
     'learn no inertial parameters (0 * n_bodies)',
     'learn only masses and not the first mass (n_bodies - 1)',
@@ -137,6 +139,7 @@ def main(storage_folder_name: str = "",
          regenerate: bool = False,
          dataset_size: int = 512,
          inertia_params: str = '4',
+         loss_variation: str = '0',
          true_sys: bool = False,
          wandb_project: str = WANDB_DEFAULT_PROJECT):
     """Execute ContactNets basic example on a system.
@@ -161,8 +164,10 @@ def main(storage_folder_name: str = "",
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith box: {box}' \
          + f'\n\tregenerate: {regenerate}' \
-         + f'\n\tand inertia learning mode: {inertia_params}' \
+         + f'\n\tinertia learning mode: {inertia_params}' \
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
+         + f'\n\tloss variation: {loss_variation}' \
+         + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
 
     simulation = source == SIM_SOURCE
@@ -211,7 +216,8 @@ def main(storage_folder_name: str = "",
         MultibodyLosses.PREDICTION_LOSS
 
     learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params))
+        urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params),
+        loss_variation=int(loss_variation))
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -331,6 +337,10 @@ def main(storage_folder_name: str = "",
               type=click.Choice(INERTIA_PARAM_CHOICES),
               default='4',
               help="what inertia parameters to learn.")
+@click.option('--loss-variation',
+              type=click.Choice(LOSS_VARIATION_NUMBERS),
+              default='0',
+              help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
@@ -340,14 +350,15 @@ def main(storage_folder_name: str = "",
               help="what W&B project to save results under.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, contactnets: bool, box: bool, regenerate: bool,
-                 dataset_size: int, inertia_params: str, true_sys: bool,
-                 wandb_project: str):
+                 dataset_size: int, inertia_params: str, loss_variation: str,
+                 true_sys: bool, wandb_project: str):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, contactnets, box,
-         regenerate, dataset_size, inertia_params, true_sys, wandb_project)
+         regenerate, dataset_size, inertia_params, loss_variation, true_sys,
+         wandb_project)
 
 
 if __name__ == '__main__':

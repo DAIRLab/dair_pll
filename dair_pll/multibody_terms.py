@@ -196,10 +196,6 @@ class LagrangianTerms(Module):
         # the parameter gradient.
         curr_pi_cm[0,0] = orig_m
 
-        # # TEMPORARY:  test if overwriting all masses helps.
-        # orig_ms = orig[:,0].detach()
-        # curr_pi_cm[:,0] = orig_ms
-
         # Overwrite more parameters based on the inertia mode.
         mode = self.inertia_mode_txt
         if mode != 'all':
