@@ -690,7 +690,7 @@ class SupervisedLearningExperiment(ABC):
             if not training_state.finished_training:
                 # Stop SIGINT (Ctrl+C) from exiting during saving.
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
-                print("Saving training state...")
+                print("Saving training state before forced exit...")
                 torch.save(dataclasses.asdict(training_state),
                            checkpoint_filename)
                 signal.signal(signal.SIGINT, signal.SIG_DFL)
