@@ -677,18 +677,23 @@ class SupervisedLearningExperiment(ABC):
                 training_state.epoch += 1
 
             # Mark training as completed, whether by early stopping or by
-            # reaching the epoch limit.
+            # reaching the epoch limit.  First save the training state.
+            print("Saving training state...")
+            torch.save(dataclasses.asdict(training_state), checkpoint_filename)
+            print("Done saving training state.")
             training_state.finished_training = True
 
         finally:
             # this code should execute, even if a program exit is triggered
             # in the above try block.
 
-            # Stop SIGINT (Ctrl+C) from exiting during saving.
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print("Saving training state...")
-            torch.save(dataclasses.asdict(training_state), checkpoint_filename)
-            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            if not training_state.finished_training:
+                # Stop SIGINT (Ctrl+C) from exiting during saving.
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
+                print("Saving training state...")
+                torch.save(dataclasses.asdict(training_state),
+                           checkpoint_filename)
+                signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Reload best parameters.
         learned_system.load_state_dict(training_state.best_learned_system_state)
