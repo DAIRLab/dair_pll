@@ -44,10 +44,12 @@ from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
 
 
 # Loss variations options
+LOSS_PLL_ORIGINAL = 'loss_pll_original'
 LOSS_POWER = 'loss_power'
 LOSS_INERTIA_AGNOSTIC = 'loss_inertia_agnostic'
 LOSS_BALANCED = 'loss_balanced'
-LOSS_VARIATIONS = [LOSS_POWER, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED]
+LOSS_VARIATIONS = [LOSS_PLL_ORIGINAL, LOSS_POWER, LOSS_INERTIA_AGNOSTIC,
+                   LOSS_BALANCED]
 LOSS_VARIATION_NUMBERS = [str(LOSS_VARIATIONS.index(loss_variation)) \
                           for loss_variation in LOSS_VARIATIONS]
 
@@ -254,7 +256,10 @@ class MultibodyLearnableSystem(System):
                                                         dim=-1, keepdim=True)
 
         # Calculate "half delassus" based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_POWER:
+        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
+            L = torch.linalg.cholesky(M_inv)
+            half_delassus = pbmm(J, L)
+        elif self.loss_variation_txt == LOSS_POWER:
             L = torch.linalg.cholesky(M_inv)
             half_delassus = pbmm(J, L)
         elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
@@ -270,7 +275,11 @@ class MultibodyLearnableSystem(System):
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         # Calculate q vectors based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_POWER:
+        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
+            q_pred = -pbmm(J, dv.transpose(-1, -2))
+            q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
+            q_diss = dt*torch.cat((sliding_speeds, sliding_velocities), dim=-2)            
+        elif self.loss_variation_txt == LOSS_POWER:
             q_pred = -pbmm(J, dv.transpose(-1, -2))
             q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
             q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
@@ -293,7 +302,9 @@ class MultibodyLearnableSystem(System):
         constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
 
         # Calculate the prediction constant based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_POWER:
+        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
+            constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        elif self.loss_variation_txt == LOSS_POWER:
             constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
         elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
             constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))

@@ -12,7 +12,8 @@ from typing import List, Optional
 from dair_pll import file_utils
 
 from dair_pll.multibody_learnable_system import LOSS_INERTIA_AGNOSTIC, \
-    LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
+    LOSS_PLL_ORIGINAL, LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, \
+    LOSS_VARIATION_NUMBERS
 
 
 # Possible categories for automatic run name generation.

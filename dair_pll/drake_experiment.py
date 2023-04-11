@@ -20,8 +20,8 @@ from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, W_PRED, W_COMP, W_PEN, W_DISS, \
-    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, \
-    LOSS_VARIATION_NUMBERS
+    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, LOSS_PLL_ORIGINAL, \
+    LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
 from dair_pll.system import System, SystemSummary
 
 
