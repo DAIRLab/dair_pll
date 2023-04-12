@@ -696,7 +696,9 @@ class SupervisedLearningExperiment(ABC):
                 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Reload best parameters.
+        print("Loading best parameters...")
         learned_system.load_state_dict(training_state.best_learned_system_state)
+        print("Done loading best parameters.")
         return training_loss, training_state.best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(
@@ -861,9 +863,13 @@ class SupervisedLearningExperiment(ABC):
         _, _, learned_system = self.train(epoch_callback)
 
         try:
+            print("Loading previously generated statistics...")
             statistics = file_utils.load_evaluation(self.config.storage,
                                                     self.config.run_name)
+            print("Done loading statistics.")
         except FileNotFoundError:
+            print("Generating statistics...")
             statistics = self._evaluation(learned_system)
+            print("Done generating statistics.")
 
         return learned_system, statistics
