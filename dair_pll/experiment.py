@@ -664,12 +664,12 @@ class SupervisedLearningExperiment(ABC):
                 else:
                     training_state.epochs_since_best += 1
 
+                epoch_callback(training_state.epoch, learned_system,
+                               training_loss, training_state.best_valid_loss)
+
                 # Decide to early-stop or not.
                 if training_state.epochs_since_best >= patience:
                     break
-
-                epoch_callback(training_state.epoch, learned_system,
-                               training_loss, training_state.best_valid_loss)
 
                 training_state.current_learned_system_state = \
                     learned_system.state_dict()
@@ -677,23 +677,19 @@ class SupervisedLearningExperiment(ABC):
                 training_state.epoch += 1
 
             # Mark training as completed, whether by early stopping or by
-            # reaching the epoch limit.  First save the training state.
-            print("Saving training state...")
-            torch.save(dataclasses.asdict(training_state), checkpoint_filename)
-            print("Done saving training state.")
+            # reaching the epoch limit.
             training_state.finished_training = True
 
         finally:
             # this code should execute, even if a program exit is triggered
             # in the above try block.
 
-            if not training_state.finished_training:
-                # Stop SIGINT (Ctrl+C) from exiting during saving.
-                signal.signal(signal.SIGINT, signal.SIG_IGN)
-                print("Saving training state before forced exit...")
-                torch.save(dataclasses.asdict(training_state),
-                           checkpoint_filename)
-                signal.signal(signal.SIGINT, signal.SIG_DFL)
+            # Stop SIGINT (Ctrl+C) from exiting during saving.
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            print("Saving training state before forced exit...")
+            torch.save(dataclasses.asdict(training_state),
+                       checkpoint_filename)
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Reload best parameters.
         print("Loading best parameters...")
@@ -863,12 +859,13 @@ class SupervisedLearningExperiment(ABC):
         _, _, learned_system = self.train(epoch_callback)
 
         try:
-            print("Loading previously generated statistics...")
+            print("Looking for previously generated statistics...")
             statistics = file_utils.load_evaluation(self.config.storage,
                                                     self.config.run_name)
             print("Done loading statistics.")
         except FileNotFoundError:
-            print("Generating statistics...")
+            print("Did not find statistics; generating them... (this could " + \
+                  "take several minutes)")
             statistics = self._evaluation(learned_system)
             print("Done generating statistics.")
 
