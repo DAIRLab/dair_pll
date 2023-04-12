@@ -7,6 +7,7 @@ import subprocess
 import time
 import pdb
 import fnmatch
+import wandb
 from typing import List, Optional
 
 from dair_pll import file_utils
@@ -77,6 +78,9 @@ INERTIA_PARAM_DESCRIPTIONS = [
     'learn all parameters (except first mass) (10 * n_bodies - 1)']
 INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
+WANDB_NO_GROUP_MESSAGE = \
+    'echo "Not exporting WANDB_RUN_GROUP since restarting."'
+
 
 def create_instance(storage_folder_name: str, run_name: str,
                     system: str = CUBE_SYSTEM,
@@ -89,8 +93,12 @@ def create_instance(storage_folder_name: str, run_name: str,
                     inertia_params: str = '4',
                     loss_variation: str = '0',
                     true_sys: bool = True,
-                    restart: bool = False):
+                    restart: bool = False,
+                    wandb_group_id: str = None):
     print(f'Generating experiment {storage_folder_name}/{run_name}')
+
+    if wandb_group_id is None:
+        wandb_group_id = '' if restart else wandb.util.generate_id()
 
     base_file = 'startup'
     out_file = f'{base_file}_{storage_folder_name}_{run_name}.bash'
@@ -107,6 +115,7 @@ def create_instance(storage_folder_name: str, run_name: str,
     script = script.replace('{storage_folder_name}', storage_folder_name)
     script = script.replace('{run_name}', run_name)
     script = script.replace('{restart}', 'true' if restart else 'false')
+    script = script.replace('{wandb_group_id}', wandb_group_id)
 
     train_options = ''
     
@@ -234,7 +243,7 @@ def check_for_git_updates(repo):
 def experiment_class_command(category: str, run_name: str, system: str,
     contactnets: bool, box: bool, regenerate: bool, local: bool,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
-    dataset_exponent: int = None, last_run_num: int = None):
+    dataset_exponent: int = None, last_run_num: int = None, number: int = 1):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -259,7 +268,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     if run_name is None:
         if last_run_num is None:
             runs_dir = file_utils.all_runs_dir(storage_name)
-            last_run_num = int(sorted(os.listdir(runs_dir))[-1][2:])
+            last_run_name = sorted(os.listdir(runs_dir))[-1]
+            last_run_num = int(last_run_name.split('-')[0][2:])
         run_name = category[0]
         run_name += 'c' if system==CUBE_SYSTEM else 'e'
         run_name += str(last_run_num+1).zfill(2)
@@ -275,20 +285,30 @@ def experiment_class_command(category: str, run_name: str, system: str,
                              + f'{storage_folder_name}/{run_name}\'' \
                              + f' already taken, continue?'):
             raise RuntimeError('Choose a new run name next time.')
+    elif number > 1 and op.isdir(op.join(storage_name, 'runs', f'{run_name}-0')):
+        raise RuntimeError(f'Found experiment run {storage_folder_name}/' + \
+                           f'{run_name}-0.  Choose a new base name next time.')
 
-    take_care_of_file_management(overwrite, storage_name, run_name)
     dataset_size = 4 if category == TEST else \
                   64 if category == DEV else \
                   2**dataset_exponent
     source = REAL_SOURCE if category == SWEEP else SIM_SOURCE
 
-    # Continue creating PLL instance.
-    create_instance(storage_folder_name, run_name, system=system, source=source,
-                    contactnets=contactnets, box=box, regenerate=regenerate,
-                    dataset_size=dataset_size, local=local,
-                    inertia_params=inertia_params,
-                    loss_variation=loss_variation, true_sys=true_sys,
-                    restart=False)
+    names = [run_name] if number == 0 else \
+            [f'{run_name}-{i}' for i in range(number)]
+    wandb_group_id = None if number == 1 else \
+                     f'{run_name}_{wandb.util.generate_id()}'
+
+    for run_name_i in names:
+        take_care_of_file_management(overwrite, storage_name, run_name_i)
+
+        # Continue creating PLL instance.
+        create_instance(storage_folder_name, run_name_i, system=system,
+                        source=source, contactnets=contactnets, box=box,
+                        regenerate=regenerate, dataset_size=dataset_size,
+                        local=local, inertia_params=inertia_params,
+                        loss_variation=loss_variation, true_sys=true_sys,
+                        restart=False, wandb_group_id=wandb_group_id)
 
 
 @click.group()
@@ -299,6 +319,9 @@ def cli():
 @cli.command('create')
 @click.argument('storage_folder_name')
 @click.argument('run_name')
+@click.option('--number',
+              default=1,
+              help="number of grouped identical experiments to run")
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -334,10 +357,11 @@ def cli():
 @click.option('--overwrite',
               type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
               default=OVERWRITE_NOTHING)
-def create_command(storage_folder_name: str, run_name: str, system: str,
-                   source: str, contactnets: bool, box: bool, regenerate: bool,
-                   dataset_size: int, local: bool, inertia_params: str,
-                   loss_variation: str, true_sys: bool, overwrite: str):
+def create_command(storage_folder_name: str, run_name: str, number: int,
+                   system: str, source: str, contactnets: bool, box: bool,
+                   regenerate: bool, dataset_size: int, local: bool,
+                   inertia_params: str, loss_variation: str, true_sys: bool,
+                   overwrite: str):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -345,6 +369,9 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
     check_for_git_updates(repo)
 
     # First, take care of data management and how to keep track of results.
+    # Check if experiment name was given and if it already exists.  We also
+    # don't want hyphens in the name since that's how the sweep instances
+    # are created.
     assert loss_variation in LOSS_VARIATION_NUMBERS
     assert storage_folder_name is not None
     assert run_name is not None
@@ -359,6 +386,9 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
                              + f'{storage_folder_name}/{run_name}\'' \
                              + f' already taken, continue?'):
             raise RuntimeError('Choose a new run name next time.')
+    elif op.isdir(op.join(storage_name, 'runs', f'{run_name}-0')):
+        raise RuntimeError(f'Found experiment run {storage_folder_name}/' + \
+                           f'{run_name}-0.  Choose a new base name next time.')
     elif op.isdir(storage_name):
         dataset_size_in_folder = file_utils.get_numeric_file_count(
             file_utils.learning_data_dir(storage_name))
@@ -368,31 +398,28 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
                              + f' dataset size, continue?'):
             raise RuntimeError('Choose a new storage name next time.')
 
-    take_care_of_file_management(overwrite, storage_name, run_name)
+    names = [run_name] if number == 0 else \
+            [f'{run_name}-{i}' for i in range(number)]
+    wandb_group_id = None if number == 1 else \
+                     f'{run_name}_{wandb.util.generate_id()}'
 
-    # Check if experiment name was given and if it already exists.  We also
-    # don't want hyphens in the name since that's how the sweep instances
-    # are created.
-    assert storage_folder_name is not None
-    assert '-' not in run_name
-    repo_dir = repo.git.rev_parse("--show-toplevel")
-    storage_name = op.join(repo_dir, 'results', storage_folder_name, run_name)
-    if op.isdir(storage_name):
-        if not click.confirm(f'\nPause!  Experiment name \'' \
-                             + f'{storage_folder_name}/{run_name}\'' \
-                             + f' already taken, continue this run?'):
-            raise RuntimeError('Choose a new name next time.')
+    for run_name_i in names:
+        take_care_of_file_management(overwrite, storage_name, run_name_i)
 
-    # Continue creating PLL instance.
-    create_instance(storage_folder_name, run_name, system, source, contactnets,
-                    box, regenerate, dataset_size, local, inertia_params,
-                    loss_variation, true_sys, False)
+        # Continue creating PLL instance.
+        create_instance(storage_folder_name, run_name_i, system, source,
+                        contactnets, box, regenerate, dataset_size, local,
+                        inertia_params, loss_variation, true_sys, False,
+                        wandb_group_id=wandb_group_id)
 
 
 @cli.command('test')
 @click.option('--run_name',
               type=str,
               default=None)
+@click.option('--number',
+              default=1,
+              help="number of grouped identical experiments to run")
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -422,8 +449,8 @@ def create_command(storage_folder_name: str, run_name: str, system: str,
 @click.option('--overwrite',
               type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
               default=OVERWRITE_NOTHING)
-def test_command(run_name: str, system: str, contactnets: bool, box: bool,
-                 regenerate: bool, local: bool, inertia_params: str,
+def test_command(run_name: str, number: int, system: str, contactnets: bool,
+                 box: bool, regenerate: bool, local: bool, inertia_params: str,
                  loss_variation: str, true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
@@ -435,12 +462,15 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params,
                              loss_variation=loss_variation, true_sys=true_sys,
-                             overwrite=overwrite)
+                             overwrite=overwrite, number=number)
 
 @cli.command('dev')
 @click.option('--run_name',
               type=str,
               default=None)
+@click.option('--number',
+              default=1,
+              help="number of grouped identical experiments to run")
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -470,8 +500,8 @@ def test_command(run_name: str, system: str, contactnets: bool, box: bool,
 @click.option('--overwrite',
               type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
               default=OVERWRITE_NOTHING)
-def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
-                regenerate: bool, local: bool, inertia_params: str,
+def dev_command(run_name: str, number: int, system: str, contactnets: bool,
+                box: bool, regenerate: bool, local: bool, inertia_params: str,
                 loss_variation: str, true_sys: bool, overwrite: str):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
@@ -483,7 +513,7 @@ def dev_command(run_name: str, system: str, contactnets: bool, box: bool,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params, 
                              loss_variation=loss_variation, true_sys=true_sys,
-                             overwrite=overwrite)
+                             overwrite=overwrite, number=number)
 
 
 @cli.command('restart')
@@ -529,6 +559,9 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--sweep_name',
               type=str,
               default=None)
+@click.option('--number',
+              default=1,
+              help="number of grouped identical experiments to run")
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
@@ -555,8 +588,8 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-def sweep_command(sweep_name: str, system: str, contactnets: bool, box: bool,
-                  regenerate: bool, local: bool, inertia_params: str,
+def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
+                  box: bool, regenerate: bool, local: bool, inertia_params: str,
                   loss_variation: str, true_sys: bool):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
@@ -589,7 +622,8 @@ def sweep_command(sweep_name: str, system: str, contactnets: bool, box: bool,
                                  true_sys=true_sys,
                                  dataset_exponent=dataset_exponent,
                                  last_run_num=last_run_num,
-                                 overwrite=OVERWRITE_NOTHING)
+                                 overwrite=OVERWRITE_NOTHING,
+                                 number=number)
 
 
 @cli.command('detach')

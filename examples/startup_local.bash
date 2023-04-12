@@ -12,6 +12,9 @@ if {restart}; then
 	echo "restarting"
 	PYTHONFAULTHANDLER=1 python {pll_dir}/examples/restart_run.py {storage_folder_name} {run_name} {train_args}
 else
+	export WANDB_RUN_GROUP={wandb_group_id};
+	echo "setting wandb run group to {wandb_group_id}"
+
 	echo "train"
 	PYTHONFAULTHANDLER=1 python {pll_dir}/examples/contactnets_simple.py {storage_folder_name} {run_name} {train_args}
 fi

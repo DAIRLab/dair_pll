@@ -20,6 +20,9 @@ if {restart}; then
 	echo "restarting" >> {pll_dir}/logs/start_{run_name}.txt
 	PYTHONUNBUFFERED=1 xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" python {pll_dir}/examples/restart_run.py {storage_folder_name} {run_name} >> {pll_dir}/logs/train_{run_name}.txt
 else
+	export WANDB_RUN_GROUP={wandb_group_id};
+	echo "setting wandb run group to {wandb_group_id}" >> {pll_dir}/logs/start_{run_name}.txt
+
 	echo "train" >> {pll_dir}/logs/start_{run_name}.txt
 	PYTHONUNBUFFERED=1 xvfb-run --server-num="$SLURM_JOBID" --server-args="-screen 0 800x600x24" python {pll_dir}/examples/contactnets_simple.py {storage_folder_name} {run_name} {train_args} >> {pll_dir}/logs/train_{run_name}.txt
 fi
