@@ -247,8 +247,11 @@ class SupervisedLearningExperiment(ABC):
         future = prediction[..., 1:, :]
         return future
 
-    def trajectory_predict(self, x: List[Tensor],
-                           system: System) -> Tuple[List[Tensor], List[Tensor]]:
+    def trajectory_predict(
+            self,
+            x: List[Tensor],
+            system: System,
+            do_detach: bool = False) -> Tuple[List[Tensor], List[Tensor]]:
         """Predict from full lists of trajectories.
 
         Preloads initial conditions from the first ``t_skip + 1`` elements of
@@ -257,6 +260,9 @@ class SupervisedLearningExperiment(ABC):
         Args:
             x: List of ``(T, space.n_x)`` trajectories.
             system: System to run prediction on.
+            do_detach: Whether to detach each prediction from the computation
+              graph; useful for memory management for large groups of
+              trajectories.
 
         Returns:
             List of ``(T - t_skip - 1, space.n_x)`` predicted trajectories.
@@ -272,10 +278,15 @@ class SupervisedLearningExperiment(ABC):
 
         assert system.carry_callback is not None
         carry_0 = system.carry_callback()
-        predictions = [
-            system.simulate(x_0_i, carry_0, horizon_i)[0][..., 1:, :]
-            for x_0_i, horizon_i in zip(x_0, prediction_horizon)
-        ]
+        predictions = []
+        for x_0_i, horizon_i in zip(x_0, prediction_horizon):
+            x_prediction_i, carry_i = system.simulate(x_0_i, carry_0, horizon_i)
+            del carry_i
+            if do_detach:
+                predictions.append(x_prediction_i[..., 1:, :].detach().clone())
+                del x_prediction_i
+            else:
+                predictions.append(x_prediction_i[..., 1:, :])
         return predictions, targets
 
     def prediction_loss(self,
@@ -318,7 +329,9 @@ class SupervisedLearningExperiment(ABC):
         assert self.loss_callback is not None
         return self.loss_callback(x_past, x_future, system, keep_batch)
 
-    def train_epoch(self, data: DataLoader, system: System,
+    def train_epoch(self,
+                    data: DataLoader,
+                    system: System,
                     optimizer: Optional[Optimizer] = None) -> Tensor:
         """Train learned model for a single epoch.  Takes gradient steps in the
         learned parameters if ``optimizer`` is provided.
@@ -335,17 +348,17 @@ class SupervisedLearningExperiment(ABC):
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
-    
+
             if optimizer is not None:
                 optimizer.zero_grad()
-    
+
             loss = self.batch_loss(x_i, y_i, system)
             losses.append(loss.clone().detach())
 
             if optimizer is not None:
                 loss.backward()
                 optimizer.step()
-    
+
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
@@ -537,9 +550,7 @@ class SupervisedLearningExperiment(ABC):
 
             self.wandb_manager = WeightsAndBiasesManager(
                 self.config.run_name, wandb_directory,
-                self.config.wandb_project,
-                training_state.wandb_run_id
-            )
+                self.config.wandb_project, training_state.wandb_run_id)
             training_state.wandb_run_id = self.wandb_manager.launch()
             self.wandb_manager.log_config(self.config)
 
@@ -751,7 +762,7 @@ class SupervisedLearningExperiment(ABC):
                 if system_name == LEARNED_SYSTEM_NAME:
                     trajectories = [t.unsqueeze(0) for t in trajectories]
                 traj_pred, traj_target = self.trajectory_predict(
-                    trajectories, system)
+                    trajectories, system, True)
                 if system_name == LEARNED_SYSTEM_NAME:
                     traj_target = [t.squeeze(0) for t in traj_target]
                     traj_pred = [t.squeeze(0) for t in traj_pred]
@@ -777,7 +788,7 @@ class SupervisedLearningExperiment(ABC):
         summary_stats = {}  # type: StatisticsDict
         for key, stat in stats.items():
             if isinstance(stat, np.ndarray):
-                if len(stats) > 0:
+                if len(stat) > 0:
                     if isinstance(stat[0], float):
                         summary_stats[f'{key}_{AVERAGE_TAG}'] = np.average(stat)
 
