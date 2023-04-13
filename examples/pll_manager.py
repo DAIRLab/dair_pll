@@ -294,7 +294,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                   2**dataset_exponent
     source = REAL_SOURCE if category == SWEEP else SIM_SOURCE
 
-    names = [run_name] if number == 0 else \
+    names = [run_name] if number == 1 else \
             [f'{run_name}-{i}' for i in range(number)]
     wandb_group_id = None if number == 1 else \
                      f'{run_name}_{wandb.util.generate_id()}'
