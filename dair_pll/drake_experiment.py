@@ -305,10 +305,10 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                 init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0)
         return self.true_geom_multibody_system
 
-    def penetration_metric(self, x: Tensor, _x: Tensor) -> Tensor:
+    def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:
         true_geom_system = self.get_true_geometry_multibody_learnable_system()
 
-        phi, _ = true_geom_system.multibody_terms.contact_terms(x)
+        phi, _ = true_geom_system.multibody_terms.contact_terms(x_pred)
         phi = phi.detach().clone()
         return -phi[phi < 0].sum()
 
