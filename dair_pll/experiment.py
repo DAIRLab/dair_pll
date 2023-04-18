@@ -26,7 +26,7 @@ from dair_pll import file_utils
 from dair_pll.dataset_management import ExperimentDataManager, \
     TrajectorySet
 from dair_pll.experiment_config import SupervisedLearningExperimentConfig
-from dair_pll.state_space import StateSpace
+from dair_pll.state_space import StateSpace, FloatingBaseSpace
 from dair_pll.system import System, SystemSummary
 from dair_pll.wandb_manager import WeightsAndBiasesManager
 
@@ -80,10 +80,17 @@ PREDICTED_VELOCITY_SIZE = 'v_plus_squared'
 DELTA_VELOCITY_SIZE = 'delta_v_squared'
 TARGET_NAME = 'target_sample'
 PREDICTION_NAME = 'prediction_sample'
+TRAJECTORY_POSITION_ERROR_NAME = 'pos_int_traj'
+TRAJECTORY_ROTATION_ERROR_NAME = 'angle_int_traj'
+TRAJECTORY_PENETRATION_NAME = 'penetration_int_traj'
 
 AVERAGE_TAG = 'mean'
 
-EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME]
+EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME, 
+    TRAJECTORY_POSITION_ERROR_NAME, TRAJECTORY_ROTATION_ERROR_NAME #,
+    #TRAJECTORY_PENETRATION_NAME  # Removed because need ground truth system to
+                                  # evaluate the true phi.  Could fix later.
+]
 
 
 #:
@@ -780,14 +787,40 @@ class SupervisedLearningExperiment(ABC):
                         to_json(traj_target[:n_saved_trajectories])
                     stats[f'{set_name}_{system_name}_{PREDICTION_NAME}'] = \
                         to_json(traj_pred[:n_saved_trajectories])
+
                 # pylint: disable=E1103
                 trajectory_mse = torch.stack([
                     space.state_square_error(tp, tt)
                     for tp, tt in zip(traj_pred, traj_target)
                 ])
-
                 stats[f'{set_name}_{system_name}_{TRAJECTORY_ERROR_NAME}'] = \
                     to_json(trajectory_mse)
+
+                # Add position and rotation error over trajectory.
+                running_pos_mse = None
+                running_angle_mse = None
+                for space_i in space.spaces:
+                    if isinstance(space_i, FloatingBaseSpace):
+                        pos_mse = torch.stack([
+                            space_i.base_error(tp, tt)
+                            for tp, tt in zip(traj_pred, traj_target)
+                        ])
+                        angle_mse = torch.stack([
+                            space_i.quaternion_error(tp, tt)
+                            for tp, tt in zip(traj_pred, traj_target)
+                        ])
+                        if running_pos_mse == None:
+                            running_pos_mse = pos_mse
+                            running_angle_mse = angle_mse
+                        else:
+                            running_pos_mse += pos_mse
+                            running_angle_mse += angle_mse
+
+                stats[f'{set_name}_{system_name}_{TRAJECTORY_POSITION_ERROR_NAME}'] = \
+                    to_json(running_pos_mse)
+                stats[f'{set_name}_{system_name}_{TRAJECTORY_ROTATION_ERROR_NAME}'] = \
+                    to_json(running_angle_mse)
+
                 aux_comps = space.auxiliary_comparisons()
                 for comp_name in aux_comps:
                     stats[f'{set_name}_{system_name}_{comp_name}'] = to_json([
