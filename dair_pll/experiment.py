@@ -87,9 +87,8 @@ TRAJECTORY_PENETRATION_NAME = 'penetration_int_traj'
 AVERAGE_TAG = 'mean'
 
 EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME, 
-    TRAJECTORY_POSITION_ERROR_NAME, TRAJECTORY_ROTATION_ERROR_NAME #,
-    #TRAJECTORY_PENETRATION_NAME  # Removed because need ground truth system to
-                                  # evaluate the true phi.  Could fix later.
+    TRAJECTORY_POSITION_ERROR_NAME, TRAJECTORY_ROTATION_ERROR_NAME,
+    TRAJECTORY_PENETRATION_NAME
 ]
 
 
@@ -699,6 +698,9 @@ class SupervisedLearningExperiment(ABC):
         print("Done loading best parameters.")
         return training_loss, training_state.best_valid_loss, learned_system
 
+    def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
+        return {}
+
     def evaluate_systems_on_sets(
             self, systems: Dict[str, System],
             sets: Dict[str, TrajectorySet]) -> StatisticsDict:
@@ -823,6 +825,14 @@ class SupervisedLearningExperiment(ABC):
                     to_json(running_pos_mse)
                 stats[f'{set_name}_{system_name}_{TRAJECTORY_ROTATION_ERROR_NAME}'] = \
                     to_json(running_angle_mse)
+
+                extra_metrics = self.extra_metrics()
+                for metric_name in extra_metrics:
+                    stats[f'{set_name}_{system_name}_{metric_name}'] = to_json(
+                        Tensor([
+                        extra_metrics[metric_name](tp, tt)
+                        for tp, tt in zip(traj_pred, traj_target)
+                    ]))
 
                 aux_comps = space.auxiliary_comparisons()
                 for comp_name in aux_comps:

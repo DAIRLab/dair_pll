@@ -3,7 +3,7 @@ import time
 from abc import ABC
 from dataclasses import field, dataclass
 from enum import Enum
-from typing import Optional, cast, Dict
+from typing import Optional, cast, Dict, Callable
 import pdb
 
 import torch
@@ -15,7 +15,8 @@ from dair_pll import vis_utils
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.experiment import SupervisedLearningExperiment, \
-    LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME
+    LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME, \
+    TRAJECTORY_PENETRATION_NAME
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import \
@@ -290,6 +291,31 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                              learned_system).generate_updated_urdfs()
             return DrakeSystem(new_urdfs, self.get_drake_system().dt)
         return None
+
+    def get_true_geometry_multibody_learnable_system(self
+        ) -> MultibodyLearnableSystem:
+
+        has_property = hasattr(self, 'true_geom_multibody_system')
+        if not has_property or self.true_geom_multibody_system is None:
+            oracle_system = self.get_oracle_system()
+            dt = oracle_system.dt
+            urdfs = oracle_system.urdfs
+
+            self.true_geom_multibody_system = MultibodyLearnableSystem(
+                init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0)
+        return self.true_geom_multibody_system
+
+    def penetration_metric(self, x: Tensor, _x: Tensor) -> Tensor:
+        true_geom_system = self.get_true_geometry_multibody_learnable_system()
+
+        phi, _ = true_geom_system.multibody_terms.contact_terms(x)
+        phi = phi.detach().clone()
+        return -phi[phi < 0].sum()
+
+    def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
+        # Calculate penetration metric
+
+        return {TRAJECTORY_PENETRATION_NAME: self.penetration_metric}
 
     def contactnets_loss(self,
                          x_past: Tensor,
