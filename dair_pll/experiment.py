@@ -796,7 +796,10 @@ class SupervisedLearningExperiment(ABC):
                 stats[f'{set_name}_{system_name}_{TRAJECTORY_ERROR_NAME}'] = \
                     to_json(trajectory_mse)
 
-                # Add position and rotation error over trajectory.
+                # Add position and rotation error over trajectory.  TODO this
+                # could be implemented more elegantly; perhaps somewhere else
+                # like in space.auxiliary_comparisons or a child experiment
+                # class like DrakeMultibodyLearnableExperiment.
                 running_pos_mse = None
                 running_angle_mse = None
                 for space_i in space.spaces:
