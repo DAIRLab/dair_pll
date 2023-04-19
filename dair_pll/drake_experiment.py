@@ -308,9 +308,17 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
     def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:
         true_geom_system = self.get_true_geometry_multibody_learnable_system()
 
+        if x_pred.dim() == 1:
+            x_pred = x_pred.unsqueeze(0)
+        assert x_pred.dim() == 2
+        assert x_pred.shape[1] == true_geom_system.space.n_x
+
+        n_steps = x_pred.shape[0]
+
         phi, _ = true_geom_system.multibody_terms.contact_terms(x_pred)
         phi = phi.detach().clone()
-        return -phi[phi < 0].sum()
+        smallest_phis = phi.min(dim=1).values
+        return -smallest_phis[smallest_phis < 0].sum() / n_steps
 
     def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
         # Calculate penetration metric
