@@ -141,7 +141,11 @@ def main(storage_folder_name: str = "",
          inertia_params: str = '4',
          loss_variation: str = '0',
          true_sys: bool = False,
-         wandb_project: str = WANDB_DEFAULT_PROJECT):
+         wandb_project: str = WANDB_DEFAULT_PROJECT,
+         w_pred: float = 1e0,
+         w_comp: float = 1e0,
+         w_diss: float = 1e0,
+         w_pen: float = 1e0):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -155,6 +159,11 @@ def main(storage_folder_name: str = "",
         dataset_size: Number of trajectories for train/val/test.
         inertia_params: What inertial parameters to learn.
         true_sys: Whether to start with the "true" URDF or poor initialization.
+        wandb_project: What W&B project to store results under.
+        w_pred: Weight of prediction term in ContactNets loss.
+        w_comp: Weight of complementarity term in ContactNets loss.
+        w_diss: Weight of dissipation term in ContactNets loss.
+        w_pen: Weight of penetration term in ContactNets loss.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -168,6 +177,8 @@ def main(storage_folder_name: str = "",
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tloss variation: {loss_variation}' \
          + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
+         + f'\n\tloss weights (w_pred, w_comp, w_diss, w_pen): ' \
+         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen})' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
 
     simulation = source == SIM_SOURCE
@@ -217,7 +228,8 @@ def main(storage_folder_name: str = "",
 
     learnable_config = MultibodyLearnableSystemConfig(
         urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params),
-        loss_variation=int(loss_variation))
+        loss_variation=int(loss_variation), w_pred=w_pred, w_comp=w_comp,
+        w_diss=w_diss, w_pen=w_pen)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -349,17 +361,34 @@ def main(storage_folder_name: str = "",
               type = str,
               default=WANDB_DEFAULT_PROJECT,
               help="what W&B project to save results under.")
+@click.option('--w-pred',
+              type=float,
+              default=1e0,
+              help="weight of prediction term in ContactNets loss")
+@click.option('--w-comp',
+              type=float,
+              default=1e0,
+              help="weight of complementarity term in ContactNets loss")
+@click.option('--w-diss',
+              type=float,
+              default=1e0,
+              help="weight of dissipation term in ContactNets loss")
+@click.option('--w-pen',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, contactnets: bool, box: bool, regenerate: bool,
                  dataset_size: int, inertia_params: str, loss_variation: str,
-                 true_sys: bool, wandb_project: str):
+                 true_sys: bool, wandb_project: str, w_pred: float,
+                 w_comp: float, w_diss: float, w_pen: float):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, contactnets, box,
          regenerate, dataset_size, inertia_params, loss_variation, true_sys,
-         wandb_project)
+         wandb_project, w_pred, w_comp, w_diss, w_pen)
 
 
 if __name__ == '__main__':

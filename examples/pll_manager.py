@@ -94,7 +94,11 @@ def create_instance(storage_folder_name: str, run_name: str,
                     loss_variation: str = '0',
                     true_sys: bool = True,
                     restart: bool = False,
-                    wandb_group_id: str = None):
+                    wandb_group_id: str = None,
+                    w_pred: float = 1e0,
+                    w_comp: float = 1e0,
+                    w_diss: float = 1e0,
+                    w_pen: float = 1e0):
     print(f'Generating experiment {storage_folder_name}/{run_name}')
 
     if wandb_group_id is None:
@@ -129,6 +133,12 @@ def create_instance(storage_folder_name: str, run_name: str,
         train_options += ' --regenerate' if regenerate else ' --no-regenerate'
         train_options += ' --true-sys' if true_sys else ' --wrong-sys'
         train_options += f' --wandb-project={WANDB_PROJECTS[local]}'
+
+        if contactnets:
+            train_options += f' --w-pred={w_pred}'
+            train_options += f' --w-comp={w_comp}'
+            train_options += f' --w-diss={w_diss}'
+            train_options += f' --w-pen={w_pen}'
 
     script = script.replace('{train_args}', train_options)
 
@@ -243,6 +253,7 @@ def check_for_git_updates(repo):
 def experiment_class_command(category: str, run_name: str, system: str,
     contactnets: bool, box: bool, regenerate: bool, local: bool,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
+    w_pred: float, w_comp: float, w_diss: float, w_pen: float,
     dataset_exponent: int = None, last_run_num: int = None, number: int = 1):
     """Executes main function with argument interface."""
 
@@ -308,7 +319,9 @@ def experiment_class_command(category: str, run_name: str, system: str,
                         regenerate=regenerate, dataset_size=dataset_size,
                         local=local, inertia_params=inertia_params,
                         loss_variation=loss_variation, true_sys=true_sys,
-                        restart=False, wandb_group_id=wandb_group_id)
+                        restart=False, wandb_group_id=wandb_group_id,
+                        w_pred=w_pred, w_comp=w_comp, w_diss=w_diss,
+                        w_pen=w_pen)
 
 
 @click.group()
@@ -357,11 +370,28 @@ def cli():
 @click.option('--overwrite',
               type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
               default=OVERWRITE_NOTHING)
+@click.option('--w-pred',
+              type=float,
+              default=1e0,
+              help="weight of prediction term in ContactNets loss")
+@click.option('--w-comp',
+              type=float,
+              default=1e0,
+              help="weight of complementarity term in ContactNets loss")
+@click.option('--w-diss',
+              type=float,
+              default=1e0,
+              help="weight of dissipation term in ContactNets loss")
+@click.option('--w-pen',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
 def create_command(storage_folder_name: str, run_name: str, number: int,
                    system: str, source: str, contactnets: bool, box: bool,
                    regenerate: bool, dataset_size: int, local: bool,
                    inertia_params: str, loss_variation: str, true_sys: bool,
-                   overwrite: str):
+                   overwrite: str, w_pred: float, w_comp: float,
+                   w_diss: float, w_pen: float):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -410,7 +440,8 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
         create_instance(storage_folder_name, run_name_i, system, source,
                         contactnets, box, regenerate, dataset_size, local,
                         inertia_params, loss_variation, true_sys, False,
-                        wandb_group_id=wandb_group_id)
+                        wandb_group_id=wandb_group_id, w_pred=w_pred,
+                        w_comp=w_comp, w_diss=w_diss, w_pen=w_pen)
 
 
 @cli.command('test')
@@ -449,9 +480,26 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
 @click.option('--overwrite',
               type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
               default=OVERWRITE_NOTHING)
+@click.option('--w-pred',
+              type=float,
+              default=1e0,
+              help="weight of prediction term in ContactNets loss")
+@click.option('--w-comp',
+              type=float,
+              default=1e0,
+              help="weight of complementarity term in ContactNets loss")
+@click.option('--w-diss',
+              type=float,
+              default=1e0,
+              help="weight of dissipation term in ContactNets loss")
+@click.option('--w-pen',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
 def test_command(run_name: str, number: int, system: str, contactnets: bool,
                  box: bool, regenerate: bool, local: bool, inertia_params: str,
-                 loss_variation: str, true_sys: bool, overwrite: str):
+                 loss_variation: str, true_sys: bool, overwrite: str,
+                 w_pred: float, w_comp: float, w_diss: float, w_pen: float):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -462,7 +510,8 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params,
                              loss_variation=loss_variation, true_sys=true_sys,
-                             overwrite=overwrite, number=number)
+                             overwrite=overwrite, number=number, w_pred=w_pred,
+                             w_comp=w_comp, w_diss=w_diss, w_pen=w_pen)
 
 @cli.command('dev')
 @click.option('--run_name',
@@ -500,9 +549,26 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
 @click.option('--overwrite',
               type=click.Choice(OVERWRITE_RESULTS, case_sensitive=True),
               default=OVERWRITE_NOTHING)
+@click.option('--w-pred',
+              type=float,
+              default=1e0,
+              help="weight of prediction term in ContactNets loss")
+@click.option('--w-comp',
+              type=float,
+              default=1e0,
+              help="weight of complementarity term in ContactNets loss")
+@click.option('--w-diss',
+              type=float,
+              default=1e0,
+              help="weight of dissipation term in ContactNets loss")
+@click.option('--w-pen',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
 def dev_command(run_name: str, number: int, system: str, contactnets: bool,
                 box: bool, regenerate: bool, local: bool, inertia_params: str,
-                loss_variation: str, true_sys: bool, overwrite: str):
+                loss_variation: str, true_sys: bool, overwrite: str,
+                w_pred: float, w_comp: float, w_diss: float, w_pen: float):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -513,7 +579,8 @@ def dev_command(run_name: str, number: int, system: str, contactnets: bool,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params, 
                              loss_variation=loss_variation, true_sys=true_sys,
-                             overwrite=overwrite, number=number)
+                             overwrite=overwrite, number=number, w_pred=w_pred,
+                             w_comp=w_comp, w_diss=w_diss, w_pen=w_pen)
 
 
 @cli.command('restart')
@@ -588,9 +655,26 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
+@click.option('--w-pred',
+              type=float,
+              default=1e0,
+              help="weight of prediction term in ContactNets loss")
+@click.option('--w-comp',
+              type=float,
+              default=1e0,
+              help="weight of complementarity term in ContactNets loss")
+@click.option('--w-diss',
+              type=float,
+              default=1e0,
+              help="weight of dissipation term in ContactNets loss")
+@click.option('--w-pen',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
 def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                   box: bool, regenerate: bool, local: bool, inertia_params: str,
-                  loss_variation: str, true_sys: bool):
+                  loss_variation: str, true_sys: bool, w_pred: float,
+                  w_comp: float, w_diss: float, w_pen: float):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -623,7 +707,8 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                                  dataset_exponent=dataset_exponent,
                                  last_run_num=last_run_num,
                                  overwrite=OVERWRITE_NOTHING,
-                                 number=number)
+                                 number=number, w_pred=w_pred, w_comp=w_comp,
+                                 w_diss=w_diss, w_pen=w_pen)
 
 
 @cli.command('detach')

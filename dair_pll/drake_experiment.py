@@ -20,9 +20,8 @@ from dair_pll.experiment import SupervisedLearningExperiment, \
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import \
-    MultibodyLearnableSystem, W_PRED, W_COMP, W_PEN, W_DISS, \
-    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, LOSS_PLL_ORIGINAL, \
-    LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
+    MultibodyLearnableSystem, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
+    LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
 from dair_pll.system import System, SystemSummary
 
 
@@ -44,6 +43,14 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """What inertial parameters to learn."""
     loss_variation: str = LOSS_POWER
     """What loss variation to use."""
+    w_pred: float = 1.0
+    """Weight of prediction term in ContactNets loss (suggested keep at 1.0)."""
+    w_comp: float = 1e0  #1e-1
+    """Weight of complementarity term in ContactNets loss."""
+    w_diss: float = 1e0
+    """Weight of dissipation term in ContactNets loss."""
+    w_pen: float = 1e0  #1e1
+    """Weight of penetration term in ContactNets loss."""
 
 
 @dataclass
@@ -193,6 +200,10 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                         self.config.data_config.dt,
                                         learnable_config.inertia_mode,
                                         learnable_config.loss_variation,
+                                        w_pred = learnable_config.w_pred,
+                                        w_comp = learnable_config.w_comp,
+                                        w_diss = learnable_config.w_diss,
+                                        w_pen = learnable_config.w_pen,
                                         output_urdfs_dir=output_dir)
 
     def write_to_tensorboard(self, epoch: int, learned_system: System,
@@ -246,13 +257,17 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_diss.append(loss_diss.clone().detach())
 
         # Calculate average and scale by hyperparameter weights.
-        avg_loss_pred = W_PRED*cast(Tensor, sum(losses_pred) \
+        w_pred = self.learnable_config.w_pred
+        w_comp = self.learnable_config.w_comp
+        w_diss = self.learnable_config.w_diss
+        w_pen = self.learnable_config.w_pen
+        avg_loss_pred = w_pred*cast(Tensor, sum(losses_pred) \
                             / len(losses_pred)).mean()
-        avg_loss_comp = W_COMP*cast(Tensor, sum(losses_comp) \
+        avg_loss_comp = w_comp*cast(Tensor, sum(losses_comp) \
                             / len(losses_comp)).mean()
-        avg_loss_pen = W_PEN*cast(Tensor, sum(losses_pen) \
+        avg_loss_pen = w_pen*cast(Tensor, sum(losses_pen) \
                             / len(losses_pen)).mean()
-        avg_loss_diss = W_DISS*cast(Tensor, sum(losses_diss) \
+        avg_loss_diss = w_diss*cast(Tensor, sum(losses_diss) \
                             / len(losses_diss)).mean()
 
         avg_loss_total = torch.sum(avg_loss_pred + avg_loss_comp + \
@@ -302,7 +317,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             urdfs = oracle_system.urdfs
 
             self.true_geom_multibody_system = MultibodyLearnableSystem(
-                init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0)
+                init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
+                w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0)
         return self.true_geom_multibody_system
 
     def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:

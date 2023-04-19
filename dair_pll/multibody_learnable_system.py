@@ -53,12 +53,6 @@ LOSS_VARIATIONS = [LOSS_PLL_ORIGINAL, LOSS_POWER, LOSS_INERTIA_AGNOSTIC,
 LOSS_VARIATION_NUMBERS = [str(LOSS_VARIATIONS.index(loss_variation)) \
                           for loss_variation in LOSS_VARIATIONS]
 
-# Some hyperparameters for weight-tuning.
-W_PRED = 1e0   # Suggest not to change this one and just tweak others relative.
-W_COMP = 1e-1
-W_DISS = 1e0
-W_PEN = 1e1
-
 # Scaling factors to equalize translation and rotation errors.
 # For rotation versus linear scaling:  penalize 0.1 meters same as 90 degrees.
 ROTATION_SCALING = 0.2/torch.pi
@@ -78,7 +72,6 @@ class MultibodyLearnableSystem(System):
     visualization_system: Optional[DrakeSystem]
     solver: SAPSolver
     dt: float
-    inertia_mode: int
     loss_variation_txt: str
 
     def __init__(self,
@@ -86,6 +79,10 @@ class MultibodyLearnableSystem(System):
                  dt: float,
                  inertia_mode: int,
                  loss_variation: int,
+                 w_pred: float,
+                 w_comp: float,
+                 w_diss: float,
+                 w_pen: float,
                  output_urdfs_dir: Optional[str] = None) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
@@ -123,6 +120,10 @@ class MultibodyLearnableSystem(System):
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
+        self.w_pred = w_pred
+        self.w_comp = w_comp
+        self.w_diss = w_diss
+        self.w_pen = w_pen
 
     def generate_updated_urdfs(self) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
@@ -174,8 +175,8 @@ class MultibodyLearnableSystem(System):
         loss_pred, loss_comp, loss_pen, loss_diss = \
             self.calculate_contactnets_loss_terms(x, u, x_plus)
 
-        loss = (W_PRED * loss_pred) + (W_COMP * loss_comp) + \
-               (W_PEN * loss_pen) + (W_DISS * loss_diss)
+        loss = (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
+               (self.w_pen * loss_pen) + (self.w_diss * loss_diss)
 
         return loss
 
