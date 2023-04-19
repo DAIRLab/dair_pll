@@ -9,8 +9,8 @@
 #SBATCH --output={pll_dir}/logs/slurm_{run_name}.txt
 
 echo "display" >> {pll_dir}/logs/start_{run_name}.txt
-source {pll_dir}/pll_env/bin/activate;
-export PYTHONPATH={pll_dir};
+source /mnt/kostas-graid/sw/envs/bibit/pll_env/bin/activate;
+export PYTHONPATH=/mnt/kostas-graid/sw/envs/bibit:{pll_dir};
 export PLL_EXPERIMENT={run_name};
 
 
