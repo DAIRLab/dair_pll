@@ -19,6 +19,7 @@ from dair_pll.experiment import SupervisedLearningExperiment, \
     TRAJECTORY_PENETRATION_NAME
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
+from dair_pll.hyperparameter import Float
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
     LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
@@ -45,11 +46,11 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """What loss variation to use."""
     w_pred: float = 1.0
     """Weight of prediction term in ContactNets loss (suggested keep at 1.0)."""
-    w_comp: float = 1e0  #1e-1
+    w_comp: Float = Float(1e0, log=True)  #1e-1
     """Weight of complementarity term in ContactNets loss."""
-    w_diss: float = 1e0
+    w_diss: Float = Float(1e0, log=True)
     """Weight of dissipation term in ContactNets loss."""
-    w_pen: float = 1e0  #1e1
+    w_pen: Float = Float(1e0, log=True)  #1e1
     """Weight of penetration term in ContactNets loss."""
 
 
@@ -201,9 +202,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                         learnable_config.inertia_mode,
                                         learnable_config.loss_variation,
                                         w_pred = learnable_config.w_pred,
-                                        w_comp = learnable_config.w_comp,
-                                        w_diss = learnable_config.w_diss,
-                                        w_pen = learnable_config.w_pen,
+                                        w_comp = learnable_config.w_comp.value,
+                                        w_diss = learnable_config.w_diss.value,
+                                        w_pen = learnable_config.w_pen.value,
                                         output_urdfs_dir=output_dir)
 
     def write_to_tensorboard(self, epoch: int, learned_system: System,

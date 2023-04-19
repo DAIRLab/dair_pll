@@ -126,6 +126,7 @@ ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500            # change this (originally 500)
 PATIENCE = 200       # change this (originally EPOCHS)
+DEFAULT_LOSS_WEIGHT_RANGE = (1e-2, 1e2)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
 
@@ -228,8 +229,10 @@ def main(storage_folder_name: str = "",
 
     learnable_config = MultibodyLearnableSystemConfig(
         urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params),
-        loss_variation=int(loss_variation), w_pred=w_pred, w_comp=w_comp,
-        w_diss=w_diss, w_pen=w_pen)
+        loss_variation=int(loss_variation), w_pred=w_pred,
+        w_comp=Float(w_comp, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
+        w_diss=Float(w_diss, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
+        w_pen=Float(w_pen, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE))
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
