@@ -21,7 +21,8 @@ from dair_pll.multibody_learnable_system import LOSS_INERTIA_AGNOSTIC, \
 TEST = 'test'
 DEV = 'dev'
 SWEEP = 'sweep'
-CATEGORIES = [TEST, DEV, SWEEP]
+HYPERPARAMETER = 'hyperparam'
+CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER]
 
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
@@ -40,7 +41,9 @@ RUN_PREFIX_TO_FOLDER_NAME = {'tc': f'{TEST}_{CUBE_SYSTEM}',
                              'dc': f'{DEV}_{CUBE_SYSTEM}',
                              'de': f'{DEV}_{ELBOW_SYSTEM}',
                              'sc': f'{SWEEP}_{CUBE_SYSTEM}',
-                             'se': f'{SWEEP}_{ELBOW_SYSTEM}'}
+                             'se': f'{SWEEP}_{ELBOW_SYSTEM}',
+                             'hc': f'{HYPERPARAMETER}_{CUBE_SYSTEM}',
+                             'he': f'{HYPERPARAMETER}_{ELBOW_SYSTEM}'}
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -80,6 +83,9 @@ INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 WANDB_NO_GROUP_MESSAGE = \
     'echo "Not exporting WANDB_RUN_GROUP since restarting."'
+
+# Weights to try in hyperparameter search
+HYPERPARAMETER_WEIGHTS = [1e-2, 1e-1, 1e0, 1e1, 1e2]
 
 
 def create_instance(storage_folder_name: str, run_name: str,
@@ -155,8 +161,8 @@ def create_instance(storage_folder_name: str, run_name: str,
 
     train_cmd = ['bash', out_file] if local else ['sbatch', out_file]
     print(f'Creating and queuing {out_file}')
-    ec = subprocess.run(train_cmd)
-    print(f'Queued file.')
+    # ec = subprocess.run(train_cmd)
+    # print(f'Queued file.')
 
 
 def get_slurm_from_instances(instances: List[str], prefix='pll'):
@@ -262,7 +268,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
         assert dataset_exponent in range(2, 10)
 
     def get_run_name_pattern(category, system):
-        run_name_pattern = category[0]  # t for test, d for dev, s for sweep
+        run_name_pattern = category[0]  # t/d/s/h for test/dev/sweep/hyperparam
         run_name_pattern += system[0]   # c for cube or e for elbow
         run_name_pattern += '??'
         run_name_pattern += '-?' if category==SWEEP else ''
@@ -302,6 +308,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
 
     dataset_size = 4 if category == TEST else \
                   64 if category == DEV else \
+                  512 if category == HYPERPARAMETER else \
                   2**dataset_exponent
     source = REAL_SOURCE if category == SWEEP else SIM_SOURCE
 
@@ -709,6 +716,84 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                                  overwrite=OVERWRITE_NOTHING,
                                  number=number, w_pred=w_pred, w_comp=w_comp,
                                  w_diss=w_diss, w_pen=w_pen)
+
+
+
+@cli.command('hyperparam')
+@click.option('--hp_name',
+              type=str,
+              default=None)
+@click.option('--number',
+              default=1,
+              help="number of grouped identical experiments to run")
+@click.option('--system',
+              type=click.Choice(SYSTEMS, case_sensitive=True),
+              default=CUBE_SYSTEM)
+@click.option('--contactnets/--prediction',
+              default=True,
+              help="whether to train on ContactNets or prediction loss.")
+@click.option('--box/--mesh',
+              default=True,
+              help="whether to represent geometry as box or mesh.")
+@click.option('--regenerate/--no-regenerate',
+              default=False,
+              help="whether to save updated URDF's each epoch or not.")
+@click.option('--local/--cluster',
+              default=False,
+              help="whether running script locally or on cluster.")
+@click.option('--inertia-params',
+              type=click.Choice(INERTIA_PARAM_CHOICES),
+              default='4',
+              help="what inertia parameters to learn.")
+@click.option('--true-sys/--wrong-sys',
+              default=False,
+              help="whether to start with correct or poor URDF.")
+def hyperparameter_command(hp_name: str, number: int, system: str,
+                           contactnets: bool, box: bool, regenerate: bool,
+                           local: bool, inertia_params: str, true_sys: bool):
+    """Starts a series of instances, sweeping over dataset size."""
+    assert hp_name is None or '-' not in hp_name
+
+    # Check if git repository has uncommitted changes.
+    repo = git.Repo(search_parent_directories=True)
+    check_for_git_updates(repo)
+
+    # First determine what run number to use so they are consistent for each
+    # dataset size.
+    last_run_num = -1
+    repo = git.Repo(search_parent_directories=True)
+    repo_dir = repo.git.rev_parse("--show-toplevel")
+    storage_name = op.join(repo_dir, 'results', f'hyperparam_{system}')
+
+    if op.isdir(storage_name):
+        runs_dir = file_utils.all_runs_dir(storage_name)
+        runs_list = sorted(os.listdir(runs_dir))
+        last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
+
+    # Search over weights for 3 of the loss components for loss variations 1, 2,
+    # and 3 (leave out 0 since it's a scaled version of 1).
+    w_pred = 1e0
+    for w_comp in HYPERPARAMETER_WEIGHTS:
+        for w_diss in HYPERPARAMETER_WEIGHTS:
+            for w_pen in HYPERPARAMETER_WEIGHTS:
+                if w_comp == w_diss == w_pen == 1e0:
+                    # Already ran many tests with (1, 1, 1, 1) weights, so can
+                    # skip repeating this hyperparameter set.
+                    continue
+
+                for loss_variation in [1, 2, 3]:
+                    experiment_class_command(
+                        'hyperparam', hp_name, system=system,
+                        contactnets=contactnets, box=box,
+                        regenerate=regenerate, local=local,
+                        inertia_params=inertia_params,
+                        loss_variation=loss_variation, true_sys=true_sys,
+                        dataset_exponent=dataset_exponent,
+                        last_run_num=last_run_num, overwrite=OVERWRITE_NOTHING,
+                        number=number, w_pred=w_pred, w_comp=w_comp,
+                        w_diss=w_diss, w_pen=w_pen)
+                    last_run_num += 1
+
 
 
 @cli.command('detach')

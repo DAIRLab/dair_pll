@@ -124,8 +124,8 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-EPOCHS = 500            # change this (originally 500)
-PATIENCE = 200       # change this (originally EPOCHS)
+EPOCHS = 200            # change this (originally 500)
+PATIENCE = 100       # change this (originally EPOCHS)
 DEFAULT_LOSS_WEIGHT_RANGE = (1e-2, 1e2)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
