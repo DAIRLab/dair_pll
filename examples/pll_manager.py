@@ -161,8 +161,8 @@ def create_instance(storage_folder_name: str, run_name: str,
 
     train_cmd = ['bash', out_file] if local else ['sbatch', out_file]
     print(f'Creating and queuing {out_file}')
-    # ec = subprocess.run(train_cmd)
-    # print(f'Queued file.')
+    ec = subprocess.run(train_cmd)
+    print(f'Queued file.')
 
 
 def get_slurm_from_instances(instances: List[str], prefix='pll'):
@@ -270,7 +270,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
     def get_run_name_pattern(category, system):
         run_name_pattern = category[0]  # t/d/s/h for test/dev/sweep/hyperparam
         run_name_pattern += system[0]   # c for cube or e for elbow
-        run_name_pattern += '??'
+        run_name_pattern += '????' if category==HYPERPARAMETER else '??'
         run_name_pattern += '-?' if category==SWEEP else ''
         return run_name_pattern
 
@@ -283,13 +283,14 @@ def experiment_class_command(category: str, run_name: str, system: str,
     storage_name = op.join(repo_dir, 'results', storage_folder_name)
     
     if run_name is None:
+        nums_to_display = 4 if category == HYPERPARAMETER else 2
         if last_run_num is None:
             runs_dir = file_utils.all_runs_dir(storage_name)
             last_run_name = sorted(os.listdir(runs_dir))[-1]
             last_run_num = int(last_run_name.split('-')[0][2:])
         run_name = category[0]
         run_name += 'c' if system==CUBE_SYSTEM else 'e'
-        run_name += str(last_run_num+1).zfill(2)
+        run_name += str(last_run_num+1).zfill(nums_to_display)
         run_name += f'-{dataset_exponent}' if category==SWEEP else ''
 
     run_name_pattern = get_run_name_pattern(category, system)
@@ -768,7 +769,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str,
     if op.isdir(storage_name):
         runs_dir = file_utils.all_runs_dir(storage_name)
         runs_list = sorted(os.listdir(runs_dir))
-        last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
+        last_run_num = max(last_run_num, int(runs_list[-1][2:6]))
 
     # Search over weights for 3 of the loss components for loss variations 1, 2,
     # and 3 (leave out 0 since it's a scaled version of 1).
@@ -788,7 +789,6 @@ def hyperparameter_command(hp_name: str, number: int, system: str,
                         regenerate=regenerate, local=local,
                         inertia_params=inertia_params,
                         loss_variation=loss_variation, true_sys=true_sys,
-                        dataset_exponent=dataset_exponent,
                         last_run_num=last_run_num, overwrite=OVERWRITE_NOTHING,
                         number=number, w_pred=w_pred, w_comp=w_comp,
                         w_diss=w_diss, w_pen=w_pen)
