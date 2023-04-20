@@ -436,7 +436,7 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
                              + f' dataset size, continue?'):
             raise RuntimeError('Choose a new storage name next time.')
 
-    names = [run_name] if number == 0 else \
+    names = [run_name] if number == 1 else \
             [f'{run_name}-{i}' for i in range(number)]
     wandb_group_id = None if number == 1 else \
                      f'{run_name}_{wandb.util.generate_id()}'

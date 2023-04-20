@@ -294,6 +294,7 @@ def main(storage_folder_name: str = "",
 
         generator = ExperimentDatasetGenerator(experiment.get_base_system(),
                                                data_generation_config)
+        print(f'Generating (or getting existing) simulation trajectories.\n')
         generator.generate()
 
     else:
