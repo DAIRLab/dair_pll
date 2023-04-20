@@ -108,7 +108,8 @@ def create_instance(storage_folder_name: str, run_name: str,
     print(f'Generating experiment {storage_folder_name}/{run_name}')
 
     if wandb_group_id is None:
-        wandb_group_id = '' if restart else wandb.util.generate_id()
+        wandb_group_id = '' if restart else \
+                         f'{run_name}_{wandb.util.generate_id()}'
 
     base_file = 'startup'
     out_file = f'{base_file}_{storage_folder_name}_{run_name}.bash'
