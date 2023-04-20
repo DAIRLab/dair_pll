@@ -769,7 +769,8 @@ def hyperparameter_command(hp_name: str, number: int, system: str,
     if op.isdir(storage_name):
         runs_dir = file_utils.all_runs_dir(storage_name)
         runs_list = sorted(os.listdir(runs_dir))
-        last_run_num = max(last_run_num, int(runs_list[-1][2:6]))
+        if len(runs_list) > 0:
+            last_run_num = max(last_run_num, int(runs_list[-1][2:6]))
 
     # Search over weights for 3 of the loss components for loss variations 1, 2,
     # and 3 (leave out 0 since it's a scaled version of 1).
