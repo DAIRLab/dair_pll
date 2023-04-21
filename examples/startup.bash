@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --gpus=0
 #SBATCH --mem-per-cpu=10G
-#SBATCH --qos=mp-med
-#SBATCH --partition=posa-compute
-#SBATCH --account mp-account
+##SBATCH --qos=mp-med
+##SBATCH --partition=posa-compute
+##SBATCH --account mp-account
 #SBATCH --time=12:00:00
 #SBATCH --job-name=pll_{run_name}
 #SBATCH --output={pll_dir}/logs/slurm_{run_name}.txt
