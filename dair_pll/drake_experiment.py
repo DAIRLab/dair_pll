@@ -22,7 +22,8 @@ from dair_pll.experiment_config import SystemConfig, \
 from dair_pll.hyperparameter import Float
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
-    LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
+    LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, \
+    LOSS_VARIATION_NUMBERS
 from dair_pll.system import System, SystemSummary
 
 

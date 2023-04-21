@@ -48,8 +48,9 @@ LOSS_PLL_ORIGINAL = 'loss_pll_original'
 LOSS_POWER = 'loss_power'
 LOSS_INERTIA_AGNOSTIC = 'loss_inertia_agnostic'
 LOSS_BALANCED = 'loss_balanced'
+LOSS_CONTACT_VELOCITY = 'loss_contact_velocity'
 LOSS_VARIATIONS = [LOSS_PLL_ORIGINAL, LOSS_POWER, LOSS_INERTIA_AGNOSTIC,
-                   LOSS_BALANCED]
+                   LOSS_BALANCED, LOSS_CONTACT_VELOCITY]
 LOSS_VARIATION_NUMBERS = [str(LOSS_VARIATIONS.index(loss_variation)) \
                           for loss_variation in LOSS_VARIATIONS]
 
@@ -99,9 +100,10 @@ class MultibodyLearnableSystem(System):
               inertial parameters the model can learn.  The higher the number
               the more inertial parameters are free to be learned, and 0
               corresponds to learning no inertial parameters.
-            loss_variation: An integer 0, 1, or 2 representing the loss
-              variation to use. 0 indicates power loss, 1 inertia-agnostic, and
-              2 balanced inertia-agnostic.
+            loss_variation: An integer 0, 1, 2, 3, or 4 representing the loss
+              variation to use. 0 indicates the original PLL loss, 1 power loss,
+              2 inertia-agnostic, 3 balanced inertia-agnostic, and 4 contact
+              velocity inertia-agnostic.
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
         """
@@ -267,6 +269,8 @@ class MultibodyLearnableSystem(System):
             half_delassus = pbmm(J, M_inv)
         elif self.loss_variation_txt == LOSS_BALANCED:
             half_delassus = pbmm(pbmm(J, M_inv), P)
+        elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
+            half_delassus = delassus
 
         Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
             eps * torch.eye(3 * n_contacts)
@@ -295,6 +299,11 @@ class MultibodyLearnableSystem(System):
             q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
             q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
                           dim=-2))
+        elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
+            q_pred = -pbmm(delassus, pbmm(J, dv.transpose(-1, -2)))
+            q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
+            q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
+                          dim=-2))
 
         q = q_pred + q_comp + q_diss
 
@@ -313,6 +322,9 @@ class MultibodyLearnableSystem(System):
             balanced_dv = pbmm(dv, P)
             constant_pred = 0.5 * pbmm(balanced_dv,
                                        balanced_dv.transpose(-1, -2))
+        elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
+            contact_dv = pbmm(dv, J.transpose(-1, -2))
+            constant_pred = 0.5 * pbmm(contact_dv, contact_dv.transpose(-1, -2))
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.

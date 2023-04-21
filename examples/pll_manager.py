@@ -13,8 +13,8 @@ from typing import List, Optional
 from dair_pll import file_utils
 
 from dair_pll.multibody_learnable_system import LOSS_INERTIA_AGNOSTIC, \
-    LOSS_PLL_ORIGINAL, LOSS_BALANCED, LOSS_POWER, LOSS_VARIATIONS, \
-    LOSS_VARIATION_NUMBERS
+    LOSS_PLL_ORIGINAL, LOSS_BALANCED, LOSS_POWER, LOSS_CONTACT_VELOCITY, \
+    LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
 
 
 # Possible categories for automatic run name generation.
@@ -287,8 +287,12 @@ def experiment_class_command(category: str, run_name: str, system: str,
         nums_to_display = 4 if category == HYPERPARAMETER else 2
         if last_run_num is None:
             runs_dir = file_utils.all_runs_dir(storage_name)
-            last_run_name = sorted(os.listdir(runs_dir))[-1]
-            last_run_num = int(last_run_name.split('-')[0][2:])
+            runs_list = sorted(os.listdir(runs_dir))
+            if len(runs_list) > 0:
+                last_run_name = runs_list[-1]
+                last_run_num = int(last_run_name.split('-')[0][2:])
+            else:
+                last_run_num = -1
         run_name = category[0]
         run_name += 'c' if system==CUBE_SYSTEM else 'e'
         run_name += str(last_run_num+1).zfill(nums_to_display)
@@ -703,7 +707,8 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
         if op.isdir(storage_name):
             runs_dir = file_utils.all_runs_dir(storage_name)
             runs_list = sorted(os.listdir(runs_dir))
-            last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
+            if len(runs_list) > 0:
+                last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
 
     # Create a pll instance for every dataset size from 4 to 512
     for dataset_exponent in range(2, 10):

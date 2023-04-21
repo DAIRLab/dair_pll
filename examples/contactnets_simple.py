@@ -28,7 +28,7 @@ from dair_pll.experiment_config import OptimizerConfig
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem, \
     LOSS_PLL_ORIGINAL, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, \
-    LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
+    LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
 from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
 from dair_pll.system import System
 
