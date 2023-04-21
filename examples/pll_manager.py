@@ -44,7 +44,7 @@ RUN_PREFIX_TO_FOLDER_NAME = {'tc': f'{TEST}_{CUBE_SYSTEM}',
                              'sc': f'{SWEEP}_{CUBE_SYSTEM}',
                              'se': f'{SWEEP}_{ELBOW_SYSTEM}',
                              'hc': f'{HYPERPARAMETER_SIM}_{CUBE_SYSTEM}',
-                             'he': f'{HYPERPARAMETER_SIM}_{ELBOW_SYSTEM}'
+                             'he': f'{HYPERPARAMETER_SIM}_{ELBOW_SYSTEM}',
                              'ic': f'{HYPERPARAMETER_REAL}_{CUBE_SYSTEM}',
                              'ie': f'{HYPERPARAMETER_REAL}_{ELBOW_SYSTEM}'}
 
@@ -300,7 +300,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                 last_run_num = int(last_run_name.split('-')[0][2:])
             else:
                 last_run_num = -1
-        run_name = category[0]
+        run_name = 'i' if category == HYPERPARAMETER_REAL else category[0]
         run_name += 'c' if system==CUBE_SYSTEM else 'e'
         run_name += str(last_run_num+1).zfill(nums_to_display)
         run_name += f'-{dataset_exponent}' if category==SWEEP else ''
