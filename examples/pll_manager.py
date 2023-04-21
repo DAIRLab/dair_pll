@@ -21,8 +21,9 @@ from dair_pll.multibody_learnable_system import LOSS_INERTIA_AGNOSTIC, \
 TEST = 'test'
 DEV = 'dev'
 SWEEP = 'sweep'
-HYPERPARAMETER = 'hyperparam'
-CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER]
+HYPERPARAMETER_SIM = 'hyperparam'
+HYPERPARAMETER_REAL = 'hpreal'
+CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER_SIM, HYPERPARAMETER_REAL]
 
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
@@ -42,8 +43,10 @@ RUN_PREFIX_TO_FOLDER_NAME = {'tc': f'{TEST}_{CUBE_SYSTEM}',
                              'de': f'{DEV}_{ELBOW_SYSTEM}',
                              'sc': f'{SWEEP}_{CUBE_SYSTEM}',
                              'se': f'{SWEEP}_{ELBOW_SYSTEM}',
-                             'hc': f'{HYPERPARAMETER}_{CUBE_SYSTEM}',
-                             'he': f'{HYPERPARAMETER}_{ELBOW_SYSTEM}'}
+                             'hc': f'{HYPERPARAMETER_SIM}_{CUBE_SYSTEM}',
+                             'he': f'{HYPERPARAMETER_SIM}_{ELBOW_SYSTEM}'
+                             'ic': f'{HYPERPARAMETER_REAL}_{CUBE_SYSTEM}',
+                             'ie': f'{HYPERPARAMETER_REAL}_{ELBOW_SYSTEM}'}
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -261,7 +264,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     contactnets: bool, box: bool, regenerate: bool, local: bool,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
     w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-    dataset_exponent: int = None, last_run_num: int = None, number: int = 1):
+    dataset_exponent: int = None, last_run_num: int = None, number: int = 1,
+    source: str = None):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -269,9 +273,11 @@ def experiment_class_command(category: str, run_name: str, system: str,
         assert dataset_exponent in range(2, 10)
 
     def get_run_name_pattern(category, system):
-        run_name_pattern = category[0]  # t/d/s/h for test/dev/sweep/hyperparam
+        run_name_pattern = 'i' if category == HYPERPARAMETER_REAL else \
+                           category[0]  # t/d/h/i for test/dev/hyperp sim/real
         run_name_pattern += system[0]   # c for cube or e for elbow
-        run_name_pattern += '????' if category==HYPERPARAMETER else '??'
+        run_name_pattern += '????' if category==HYPERPARAMETER_SIM else \
+                            '????' if category==HYPERPARAMETER_REAL else '??'
         run_name_pattern += '-?' if category==SWEEP else ''
         return run_name_pattern
 
@@ -284,7 +290,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     storage_name = op.join(repo_dir, 'results', storage_folder_name)
     
     if run_name is None:
-        nums_to_display = 4 if category == HYPERPARAMETER else 2
+        nums_to_display = 4 if category == HYPERPARAMETER_SIM else \
+                          4 if category == HYPERPARAMETER_REAL else 2
         if last_run_num is None:
             runs_dir = file_utils.all_runs_dir(storage_name)
             runs_list = sorted(os.listdir(runs_dir))
@@ -314,9 +321,12 @@ def experiment_class_command(category: str, run_name: str, system: str,
 
     dataset_size = 4 if category == TEST else \
                   64 if category == DEV else \
-                  512 if category == HYPERPARAMETER else \
+                  512 if category == HYPERPARAMETER_SIM else \
+                  512 if category == HYPERPARAMETER_REAL else \
                   2**dataset_exponent
-    source = REAL_SOURCE if category == SWEEP else SIM_SOURCE
+
+    source = REAL_SOURCE if category == SWEEP else \
+             REAL_SOURCE if category == HYPERPARAMETER_REAL else SIM_SOURCE
 
     names = [run_name] if number == 1 else \
             [f'{run_name}-{i}' for i in range(number)]
@@ -736,6 +746,9 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
 @click.option('--system',
               type=click.Choice(SYSTEMS, case_sensitive=True),
               default=CUBE_SYSTEM)
+@click.option('--source',
+              type=click.Choice(DATA_SOURCES, case_sensitive=True),
+              default=SIM_SOURCE)
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
@@ -755,7 +768,7 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
-def hyperparameter_command(hp_name: str, number: int, system: str,
+def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                            contactnets: bool, box: bool, regenerate: bool,
                            local: bool, inertia_params: str, true_sys: bool):
     """Starts a series of instances, sweeping over dataset size."""
@@ -765,12 +778,16 @@ def hyperparameter_command(hp_name: str, number: int, system: str,
     repo = git.Repo(search_parent_directories=True)
     check_for_git_updates(repo)
 
+    # Call the project 'hpreal' for "hyper parameter real" if using real data,
+    # else 'hyperparam' for simulation data.
+    experiment_name = 'hpreal' if source == REAL_SOURCE else 'hyperparam'
+
     # First determine what run number to use so they are consistent for each
     # dataset size.
     last_run_num = -1
     repo = git.Repo(search_parent_directories=True)
     repo_dir = repo.git.rev_parse("--show-toplevel")
-    storage_name = op.join(repo_dir, 'results', f'hyperparam_{system}')
+    storage_name = op.join(repo_dir, 'results', f'{experiment_name}_{system}')
 
     if op.isdir(storage_name):
         runs_dir = file_utils.all_runs_dir(storage_name)
@@ -791,7 +808,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str,
 
                 for loss_variation in [1, 2, 3]:
                     experiment_class_command(
-                        'hyperparam', hp_name, system=system,
+                        experiment_name, hp_name, system=system,
                         contactnets=contactnets, box=box,
                         regenerate=regenerate, local=local,
                         inertia_params=inertia_params,
