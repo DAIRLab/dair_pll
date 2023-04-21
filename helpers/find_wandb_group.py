@@ -29,7 +29,7 @@ def get_params_from_bash_script(script_name):
 	loss_variation = script.split('loss-variation=')[-1].split(' ')[0]
 	w_comp = script.split('w-comp=')[-1].split(' ')[0]
 	w_diss = script.split('w-diss=')[-1].split(' ')[0]
-	w_pen = script.split('w-pen=')[-1].split('\n')[0]
+	w_pen = script.split('w-pen=')[-1].split('\n')[0].split(' ')[0]
 
 	return {'wandb_id': wandb_id,
 			'loss variation': loss_variation,
