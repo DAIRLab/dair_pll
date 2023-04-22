@@ -11,7 +11,8 @@ from dair_pll.file_utils import *
 WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
 WANDB_PROJECT_LOCAL = 'dair_pll-dev'
 
-VALID_MSE = 'valid_model_trajectory_mse_mean'
+VALID_MODEL_MSE = 'valid_model_trajectory_mse_mean'
+VALID_MSE = 'valid_trajectory_mse'
 
 storage_name = '/home/bibit/dair_pll/results/hyperparam_elbow'  #'test_elbow'
 
@@ -33,19 +34,20 @@ for run_name in lookup_by_run_name.keys():
 
     try:
         statistics = load_evaluation(storage_name, run_name)
-        run_dict['best valid MSE'] = statistics[VALID_MSE]
+        run_dict['best valid MSE'] = statistics[VALID_MODEL_MSE]
+        print('Found statistics file.')
 
     except FileNotFoundError:
         print('No statistics file found; searching wandb logs.')
 
         # config = load_configuration(storage_name, run_name)
-        # checkpoint_filename = get_model_filename(storage_name, run_name)
-        # checkpoint_dict = torch.load(checkpoint_filename)
+        checkpoint_filename = get_model_filename(storage_name, run_name)
+        checkpoint_dict = torch.load(checkpoint_filename)
 
-        # wandb_id = checkpoint_dict['wandb_run_id']
+        wandb_run_id = checkpoint_dict['wandb_run_id']
 
         api = wandb.Api()
-        run = api.run(f'ebianchi/{WANDB_PROJECT_CLUSTER}/{wandb_id}')
+        run = api.run(f'ebianchi/{WANDB_PROJECT_CLUSTER}/{wandb_run_id}')
         run_history = run.history(pandas=False)
 
         best_valid_mse = run_history[0][VALID_MSE]
