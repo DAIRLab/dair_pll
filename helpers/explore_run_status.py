@@ -62,6 +62,12 @@ for run_name in lookup_by_run_name.keys():
     lookup_by_wandb_id[wandb_id] = run_dict
 
 
+with open('hyperparameter_performance_lookup.csv', 'w', newline='') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=run_dict.keys())
+
+    writer.writeheader()
+    for run_info in lookup_by_wandb_id.keys():
+        writer.writerow(lookup_by_wandb_id[run_info])
 
 pdb.set_trace()
 
