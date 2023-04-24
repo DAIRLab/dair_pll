@@ -107,7 +107,9 @@ def create_instance(storage_folder_name: str, run_name: str,
                     w_pred: float = 1e0,
                     w_comp: float = 1e0,
                     w_diss: float = 1e0,
-                    w_pen: float = 1e0):
+                    w_pen: float = 1e0,
+                    w_res: float = 1e0,
+                    do_residual: bool = False):
     print(f'Generating experiment {storage_folder_name}/{run_name}')
 
     if wandb_group_id is None:
@@ -143,12 +145,14 @@ def create_instance(storage_folder_name: str, run_name: str,
         train_options += ' --regenerate' if regenerate else ' --no-regenerate'
         train_options += ' --true-sys' if true_sys else ' --wrong-sys'
         train_options += f' --wandb-project={WANDB_PROJECTS[local]}'
+        train_options += ' --residual' if do_residual else ' --no-residual'
 
         if contactnets:
             train_options += f' --w-pred={w_pred}'
             train_options += f' --w-comp={w_comp}'
             train_options += f' --w-diss={w_diss}'
             train_options += f' --w-pen={w_pen}'
+            train_options += f' --w-res={w_res}'
 
     script = script.replace('{train_args}', train_options)
 
@@ -263,9 +267,9 @@ def check_for_git_updates(repo):
 def experiment_class_command(category: str, run_name: str, system: str,
     contactnets: bool, box: bool, regenerate: bool, local: bool,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
-    w_pred: float, w_comp: float, w_diss: float, w_pen: float,
+    w_pred: float, w_comp: float, w_diss: float, w_pen: float, w_res: float,
     dataset_exponent: int = None, last_run_num: int = None, number: int = 1,
-    source: str = None):
+    source: str = None, do_residual: bool = False):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -344,7 +348,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                         loss_variation=loss_variation, true_sys=true_sys,
                         restart=False, wandb_group_id=wandb_group_id,
                         w_pred=w_pred, w_comp=w_comp, w_diss=w_diss,
-                        w_pen=w_pen)
+                        w_pen=w_pen, w_res=w_res, do_residual=do_residual)
 
 
 @click.group()
@@ -409,12 +413,19 @@ def cli():
               type=float,
               default=1e0,
               help="weight of penetration term in ContactNets loss")
+@click.option('--w-res',
+              type=float,
+              default=1e0,
+              help="weight of residual regularization term in loss")
+@click.option('--residual/--no-residual',
+              default=False,
+              help="whether to include residual physics or not.")
 def create_command(storage_folder_name: str, run_name: str, number: int,
                    system: str, source: str, contactnets: bool, box: bool,
                    regenerate: bool, dataset_size: int, local: bool,
                    inertia_params: str, loss_variation: str, true_sys: bool,
                    overwrite: str, w_pred: float, w_comp: float,
-                   w_diss: float, w_pen: float):
+                   w_diss: float, w_pen: float, w_res: float, residual: bool):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -464,7 +475,8 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
                         contactnets, box, regenerate, dataset_size, local,
                         inertia_params, loss_variation, true_sys, False,
                         wandb_group_id=wandb_group_id, w_pred=w_pred,
-                        w_comp=w_comp, w_diss=w_diss, w_pen=w_pen)
+                        w_comp=w_comp, w_diss=w_diss, w_pen=w_pen, w_res=w_res,
+                        do_residual=residual)
 
 
 @cli.command('test')
@@ -519,10 +531,18 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
               type=float,
               default=1e0,
               help="weight of penetration term in ContactNets loss")
+@click.option('--w-res',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
+@click.option('--residual/--no-residual',
+              default=False,
+              help="whether to include residual physics or not.")
 def test_command(run_name: str, number: int, system: str, contactnets: bool,
                  box: bool, regenerate: bool, local: bool, inertia_params: str,
                  loss_variation: str, true_sys: bool, overwrite: str,
-                 w_pred: float, w_comp: float, w_diss: float, w_pen: float):
+                 w_pred: float, w_comp: float, w_diss: float, w_pen: float,
+                 w_res: float, residual: bool):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -534,7 +554,8 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
                              inertia_params=inertia_params,
                              loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite, number=number, w_pred=w_pred,
-                             w_comp=w_comp, w_diss=w_diss, w_pen=w_pen)
+                             w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
+                             w_res=w_res, do_residual=residual)
 
 @cli.command('dev')
 @click.option('--run_name',
@@ -588,10 +609,18 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
               type=float,
               default=1e0,
               help="weight of penetration term in ContactNets loss")
+@click.option('--w-res',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
+@click.option('--residual/--no-residual',
+              default=False,
+              help="whether to include residual physics or not.")
 def dev_command(run_name: str, number: int, system: str, contactnets: bool,
                 box: bool, regenerate: bool, local: bool, inertia_params: str,
                 loss_variation: str, true_sys: bool, overwrite: str,
-                w_pred: float, w_comp: float, w_diss: float, w_pen: float):
+                w_pred: float, w_comp: float, w_diss: float, w_pen: float,
+                w_res: float, residual: bool):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -603,7 +632,8 @@ def dev_command(run_name: str, number: int, system: str, contactnets: bool,
                              inertia_params=inertia_params, 
                              loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite, number=number, w_pred=w_pred,
-                             w_comp=w_comp, w_diss=w_diss, w_pen=w_pen)
+                             w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
+                             w_res=w_res, do_residual=residual)
 
 
 @cli.command('restart')
@@ -694,10 +724,18 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
               type=float,
               default=1e0,
               help="weight of penetration term in ContactNets loss")
+@click.option('--w-res',
+              type=float,
+              default=1e0,
+              help="weight of penetration term in ContactNets loss")
+@click.option('--residual/--no-residual',
+              default=False,
+              help="whether to include residual physics or not.")
 def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                   box: bool, regenerate: bool, local: bool, inertia_params: str,
                   loss_variation: str, true_sys: bool, w_pred: float,
-                  w_comp: float, w_diss: float, w_pen: float):
+                  w_comp: float, w_diss: float, w_pen: float, w_res: float,
+                  residual: bool):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -732,7 +770,8 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                                  last_run_num=last_run_num,
                                  overwrite=OVERWRITE_NOTHING,
                                  number=number, w_pred=w_pred, w_comp=w_comp,
-                                 w_diss=w_diss, w_pen=w_pen)
+                                 w_diss=w_diss, w_pen=w_pen, w_res=w_res,
+                                 do_residual=residual)
 
 
 
@@ -768,9 +807,13 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
+@click.option('--residual/--no-residual',
+              default=False,
+              help="whether to include residual physics or not.")
 def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                            contactnets: bool, box: bool, regenerate: bool,
-                           local: bool, inertia_params: str, true_sys: bool):
+                           local: bool, inertia_params: str, true_sys: bool,
+                           residual: bool):
     """Starts a series of instances, sweeping over dataset size."""
     assert hp_name is None or '-' not in hp_name
 
@@ -815,7 +858,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                         loss_variation=loss_variation, true_sys=true_sys,
                         last_run_num=last_run_num, overwrite=OVERWRITE_NOTHING,
                         number=number, w_pred=w_pred, w_comp=w_comp,
-                        w_diss=w_diss, w_pen=w_pen)
+                        w_diss=w_diss, w_pen=w_pen, do_residual=residual)
                     last_run_num += 1
 
 

@@ -53,6 +53,14 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Weight of dissipation term in ContactNets loss."""
     w_pen: Float = Float(1e0, log=True)  #1e1
     """Weight of penetration term in ContactNets loss."""
+    w_res: Float = Float(1e0, log=True)
+    """Weight of residual size in loss."""
+    do_residual: bool = False
+    """Whether to include a residual physics block."""
+    network_width: int = 128
+    """Width of residual network."""
+    network_depth: int = 2
+    """Depth of residual network."""
 
 
 @dataclass
@@ -206,7 +214,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                         w_comp = learnable_config.w_comp.value,
                                         w_diss = learnable_config.w_diss.value,
                                         w_pen = learnable_config.w_pen.value,
-                                        output_urdfs_dir=output_dir)
+                                        w_res = learnable_config.w_res.value,
+                                        output_urdfs_dir=output_dir,
+                                        do_residual=learnable_config.do_residual)
 
     def write_to_tensorboard(self, epoch: int, learned_system: System,
                              statistics: Dict) -> None:
@@ -320,7 +330,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
             self.true_geom_multibody_system = MultibodyLearnableSystem(
                 init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
-                w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0)
+                w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
+                do_residual=False)
         return self.true_geom_multibody_system
 
     def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:

@@ -146,7 +146,9 @@ def main(storage_folder_name: str = "",
          w_pred: float = 1e0,
          w_comp: float = 1e0,
          w_diss: float = 1e0,
-         w_pen: float = 1e0):
+         w_pen: float = 1e0,
+         w_res: float = 1e0,
+         do_residual: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -165,6 +167,8 @@ def main(storage_folder_name: str = "",
         w_comp: Weight of complementarity term in ContactNets loss.
         w_diss: Weight of dissipation term in ContactNets loss.
         w_pen: Weight of penetration term in ContactNets loss.
+        w_res: Weight of residual regularization term in loss.
+        do_residual: Whether to add residual physics block.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -178,8 +182,9 @@ def main(storage_folder_name: str = "",
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tloss variation: {loss_variation}' \
          + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
-         + f'\n\tloss weights (w_pred, w_comp, w_diss, w_pen): ' \
-         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen})' \
+         + f'\n\tloss weights (w_pred, w_comp, w_diss, w_pen, w_res): ' \
+         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
+         + f'\n\twith residual: {do_residual}' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
 
     simulation = source == SIM_SOURCE
@@ -232,7 +237,9 @@ def main(storage_folder_name: str = "",
         loss_variation=int(loss_variation), w_pred=w_pred,
         w_comp=Float(w_comp, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
         w_diss=Float(w_diss, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        w_pen=Float(w_pen, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE))
+        w_pen=Float(w_pen, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
+        w_res=Float(w_res, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
+        do_residual=do_residual)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -381,18 +388,26 @@ def main(storage_folder_name: str = "",
               type=float,
               default=1e0,
               help="weight of penetration term in ContactNets loss")
+@click.option('--w-res',
+              type=float,
+              default=1e0,
+              help="weight of residual regularization term in loss")
+@click.option('--residual/--no-residual',
+              default=False,
+              help="whether to include residual physics or not.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, contactnets: bool, box: bool, regenerate: bool,
                  dataset_size: int, inertia_params: str, loss_variation: str,
                  true_sys: bool, wandb_project: str, w_pred: float,
-                 w_comp: float, w_diss: float, w_pen: float):
+                 w_comp: float, w_diss: float, w_pen: float, w_res: float,
+                 residual: bool):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, contactnets, box,
          regenerate, dataset_size, inertia_params, loss_variation, true_sys,
-         wandb_project, w_pred, w_comp, w_diss, w_pen)
+         wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, residual)
 
 
 if __name__ == '__main__':

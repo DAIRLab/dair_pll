@@ -31,13 +31,16 @@ import pdb
 import time
 from sappy import SAPSolver  # type: ignore
 from torch import Tensor
+from torch.nn import Module
+import torch.nn as nn
 
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
-from dair_pll.system import System, \
-    SystemSummary
+from dair_pll.quaternion import quaternion_to_rotmat_vec
+from dair_pll.state_space import FloatingBaseSpace
+from dair_pll.system import System, SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
     one_vector_block_diagonal
 
@@ -84,7 +87,11 @@ class MultibodyLearnableSystem(System):
                  w_comp: float,
                  w_diss: float,
                  w_pen: float,
-                 output_urdfs_dir: Optional[str] = None) -> None:
+                 w_res: float,
+                 do_residual: bool = False,
+                 output_urdfs_dir: Optional[str] = None,
+                 network_width: int = 128,
+                 network_depth: int = 2) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -126,6 +133,21 @@ class MultibodyLearnableSystem(System):
         self.w_comp = w_comp
         self.w_diss = w_diss
         self.w_pen = w_pen
+        self.w_res = w_res
+
+        self.residual_net = None
+
+        if do_residual:
+            # This system type is only well defined for systems containing a
+            # fixed ground and one floating base system.
+            assert len(self.space.spaces) == 2
+            self.object_space_idx = None
+            for idx in range(len(self.space.spaces)):
+                if type(self.space.spaces[idx]) == FloatingBaseSpace:
+                    self.object_space_idx = idx
+            assert self.object_space_idx != None
+
+            self.init_residual_network(network_width, network_depth)
 
     def generate_updated_urdfs(self) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
@@ -174,11 +196,12 @@ class MultibodyLearnableSystem(System):
         Returns:
             (\*,) loss batch.
         """
-        loss_pred, loss_comp, loss_pen, loss_diss = \
+        loss_pred, loss_comp, loss_pen, loss_diss, residual_norm = \
             self.calculate_contactnets_loss_terms(x, u, x_plus)
 
         loss = (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
-               (self.w_pen * loss_pen) + (self.w_diss * loss_diss)
+               (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
+               (self.w_res * residual_norm)
 
         return loss
 
@@ -186,7 +209,7 @@ class MultibodyLearnableSystem(System):
                          x: Tensor,
                          u: Tensor,
                          x_plus: Tensor) -> \
-                         Tuple[Tensor, Tensor, Tensor, Tensor]:
+                         Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
         :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
         individual pre-weighted loss contributions:
@@ -206,6 +229,7 @@ class MultibodyLearnableSystem(System):
             (*,) complementarity violation loss.
             (*,) penetration loss.
             (*,) dissipation violation loss.
+            (*,) residual regularizer (0 if no residual).
         """
         # pylint: disable-msg=too-many-locals
         v = self.space.v(x)
@@ -214,8 +238,8 @@ class MultibodyLearnableSystem(System):
         eps = 1e-3
 
         # Begin loss calculation.
-        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
-            q_plus, v_plus, u)
+        delassus, M, J, phi, non_contact_acceleration = \
+            self.get_multibody_terms(q_plus, v_plus, u)
 
         try:
             M_inv = torch.inverse((M))
@@ -353,8 +377,57 @@ class MultibodyLearnableSystem(System):
         loss_pen = constant_pen
         loss_diss = pbmm(force.transpose(-1, -2), q_diss)
 
+        # Regularization terms.
+        if self.residual_net != None:
+            # Penalize the size of the residual
+            residual = self.residual_net(x_plus)
+            residual_norm = torch.linalg.norm(residual, dim=1) ** 2
+        else:
+            residual_norm = torch.zeros_like(loss_pred)
+
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
-               loss_pen.reshape(-1), loss_diss.reshape(-1)
+               loss_pen.reshape(-1), loss_diss.reshape(-1), residual_norm
+
+    def get_multibody_terms(self, q: Tensor, v: Tensor,
+        u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        """Get multibody terms of the system.  Without a residual, this is a
+        straightfoward pass-through to the system's :py:class:`MultibodyTerms`.
+        With a residual, the residual augments the continuous dynamics."""
+
+        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
+            q, v, u)
+
+        if self.residual_net != None:
+            # Get the residual network's contribution.
+            x = torch.cat((q, v), dim=1)
+            residual = self.residual_net(x)
+
+        else:
+            residual = torch.zeros_like(non_contact_acceleration)
+
+        return delassus, M, J, phi, non_contact_acceleration + residual
+
+    def init_residual_network(self, network_width: int, network_depth: int
+        ) -> None:
+        """Create and store a neural network architecture that has the multibody
+        system state as input and outputs the size of the multibody system's
+        velocity space."""
+
+        layers: List[Module] = []
+
+        layers.append(DeepStateAugment3D())
+
+        n_augmented_state = self.space.n_x - 4 + 9
+        layers.append(nn.Linear(n_augmented_state, network_width))
+        layers.append(nn.ReLU())
+
+        for _ in range(network_depth - 1):
+            layers.append(nn.Linear(network_width, network_width))
+            layers.append(nn.ReLU())
+
+        layers.append(nn.Linear(network_width, self.space.n_v))
+
+        self.residual_net = nn.Sequential(*layers)
 
     def forward_dynamics(self,
                          q: Tensor,
@@ -422,8 +495,8 @@ class MultibodyLearnableSystem(System):
         # pylint: disable=too-many-locals
         dt = self.dt
         eps = 1e6
-        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
-            q, v, u)
+        delassus, M, J, phi, non_contact_acceleration = \
+            self.get_multibody_terms(q, v, u)
         n_contacts = phi.shape[-1]
         contact_filter = (broadcast_lorentz(phi) <= eps).unsqueeze(-1)
         contact_matrix_filter = pbmm(contact_filter.int(),
@@ -503,3 +576,22 @@ class MultibodyLearnableSystem(System):
         videos = cast(Dict[str, Tuple[np.ndarray, int]], {})
 
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)
+
+
+
+class DeepStateAugment3D(Module):
+    """To assist with the learning process, replace the quaternion angular
+    representation with the rotation matrix vector."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: Tensor) -> Tensor:
+        # Note: The below lines only work because the fixed ground does not
+        # contribute to the state of the overall object-ground system.
+        quat = x[..., :4]
+        rotmat_vec = quaternion_to_rotmat_vec(quat)
+
+        return torch.cat((rotmat_vec, x[..., 4:]), dim=1)
+
+    # TODO:  write compute_jacobian function
