@@ -83,12 +83,15 @@ PREDICTION_NAME = 'prediction_sample'
 TRAJECTORY_POSITION_ERROR_NAME = 'pos_int_traj'
 TRAJECTORY_ROTATION_ERROR_NAME = 'angle_int_traj'
 TRAJECTORY_PENETRATION_NAME = 'penetration_int_traj'
+RESIDUAL_SINGLE_STEP_SIZE_NAME = 'residual_norm_stepwise'
+RESIDUAL_TRAJECTORY_SIZE_MSE_NAME = 'residual_norm_traj_mse'
 
 AVERAGE_TAG = 'mean'
 
 EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME, 
     TRAJECTORY_POSITION_ERROR_NAME, TRAJECTORY_ROTATION_ERROR_NAME,
-    TRAJECTORY_PENETRATION_NAME
+    TRAJECTORY_PENETRATION_NAME, RESIDUAL_SINGLE_STEP_SIZE_NAME,
+    RESIDUAL_TRAJECTORY_SIZE_MSE_NAME
 ]
 
 
@@ -825,6 +828,22 @@ class SupervisedLearningExperiment(ABC):
                     to_json(running_pos_mse)
                 stats[f'{set_name}_{system_name}_{TRAJECTORY_ROTATION_ERROR_NAME}'] = \
                     to_json(running_angle_mse)
+
+                # Add residual sizes over trajectory and single steps.
+                if system.residual_net != None:
+                    residual_mse = torch.stack([
+                        torch.linalg.norm(system.residual_net(tp), dim=1).sum()
+                        for tp in traj_pred
+                    ])
+                    stats[f'{set_name}_{system_name}_{RESIDUAL_TRAJECTORY_SIZE_MSE_NAME}'] = \
+                        to_json(residual_mse/len(traj_pred))
+
+                    residual_single_step_mse = torch.stack([
+                        torch.linalg.norm(system.residual_net(x_i), dim=1).sum()
+                        for x_i in all_x
+                    ])
+                    stats[f'{set_name}_{system_name}_{RESIDUAL_SINGLE_STEP_SIZE_NAME}'] = \
+                        to_json(residual_mse/len(all_x))
 
                 extra_metrics = self.extra_metrics()
                 for metric_name in extra_metrics:

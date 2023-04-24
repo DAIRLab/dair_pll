@@ -311,22 +311,21 @@ def exp(r: Tensor) -> Tensor:
 
 
 def quaternion_to_rotmat_vec(q: Tensor) -> Tensor:
-    """
-    Converts batched quaternions of shape (batch, 4)
-    to vectorized rotation matrices of shape (batch, 9)
-    """
-    qr = q[:, 0:1]
-    qi = q[:, 1:2]
-    qj = q[:, 2:3]
-    qk = q[:, 3:4]
+    """Converts batched quaternions of shape (*, 4) to vectorized rotation
+    matrices of shape (*, 9)."""
+    
+    qr = q[..., 0:1]
+    qi = q[..., 1:2]
+    qj = q[..., 2:3]
+    qk = q[..., 3:4]
     r1 = torch.cat((1. - 2*(qj ** 2 + qk ** 2),
                    2*(qi*qj - qk*qr),
-                   2*(qi*qk + qj*qr)), dim=1)
+                   2*(qi*qk + qj*qr)), dim=-1)
     r2 = torch.cat((2*(qi*qj + qk*qr),
                    1. - 2*(qi ** 2 + qk ** 2),
-                   2*(qj*qk - qi*qr)), dim=1)
+                   2*(qj*qk - qi*qr)), dim=-1)
     r3 = torch.cat((2*(qi*qk - qj*qr),
                    2*(qj*qk + qi*qr),
-                   1. - 2*(qi ** 2 + qj ** 2)), dim=1)
+                   1. - 2*(qi ** 2 + qj ** 2)), dim=-1)
 
-    return torch.cat((r1, r2, r3), dim=1)
+    return torch.cat((r1, r2, r3), dim=-1)
