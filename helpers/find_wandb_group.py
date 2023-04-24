@@ -7,7 +7,7 @@ import pdb
 import csv
 
 
-ELBOW_HP_SCRIPT_PATTERN = 'startup_hyperparam_elbow_he????.bash'
+ELBOW_HP_SCRIPT_PATTERN = 'startup_hpreal_elbow_ie????.bash'
 
 FIELDNAMES = ['wandb_id', 'run name', 'loss variation', 'w_comp', 'w_diss',
 			  'w_pen']
@@ -55,7 +55,7 @@ for script in startup_scripts_list:
 
 
 
-with open('hyperparameter_lookup.csv', 'w', newline='') as csvfile:
+with open('hyperparameter_real_lookup.csv', 'w', newline='') as csvfile:
 	writer = csv.DictWriter(csvfile, fieldnames=FIELDNAMES)
 
 	writer.writeheader()
