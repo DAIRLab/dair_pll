@@ -23,7 +23,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 """
 from multiprocessing import pool
 from os import path
-from typing import Tuple, Optional, Dict, cast
+from typing import List, Tuple, Optional, Dict, cast
 
 import numpy as np
 import torch
@@ -196,14 +196,39 @@ class MultibodyLearnableSystem(System):
         Returns:
             (\*,) loss batch.
         """
-        loss_pred, loss_comp, loss_pen, loss_diss, residual_norm = \
+        loss_pred, loss_comp, loss_pen, loss_diss = \
             self.calculate_contactnets_loss_terms(x, u, x_plus)
+
+        regularizers = self.get_regularization_terms(x, u, x_plus)
+        residual_norm = regularizers[0]
 
         loss = (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
                (self.w_res * residual_norm)
 
         return loss
+
+    def get_regularization_terms(self, x: Tensor, u: Tensor,
+                                 x_plus: Tensor) -> List[Tensor]:
+        """Calculate some regularization terms."""
+
+        regularizers = []
+
+        # Residual size regularization.
+        if self.residual_net != None:
+            # Penalize the size of the residual
+            residual = self.residual_net(x_plus)
+            residual_norm = torch.linalg.norm(residual, dim=1) ** 2
+            regularizers.append(residual_norm)
+
+        # Use the believed geometry to help supervise the learned CoM.
+        if (self.multibody_terms.inertia_mode_txt != 'none') and \
+           (self.multibody_terms.inertia_mode_txt != 'masses'):
+            # This means the CoM locations are getting learned.
+            pass
+
+        return regularizers
+
 
     def calculate_contactnets_loss_terms(self,
                          x: Tensor,
@@ -384,16 +409,8 @@ class MultibodyLearnableSystem(System):
             loss_comp = pbmm(torch.sqrt(det_M_inv), loss_comp) * 1e-6
             loss_diss = pbmm(torch.sqrt(det_M_inv), loss_diss) * 1e-6
 
-        # Regularization terms.
-        if self.residual_net != None:
-            # Penalize the size of the residual
-            residual = self.residual_net(x_plus)
-            residual_norm = torch.linalg.norm(residual, dim=1) ** 2
-        else:
-            residual_norm = torch.zeros_like(loss_pred)
-
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
-               loss_pen.reshape(-1), loss_diss.reshape(-1), residual_norm
+               loss_pen.reshape(-1), loss_diss.reshape(-1)
 
     def get_multibody_terms(self, q: Tensor, v: Tensor,
         u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
