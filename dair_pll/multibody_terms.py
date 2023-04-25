@@ -188,13 +188,12 @@ class LagrangianTerms(Module):
         # cases, overwrite the mass of the first object to handle scale
         # invariance.
         orig = self.original_pi_cm_params
-        orig_m = orig[0,0].item()
+        orig_m_total = orig[:, 0].sum()
 
-        # Explicitly overwrite the mass of the first link, since this value is
-        # unobservable.  All of the remaining inertial parameters are
-        # detectable when this value is fixed.  Use direct assignment to zero
-        # the parameter gradient.
-        curr_pi_cm[0,0] = orig_m
+        # Since the overall mass is unobservable, the only learnable parameters
+        # here should be the relative distribution of mass among all links.
+        curr_m_total = curr_pi_cm[:, 0].sum()
+        curr_pi_cm[:, 0] *= orig_m_total/curr_m_total
 
         # Overwrite more parameters based on the inertia mode.
         mode = self.inertia_mode_txt
