@@ -307,7 +307,7 @@ class MultibodyLearnableSystem(System):
         if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
             q_pred = -pbmm(J, dv.transpose(-1, -2))
             q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
-            q_diss = dt*torch.cat((sliding_speeds, sliding_velocities), dim=-2)            
+            q_diss = dt*torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         elif self.loss_variation_txt == LOSS_POWER:
             q_pred = -pbmm(J, dv.transpose(-1, -2))
             q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
@@ -376,6 +376,13 @@ class MultibodyLearnableSystem(System):
         loss_comp = pbmm(force.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
         loss_diss = pbmm(force.transpose(-1, -2), q_diss)
+
+        # Try scaling
+        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
+            det_M_inv = torch.linalg.det(M_inv).reshape(-1, 1, 1)
+            loss_pred = pbmm(torch.sqrt(det_M_inv), loss_pred) * 1e-6
+            loss_comp = pbmm(torch.sqrt(det_M_inv), loss_comp) * 1e-6
+            loss_diss = pbmm(torch.sqrt(det_M_inv), loss_diss) * 1e-6
 
         # Regularization terms.
         if self.residual_net != None:

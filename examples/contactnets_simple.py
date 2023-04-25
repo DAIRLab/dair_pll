@@ -182,7 +182,7 @@ def main(storage_folder_name: str = "",
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tloss variation: {loss_variation}' \
          + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
-         + f'\n\tloss weights (w_pred, w_comp, w_diss, w_pen, w_res): ' \
+         + f'\n\tloss weights (pred, comp, diss, pen, res): ' \
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
          + f'\n\twith residual: {do_residual}' \
          + f'\n\tand starting with "true" URDF: {true_sys}.')
