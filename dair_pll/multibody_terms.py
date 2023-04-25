@@ -50,12 +50,13 @@ from torch import Tensor
 from torch.nn import Module, ModuleList, Parameter
 
 from dair_pll import drake_utils
-from dair_pll.deep_support_function import extract_mesh
+from dair_pll.deep_support_function import extract_mesh_from_support_function, \
+    get_mesh_summary_from_polygon
 from dair_pll.drake_state_converter import DrakeStateConverter
 from dair_pll.drake_utils import MultibodyPlantDiagram
 from dair_pll.geometry import GeometryCollider, \
     PydrakeToCollisionGeometryFactory, \
-    CollisionGeometry, DeepSupportConvex
+    CollisionGeometry, DeepSupportConvex, Polygon
 from dair_pll.inertia import InertialParameterConverter
 from dair_pll.system import MeshSummary
 from dair_pll.tensor_utils import (pbmm, deal, spatial_to_point_jacobian)
@@ -330,7 +331,8 @@ class ContactTerms(Module):
     friction_params: Parameter
     collision_candidates: Tensor
 
-    def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
+    def __init__(self, plant_diagram: MultibodyPlantDiagram,
+                 represent_geometry_as: str = 'box') -> None:
         """Inits :py:class:`ContactTerms` with prescribed kinematics and
         geometries.
 
@@ -339,6 +341,9 @@ class ContactTerms(Module):
 
         Args:
             plant_diagram: Drake MultibodyPlant diagram to extract terms from.
+            represent_geometry_as: How to represent the geometry of any
+              learnable bodies (box/mesh/polygon).  By default, any ``Plane``
+              objects are not considered learnable -- only boxes or meshes.
         """
         # pylint: disable=too-many-locals
         super().__init__()
@@ -353,9 +358,8 @@ class ContactTerms(Module):
 
         # sweep over collision elements
         geometries, rotations, translations, drake_spatial_jacobians = \
-            ContactTerms.extract_geometries_and_kinematics(plant, inspector,
-                                                           geometry_ids,
-                                                           context)
+            ContactTerms.extract_geometries_and_kinematics(
+                plant, inspector, geometry_ids, context, represent_geometry_as)
 
         for geometry_index, geometry_pair in enumerate(collision_candidates):
             if geometries[geometry_pair[0]] > geometries[geometry_pair[1]]:
@@ -399,7 +403,8 @@ class ContactTerms(Module):
     @staticmethod
     def extract_geometries_and_kinematics(
         plant: MultibodyPlant_[Expression], inspector: SceneGraphInspector,
-        geometry_ids: List[GeometryId], context: Context
+        geometry_ids: List[GeometryId], context: Context,
+        represent_geometry_as: str
     ) -> Tuple[List[CollisionGeometry], List[np.ndarray], List[np.ndarray],
                List[np.ndarray]]:
         """Extracts modules and kinematics of list of geometries G.
@@ -409,6 +414,7 @@ class ContactTerms(Module):
             inspector: Scene graph inspector associated with plant.
             geometry_ids: List of geometries to model.
             context: Plant's context with symbolic state.
+            represent_geometry_as: How to represent learnable geometries.
 
         Returns:
             List of :py:class:`CollisionGeometry` models with one-to-one
@@ -449,7 +455,7 @@ class ContactTerms(Module):
 
             geometries.append(
                 PydrakeToCollisionGeometryFactory.convert(
-                    inspector.GetShape(geometry_id)))
+                    inspector.GetShape(geometry_id), represent_geometry_as))
 
         return geometries, rotations, translations, drake_spatial_jacobians
 
@@ -639,8 +645,15 @@ class MultibodyTerms(Module):
                 scalars[f'{body_id}_mu'] = \
                     friction_coefficients[geometry_index].item()
 
+                geometry_mesh = None
                 if isinstance(geometry, DeepSupportConvex):
-                    geometry_mesh = extract_mesh(geometry.network)
+                    geometry_mesh = extract_mesh_from_support_function(
+                        geometry.network)
+
+                if isinstance(geometry, Polygon):
+                    geometry_mesh = get_mesh_summary_from_polygon(geometry)
+
+                if geometry_mesh != None:
                     meshes[body_id] = geometry_mesh
                     vertices = geometry_mesh.vertices
                     diameters = vertices.max(dim=0).values - vertices.min(
@@ -684,7 +697,8 @@ class MultibodyTerms(Module):
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration
 
-    def __init__(self, urdfs: Dict[str, str], inertia_mode: int) -> None:
+    def __init__(self, urdfs: Dict[str, str], inertia_mode: int,
+                 represent_geometry_as: str = 'box') -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs
 
         Interpretation is performed as a thin wrapper around
@@ -698,11 +712,13 @@ class MultibodyTerms(Module):
 
         Args:
             urdfs: Dictionary of named URDF XML file names, containing
-            description of multibody system.
+              description of multibody system.
             inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
-            inertial parameters the model can learn.  The higher the number
-            the more inertial parameters are free to be learned, and 0
-            corresponds to learning no inertial parameters.
+              inertial parameters the model can learn.  The higher the number
+              the more inertial parameters are free to be learned, and 0
+              corresponds to learning no inertial parameters.
+            represent_geometry_as: String box/mesh/polygon to determine how
+              the geometry should be represented.
         """
         super().__init__()
 
@@ -730,7 +746,7 @@ class MultibodyTerms(Module):
 
         # setup parameterization
         self.lagrangian_terms = LagrangianTerms(plant_diagram, inertia_mode)
-        self.contact_terms = ContactTerms(plant_diagram)
+        self.contact_terms = ContactTerms(plant_diagram, represent_geometry_as)
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs

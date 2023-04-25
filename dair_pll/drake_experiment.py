@@ -61,6 +61,8 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Width of residual network."""
     network_depth: int = 2
     """Depth of residual network."""
+    represent_geometry_as: str = 'box'
+    """How to represent geometry (box, mesh, or polygon)."""
 
 
 @dataclass
@@ -206,17 +208,19 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                 self.config.learnable_config)
         output_dir = file_utils.get_learned_urdf_dir(self.config.storage,
                                                      self.config.run_name)
-        return MultibodyLearnableSystem(learnable_config.urdfs,
-                                        self.config.data_config.dt,
-                                        learnable_config.inertia_mode,
-                                        learnable_config.loss_variation,
-                                        w_pred = learnable_config.w_pred,
-                                        w_comp = learnable_config.w_comp.value,
-                                        w_diss = learnable_config.w_diss.value,
-                                        w_pen = learnable_config.w_pen.value,
-                                        w_res = learnable_config.w_res.value,
-                                        output_urdfs_dir=output_dir,
-                                        do_residual=learnable_config.do_residual)
+        return MultibodyLearnableSystem(
+            learnable_config.urdfs,
+            self.config.data_config.dt,
+            learnable_config.inertia_mode,
+            learnable_config.loss_variation,
+            w_pred = learnable_config.w_pred,
+            w_comp = learnable_config.w_comp.value,
+            w_diss = learnable_config.w_diss.value,
+            w_pen = learnable_config.w_pen.value,
+            w_res = learnable_config.w_res.value,
+            output_urdfs_dir=output_dir,
+            do_residual=learnable_config.do_residual,
+            represent_geometry_as=learnable_config.represent_geometry_as)
 
     def write_to_tensorboard(self, epoch: int, learned_system: System,
                              statistics: Dict) -> None:
@@ -331,7 +335,10 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             self.true_geom_multibody_system = MultibodyLearnableSystem(
                 init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
                 w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
-                do_residual=False)
+                do_residual=False,
+                represent_geometry_as = \
+                    self.config.learnable_config.represent_geometry_as)
+            
         return self.true_geom_multibody_system
 
     def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:

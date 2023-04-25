@@ -19,7 +19,7 @@ general purpose converter is implemented in
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Dict, cast
+from typing import Tuple, Dict, cast, Union
 
 import fcl  # type: ignore
 import numpy as np
@@ -32,7 +32,8 @@ from pydrake.geometry import Shape  # type: ignore
 from torch import Tensor
 from torch.nn import Module, Parameter
 
-from dair_pll.deep_support_function import HomogeneousICNN, extract_mesh
+from dair_pll.deep_support_function import HomogeneousICNN, \
+    extract_mesh_from_support_function
 from dair_pll.tensor_utils import pbmm, tile_dim, \
     rotation_matrix_from_one_vector
 
@@ -49,6 +50,7 @@ _POLYGON_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
+
 
 
 class CollisionGeometry(ABC, Module):
@@ -144,7 +146,7 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
     """Partial implementation of ``BoundedConvexCollisionGeometry`` when
     witness points are guaranteed to be contained in a small set of vertices.
 
-    An obvious subtype is any sort of Polytope, such as a ``Box``. A less
+    An obvious subtype is any sort of polytope, such as a ``Box``. A less
     obvious subtype are shapes in which a direction-dependent set of vertices
     can be easily calculated. See ``Cylinder``, for instance.
     """
@@ -349,7 +351,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             :py:mod:`fcl` bounding volume hierarchy for mesh.
         """
         if self.training:
-            mesh = extract_mesh(self.network)
+            mesh = extract_mesh_from_support_function(self.network)
             vertices = mesh.vertices.numpy()
             faces = mesh.faces.numpy()
             self.fcl_geometry = fcl.BVHModel()
@@ -461,9 +463,15 @@ class PydrakeToCollisionGeometryFactory:
     ``CollisionGeometry`` instances."""
 
     @staticmethod
-    def convert(drake_shape: Shape) -> CollisionGeometry:
+    def convert(drake_shape: Shape, represent_geometry_as: str
+        ) -> CollisionGeometry:
         """Converts abstract ``pydrake.geometry.shape`` to
-        ``CollisionGeometry``.
+        ``CollisionGeometry`` according to the desired ``represent_geometry_as``
+        type.
+
+        Notes:
+            The desired ``represent_geometry_as`` type only will affect
+            ``DrakeBox`` and ``DrakeMesh`` types, not ``DrakeHalfSpace`` types.
 
         Args:
             drake_shape: drake shape type to convert.
@@ -475,20 +483,30 @@ class PydrakeToCollisionGeometryFactory:
             TypeError: When provided object is not a supported Drake shape type.
         """
         if isinstance(drake_shape, DrakeBox):
-            return PydrakeToCollisionGeometryFactory.convert_box(drake_shape)
+            return PydrakeToCollisionGeometryFactory.convert_box(
+                drake_shape, represent_geometry_as)
         if isinstance(drake_shape, DrakeHalfSpace):
             return PydrakeToCollisionGeometryFactory.convert_plane()
         if isinstance(drake_shape, DrakeMesh):
-            return PydrakeToCollisionGeometryFactory.convert_mesh(drake_shape)
+            return PydrakeToCollisionGeometryFactory.convert_mesh(
+                drake_shape, represent_geometry_as)
         raise TypeError(
             "Unsupported type for drake Shape() to"
             "CollisionGeometry() conversion:", type(drake_shape))
 
     @staticmethod
-    def convert_box(drake_box: DrakeBox) -> Box:
-        """Converts ``pydrake.geometry.Box`` to ``Box``."""
-        half_widths = 0.5 * Tensor(np.copy(drake_box.size()))
-        return Box(half_widths, 4)
+    def convert_box(drake_box: DrakeBox, represent_geometry_as: str
+        ) -> Union[Box, Polygon]:
+        """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
+        if represent_geometry_as == 'box':
+            half_widths = 0.5 * Tensor(np.copy(drake_box.size()))
+            return Box(half_widths, 4)
+
+        if represent_geometry_as == 'polygon':
+            pass
+
+        raise NotImplementedError(f'Cannot presently represent a DrakeBox()' + \
+            f'as {represent_geometry_as} type.')
 
     @staticmethod
     def convert_plane() -> Plane:
@@ -496,12 +514,22 @@ class PydrakeToCollisionGeometryFactory:
         return Plane()
 
     @staticmethod
-    def convert_mesh(drake_mesh: DrakeMesh) -> DeepSupportConvex:
-        """Converts ``pydrake.geometry.Mesh`` to ``Polygon``."""
+    def convert_mesh(drake_mesh: DrakeMesh, represent_geometry_as: str
+        ) -> Union[DeepSupportConvex, Polygon]:
+        """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
+        ``DeepSupportConvex``."""
         filename = drake_mesh.filename()
         mesh = pywavefront.Wavefront(filename)
         vertices = Tensor(mesh.vertices)
-        return DeepSupportConvex(vertices)
+
+        if represent_geometry_as == 'mesh':
+            return DeepSupportConvex(vertices)
+
+        if represent_geometry_as == 'polygon':
+            return Polygon(vertices)
+
+        raise NotImplementedError(f'Cannot presently represent a ' + \
+            f'DrakeMesh() as {represent_geometry_as} type.')
 
 
 class GeometryCollider:

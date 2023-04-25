@@ -1,6 +1,9 @@
 """Modelling and manipulation of convex support functions."""
 from typing import Callable, Tuple, List
 
+import pdb
+
+import torch
 import torch.nn
 from scipy.spatial import ConvexHull  # type: ignore
 from torch import Tensor
@@ -16,7 +19,33 @@ _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
-def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
+_POLYGON_DEFAULT_FACES = torch.tensor([[0, 1, 2], [2, 1, 3], [2, 3, 4],
+                                       [4, 3, 5], [4, 5, 6], [6, 5, 7],
+                                       [6, 7, 0], [0, 7, 1], [1, 7, 3],
+                                       [3, 7, 5], [6, 0, 4], [4, 0, 2]],
+                                      dtype=torch.int64)
+
+
+def get_mesh_summary_from_polygon(polygon) -> MeshSummary:
+    """Assuming a standard ordering of vertices for a ``Polygon``
+    representation, produce a ``MeshSummary`` of this sparse mesh.
+
+    Note:
+        This is a hack since it only works for ``Polygon``\s of a particular
+        structure.  That structure matches that provided in the example assets
+        ``contactnets_cube.obj`` and ``contactnets_elbow_half.obj``. 
+
+    Args:
+        polygon: A ``Polygon`` ``CollisionGeometry``.
+
+    Returns:
+        A ``MeshSummary`` of the polygon.
+    """
+    return MeshSummary(vertices=polygon.vertices, faces=_POLYGON_DEFAULT_FACES)
+
+
+def extract_obj_from_support_function(
+    support_function: Callable[[Tensor], Tensor]) -> str:
     """Given a support function, extracts a Wavefront obj representation.
 
     Args:
@@ -25,7 +54,20 @@ def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
     Returns:
         Wavefront .obj string
     """
-    mesh_summary = extract_mesh(support_function)
+    mesh_summary = extract_mesh_from_support_function(support_function)
+    return extract_obj_from_mesh_summary(mesh_summary)
+
+
+def extract_obj_from_mesh_summary(mesh_summary: MeshSummary) -> str:
+    """Given a mesh summary, extracts a Wavefront obj representation.
+
+    Args:
+        mesh_summary: Object vertices and face indices in the form of a
+          ``MeshSummary``.
+
+    Returns:
+        Wavefront .obj string
+    """
     normals = extract_outward_normal_hyperplanes(
         mesh_summary.vertices.unsqueeze(0),
         mesh_summary.faces.unsqueeze(0)
@@ -38,7 +80,6 @@ def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
 
     obj_string += '\n\n'
 
-    #pdb.set_trace()
     for normal in normals:
         normal_string = " ".join([str(n_i.item()) for n_i in normal])
         obj_string += f'vn {normal_string}\n'
@@ -50,7 +91,6 @@ def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
         obj_string += f'f {face_string}\n'
 
     return obj_string
-
 
 
 def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
@@ -89,7 +129,8 @@ def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
     return outward_normals, backwards, extents
 
 
-def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
+def extract_mesh_from_support_function(
+    support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
     """Given a support function, extracts a vertex/face mesh.
 
     Args:

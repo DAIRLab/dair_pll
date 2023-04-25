@@ -54,6 +54,12 @@ REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
+# Possible geometry types
+BOX_TYPE = 'box'
+MESH_TYPE = 'mesh'
+POLYGON_TYPE = 'polygon'
+GEOMETRY_TYPES = [BOX_TYPE, MESH_TYPE, POLYGON_TYPE]
+
 # Possible results management options
 OVERWRITE_DATA_AND_RUNS = 'data_and_runs'
 OVERWRITE_SINGLE_RUN_KEEP_DATA = 'run'
@@ -95,7 +101,7 @@ def create_instance(storage_folder_name: str, run_name: str,
                     system: str = CUBE_SYSTEM,
                     source: str = SIM_SOURCE,
                     contactnets: bool = True,
-                    box: bool = True,
+                    geometry: str = BOX_TYPE,
                     regenerate: bool = True,
                     dataset_size: int = 0,
                     local: bool = False,
@@ -139,9 +145,9 @@ def create_instance(storage_folder_name: str, run_name: str,
         train_options = f' --system={system} --source={source}' + \
                         f' --dataset-size={dataset_size}' + \
                         f' --inertia-params={inertia_params}' + \
-                        f' --loss-variation={loss_variation}'
+                        f' --loss-variation={loss_variation}' + \
+                        f' --geometry={geometry}'
         train_options += ' --contactnets' if contactnets else ' --prediction'
-        train_options += ' --box' if box else ' --mesh'
         train_options += ' --regenerate' if regenerate else ' --no-regenerate'
         train_options += ' --true-sys' if true_sys else ' --wrong-sys'
         train_options += f' --wandb-project={WANDB_PROJECTS[local]}'
@@ -265,7 +271,7 @@ def check_for_git_updates(repo):
 
 
 def experiment_class_command(category: str, run_name: str, system: str,
-    contactnets: bool, box: bool, regenerate: bool, local: bool,
+    contactnets: bool, geometry: str, regenerate: bool, local: bool,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
     w_pred: float, w_comp: float, w_diss: float, w_pen: float, w_res: float,
     dataset_exponent: int = None, last_run_num: int = None, number: int = 1,
@@ -342,9 +348,10 @@ def experiment_class_command(category: str, run_name: str, system: str,
 
         # Continue creating PLL instance.
         create_instance(storage_folder_name, run_name_i, system=system,
-                        source=source, contactnets=contactnets, box=box,
-                        regenerate=regenerate, dataset_size=dataset_size,
-                        local=local, inertia_params=inertia_params,
+                        source=source, contactnets=contactnets,
+                        geometry=geometry, regenerate=regenerate,
+                        dataset_size=dataset_size, local=local,
+                        inertia_params=inertia_params,
                         loss_variation=loss_variation, true_sys=true_sys,
                         restart=False, wandb_group_id=wandb_group_id,
                         w_pred=w_pred, w_comp=w_comp, w_diss=w_diss,
@@ -371,9 +378,10 @@ def cli():
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
-@click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+@click.option('--geometry',
+              type=click.Choice(GEOMETRY_TYPES, case_sensitive=True),
+              default=BOX_TYPE,
+              help="how to represent geometry.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether to save updated URDF's each epoch or not.")
@@ -421,7 +429,7 @@ def cli():
               default=False,
               help="whether to include residual physics or not.")
 def create_command(storage_folder_name: str, run_name: str, number: int,
-                   system: str, source: str, contactnets: bool, box: bool,
+                   system: str, source: str, contactnets: bool, geometry: str,
                    regenerate: bool, dataset_size: int, local: bool,
                    inertia_params: str, loss_variation: str, true_sys: bool,
                    overwrite: str, w_pred: float, w_comp: float,
@@ -472,7 +480,7 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
 
         # Continue creating PLL instance.
         create_instance(storage_folder_name, run_name_i, system, source,
-                        contactnets, box, regenerate, dataset_size, local,
+                        contactnets, geometry, regenerate, dataset_size, local,
                         inertia_params, loss_variation, true_sys, False,
                         wandb_group_id=wandb_group_id, w_pred=w_pred,
                         w_comp=w_comp, w_diss=w_diss, w_pen=w_pen, w_res=w_res,
@@ -492,9 +500,10 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
-@click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+@click.option('--geometry',
+              type=click.Choice(GEOMETRY_TYPES, case_sensitive=True),
+              default=BOX_TYPE,
+              help="how to represent geometry.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether to save updated URDF's each epoch or not.")
@@ -539,17 +548,17 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
               default=False,
               help="whether to include residual physics or not.")
 def test_command(run_name: str, number: int, system: str, contactnets: bool,
-                 box: bool, regenerate: bool, local: bool, inertia_params: str,
-                 loss_variation: str, true_sys: bool, overwrite: str,
-                 w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                 w_res: float, residual: bool):
+                 geometry: str, regenerate: bool, local: bool,
+                 inertia_params: str, loss_variation: str, true_sys: bool,
+                 overwrite: str, w_pred: float, w_comp: float, w_diss: float,
+                 w_pen: float, w_res: float, residual: bool):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
     check_for_git_updates(repo)
 
     experiment_class_command('test', run_name, system=system,
-                             contactnets=contactnets, box=box,
+                             contactnets=contactnets, geometry=geometry,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params,
                              loss_variation=loss_variation, true_sys=true_sys,
@@ -570,9 +579,10 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
-@click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+@click.option('--geometry',
+              type=click.Choice(GEOMETRY_TYPES, case_sensitive=True),
+              default=BOX_TYPE,
+              help="how to represent geometry.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether to save updated URDF's each epoch or not.")
@@ -617,17 +627,17 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
               default=False,
               help="whether to include residual physics or not.")
 def dev_command(run_name: str, number: int, system: str, contactnets: bool,
-                box: bool, regenerate: bool, local: bool, inertia_params: str,
-                loss_variation: str, true_sys: bool, overwrite: str,
-                w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                w_res: float, residual: bool):
+                geometry: str, regenerate: bool, local: bool,
+                inertia_params: str, loss_variation: str, true_sys: bool,
+                overwrite: str, w_pred: float, w_comp: float, w_diss: float,
+                w_pen: float, w_res: float, residual: bool):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
     check_for_git_updates(repo)
 
     experiment_class_command('dev', run_name, system=system,
-                             contactnets=contactnets, box=box,
+                             contactnets=contactnets, geometry=geometry,
                              regenerate=regenerate, local=local, 
                              inertia_params=inertia_params, 
                              loss_variation=loss_variation, true_sys=true_sys,
@@ -688,9 +698,10 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
-@click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+@click.option('--geometry',
+              type=click.Choice(GEOMETRY_TYPES, case_sensitive=True),
+              default=BOX_TYPE,
+              help="how to represent geometry.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether to save updated URDF's each epoch or not.")
@@ -732,10 +743,10 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
               default=False,
               help="whether to include residual physics or not.")
 def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
-                  box: bool, regenerate: bool, local: bool, inertia_params: str,
-                  loss_variation: str, true_sys: bool, w_pred: float,
-                  w_comp: float, w_diss: float, w_pen: float, w_res: float,
-                  residual: bool):
+                  geometry: str, regenerate: bool, local: bool,
+                  inertia_params: str, loss_variation: str, true_sys: bool,
+                  w_pred: float, w_comp: float, w_diss: float, w_pen: float,
+                  w_res: float, residual: bool):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -761,7 +772,7 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
     # Create a pll instance for every dataset size from 4 to 512
     for dataset_exponent in range(2, 10):
         experiment_class_command('sweep', sweep_name, system=system,
-                                 contactnets=contactnets, box=box,
+                                 contactnets=contactnets, geometry=geometry,
                                  regenerate=regenerate, local=local, 
                                  inertia_params=inertia_params,
                                  loss_variation=loss_variation,
@@ -791,9 +802,10 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
-@click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+@click.option('--geometry',
+              type=click.Choice(GEOMETRY_TYPES, case_sensitive=True),
+              default=BOX_TYPE,
+              help="how to represent geometry.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether to save updated URDF's each epoch or not.")
@@ -811,7 +823,7 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
               default=False,
               help="whether to include residual physics or not.")
 def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
-                           contactnets: bool, box: bool, regenerate: bool,
+                           contactnets: bool, geometry: str, regenerate: bool,
                            local: bool, inertia_params: str, true_sys: bool,
                            residual: bool):
     """Starts a series of instances, sweeping over dataset size."""
@@ -852,7 +864,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                 for loss_variation in [1, 2, 3]:
                     experiment_class_command(
                         experiment_name, hp_name, system=system,
-                        contactnets=contactnets, box=box,
+                        contactnets=contactnets, geometry=geometry,
                         regenerate=regenerate, local=local,
                         inertia_params=inertia_params,
                         loss_variation=loss_variation, true_sys=true_sys,

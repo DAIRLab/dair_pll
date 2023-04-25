@@ -91,7 +91,8 @@ class MultibodyLearnableSystem(System):
                  do_residual: bool = False,
                  output_urdfs_dir: Optional[str] = None,
                  network_width: int = 128,
-                 network_depth: int = 2) -> None:
+                 network_depth: int = 2,
+                 represent_geometry_as: str = 'box') -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -116,7 +117,8 @@ class MultibodyLearnableSystem(System):
         """
         assert str(loss_variation) in LOSS_VARIATION_NUMBERS
 
-        multibody_terms = MultibodyTerms(init_urdfs, inertia_mode)
+        multibody_terms = MultibodyTerms(init_urdfs, inertia_mode,
+                                         represent_geometry_as)
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super().__init__(space, integrator)
@@ -200,11 +202,14 @@ class MultibodyLearnableSystem(System):
             self.calculate_contactnets_loss_terms(x, u, x_plus)
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
-        residual_norm = regularizers[0]
+        if len(regularizers) > 0:
+            residual_norm = regularizers[0]
+            regs = self.w_res * residual_norm
+        else:
+            regs = 0.
 
-        loss = (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
-               (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
-               (self.w_res * residual_norm)
+        loss = regs + (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
+               (self.w_pen * loss_pen) + (self.w_diss * loss_diss)
 
         return loss
 
@@ -221,11 +226,11 @@ class MultibodyLearnableSystem(System):
             residual_norm = torch.linalg.norm(residual, dim=1) ** 2
             regularizers.append(residual_norm)
 
-        # Use the believed geometry to help supervise the learned CoM.
-        if (self.multibody_terms.inertia_mode_txt != 'none') and \
-           (self.multibody_terms.inertia_mode_txt != 'masses'):
-            # This means the CoM locations are getting learned.
-            pass
+        # # Use the believed geometry to help supervise the learned CoM.
+        # if (self.multibody_terms.inertia_mode_txt != 'none') and \
+        #    (self.multibody_terms.inertia_mode_txt != 'masses'):
+        #     # This means the CoM locations are getting learned.
+        #     pass
 
         return regularizers
 

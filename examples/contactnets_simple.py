@@ -69,12 +69,19 @@ CUBE_MESH_URDF_ASSET = 'contactnets_cube_mesh.urdf'
 ELBOW_BOX_URDF_ASSET = 'contactnets_elbow.urdf'
 ELBOW_MESH_URDF_ASSET = 'contactnets_elbow_mesh.urdf'
 
-TRUE_DATA_ASSETS = {CUBE_SYSTEM: CUBE_DATA_ASSET, ELBOW_SYSTEM: ELBOW_DATA_ASSET}
+REAL_DATA_ASSETS = {CUBE_SYSTEM: CUBE_DATA_ASSET, ELBOW_SYSTEM: ELBOW_DATA_ASSET}
 
 MESH_TYPE = 'mesh'
 BOX_TYPE = 'box'
-CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET, BOX_TYPE: CUBE_BOX_URDF_ASSET}
-ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET, BOX_TYPE: ELBOW_BOX_URDF_ASSET}
+POLYGON_TYPE = 'polygon'
+GEOMETRY_TYPES = [BOX_TYPE, MESH_TYPE, POLYGON_TYPE]
+
+CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET,
+              BOX_TYPE: CUBE_BOX_URDF_ASSET,
+              POLYGON_TYPE: CUBE_MESH_URDF_ASSET}
+ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET,
+               BOX_TYPE: ELBOW_BOX_URDF_ASSET,
+               POLYGON_TYPE: ELBOW_MESH_URDF_ASSET}
 TRUE_URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 
 
@@ -136,7 +143,7 @@ def main(storage_folder_name: str = "",
          system: str = CUBE_SYSTEM,
          source: str = SIM_SOURCE,
          contactnets: bool = True,
-         box: bool = True,
+         geometry: str = BOX_TYPE,
          regenerate: bool = False,
          dataset_size: int = 512,
          inertia_params: str = '4',
@@ -157,7 +164,7 @@ def main(storage_folder_name: str = "",
         system: Which system to learn.
         source: Where to get data from.
         contactnets: Whether to use ContactNets or prediction loss.
-        box: Whether to represent geometry as box or mesh.
+        geometry: How to represent geometry (box, mesh, or polygon).
         regenerate: Whether save updated URDF's each epoch.
         dataset_size: Number of trajectories for train/val/test.
         inertia_params: What inertial parameters to learn.
@@ -176,7 +183,7 @@ def main(storage_folder_name: str = "",
          + f'with name \'{run_name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
          + f'\n\tusing ContactNets: {contactnets}' \
-         + f'\n\twith box: {box}' \
+         + f'\n\twith geometry represented as: {geometry}' \
          + f'\n\tregenerate: {regenerate}' \
          + f'\n\tinertia learning mode: {inertia_params}' \
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
@@ -211,7 +218,7 @@ def main(storage_folder_name: str = "",
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
     # first, select urdfs
-    urdf_asset = TRUE_URDFS[system][BOX_TYPE if box else MESH_TYPE]
+    urdf_asset = TRUE_URDFS[system][geometry]
     urdf = file_utils.get_asset(urdf_asset)
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
@@ -220,13 +227,15 @@ def main(storage_folder_name: str = "",
     # a multibody system, which is initialized as the original system URDF, or
     # as a provided wrong initialization. For now, this is only implemented with
     # the box geoemtry parameterization.
-    if box and not true_sys:
+    if geometry == BOX_TYPE and not true_sys:
         wrong_urdf_asset = WRONG_URDFS[system]['small']
         wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
         init_urdfs = {system: wrong_urdf}
     # else:  use the initial mesh type anyway
     else:
         init_urdfs = urdfs
+
+    print(f'Using initial URDF: {init_urdfs}')
 
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
@@ -239,7 +248,7 @@ def main(storage_folder_name: str = "",
         w_diss=Float(w_diss, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
         w_pen=Float(w_pen, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
         w_res=Float(w_res, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        do_residual=do_residual)
+        do_residual=do_residual, represent_geometry_as=geometry)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -308,7 +317,7 @@ def main(storage_folder_name: str = "",
         # otherwise, specify directory with [T, n_x] tensor files saved as
         # 0.pt, 1.pt, ...
         # See :mod:`dair_pll.state_space` for state format.
-        data_asset = TRUE_DATA_ASSETS[system]
+        data_asset = REAL_DATA_ASSETS[system]
         import_directory = file_utils.get_asset(data_asset)
         print(f'Getting real trajectories from {import_directory}\n')
         file_utils.import_data_to_storage(storage_name,
@@ -348,9 +357,10 @@ def main(storage_folder_name: str = "",
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
-@click.option('--box/--mesh',
-              default=True,
-              help="whether to represent geometry as box or mesh.")
+@click.option('--geometry',
+              type=click.Choice(GEOMETRY_TYPES, case_sensitive=True),
+              default=BOX_TYPE,
+              help="how to represent geometry.")
 @click.option('--regenerate/--no-regenerate',
               default=False,
               help="whether to save updated URDF's each epoch or not.")
@@ -396,16 +406,16 @@ def main(storage_folder_name: str = "",
               default=False,
               help="whether to include residual physics or not.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
-                 source: str, contactnets: bool, box: bool, regenerate: bool,
-                 dataset_size: int, inertia_params: str, loss_variation: str,
-                 true_sys: bool, wandb_project: str, w_pred: float,
-                 w_comp: float, w_diss: float, w_pen: float, w_res: float,
-                 residual: bool):
+                 source: str, contactnets: bool, geometry: str,
+                 regenerate: bool, dataset_size: int, inertia_params: str,
+                 loss_variation: str, true_sys: bool, wandb_project: str,
+                 w_pred: float, w_comp: float, w_diss: float, w_pen: float,
+                 w_res: float, residual: bool):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
-    main(storage_folder_name, run_name, system, source, contactnets, box,
+    main(storage_folder_name, run_name, system, source, contactnets, geometry,
          regenerate, dataset_size, inertia_params, loss_variation, true_sys,
          wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, residual)
 
