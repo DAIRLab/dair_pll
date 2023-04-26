@@ -234,7 +234,6 @@ class MultibodyLearnableSystem(System):
 
         return regularizers
 
-
     def calculate_contactnets_loss_terms(self,
                          x: Tensor,
                          u: Tensor,

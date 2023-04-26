@@ -309,7 +309,6 @@ def exp(r: Tensor) -> Tensor:
     return torch.cat((torch.cos(angle / 2), r * sinc(angle / 2) / 2), dim=-1)
 
 
-
 def quaternion_to_rotmat_vec(q: Tensor) -> Tensor:
     """Converts batched quaternions of shape (*, 4) to vectorized rotation
     matrices of shape (*, 9)."""
