@@ -15,6 +15,8 @@ from copy import deepcopy
 from typing import Tuple, Optional
 
 import numpy as np
+import torch
+from torch import Tensor
 from PIL import Image
 # pylint: disable-next=import-error
 from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
@@ -31,6 +33,64 @@ LEARNED_SYSTEM_DEFAULT_COLOR = BLUE
 PERCEPTION_COLOR_GROUP = 'phong'
 PERCEPTION_COLOR_PROPERTY = 'diffuse'
 LEARNED_TAG = '__learned__'
+GEOMETRY_INSPECTION_TRAJECTORY_LENGTH = 1000
+HALF_STEPS = int(GEOMETRY_INSPECTION_TRAJECTORY_LENGTH/2)
+
+FULL_SPIN_HALF_TIME = torch.stack([
+        Tensor([np.cos(torch.pi*i/HALF_STEPS), 0, 0,
+                np.sin(torch.pi*i/HALF_STEPS)]) \
+        for i in range(HALF_STEPS)
+    ])
+ARTICULATION_FULL_SPIN_HALF_TIME = torch.stack([
+        Tensor([2*torch.pi*i/HALF_STEPS])
+        for i in range(HALF_STEPS)
+    ])
+LINEAR_LOCATION_HALF_TIME = Tensor([1.2, 0, 0.15]).repeat(HALF_STEPS, 1)
+
+
+def get_geometry_inspection_trajectory(learned_system: DrakeSystem) -> Tensor:
+    """Return a trajectory to use to inspect the learned geometry of a system.
+
+    Notes:
+        Only works for the cube and elbow experiments, or actually more
+        generally for one floating body with or without one articulation joint.
+
+    Args:
+        learned_system: This system is used as an input only for determining the
+          size of the system's state space.
+
+    Returns:
+        (n_steps, n_x) tensor of a trajectory.
+    """
+    n_q = learned_system.space.n_q
+    n_v = learned_system.space.n_v
+
+    # Velocities don't matter -- set to zero.
+    vels = torch.zeros((HALF_STEPS, n_v))
+
+    # Rotation and articulation depend on if there's articulation or not.
+    if n_q == 7:
+        rotation_piece = torch.cat(
+            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME, vels), dim=1)
+
+        trajectory = torch.cat((rotation_piece, rotation_piece), dim=0)
+        
+    elif n_q == 8:
+        rotation_piece = torch.cat(
+            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME,
+             torch.zeros((HALF_STEPS, 1)), vels), dim=1)
+
+        rotate_and_articulate = torch.cat(
+            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME,
+             ARTICULATION_FULL_SPIN_HALF_TIME, vels), dim=1)
+
+        trajectory = torch.cat((rotation_piece, rotate_and_articulate), dim=0)
+
+    else:
+        raise NotImplementedError(f'Don\'t know how to handle a system ' + \
+            f'other than the cube or elbow or similar.')
+
+    return trajectory
 
 
 def generate_visualization_system(

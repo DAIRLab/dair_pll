@@ -155,6 +155,10 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
         trajectories. The nature of this video is described further in
         :py:mod:`dair_pll.vis_utils`\ .
 
+        Additionally, manually defined trajectories are used to show the learned
+        geometries.  This is particularly useful for more expressive geometry
+        types like meshes.
+
         Args:
             statistics: Dictionary of training statistics.
             learned_system: Most updated version of learned system during
@@ -168,6 +172,8 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
 
         space = self.get_drake_system().space
         videos = {}
+
+        # First do overlay prediction videos.
         for traj_num in [0]:
             for set_name in ['train', 'valid']:
                 target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}' + \
@@ -187,6 +193,19 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
                     visualization_system, visualization_trajectory)
                 videos[f'{set_name}_trajectory_prediction_{traj_num}'] = \
                     (video, framerate)
+
+        # Second do geometry inspection videos.
+        geometry_inspection_traj = \
+            vis_utils.get_geometry_inspection_trajectory(learned_system)
+        target_trajectory = geometry_inspection_traj
+        prediction_trajectory = geometry_inspection_traj
+        visualization_trajectory = torch.cat(
+            (space.q(target_trajectory), space.q(prediction_trajectory),
+             space.v(target_trajectory), space.v(prediction_trajectory)), -1)
+        video, framerate = vis_utils.visualize_trajectory(
+            visualization_system, visualization_trajectory)
+        videos['geometry_inspection'] = (video, framerate)
+
         return SystemSummary(scalars={}, videos=videos, meshes={})
 
 
