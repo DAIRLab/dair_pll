@@ -19,12 +19,6 @@ _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
-_POLYGON_DEFAULT_FACES = torch.tensor([[0, 1, 2], [2, 1, 3], [2, 3, 4],
-                                       [4, 3, 5], [4, 5, 6], [6, 5, 7],
-                                       [6, 7, 0], [0, 7, 1], [1, 7, 3],
-                                       [3, 7, 5], [6, 0, 4], [4, 0, 2]],
-                                      dtype=torch.int64)
-
 
 def get_mesh_summary_from_polygon(polygon) -> MeshSummary:
     """Assuming a standard ordering of vertices for a ``Polygon``
@@ -41,7 +35,11 @@ def get_mesh_summary_from_polygon(polygon) -> MeshSummary:
     Returns:
         A ``MeshSummary`` of the polygon.
     """
-    return MeshSummary(vertices=polygon.vertices, faces=_POLYGON_DEFAULT_FACES)
+    vertices = polygon.vertices
+    hull = ConvexHull(vertices.clone().detach().numpy())
+    faces = Tensor(hull.simplices).to(torch.long)  # type: ignore
+
+    return MeshSummary(vertices=polygon.vertices, faces=faces)
 
 
 def extract_obj_from_support_function(
