@@ -35,11 +35,16 @@ def get_mesh_summary_from_polygon(polygon) -> MeshSummary:
     Returns:
         A ``MeshSummary`` of the polygon.
     """
-    vertices = polygon.vertices
-    hull = ConvexHull(vertices.clone().detach().numpy())
+    # Use arbitrary direction to query the Polygon's vertices (value does not
+    # matter).
+    arbitrary_direction = torch.ones((1,3))
+    vertices = polygon.get_vertices(
+        arbitrary_direction).squeeze(0).clone().detach()
+
+    hull = ConvexHull(vertices.numpy())
     faces = Tensor(hull.simplices).to(torch.long)  # type: ignore
 
-    return MeshSummary(vertices=polygon.vertices, faces=faces)
+    return MeshSummary(vertices=vertices, faces=faces)
 
 
 def extract_obj_from_support_function(

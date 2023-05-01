@@ -44,6 +44,8 @@ _UNIT_BOX_VERTICES = Tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
 _ROT_Z_45 = Tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
                     [0., 0., 1.]])
 
+_NOMINAL_HALF_LENGTH = 0.05   # 10cm is nominal object length
+
 _total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere', 'DeepSupportConvex']
 
 _POLYGON_DEFAULT_N_QUERY = 4
@@ -226,7 +228,7 @@ class Polygon(SparseVertexConvexCollisionGeometry):
     of vertices, where models the underlying shape as all convex combinations
     of the vertices.
     """
-    vertices: Parameter
+    vertices_parameter: Parameter
 
     def __init__(self,
                  vertices: Tensor,
@@ -238,17 +240,20 @@ class Polygon(SparseVertexConvexCollisionGeometry):
             n_query: number of vertices to return in witness point set.
         """
         super().__init__(n_query)
-        self.vertices = Parameter(vertices.clone(), requires_grad=True)
+        scaled_vertices = vertices.clone()/_NOMINAL_HALF_LENGTH
+        self.vertices_parameter = Parameter(scaled_vertices, requires_grad=True)
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Return batched view of static vertex set"""
-        return self.vertices.expand(directions.shape[:-1] + self.vertices.shape)
+        scaled_vertices = _NOMINAL_HALF_LENGTH * self.vertices_parameter
+        return scaled_vertices.expand(
+            directions.shape[:-1] + scaled_vertices.shape)
 
     def scalars(self) -> Dict[str, float]:
         """Return one scalar for each vertex index."""
         scalars = {}
         axes = ['x', 'y', 'z']
-        for axis, values in zip(axes, self.vertices.t()):
+        for axis, values in zip(axes, self.vertices_parameter.t()):
             for vertex_index, value in enumerate(values):
                 scalars[f'v{vertex_index}_{axis}'] = value.item()
         return scalars
@@ -389,14 +394,15 @@ class Box(SparseVertexConvexCollisionGeometry):
 
         assert half_lengths.numel() == 3
 
-        self.length_params = Parameter(half_lengths.clone().view(1, -1),
+        scaled_half_lengths = half_lengths.clone()/_NOMINAL_HALF_LENGTH
+        self.length_params = Parameter(scaled_half_lengths.view(1, -1),
                                        requires_grad=True)
         self.unit_vertices = _UNIT_BOX_VERTICES.clone()
 
     def get_half_lengths(self) -> Tensor:
         """From the stored :py:attr:`length_params`, compute the half lengths of
         the box as its absolute value."""
-        return torch.abs(self.length_params)
+        return torch.abs(self.length_params) * _NOMINAL_HALF_LENGTH
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Returns view of cuboid's static vertex set."""
