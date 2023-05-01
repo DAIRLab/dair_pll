@@ -94,7 +94,7 @@ WANDB_NO_GROUP_MESSAGE = \
     'echo "Not exporting WANDB_RUN_GROUP since restarting."'
 
 # Weights to try in hyperparameter search
-HYPERPARAMETER_WEIGHTS = [1e-2, 1e-1, 1e0, 1e1, 1e2]
+HYPERPARAMETER_WEIGHTS = [1e-2, 3e-2, 1e-1, 3e-1, 1e0, 3e0, 1e1, 3e1, 1e2]
 
 
 def create_instance(storage_folder_name: str, run_name: str,
@@ -275,7 +275,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
     w_pred: float, w_comp: float, w_diss: float, w_pen: float, w_res: float,
     dataset_exponent: int = None, last_run_num: int = None, number: int = 1,
-    source: str = None, do_residual: bool = False):
+    do_residual: bool = False):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -856,12 +856,12 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
     for w_comp in HYPERPARAMETER_WEIGHTS:
         for w_diss in HYPERPARAMETER_WEIGHTS:
             for w_pen in HYPERPARAMETER_WEIGHTS:
-                if w_comp == w_diss == w_pen == 1e0:
-                    # Already ran many tests with (1, 1, 1, 1) weights, so can
-                    # skip repeating this hyperparameter set.
-                    continue
+                # if w_comp == w_diss == w_pen == 1e0:
+                #     # Already ran many tests with (1, 1, 1, 1) weights, so can
+                #     # skip repeating this hyperparameter set.
+                #     continue
 
-                for loss_variation in [1, 2, 3]:
+                for loss_variation in [1]:
                     experiment_class_command(
                         experiment_name, hp_name, system=system,
                         contactnets=contactnets, geometry=geometry,
