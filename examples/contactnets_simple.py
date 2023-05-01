@@ -87,13 +87,23 @@ TRUE_URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 
 CUBE_BOX_URDF_ASSET_BAD = 'contactnets_cube_bad_init.urdf'
 CUBE_BOX_URDF_ASSET_SMALL = 'contactnets_cube_small_init.urdf'
+CUBE_MESH_URDF_ASSET_SMALL = 'contactnets_cube_mesh_small_init.urdf'
 ELBOW_BOX_URDF_ASSET_BAD = 'contactnets_elbow_bad_init.urdf'
 ELBOW_BOX_URDF_ASSET_SMALL = 'contactnets_elbow_small_init.urdf'
-CUBE_WRONG_URDFS = {'bad': CUBE_BOX_URDF_ASSET_BAD,
-                    'small': CUBE_BOX_URDF_ASSET_SMALL}
-ELBOW_WRONG_URDFS = {'bad': ELBOW_BOX_URDF_ASSET_BAD,
-                    'small': ELBOW_BOX_URDF_ASSET_SMALL}
-WRONG_URDFS = {CUBE_SYSTEM: CUBE_WRONG_URDFS, ELBOW_SYSTEM: ELBOW_WRONG_URDFS}
+ELBOW_MESH_URDF_ASSET_SMALL = 'contactnets_elbow_mesh_small_init.urdf'
+CUBE_BOX_WRONG_URDFS = {'bad': CUBE_BOX_URDF_ASSET_BAD,
+                        'small': CUBE_BOX_URDF_ASSET_SMALL}
+CUBE_MESH_WRONG_URDFS = {'small': CUBE_MESH_URDF_ASSET_SMALL}
+ELBOW_BOX_WRONG_URDFS = {'bad': ELBOW_BOX_URDF_ASSET_BAD,
+                         'small': ELBOW_BOX_URDF_ASSET_SMALL}
+ELBOW_MESH_WRONG_URDFS = {'small': ELBOW_MESH_URDF_ASSET_SMALL}
+WRONG_BOX_URDFS = {CUBE_SYSTEM: CUBE_BOX_WRONG_URDFS,
+                   ELBOW_SYSTEM: ELBOW_BOX_WRONG_URDFS}
+WRONG_MESH_URDFS = {CUBE_SYSTEM: CUBE_MESH_WRONG_URDFS,
+                    ELBOW_SYSTEM: ELBOW_MESH_WRONG_URDFS}
+WRONG_URDFS_BY_GEOM_THEN_SYSTEM = {MESH_TYPE: WRONG_MESH_URDFS,
+                                   POLYGON_TYPE: WRONG_MESH_URDFS,
+                                   BOX_TYPE: WRONG_BOX_URDFS}
 
 
 REPO_DIR = os.path.normpath(
@@ -227,15 +237,15 @@ def main(storage_folder_name: str = "",
     # a multibody system, which is initialized as the original system URDF, or
     # as a provided wrong initialization. For now, this is only implemented with
     # the box geoemtry parameterization.
-    if geometry == BOX_TYPE and not true_sys:
-        wrong_urdf_asset = WRONG_URDFS[system]['small']
-        wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
-        init_urdfs = {system: wrong_urdf}
-    # else:  use the initial mesh type anyway
-    else:
-        init_urdfs = urdfs
+    # if geometry == BOX_TYPE and not true_sys:
+    wrong_urdf_asset = WRONG_URDFS_BY_GEOM_THEN_SYSTEM[geometry][system]['small']
+    wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
+    init_urdfs = {system: wrong_urdf}
+    # # else:  use the initial mesh type anyway
+    # else:
+    #     init_urdfs = urdfs
 
-    print(f'Using initial URDF: {init_urdfs}')
+    print(f'Using initial URDF: {wrong_urdf}')
 
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
