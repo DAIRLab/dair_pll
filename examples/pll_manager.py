@@ -870,7 +870,8 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                         loss_variation=loss_variation, true_sys=true_sys,
                         last_run_num=last_run_num, overwrite=OVERWRITE_NOTHING,
                         number=number, w_pred=w_pred, w_comp=w_comp,
-                        w_diss=w_diss, w_pen=w_pen, do_residual=residual)
+                        w_diss=w_diss, w_pen=w_pen, w_res=1.0,
+                        do_residual=residual)
                     last_run_num += 1
 
 
