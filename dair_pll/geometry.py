@@ -253,7 +253,13 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         """Return one scalar for each vertex index."""
         scalars = {}
         axes = ['x', 'y', 'z']
-        for axis, values in zip(axes, self.vertices_parameter.t()):
+
+        # Use arbitrary direction to query the Polygon's vertices (value does
+        # not matter).
+        arbitrary_direction = torch.ones((1,3))
+        vertices = self.get_vertices(arbitrary_direction)
+
+        for axis, values in zip(axes, vertices.t()):
             for vertex_index, value in enumerate(values):
                 scalars[f'v{vertex_index}_{axis}'] = value.item()
         return scalars
