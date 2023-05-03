@@ -56,7 +56,8 @@ from dair_pll.drake_state_converter import DrakeStateConverter
 from dair_pll.drake_utils import MultibodyPlantDiagram
 from dair_pll.geometry import GeometryCollider, \
     PydrakeToCollisionGeometryFactory, \
-    CollisionGeometry, DeepSupportConvex, Polygon
+    CollisionGeometry, DeepSupportConvex, Polygon, Box, \
+    Plane, _NOMINAL_HALF_LENGTH
 from dair_pll.inertia import InertialParameterConverter
 from dair_pll.system import MeshSummary
 from dair_pll.tensor_utils import (pbmm, deal, spatial_to_point_jacobian)
@@ -650,7 +651,7 @@ class MultibodyTerms(Module):
                     geometry_mesh = extract_mesh_from_support_function(
                         geometry.network)
 
-                if isinstance(geometry, Polygon):
+                elif isinstance(geometry, Polygon):
                     geometry_mesh = get_mesh_summary_from_polygon(geometry)
 
                 if geometry_mesh != None:
@@ -698,7 +699,8 @@ class MultibodyTerms(Module):
         return delassus, M, J, phi, non_contact_acceleration
 
     def __init__(self, urdfs: Dict[str, str], inertia_mode: int,
-                 represent_geometry_as: str = 'box') -> None:
+                 represent_geometry_as: str = 'box',
+                 randomize_initialization: bool = False) -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs
 
         Interpretation is performed as a thin wrapper around
@@ -750,3 +752,92 @@ class MultibodyTerms(Module):
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs
+
+    def randomize_multibody_terms(self) -> None:
+        r"""Adds random noise to multibody terms in the following ways:
+            - Geometry lengths can be between 0.5 and 1.5 times their original
+              length.
+            - Friction can be between 0.1 and 1.9 times their original size.
+            - Total mass does not change.
+            - Inertia is determined via:
+                - Choose a random set of three length scales between 0.5 and 1.5
+                  times the true length.
+                - Choose a random mass fraction :math:`\nu` between 0.5 and 1.5.
+                - Define :math:`I_{xx}` as
+                  :math:`\frac{\nu m}{12} (l_y^2 + l_z^2)`, and similarly for
+                  :math:`I_{yy}` and :math:`I_{zz}`.
+        """
+        def scale_factory(x: Tensor) -> Tensor:
+            """Return a scaled version of the input such that each element in
+            the input individually is randomly scaled between 50% and 150% of
+            its original value."""
+            return torch.mul(x, torch.rand_like(x) + 0.5)
+
+        # First do friction all at once.  Note that 
+        # self.contact_terms.get_friction_coefficients will ensure the ground's
+        # friction gets properly rewritten to 1.0.
+        new_friction_params = scale_factory(self.contact_terms.friction_params)
+        new_friction_params[1] = 1.0   # hack, ground is always element 1
+        self.contact_terms.friction_params = Parameter(
+            new_friction_params, requires_grad=True)
+
+        # Second, randomize the geometry.
+        for geometry in self.contact_terms.geometries:
+            # Don't make changes for ground geometry.
+            if isinstance(geometry, Plane):
+                continue
+            elif isinstance(geometry, Box):
+                geometry.length_params = \
+                    Parameter(scale_factory(geometry.length_params),
+                              requires_grad=True)
+            elif isinstance(geometry, Polygon):
+                geometry.vertices_parameter = \
+                    Parameter(scale_factory(geometry.vertices_parameter),
+                              requires_grad=True)
+            else:
+                raise NotImplementedError("Can only randomize Box and Polygon"
+                                          "geometries.")
+
+        # Third, randomize the inertia.
+        # Use a while loop to prevent nan situations.
+        keep_trying = True
+        while keep_trying:
+            for idx in range(self.lagrangian_terms.inertial_parameters.shape[0]):
+                pi_cm = self.lagrangian_terms.original_pi_cm_params[idx]
+
+                # Let the center of mass be anywhere within the inner half of a
+                # nominal geometry.
+                mass = pi_cm[0].item()
+                pi_cm[1:4] = mass * (torch.rand(3) - 0.5) * _NOMINAL_HALF_LENGTH
+
+                # Define the moments of inertia assuming a solid block of
+                # homogeneous density with random mass and random lengths.
+                rand_mass = mass * (torch.rand(1) + 0.5)
+                rand_lengths = (torch.rand(3) + 0.5) * _NOMINAL_HALF_LENGTH
+                Ixx = (rand_mass/12) * (rand_lengths[1]**2 + rand_lengths[2]**2)
+                Iyy = (rand_mass/12) * (rand_lengths[0]**2 + rand_lengths[2]**2)
+                Izz = (rand_mass/12) * (rand_lengths[0]**2 + rand_lengths[1]**2)
+                pi_cm[4:7] = Tensor([Ixx, Iyy, Izz])
+
+                # Define the products of inertia assuming the mass is
+                # concentrated at a point somewhere within a scaled portion of a
+                # nominal geometry.  The exact 0.3 number is a hack -- the below
+                # rarely produces nans with the 0.3 number which corresponds to
+                # the inner 15% of a nominal geometry.  This should be nan-free
+                # most of the time, but the while loop is to catch if it doesn't
+                # work.
+                rand_com = (torch.rand(3) - 0.5) * _NOMINAL_HALF_LENGTH * 0.3
+                Ixy = -rand_mass * rand_com[0] * rand_com[1]
+                Ixz = -rand_mass * rand_com[0] * rand_com[2]
+                Iyz = -rand_mass * rand_com[1] * rand_com[2]
+                pi_cm[7:10] = Tensor([Ixy, Ixz, Iyz])
+
+                self.lagrangian_terms.original_pi_cm_params[idx] = pi_cm
+
+            new_theta_params = InertialParameterConverter.pi_cm_to_theta(
+                self.lagrangian_terms.original_pi_cm_params)
+            if not torch.any(torch.isnan(new_theta_params)):
+                keep_trying = False
+
+        self.lagrangian_terms.inertial_parameters = Parameter(
+            new_theta_params, requires_grad=True)

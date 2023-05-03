@@ -239,7 +239,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             w_res = learnable_config.w_res.value,
             output_urdfs_dir=output_dir,
             do_residual=learnable_config.do_residual,
-            represent_geometry_as=learnable_config.represent_geometry_as)
+            represent_geometry_as=learnable_config.represent_geometry_as,
+            randomize_initialization=True)
 
     def write_to_tensorboard(self, epoch: int, learned_system: System,
                              statistics: Dict) -> None:
@@ -338,7 +339,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         if visualize_learned_geometry:
             new_urdfs = cast(MultibodyLearnableSystem,
-                             learned_system).generate_updated_urdfs()
+                             learned_system).generate_updated_urdfs('vis')
             return DrakeSystem(new_urdfs, self.get_drake_system().dt)
         return None
 
@@ -356,7 +357,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                 w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
                 do_residual=False,
                 represent_geometry_as = \
-                    self.config.learnable_config.represent_geometry_as)
+                    self.config.learnable_config.represent_geometry_as,
+                randomize_initialization = False)
             
         return self.true_geom_multibody_system
 

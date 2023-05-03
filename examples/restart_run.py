@@ -49,7 +49,8 @@ def main(storage_folder_name: str = "", run_name: str = ""):
                             best_valid_loss: Tensor) -> None:
         default_epoch_callback(epoch, learned_system, train_loss,
                                best_valid_loss)
-        cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
+        cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs(
+            'progress')
 
     # Trains system and saves final results.
     print(f'\nTraining the model.')
@@ -59,7 +60,7 @@ def main(storage_folder_name: str = "", run_name: str = ""):
     # Save the final urdf.
     print(f'\nSaving the final learned URDF.')
     learned_system = cast(MultibodyLearnableSystem, learned_system)
-    learned_system.generate_updated_urdfs()
+    learned_system.generate_updated_urdfs('best')
     print(f'Done!')
 
 

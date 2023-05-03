@@ -92,7 +92,8 @@ class MultibodyLearnableSystem(System):
                  output_urdfs_dir: Optional[str] = None,
                  network_width: int = 128,
                  network_depth: int = 2,
-                 represent_geometry_as: str = 'box') -> None:
+                 represent_geometry_as: str = 'box',
+                 randomize_initialization: bool = False) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -114,18 +115,31 @@ class MultibodyLearnableSystem(System):
               velocity inertia-agnostic.
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
+            randomize_initialization: Whether to randomize and export the
+              initialization or not.
         """
         assert str(loss_variation) in LOSS_VARIATION_NUMBERS
 
         multibody_terms = MultibodyTerms(init_urdfs, inertia_mode,
-                                         represent_geometry_as)
+                                         represent_geometry_as,
+                                         randomize_initialization)
+
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super().__init__(space, integrator)
-        self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
+        
+        self.output_urdfs_dir = output_urdfs_dir
         self.multibody_terms = multibody_terms
         self.init_urdfs = init_urdfs
-        self.output_urdfs_dir = output_urdfs_dir
+
+        if randomize_initialization:
+            # Add noise and export.
+            print(f'Randomizing initialization.')
+            multibody_terms.randomize_multibody_terms()
+            self.multibody_terms = multibody_terms
+            self.generate_updated_urdfs('init')
+
+        self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
         self.visualization_system = None
         self.solver = SAPSolver()
         self.dt = dt
@@ -151,7 +165,7 @@ class MultibodyLearnableSystem(System):
 
             self.init_residual_network(network_width, network_depth)
 
-    def generate_updated_urdfs(self) -> Dict[str, str]:
+    def generate_updated_urdfs(self, suffix: str = None) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
 
         Returns:
@@ -163,11 +177,15 @@ class MultibodyLearnableSystem(System):
             self.multibody_terms, self.output_urdfs_dir)
         new_urdfs = {}
 
-        # saves new urdfs with original file basenames plus '_learned' in new
-        # folder.
+        # saves new urdfs with original file basenames plus optional suffix in
+        # new folder.
         for urdf_name, new_urdf_string in new_urdf_strings.items():
-            old_urdf_filename = path.basename(old_urdfs[urdf_name])
-            new_urdf_path = path.join(self.output_urdfs_dir, old_urdf_filename)
+            new_urdf_filename = path.basename(old_urdfs[urdf_name])
+            if suffix != None:
+                new_urdf_filename = new_urdf_filename.split('.')[0] + '_' + \
+                                    suffix + '.urdf'
+
+            new_urdf_path = path.join(self.output_urdfs_dir, new_urdf_filename)
             file_utils.save_string(new_urdf_path, new_urdf_string)
             new_urdfs[urdf_name] = new_urdf_path
 

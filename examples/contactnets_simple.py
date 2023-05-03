@@ -202,7 +202,8 @@ def main(storage_folder_name: str = "",
          + f'\n\tloss weights (pred, comp, diss, pen, res): ' \
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
          + f'\n\twith residual: {do_residual}' \
-         + f'\n\tand starting with "true" URDF: {true_sys}.')
+         + f'\n\tand IGNORING provided true_sys={true_sys}, instead' \
+         + f'\n\tstarting with randomized URDF: {True}.')
 
     simulation = source == SIM_SOURCE
     dynamic = source == DYNAMIC_SOURCE
@@ -233,26 +234,26 @@ def main(storage_folder_name: str = "",
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
-    # Describes the learnable system. The MultibodyLearnableSystem type learns
-    # a multibody system, which is initialized as the original system URDF, or
-    # as a provided wrong initialization. For now, this is only implemented with
-    # the box geoemtry parameterization.
-    # if geometry == BOX_TYPE and not true_sys:
-    wrong_urdf_asset = WRONG_URDFS_BY_GEOM_THEN_SYSTEM[geometry][system]['small']
-    wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
-    init_urdfs = {system: wrong_urdf}
-    # # else:  use the initial mesh type anyway
-    # else:
-    #     init_urdfs = urdfs
+    # # Describes the learnable system. The MultibodyLearnableSystem type learns
+    # # a multibody system, which is initialized as the original system URDF, or
+    # # as a provided wrong initialization. For now, this is only implemented with
+    # # the box geoemtry parameterization.
+    # # if geometry == BOX_TYPE and not true_sys:
+    # wrong_urdf_asset = WRONG_URDFS_BY_GEOM_THEN_SYSTEM[geometry][system]['small']
+    # wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
+    # init_urdfs = {system: wrong_urdf}
+    # # # else:  use the initial mesh type anyway
+    # # else:
+    # #     init_urdfs = urdfs
 
-    print(f'Using initial URDF: {wrong_urdf}')
+    print(f'Using initial URDF: {urdf}')
 
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
 
     learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=init_urdfs, loss=loss, inertia_mode=int(inertia_params),
+        urdfs=urdfs, loss=loss, inertia_mode=int(inertia_params),
         loss_variation=int(loss_variation), w_pred=w_pred,
         w_comp=Float(w_comp, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
         w_diss=Float(w_diss, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
@@ -339,7 +340,8 @@ def main(storage_folder_name: str = "",
                             best_valid_loss: Tensor) -> None:
         default_epoch_callback(epoch, learned_system, train_loss,
                                best_valid_loss)
-        cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
+        cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs(
+            suffix='progress')
 
     # Trains system and saves final results.
     print(f'\nTraining the model.')
@@ -349,7 +351,7 @@ def main(storage_folder_name: str = "",
     # Save the final urdf.
     print(f'\nSaving the final learned URDF.')
     learned_system = cast(MultibodyLearnableSystem, learned_system)
-    learned_system.generate_updated_urdfs()
+    learned_system.generate_updated_urdfs(suffix='best')
     print(f'Done!')
 
 
