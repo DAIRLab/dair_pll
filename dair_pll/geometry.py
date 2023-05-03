@@ -257,7 +257,7 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         # Use arbitrary direction to query the Polygon's vertices (value does
         # not matter).
         arbitrary_direction = torch.ones((1,3))
-        vertices = self.get_vertices(arbitrary_direction)
+        vertices = self.get_vertices(arbitrary_direction).squeeze(0)
 
         for axis, values in zip(axes, vertices.t()):
             for vertex_index, value in enumerate(values):
