@@ -808,7 +808,7 @@ class MultibodyTerms(Module):
                 # Let the center of mass be anywhere within the inner half of a
                 # nominal geometry.
                 mass = pi_cm[0].item()
-                pi_cm[1:4] = mass * (torch.rand(3) - 0.5) * _NOMINAL_HALF_LENGTH
+                pi_cm[1:4] += mass*(torch.rand(3) - 0.5) * _NOMINAL_HALF_LENGTH
 
                 # Define the moments of inertia assuming a solid block of
                 # homogeneous density with random mass and random lengths.
