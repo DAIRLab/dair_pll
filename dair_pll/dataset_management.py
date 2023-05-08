@@ -4,13 +4,30 @@ Centers around the :class:`ExperimentDataManager` type, which transforms a
 set of trajectories saved to disk for various tasks encountered during an
 experiment."""
 from dataclasses import dataclass, field
-from typing import List, Tuple, Optional, cast
+from typing import List, Tuple, Optional, cast, Union
 
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
 from dair_pll import file_utils
+
+TrainValidTestFractions = Tuple[float, float, float]
+TrainValidTestCounts = Tuple[int, int, int]
+TrainValidTestQuantities = Union[TrainValidTestFractions, TrainValidTestCounts]
+ThreeTensorTuple = Tuple[Tensor, Tensor, Tensor]
+
+
+def _assert_valid_train_valid_test_quantities(
+        quantities: TrainValidTestQuantities) -> None:
+    assert len(quantities) == 3
+    if isinstance(quantities[0], float):
+        assert all(isinstance(quantity, float) for quantity in quantities)
+        assert all(0. <= quantity <= 1. for quantity in quantities)
+        assert sum(quantities) <= 1
+    if isinstance(quantities[0], int):
+        assert all(isinstance(quantity, int) for quantity in quantities)
+        assert all(quantity >= 0 for quantity in quantities)
 
 
 @dataclass
@@ -36,25 +53,29 @@ class DataConfig:
     """:func:`~dataclasses.dataclass` for configuring a trajectory dataset."""
     dt: float = 1e-3
     r"""Time step, ``> 0``\ ."""
-    train_fraction: float = 0.5
-    r"""Fraction of training trajectories to select, ``<= 1, >= 0``\ ."""
-    valid_fraction: float = 0.25
-    r"""Fraction of validation trajectories to select, ``<= 1, >= 0``\ ."""
-    test_fraction: float = 0.25
-    r"""Fraction of testing trajectories to select, ``<= 1, >= 0``\ ."""
+    train_valid_test_quantities: TrainValidTestQuantities = (0.5, 0.25, 0.25)
+    r"""Fractions of on-disk total or raw size of train/valid/test sets."""
     slice_config: TrajectorySliceConfig = field(
         default_factory=TrajectorySliceConfig)
     r"""Config for arranging trajectories into times slices for training."""
     update_dynamically: bool = False
     """Whether to check for new trajectories after each epoch."""
+    exclude_mask: Optional[Tensor] = None
+    """List of trajectories to exclude from dataset."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""
-        fractions = [
-            self.train_fraction, self.valid_fraction, self.test_fraction
-        ]
-        assert all(0. <= fraction <= 1. for fraction in fractions)
-        assert sum(fractions) <= 1
+        _assert_valid_train_valid_test_quantities(
+            self.train_valid_test_quantities)
+        assert self.dt > 0.
+
+    def split_ratios(self):
+        """Relative portions of train/valid/test sets."""
+        if isinstance(self.train_valid_test_quantities[0], float):
+            return self.train_valid_test_quantities
+
+        return tuple(quantity / sum(self.train_valid_test_quantities)
+                     for quantity in self.train_valid_test_quantities)
 
 
 class TrajectorySliceDataset(Dataset):
@@ -155,6 +176,9 @@ class ExperimentDataManager:
     Loads trajectories stored in standard location associated with provided
     storage directory; splits into train/valid/test sets; and instantiates
     transformations for each set of data as a :py:class:`TrajectorySet`\ .
+
+
+
     """
     trajectory_dir: str
     """Directory in which trajectory files are stored."""
@@ -167,10 +191,12 @@ class ExperimentDataManager:
     test_set: TrajectorySet
     """Test trajectory set."""
     n_sorted: int
-    """Number of files on disk split into (train, valid, test) sets so far."""
+    """Number of files split into (train, valid, test) or excluded so far."""
 
-    def __init__(self, storage: str, config: DataConfig,
-                 initial_split: Optional[Tuple[Tensor, Tensor, Tensor]] = None,
+    def __init__(self,
+                 storage: str,
+                 config: DataConfig,
+                 initial_split: Optional[ThreeTensorTuple] = None,
                  use_ground_truth: bool = False) -> None:
         """
         Args:
@@ -192,21 +218,91 @@ class ExperimentDataManager:
         self.test_set = self.make_empty_trajectory_set()
         self.n_sorted = 0
         if initial_split:
+            # first, check that initial split does not contain excluded indices.
+            n_on_disk = file_utils.get_trajectory_count(self.trajectory_dir)
+            for split in initial_split:
+                assert split.max() < n_on_disk
+                if config.exclude_mask:
+                    assert not torch.any(config.exclude_mask[split])
             self.extend_trajectory_sets(initial_split)
+
+    def _get_indices_to_split(self) -> Tensor:
+        """Indices of trajectories available and needed for T/V/T splot on
+        disk."""
+        n_on_disk = file_utils.get_trajectory_count(self.trajectory_dir)
+        all_indices_available = torch.arange(self.n_sorted, n_on_disk).long()
+
+        # Remove excluded indices.
+        exclude_mask = self.config.exclude_mask
+        if exclude_mask is not None:
+            # extend mask
+            extension = torch.zeros(n_on_disk - exclude_mask.nelement(),
+                                    dtype=torch.bool)
+            exclude_mask = torch.cat((exclude_mask, extension))
+            keep_mask = ~exclude_mask[all_indices_available]
+            all_indices_available = all_indices_available[keep_mask]
+
+        return all_indices_available
+
+    def _get_incremental_split(self) -> ThreeTensorTuple:
+        """New indices to split into T/V/T sets."""
+        all_indices_to_split = self._get_indices_to_split()
+
+        # permute addable indices
+        n_to_split = all_indices_to_split.nelement()
+        all_indices_to_split = all_indices_to_split[torch.randperm(n_to_split)]
+
+        split_ratios = self.config.split_ratios()
+        is_fractions = isinstance(self.config.train_valid_test_quantities[0],
+                                  float)
+        if not is_fractions:
+            totals_and_current_indices = zip(
+                self.config.train_valid_test_quantities,
+                self.trajectory_set_indices())
+
+            remaining_needed = torch.tensor([
+                total_needed - current_indices.nelement()
+                for total_needed, current_indices in totals_and_current_indices
+            ],
+                                            dtype=torch.long)
+
+        if is_fractions or remaining_needed.sum() > n_to_split:
+            # if we do not enough trajectories on disk to satisfy the totals,
+            # split by ratios
+            n_train = int(n_to_split * split_ratios[0])
+            n_valid = int(n_to_split * split_ratios[1])
+            n_test = min(n_to_split - n_train - n_valid,
+                         int(n_to_split * split_ratios[2]))
+            # TODO: properly handle case where sum(ratios) < 1.
+            # Currently an issue as n_sorted is not updated properly to
+            # reflect skipped trajectories.
+            n_to_add = torch.tensor([n_train, n_valid, n_test],
+                                    dtype=torch.long)
+        else:
+            # else, split by total remaining needed.
+            n_to_add = remaining_needed
+
+        breaks = torch.cat((torch.zeros(1, dtype=torch.long),
+                            torch.cumsum(n_to_add, dim=0).long()))
+
+        split = tuple(all_indices_to_split[int(breaks[i]):int(breaks[i + 1])]
+                      for i in range(3))
+
+        return cast(ThreeTensorTuple, split)
 
     @property
     def _trajectory_sets(
             self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
-        """getter for tuple of (train, valid, test) set."""
+        """Getter for tuple of (train, valid, test) set."""
         return self.train_set, self.valid_set, self.test_set
 
-    def trajectory_set_indices(self) -> Tuple[Tensor, Tensor, Tensor]:
+    def trajectory_set_indices(self) -> ThreeTensorTuple:
         """The sets of indices associated with the (train, valid,
         test) trajectories."""
         index_lists = [
             trajectory_set.indices for trajectory_set in self._trajectory_sets
         ]
-        return cast(Tuple[Tensor, Tensor, Tensor], tuple(index_lists))
+        return cast(ThreeTensorTuple, tuple(index_lists))
 
     def make_empty_trajectory_set(self) -> TrajectorySet:
         r"""Instantiates an empty :py:class:`TrajectorySet` associated with
@@ -215,7 +311,7 @@ class ExperimentDataManager:
         return TrajectorySet(slices=slice_dataset)
 
     def extend_trajectory_sets(
-            self, index_lists: Tuple[Tensor, Tensor, Tensor]) -> None:
+            self, index_lists: ThreeTensorTuple) -> None:
         """Supplement each of (train, valid, test) trajectory sets with
         provided trajectories, listed by their on-disk indices.
 
@@ -237,7 +333,7 @@ class ExperimentDataManager:
             self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
         """Returns an up-to-date partition of trajectories on disk.
 
-        Checks if some trajectories on disk have yet to be sorted,
+        Checks if some trajectories on disk should be added to the split,
         and supplements the (train, valid, test) sets with these additional
         trajectories before returning the updated sets.
 
@@ -246,28 +342,8 @@ class ExperimentDataManager:
             Validation set.
             Test set.
         """
-        config = self.config
-        n_on_disk = file_utils.get_trajectory_count(self.trajectory_dir)
-        if n_on_disk != self.n_sorted:
-            n_unsorted = n_on_disk - self.n_sorted
-            n_train = round(n_unsorted * config.train_fraction)
-            n_valid = round(n_unsorted * config.valid_fraction)
-            n_remaining = n_unsorted - n_valid - n_train
-            n_test = min(n_remaining, round(n_unsorted * config.test_fraction))
-
-            n_requested = n_train + n_valid + n_test
-            assert n_requested <= n_unsorted
-
-            # pylint: disable=no-member
-            trajectory_order = torch.randperm(n_unsorted) + self.n_sorted
-            train_indices = trajectory_order[:n_train]
-            trajectory_order = trajectory_order[n_train:]
-
-            valid_indices = trajectory_order[:n_valid]
-            trajectory_order = trajectory_order[n_valid:]
-            test_indices = trajectory_order[:n_test]
-
-            self.extend_trajectory_sets(
-                (train_indices, valid_indices, test_indices))
+        indices_to_split = self._get_indices_to_split()
+        if any(indices.nelement() > 0 for indices in indices_to_split):
+            self.extend_trajectory_sets(indices_to_split)
 
         return self._trajectory_sets

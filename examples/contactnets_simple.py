@@ -153,10 +153,13 @@ def main(run_name: str = "",
         t_prediction=1 if contactnets else T_PREDICTION)
 
     # Describes configuration of the data
+    train_valid_test_ratio = (
+        1.0 if dynamic else 0.5,
+        0.0 if dynamic else 0.25,
+        0.0 if dynamic else 0.25,
+    )
     data_config = DataConfig(dt=DT,
-                             train_fraction=1.0 if dynamic else 0.5,
-                             valid_fraction=0.0 if dynamic else 0.25,
-                             test_fraction=0.0 if dynamic else 0.25,
+                             train_valid_test_quantities=train_valid_test_ratio,
                              slice_config=slice_config,
                              update_dynamically=dynamic)
 
@@ -225,15 +228,15 @@ def main(run_name: str = "",
         cast(MultibodyLearnableSystem, learned_system).generate_updated_urdfs()
 
     # Trains system and saves final results.
-    print(f'\nTraining the model.')
-    learned_system, stats = experiment.generate_results(
+    print('\nTraining the model.')
+    learned_system, _ = experiment.generate_results(
         regenerate_callback if regenerate else default_epoch_callback)
 
     # Save the final urdf.
-    print(f'\nSaving the final learned URDF.')
+    print('\nSaving the final learned URDF.')
     learned_system = cast(MultibodyLearnableSystem, learned_system)
     learned_system.generate_updated_urdfs()
-    print(f'Done!')
+    print('Done!')
 
 
 @click.command()
