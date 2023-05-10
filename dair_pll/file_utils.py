@@ -29,7 +29,7 @@ TRAJECTORY_GIF_DEFAULT_NAME = 'trajectory.gif'
 FINAL_EVALUATION_NAME = f'statistics{STATS_EXTENSION}'
 HYPERPARAMETERS_FILENAME = f'optimal_hyperparameters{HYPERPARAMETERS_EXTENSION}'
 CONFIG_FILENAME = f'config{CONFIG_EXTENSION}'
-CHECKPOINT_FILENAME = f'checkpoint{CHECKPOINT_EXTENSION}'
+TRAINING_STATE_FILENAME = f'checkpoint{CHECKPOINT_EXTENSION}'
 """str: extensions for saved files"""
 
 
@@ -209,9 +209,9 @@ def get_configuration_filename(storage_name: str, run_name: str) -> str:
     return path.join(run_dir(storage_name, run_name), CONFIG_FILENAME)
 
 
-def get_model_filename(storage_name: str, run_name: str) -> str:
-    """Absolute path of experiment configuration."""
-    return path.join(run_dir(storage_name, run_name), CHECKPOINT_FILENAME)
+def get_training_state_filename(storage_name: str, run_name: str) -> str:
+    """Absolute path of training state file."""
+    return path.join(run_dir(storage_name, run_name), TRAINING_STATE_FILENAME)
 
 
 def study_dir(storage_name: str, study_name: str) -> str:
@@ -224,9 +224,9 @@ def hyperparameter_opt_run_name(study_name: str, trial_number: int) -> str:
     return f'{study_name}_hyperparameter_opt_{trial_number}'
 
 
-def sweep_run_name(study_name: str, sweep_run: int, n_train: int) -> str:
+def sweep_run_name(study_name: str, sweep_run: int, sweep_value: Any) -> str:
     """Experiment run name for dataset size sweep study."""
-    return f'{study_name}_sweep_{sweep_run}_n_train_{n_train}'
+    return f'{study_name}_sweep_{sweep_run}_value_{str(sweep_value)}'
 
 
 def get_hyperparameter_filename(storage_name: str, study_name: str) -> str:

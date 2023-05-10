@@ -39,8 +39,8 @@ from pydrake.geometry import SceneGraphInspector, GeometryId  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant_  # type: ignore
 from pydrake.multibody.tree import JacobianWrtVariable  # type: ignore
 from pydrake.multibody.tree import ModelInstanceIndex  # type: ignore
-from pydrake.multibody.tree import SpatialInertia_, UnitInertia_, \
-                                   RotationalInertia_  # type: ignore
+from pydrake.multibody.tree import SpatialInertia_, \
+    RotationalInertia_  # type: ignore
 from pydrake.symbolic import Expression, Variable  # type: ignore
 from pydrake.symbolic import MakeVectorVariable, Jacobian  # type: ignore
 from pydrake.systems.framework import Context  # type: ignore
@@ -212,7 +212,7 @@ class LagrangianTerms(Module):
         return InertialParameterConverter.theta_to_pi_cm(self.inertial_parameters)
 
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
-        """Evaluates Lagrangian dynamics terms at given state and input.
+        r"""Evaluates Lagrangian dynamics terms at given state and input.
 
         Args:
             q: (\*, n_q) configuration batch.
@@ -227,8 +227,8 @@ class LagrangianTerms(Module):
         # pylint: disable=not-callable
         assert self.mass_matrix is not None
         assert self.lagrangian_forces is not None
-        inertia = InertialParameterConverter.pi_cm_to_drake_spatial_inertia(
-            self.pi_cm())
+        inertia = InertialParameterConverter. \
+            pi_cm_to_drake_spatial_inertia_vector(self.pi_cm())
         inertia = inertia.expand(q.shape[:-1] + inertia.shape)
 
         M = self.mass_matrix(q, inertia)
@@ -383,7 +383,8 @@ class ContactTerms(Module):
 
     @staticmethod
     def assemble_velocity_jacobian(R_CW, Jv_V_WC_W, p_CoCc_C):
-        """Helper method to generate velocity jacobian from contact information.
+        r"""Helper method to generate velocity jacobian from contact
+        information.
 
         Args:
             R_CW: (\*, n_c, 3, 3) Rotation of world frame w.r.t. geometry frame.
@@ -401,7 +402,7 @@ class ContactTerms(Module):
     @staticmethod
     def relative_velocity_to_contact_jacobian(Jv_v_W_BcAc_F: Tensor,
                                               mu: Tensor) -> Tensor:
-        """Helper method to reorder contact Jacobian columns.
+        r"""Helper method to reorder contact Jacobian columns.
 
         Args:
             Jv_v_W_BcAc_F: (\*, n_collisions, 3, n_v) collection of
@@ -426,7 +427,7 @@ class ContactTerms(Module):
         return torch.cat((J_n, J_t), dim=-2)
 
     def forward(self, q: Tensor) -> Tuple[Tensor, Tensor]:
-        """Evaluates Lagrangian dynamics terms at given state and input.
+        r"""Evaluates Lagrangian dynamics terms at given state and input.
 
         Uses :py:class:`GeometryCollider` and kinematics to construct signed
         distance phi(q) and the corresponding Jacobian J(q).
@@ -583,7 +584,7 @@ class MultibodyTerms(Module):
 
     def forward(self, q: Tensor, v: Tensor,
                 u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        """Evaluates multibody system dynamics terms at given state and input.
+        r"""Evaluates multibody system dynamics terms at given state and input.
 
         Calculation is performed as a thin wrapper around
         :py:class:`LagrangianTerms` and :py:class:`ContactTerms`. For

@@ -501,7 +501,7 @@ class SupervisedLearningExperiment(ABC):
         """
         is_resumed = False
         training_state = None
-        checkpoint_filename = file_utils.get_model_filename(
+        checkpoint_filename = file_utils.get_training_state_filename(
             self.config.storage, self.config.run_name)
         try:
             # if a checkpoint is saved from disk, attempt to load it.
@@ -576,7 +576,7 @@ class SupervisedLearningExperiment(ABC):
             Fully-trained system, with parameters corresponding to best-seen
             validation loss.
         """
-        checkpoint_filename = file_utils.get_model_filename(
+        checkpoint_filename = file_utils.get_training_state_filename(
             self.config.storage, self.config.run_name)
 
         learned_system, optimizer, training_state = self.setup_training()

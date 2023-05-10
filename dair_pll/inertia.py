@@ -23,9 +23,9 @@ i.e. :math:`m > 0`).
 
         [m, m * p_x, m * p_y, m * p_z, I_xx, I_yy, I_zz, I_xy, I_xz, I_yz]
 
-    * ``drake_inertia_vector`` is a scaling that can be used to construct a
-      new Drake :py:attr:`~pydrake.multibody.tree.SpatialInertia`, where the
-      inertial tensor is normalized by mass (see
+    * ``drake_spatial_inertia_vector`` is a scaling that can be used to
+      construct a new Drake :py:attr:`~pydrake.multibody.tree.SpatialInertia
+      `, where the inertial tensor is normalized by mass (see
       :py:attr:`~pydrake.multibody.tree.UnitInertia`)::
 
         [m, p_x, p_y, p_z, ...
@@ -165,10 +165,10 @@ def inertia_matrix_from_vector(I_BBa_B_vec: Tensor) -> Tensor:
         ``(*, 3, 3)`` inertia matrix.
     """
     # Put Ixx, Iyy, Izz on the diagonals.
-    diags = torch.diag_embed(I_BBa_B_vec[:, :3])
+    diags = torch.diag_embed(I_BBa_B_vec[..., :3])
 
     # Put Ixy, Ixz, Iyz on the off-diagonals.
-    off_diags = symmetric_offdiagonal(I_BBa_B_vec[:, 3:].flip(1))
+    off_diags = symmetric_offdiagonal(I_BBa_B_vec[..., 3:].flip(-1))
 
     return diags + off_diags
 
@@ -268,7 +268,7 @@ class InertialParameterConverter:
         return torch.cat((log_m, h_vector, d_vector, s_vector), -1)
 
     @staticmethod
-    def pi_cm_to_drake_inertia_vector(pi_cm: Tensor) -> Tensor:
+    def pi_cm_to_drake_spatial_inertia_vector(pi_cm: Tensor) -> Tensor:
         """Converts batch of ``pi-cm`` parameters to ``drake_inertia_vector``
         parameters."""
         return torch.cat((pi_cm[..., 0:1], pi_cm[..., 1:] / pi_cm[..., 0:1]),

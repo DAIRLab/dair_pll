@@ -100,7 +100,8 @@ class WeightsAndBiasesManager:
             videos: Videos to log.
             meshes: Meshes to log.
         """
-
+        print(epoch)
+        print(scalars)
         _write_scalars(epoch, scalars)
         _write_videos(epoch, videos)
         _write_meshes(epoch, meshes)

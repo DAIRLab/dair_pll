@@ -271,19 +271,18 @@ class ExperimentDataManager:
             # split by ratios
             n_train = int(n_to_split * split_ratios[0])
             n_valid = int(n_to_split * split_ratios[1])
-            n_test = min(n_to_split - n_train - n_valid,
-                         int(n_to_split * split_ratios[2]))
+            n_test = n_to_split - n_train - n_valid
             # TODO: properly handle case where sum(ratios) < 1.
             # Currently an issue as n_sorted is not updated properly to
             # reflect skipped trajectories.
-            n_to_add = torch.tensor([n_train, n_valid, n_test],
+            n_added_to_splits = torch.tensor([n_train, n_valid, n_test],
                                     dtype=torch.long)
         else:
             # else, split by total remaining needed.
-            n_to_add = remaining_needed
+            n_added_to_splits = remaining_needed
 
         breaks = torch.cat((torch.zeros(1, dtype=torch.long),
-                            torch.cumsum(n_to_add, dim=0).long()))
+                            torch.cumsum(n_added_to_splits, dim=0).long()))
 
         split = tuple(all_indices_to_split[int(breaks[i]):int(breaks[i + 1])]
                       for i in range(3))
@@ -342,7 +341,7 @@ class ExperimentDataManager:
             Validation set.
             Test set.
         """
-        indices_to_split = self._get_indices_to_split()
+        indices_to_split = self._get_incremental_split()
         if any(indices.nelement() > 0 for indices in indices_to_split):
             self.extend_trajectory_sets(indices_to_split)
 
