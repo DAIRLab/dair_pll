@@ -28,7 +28,8 @@ class DrakeSystemConfig(SystemConfig):
 
 class MultibodyLosses(Enum):
     PREDICTION_LOSS = 1
-    CONTACTNETS_LOSS = 2
+    CONTACTNETS_NCP_LOSS = 2
+    CONTACTNETS_ANITESCU_LOSS = 3
 
 
 @dataclass
@@ -176,7 +177,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
     def __init__(self, config: DrakeMultibodyLearnableExperimentConfig) -> None:
         super().__init__(config)
-        if config.training_loss == MultibodyLosses.CONTACTNETS_LOSS:
+        if config.training_loss != MultibodyLosses.PREDICTION_LOSS:
             self.loss_callback = self.contactnets_loss
 
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
@@ -227,7 +228,12 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         # pylint: disable=E1103
         u = torch.zeros(x.shape[:-1] + (0,))
         x_plus = x_future[..., 0, :]
-        loss = system.contactnets_loss(x, u, x_plus)
+        training_loss = cast(DrakeMultibodyLearnableExperimentConfig,
+                             self.config).training_loss
+        if training_loss == MultibodyLosses.CONTACTNETS_NCP_LOSS:
+            loss = system.contactnets_loss_ncp(x, u, x_plus)
+        else:
+            loss = system.contactnets_loss_anitescu(x, u, x_plus)
         if not keep_batch:
             loss = loss.mean()
         return loss

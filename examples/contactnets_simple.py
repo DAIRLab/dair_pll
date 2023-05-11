@@ -143,10 +143,10 @@ def main(run_name: str = "",
     # Describes the learnable system. The MultibodyLearnableSystem type
     # learns a multibody system, which is initialized as the system in the
     # given URDFs.
-    loss = MultibodyLosses.CONTACTNETS_LOSS \
+    loss = MultibodyLosses.CONTACTNETS_ANITESCU_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs, loss=loss)
+    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -165,6 +165,7 @@ def main(run_name: str = "",
 
     # Combines everything into config for entire experiment.
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
+        training_loss=loss,
         storage=storage_name,
         run_name=run_name,
         base_config=base_config,

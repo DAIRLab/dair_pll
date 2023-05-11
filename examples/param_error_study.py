@@ -57,8 +57,9 @@ BATCH_SIZE = Int(32, [1, 256], log=True)
 WANDB_PROJECT = 'contactnets-results'
 
 # TODOS:
+# - [ ] Re-fiddle with contactnets simple until identification is stable
+#   without noise.
 # - [ ] Set up random initial conditions.
-# - [ ] Fix ContactNets loss.
 
 
 def main(sweep_num: int) -> None:
@@ -138,7 +139,7 @@ def main(sweep_num: int) -> None:
         default_experiment_config = deepcopy(experiment_config)
         if contactnets:
             default_experiment_config.learnable_config.loss = \
-                MultibodyLosses.CONTACTNETS_LOSS
+                MultibodyLosses.CONTACTNETS_NCP_LOSS
 
         # setup study config.
         study_config = OptimalSweepStudyConfig(

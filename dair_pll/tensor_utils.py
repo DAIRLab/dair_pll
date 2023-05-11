@@ -411,6 +411,24 @@ def project_lorentz(vectors: Tensor) -> Tensor:
     return projected_vectors
 
 
+def reflect_lorentz(vectors: Tensor) -> Tensor:
+    r"""Utility function that reflects vectors along the Lorentz cone's
+    normal axis.
+
+    Args:
+        vectors: ``(*, 3 * n)`` vectors to be reflected.
+    Returns:
+        ``(*, 3 * n)`` reflected vectors.
+    """
+    # pylint: disable=too-many-locals
+    assert vectors.shape[-1] % 3 == 0
+    n_cones = vectors.shape[-1] // 3
+
+    normals = vectors[..., :n_cones]
+    tangents = vectors[..., n_cones:]
+    return torch.cat((-normals, tangents), dim=-1)
+
+
 def sappy_reorder_mat(n_cones: int) -> Tensor:
     r"""Generates a 0-1 matrix that reorders force variable indices between
     ``dair_pll`` ordering and ``sappy`` ordering.

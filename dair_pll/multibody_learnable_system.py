@@ -20,7 +20,6 @@ https://doi.org/10.1007/s10107-005-0590-7
 Contact Dynamics with Smooth, Implicit Representations," Conference on
 Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 """
-from multiprocessing import pool
 from os import path
 from typing import Tuple, Optional, Dict, cast
 
@@ -36,7 +35,8 @@ from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.system import System, \
     SystemSummary
-from dair_pll.tensor_utils import pbmm, broadcast_lorentz
+from dair_pll.tensor_utils import pbmm, broadcast_lorentz, project_lorentz, \
+    reflect_lorentz
 
 
 class MultibodyLearnableSystem(System):
@@ -112,11 +112,10 @@ class MultibodyLearnableSystem(System):
 
         return new_urdfs
 
-    def contactnets_loss(self,
+    def contactnets_loss_ncp(self,
                          x: Tensor,
                          u: Tensor,
-                         x_plus: Tensor,
-                         loss_pool: Optional[pool.Pool] = None) -> Tensor:
+                         x_plus: Tensor) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
         References:
@@ -129,7 +128,6 @@ class MultibodyLearnableSystem(System):
             x: (\*, space.n_x) current state batch.
             u: (\*, ?) input batch.
             x_plus: (\*, space.n_x) current state batch.
-            loss_pool: optional processing pool to enable multithreaded solves.
 
         Returns:
             (\*,) loss batch.
@@ -168,7 +166,7 @@ class MultibodyLearnableSystem(System):
 
         q_pred = -pbmm(J, dv.transpose(-1, -2))
         q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
-        q_diss = dt * torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         q = q_pred + q_comp + q_diss
 
         penetration_penalty = (torch.maximum(
@@ -207,11 +205,111 @@ class MultibodyLearnableSystem(System):
 
         return loss.squeeze(-1).squeeze(-1)
 
+    def contactnets_loss_anitescu(self,
+                         x: Tensor,
+                         u: Tensor,
+                         x_plus: Tensor) -> Tensor:
+        r"""Variant of ContactNets [1] loss for Anitescu's formulation.
+
+        References:
+            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
+            Discontinuous Contact Dynamics with Smooth, Implicit
+            Representations," Conference on Robotic Learning, 2020,
+            https://proceedings.mlr.press/v155/pfrommer21a.html
+
+        Args:
+            x: (\*, space.n_x) current state batch.
+            u: (\*, ?) input batch.
+            x_plus: (\*, space.n_x) current state batch.
+
+        Returns:
+            (\*,) loss batch.
+        """
+        # pylint: disable-msg=too-many-locals
+        v = self.space.v(x)
+        q_plus, v_plus = self.space.q_v(x_plus)
+        dt = self.dt
+        eps = 1e-3
+
+        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
+            q_plus, v_plus, u)
+
+        n_contacts = phi.shape[-1]
+        reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
+        reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
+                                          reorder_mat.shape).expand(
+                                              delassus.shape)
+        J_t = J[..., n_contacts:, :]
+
+        # pylint: disable=E1103
+        #double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
+        #phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
+        sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
+        phi_tilde = torch.cat(
+            (phi, sliding_velocities * dt), dim=-1)
+        reflected_phi_tilde = reflect_lorentz(phi_tilde)
+        projected_reflected_phi_tilde = project_lorentz(reflected_phi_tilde)
+
+        complementarity_penalty = project_lorentz(phi_tilde) + \
+                                  projected_reflected_phi_tilde
+
+
+        # pylint: disable=E1103
+
+        sliding_speeds = sliding_velocities.reshape(phi.shape[:-1] +
+                                                    (n_contacts, 2)).norm(
+                                                        dim=-1, keepdim=True)
+
+        Q = delassus + eps * torch.eye(3 * n_contacts)
+        J_M = pbmm(reorder_mat.transpose(-1, -2),
+                   pbmm(J, torch.linalg.cholesky(torch.inverse((M)))))
+
+        dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
+
+        q_pred = -pbmm(J, dv.transpose(-1, -2))
+        q_comp = torch.abs(complementarity_penalty).unsqueeze(-1)
+        q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q = q_pred + q_comp + q_diss
+
+        cone_penalty = (projected_reflected_phi_tilde**2).sum(dim=-1)
+
+        cone_penalty = cone_penalty.reshape(
+            cone_penalty.shape + (1, 1))
+
+        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(
+            -1, -2))) + cone_penalty
+
+        # Envelope theorem guarantees that gradient of loss w.r.t. parameters
+        # can ignore the gradient of the force w.r.t. the QCQP parameters.
+        # Therefore, we can detach ``force`` from pytorch's computation graph
+        # without causing error in the overall loss gradient.
+        # pylint: disable=E1103
+        #force = self.solver.apply(Q, q, torch.rand(q.shape), 1e-7, 1000, 1e-7,
+        #                          loss_pool).detach()
+        force = pbmm(
+            reorder_mat,
+            self.solver.apply(
+                J_M,
+                pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                eps).detach().unsqueeze(-1))
+
+        # Hack: remove elements of ``force`` where solver likely failed.
+        invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
+                            dim=-2,
+                            keepdim=True)
+
+        constant[invalid] *= 0.
+        force[invalid.expand(force.shape)] = 0.
+
+        loss = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) + pbmm(
+            force.transpose(-1, -2), q) + constant
+
+        return loss.squeeze(-1).squeeze(-1)
+
     def forward_dynamics(self,
                          q: Tensor,
                          v: Tensor,
-                         u: Tensor,
-                         dynamics_pool: Optional[pool.Pool] = None) -> Tensor:
+                         u: Tensor) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
         Implement's Anitescu's [1] convex formulation in dual form, derived
