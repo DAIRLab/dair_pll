@@ -57,8 +57,8 @@ BATCH_SIZE = Int(32, [1, 256], log=True)
 WANDB_PROJECT = 'contactnets-results'
 
 # TODOS:
-# - [ ] Set validation loss to be same as training loss.
 # - [ ] Set up random initial conditions.
+# - [ ] Fix ContactNets loss.
 
 
 def main(sweep_num: int) -> None:
@@ -83,13 +83,13 @@ def main(sweep_num: int) -> None:
 
     # Select hyperparameter trajectories without removing randomness in the
     # seed for the rest of the runs.
-    torch_random_state = torch.random.get_rng_state()
+    torch_random_generator_state = torch.random.get_rng_state()
     torch.manual_seed(12983619278361982)
     hyperparameter_trajectories = torch.randperm(
         N_POP)[:total_hyperparameter_trajectories]
     hyperparameter_mask = torch.zeros(N_POP, dtype=torch.bool)
     hyperparameter_mask[hyperparameter_trajectories] = True
-    torch.random.set_rng_state(torch_random_state)
+    torch.random.set_rng_state(torch_random_generator_state)
 
     data_config = DataConfig(
         dt=DT,

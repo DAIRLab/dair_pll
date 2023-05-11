@@ -750,11 +750,13 @@ class SupervisedLearningExperiment(ABC):
             stats[f'{set_name}_{DELTA_VELOCITY_SIZE}'] = to_json(dv2)
             stats[f'{set_name}_{PREDICTED_VELOCITY_SIZE}'] = to_json(vp2)
 
+            self.loss_callback = cast(LossCallbackCallable, self.loss_callback)
+
             for system_name, system in systems.items():
                 model_loss_list = []
                 for batch_x, batch_y in slices_loader:
                     model_loss_list.append(
-                        self.prediction_loss(batch_x, batch_y, system, True))
+                        self.loss_callback(batch_x, batch_y, system, True))
                 model_loss = torch.cat(model_loss_list)
                 loss_name = f'{set_name}_{system_name}_{LOSS_NAME}'
                 stats[loss_name] = to_json(model_loss)

@@ -69,3 +69,7 @@ class SupervisedLearningExperimentConfig:
         """Method to check validity of parameters."""
         if self.run_wandb:
             assert self.wandb_project is not None
+
+        if self.full_evaluation_period > 1:
+            raise NotImplementedError(
+                "Patience not correctly implemented for sporadic evaluation.")
