@@ -19,7 +19,8 @@ general purpose converter is implemented in
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Dict, cast
+from enum import Enum
+from typing import Tuple, Dict, cast, Union
 
 import fcl  # type: ignore
 import numpy as np
@@ -32,7 +33,8 @@ from pydrake.geometry import Shape  # type: ignore
 from torch import Tensor
 from torch.nn import Module, Parameter
 
-from dair_pll.deep_support_function import HomogeneousICNN, extract_mesh
+from dair_pll.deep_support_function import HomogeneousICNN, \
+    extract_mesh_from_support_function
 from dair_pll.tensor_utils import pbmm, tile_dim, \
     rotation_matrix_from_one_vector
 
@@ -49,6 +51,12 @@ _POLYGON_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
+
+
+class MeshRepresentation(Enum):
+    """Enum for different ways to represent a mesh."""
+    POLYGON = 1
+    DEEP_SUPPORT_CONVEX = 2
 
 
 class CollisionGeometry(ABC, Module):
@@ -349,7 +357,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             :py:mod:`fcl` bounding volume hierarchy for mesh.
         """
         if self.training:
-            mesh = extract_mesh(self.network)
+            mesh = extract_mesh_from_support_function(self.network)
             vertices = mesh.vertices.numpy()
             faces = mesh.faces.numpy()
             self.fcl_geometry = fcl.BVHModel()
@@ -459,9 +467,12 @@ class Sphere(BoundedConvexCollisionGeometry):
 class PydrakeToCollisionGeometryFactory:
     """Utility class for converting Drake ``Shape`` instances to
     ``CollisionGeometry`` instances."""
+    mesh_representation: MeshRepresentation
 
-    @staticmethod
-    def convert(drake_shape: Shape) -> CollisionGeometry:
+    def __init__(self, mesh_representation: MeshRepresentation) -> None:
+        self.mesh_representation = mesh_representation
+
+    def convert(self, drake_shape: Shape) -> CollisionGeometry:
         """Converts abstract ``pydrake.geometry.shape`` to
         ``CollisionGeometry``.
 
@@ -475,33 +486,36 @@ class PydrakeToCollisionGeometryFactory:
             TypeError: When provided object is not a supported Drake shape type.
         """
         if isinstance(drake_shape, DrakeBox):
-            return PydrakeToCollisionGeometryFactory.convert_box(drake_shape)
+            return self.convert_box(drake_shape)
         if isinstance(drake_shape, DrakeHalfSpace):
-            return PydrakeToCollisionGeometryFactory.convert_plane()
+            return self.convert_plane()
         if isinstance(drake_shape, DrakeMesh):
-            return PydrakeToCollisionGeometryFactory.convert_mesh(drake_shape)
+            return self.convert_mesh(drake_shape)
         raise TypeError(
             "Unsupported type for drake Shape() to"
             "CollisionGeometry() conversion:", type(drake_shape))
 
-    @staticmethod
-    def convert_box(drake_box: DrakeBox) -> Box:
+    def convert_box(self, drake_box: DrakeBox) -> Box:
         """Converts ``pydrake.geometry.Box`` to ``Box``."""
         half_widths = 0.5 * Tensor(np.copy(drake_box.size()))
         return Box(half_widths, 4)
 
-    @staticmethod
-    def convert_plane() -> Plane:
+    def convert_plane(self) -> Plane:
         """Converts ``pydrake.geometry.HalfSpace`` to ``Plane``."""
         return Plane()
 
-    @staticmethod
-    def convert_mesh(drake_mesh: DrakeMesh) -> DeepSupportConvex:
-        """Converts ``pydrake.geometry.Mesh`` to ``Polygon``."""
+    def convert_mesh(self,
+                     drake_mesh: DrakeMesh) -> Union[Polygon, DeepSupportConvex]:
+        """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
+        ``DeepSupportConvex`` depending on mesh representation mode."""
         filename = drake_mesh.filename()
         mesh = pywavefront.Wavefront(filename)
         vertices = Tensor(mesh.vertices)
-        return DeepSupportConvex(vertices)
+        if self.mesh_representation == MeshRepresentation.DEEP_SUPPORT_CONVEX:
+            return DeepSupportConvex(vertices)
+
+        return Polygon(vertices)
+
 
 
 class GeometryCollider:

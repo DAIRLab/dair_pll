@@ -48,12 +48,12 @@ from torch import Tensor
 from torch.nn import Module, ModuleList, Parameter
 
 from dair_pll import drake_utils
-from dair_pll.deep_support_function import extract_mesh
+from dair_pll.deep_support_function import extract_mesh_from_support_function
 from dair_pll.drake_state_converter import DrakeStateConverter
 from dair_pll.drake_utils import MultibodyPlantDiagram
 from dair_pll.geometry import GeometryCollider, \
     PydrakeToCollisionGeometryFactory, \
-    CollisionGeometry, DeepSupportConvex
+    CollisionGeometry, DeepSupportConvex, MeshRepresentation
 from dair_pll.inertia import InertialParameterConverter
 from dair_pll.system import MeshSummary
 from dair_pll.tensor_utils import (pbmm, deal, spatial_to_point_jacobian)
@@ -111,12 +111,15 @@ class LagrangianTerms(Module):
     lagrangian_forces: Optional[StateInputInertialCallback]
     inertial_parameters: Parameter
 
-    def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
+    def __init__(self, plant_diagram: MultibodyPlantDiagram,
+                 requires_grad: bool = False) -> None:
         """Inits :py:class:`LagrangianTerms` with prescribed parameters and
         functional forms.
 
         Args:
             plant_diagram: Drake MultibodyPlant diagram to extract terms from.
+            requires_grad: Whether to allow gradient steps on inertial
+              parameterss.
         """
         super().__init__()
 
@@ -154,7 +157,7 @@ class LagrangianTerms(Module):
 
         # pylint: disable=E1103
         self.inertial_parameters = Parameter(body_parameters,
-                                             requires_grad=True)
+                                             requires_grad=requires_grad)
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -264,7 +267,8 @@ class ContactTerms(Module):
     friction_params: Parameter
     collision_candidates: Tensor
 
-    def __init__(self, plant_diagram: MultibodyPlantDiagram) -> None:
+    def __init__(self, plant_diagram: MultibodyPlantDiagram,
+                 mesh_representation: MeshRepresentation) -> None:
         """Inits :py:class:`ContactTerms` with prescribed kinematics and
         geometries.
 
@@ -273,6 +277,7 @@ class ContactTerms(Module):
 
         Args:
             plant_diagram: Drake MultibodyPlant diagram to extract terms from.
+            mesh_representation: Representation type for mesh geometries.
         """
         # pylint: disable=too-many-locals
         super().__init__()
@@ -289,7 +294,9 @@ class ContactTerms(Module):
         geometries, rotations, translations, drake_spatial_jacobians = \
             ContactTerms.extract_geometries_and_kinematics(plant, inspector,
                                                            geometry_ids,
-                                                           context)
+                                                           context,
+                                                           mesh_representation
+                                                           )
 
         for geometry_index, geometry_pair in enumerate(collision_candidates):
             if geometries[geometry_pair[0]] > geometries[geometry_pair[1]]:
@@ -327,7 +334,8 @@ class ContactTerms(Module):
     @staticmethod
     def extract_geometries_and_kinematics(
         plant: MultibodyPlant_[Expression], inspector: SceneGraphInspector,
-        geometry_ids: List[GeometryId], context: Context
+        geometry_ids: List[GeometryId], context: Context,
+        mesh_representation: MeshRepresentation
     ) -> Tuple[List[CollisionGeometry], List[np.ndarray], List[np.ndarray],
                List[np.ndarray]]:
         """Extracts modules and kinematics of list of geometries G.
@@ -351,6 +359,9 @@ class ContactTerms(Module):
         rotations = []
         translations = []
         drake_spatial_jacobians = []
+
+        collision_geometry_factory = PydrakeToCollisionGeometryFactory(
+            mesh_representation)
 
         for geometry_id in geometry_ids:
             geometry_pose = inspector.GetPoseInFrame(
@@ -376,7 +387,7 @@ class ContactTerms(Module):
             drake_spatial_jacobians.append(drake_spatial_jacobian)
 
             geometries.append(
-                PydrakeToCollisionGeometryFactory.convert(
+                collision_geometry_factory.convert(
                     inspector.GetShape(geometry_id)))
 
         return geometries, rotations, translations, drake_spatial_jacobians
@@ -565,7 +576,7 @@ class MultibodyTerms(Module):
                     friction_coefficients[geometry_index].item()
 
                 if isinstance(geometry, DeepSupportConvex):
-                    geometry_mesh = extract_mesh(geometry.network)
+                    geometry_mesh = extract_mesh_from_support_function(geometry.network)
                     meshes[body_id] = geometry_mesh
                     vertices = geometry_mesh.vertices
                     diameters = vertices.max(dim=0).values - vertices.min(
@@ -609,7 +620,10 @@ class MultibodyTerms(Module):
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration
 
-    def __init__(self, urdfs: Dict[str, str]) -> None:
+    def __init__(self, urdfs: Dict[str, str], learn_inertial_parameters:
+    bool,
+                 mesh_representation: MeshRepresentation) \
+            -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs
 
         Interpretation is performed as a thin wrapper around
@@ -624,6 +638,8 @@ class MultibodyTerms(Module):
         Args:
             urdfs: Dictionary of named URDF XML file names, containing
             description of multibody system.
+            learn_inertial_parameters: Whether inertial parameters are learned.
+            mesh_representation: Representation type of mesh geometries.
         """
         super().__init__()
 
@@ -650,8 +666,9 @@ class MultibodyTerms(Module):
                 geometry_index)
 
         # setup parameterization
-        self.lagrangian_terms = LagrangianTerms(plant_diagram)
-        self.contact_terms = ContactTerms(plant_diagram)
+        self.lagrangian_terms = LagrangianTerms(plant_diagram,
+                                                learn_inertial_parameters)
+        self.contact_terms = ContactTerms(plant_diagram, mesh_representation)
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs

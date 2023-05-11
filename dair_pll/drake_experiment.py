@@ -15,6 +15,7 @@ from dair_pll.experiment import SupervisedLearningExperiment, \
     LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
+from dair_pll.geometry import MeshRepresentation
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem
 from dair_pll.system import System, SystemSummary
@@ -32,8 +33,12 @@ class MultibodyLosses(Enum):
 
 @dataclass
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
-    loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
-    """Whether to use ContactNets or prediction loss."""
+    learn_inertial_parameters: bool = False
+    """Whether to learn inertial properties of the system."""
+    initial_condition_relative_noise: Optional[Tensor] = None
+    """Relative noise to add to parameter initial conditions."""
+    mesh_representation: MeshRepresentation = MeshRepresentation.POLYGON
+    """Whether meshes are represented as polygons or deep networks."""
 
 
 @dataclass
@@ -41,6 +46,8 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
                                              ):
     visualize_learned_geometry: bool = True
     """Whether to use learned geometry in trajectory overlay visualization."""
+    training_loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
+    """Whether to use ContactNets or prediction loss for training."""
 
 
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
@@ -169,9 +176,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
     def __init__(self, config: DrakeMultibodyLearnableExperimentConfig) -> None:
         super().__init__(config)
-        learnable_config = cast(MultibodyLearnableSystemConfig,
-                                self.config.learnable_config)
-        if learnable_config.loss == MultibodyLosses.CONTACTNETS_LOSS:
+        if config.training_loss == MultibodyLosses.CONTACTNETS_LOSS:
             self.loss_callback = self.contactnets_loss
 
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
@@ -179,9 +184,13 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                 self.config.learnable_config)
         output_dir = file_utils.get_learned_urdf_dir(self.config.storage,
                                                      self.config.run_name)
-        return MultibodyLearnableSystem(learnable_config.urdfs,
-                                        self.config.data_config.dt,
-                                        output_urdfs_dir=output_dir)
+        return MultibodyLearnableSystem(
+            learnable_config.urdfs,
+            self.config.data_config.dt,
+            output_urdfs_dir=output_dir,
+            learn_inertial_parameters=learnable_config.
+            learn_inertial_parameters,
+            mesh_representation=learnable_config.mesh_representation)
 
     def visualizer_regeneration_is_required(self) -> bool:
         return cast(DrakeMultibodyLearnableExperimentConfig,

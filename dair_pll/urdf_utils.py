@@ -16,13 +16,15 @@ from xml.etree.ElementTree import register_namespace
 from torch import Tensor
 
 from dair_pll import drake_utils, file_utils
-from dair_pll.deep_support_function import extract_obj
+from dair_pll.deep_support_function import extract_obj, \
+    extract_mesh_from_support_function, extract_mesh_from_support_points
 from dair_pll.geometry import CollisionGeometry, Box, Sphere, Polygon, \
     DeepSupportConvex
 from dair_pll.inertia import InertialParameterConverter
 from dair_pll.multibody_terms import MultibodyTerms
-
 # tags
+from dair_pll.system import MeshSummary
+
 _ORIGIN = "origin"
 _MASS = "mass"
 _INERTIA = "inertia"
@@ -207,7 +209,8 @@ class UrdfGeometryRepresentationFactory:
             URDF tag and attributes.
         """
         if isinstance(geometry, Polygon):
-            return UrdfGeometryRepresentationFactory.polygon_representation()
+            return UrdfGeometryRepresentationFactory.polygon_representation(
+                geometry, output_dir)
         if isinstance(geometry, Box):
             return UrdfGeometryRepresentationFactory.box_representation(
                 geometry)
@@ -215,23 +218,36 @@ class UrdfGeometryRepresentationFactory:
             return UrdfGeometryRepresentationFactory.sphere_representation(
                 geometry)
         if isinstance(geometry, DeepSupportConvex):
-            return UrdfGeometryRepresentationFactory.mesh_representation(
-                geometry, output_dir)
+            return UrdfGeometryRepresentationFactory. \
+                deep_support_convex_representation(geometry, output_dir)
         raise TypeError(
             "Unsupported type for CollisionGeometry() to"
             "URDF representation conversion:", type(geometry))
 
     @staticmethod
-    def polygon_representation() -> Tuple[str, Dict[str, str]]:
-        """Todo: implement representation for ``Polygon``"""
-        raise NotImplementedError("Polygon URDF representation not yet "
-                                  "implemented.")
+    def polygon_representation(polygon: Polygon,
+                               output_dir: str) -> Tuple[str, Dict[str, str]]:
+        """Returns URDF representation as ``mesh`` tag with name of saved
+        mesh file."""
+        return UrdfGeometryRepresentationFactory.mesh_representation(
+            extract_mesh_from_support_points(polygon.vertices.clone()),
+            output_dir)
+
+    @staticmethod
+    def deep_support_convex_representation(
+            deep_support_convex:  DeepSupportConvex, output_dir: str) -> \
+            Tuple[str, Dict[str, str]]:
+        """Returns URDF representation as ``mesh`` tag with name of saved
+        mesh file."""
+        return UrdfGeometryRepresentationFactory.mesh_representation(
+            extract_mesh_from_support_function(deep_support_convex.network),
+            output_dir)
 
     @staticmethod
     def box_representation(box: Box) -> Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``box`` tag with full-length sizes."""
-        size = ' '.join([str(2 * i.item()) for i in \
-                         box.get_half_lengths().view(-1)])
+        size = ' '.join(
+            [str(2 * i.item()) for i in box.get_half_lengths().view(-1)])
         return _BOX, {_SIZE: size}
 
     @staticmethod
@@ -241,13 +257,13 @@ class UrdfGeometryRepresentationFactory:
         return _SPHERE, {_RADIUS: str(sphere.get_radius().item())}
 
     @staticmethod
-    def mesh_representation(convex: DeepSupportConvex, output_dir: str) -> \
+    def mesh_representation(mesh_summary: MeshSummary, output_dir: str) \
+            -> \
             Tuple[str, Dict[str, str]]:
-        """Returns URDF representation as ``mesh`` tag with name of saved
-        mesh file."""
+        """Generate URDF mesh from mesh summary."""
         mesh_name = "test.obj"
         mesh_path = os.path.join(output_dir, mesh_name)
-        file_utils.save_string(mesh_path, extract_obj(convex.network))
+        file_utils.save_string(mesh_path, extract_obj(mesh_summary))
 
         return _MESH, {_FILENAME: mesh_name}
 
@@ -308,10 +324,10 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
             shape_element = UrdfFindOrDefault.find(geometry_element, shape_tag)
             shape_element.attrib = shape_attributes
 
-        prox_props_element = UrdfFindOrDefault.find(collision_element,
-            _DRAKE_PROXIMITY_PROPERTIES)
-        UrdfFindOrDefault.find(prox_props_element, _DRAKE_MU_STATIC).set(
-            _VALUE, mu)
+        prox_props_element = UrdfFindOrDefault.find(
+            collision_element, _DRAKE_PROXIMITY_PROPERTIES)
+        UrdfFindOrDefault.find(prox_props_element,
+                               _DRAKE_MU_STATIC).set(_VALUE, mu)
 
 
 def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
@@ -355,8 +371,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                 body_id = drake_utils.unique_body_identifier(
                     multibody_terms.plant_diagram.plant,
                     multibody_terms.plant_diagram.plant.GetBodyByName(
-                        cast(str, element.get("name")),
-                        model_instance_index))
+                        cast(str, element.get("name")), model_instance_index))
                 if body_id not in all_body_ids:
                     # body does not have inertial attributes,
                     # for instance, the world body.
@@ -370,7 +385,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                     for index in body_geometry_indices
                 ]
                 body_friction_coeffs = friction_coeffs[body_geometry_indices]
-                
+
                 fill_link_with_parameterization(element, pi_cm[body_index, :],
                                                 body_geometries,
                                                 body_friction_coeffs,

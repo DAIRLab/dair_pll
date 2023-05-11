@@ -16,20 +16,19 @@ _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
-def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
+
+def extract_obj(mesh_summary: MeshSummary) -> str:
     """Given a support function, extracts a Wavefront obj representation.
 
     Args:
-        support_function: Callable support function.
+        mesh_summary: Vertex/face mesh.
 
     Returns:
         Wavefront .obj string
     """
-    mesh_summary = extract_mesh(support_function)
     normals = extract_outward_normal_hyperplanes(
         mesh_summary.vertices.unsqueeze(0),
-        mesh_summary.faces.unsqueeze(0)
-    )[0].squeeze(0)
+        mesh_summary.faces.unsqueeze(0))[0].squeeze(0)
 
     obj_string = ""
     for vertex in mesh_summary.vertices:
@@ -38,7 +37,6 @@ def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
 
     obj_string += '\n\n'
 
-    #pdb.set_trace()
     for normal in normals:
         normal_string = " ".join([str(n_i.item()) for n_i in normal])
         obj_string += f'vn {normal_string}\n'
@@ -46,11 +44,11 @@ def extract_obj(support_function: Callable[[Tensor], Tensor]) -> str:
     obj_string += '\n\n'
 
     for face_index, face in enumerate(mesh_summary.faces):
-        face_string = " ".join([f'{f_i.item() + 1}//{face_index + 1}' for f_i in face])
+        face_string = " ".join(
+            [f'{f_i.item() + 1}//{face_index + 1}' for f_i in face])
         obj_string += f'f {face_string}\n'
 
     return obj_string
-
 
 
 def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
@@ -89,16 +87,15 @@ def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
     return outward_normals, backwards, extents
 
 
-def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
-    """Given a support function, extracts a vertex/face mesh.
+def extract_mesh_from_support_points(support_points: Tensor) -> MeshSummary:
+    """Given a set of convex polytope vertices, extracts a vertex/face mesh.
 
     Args:
-        support_function: Callable support function.
+        support_points: ``(*, 3)`` polytope vertices.
 
     Returns:
         Object vertices and face indices.
     """
-    support_points = support_function(_SURFACE).detach()
     support_point_hashes = set()
     unique_support_points = []
 
@@ -120,6 +117,21 @@ def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
     faces[backwards] = faces[backwards].flip(-1)
 
     return MeshSummary(vertices=support_points, faces=faces)
+
+
+def extract_mesh_from_support_function(
+        support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
+    """Given a support function, extracts a vertex/face mesh.
+
+    Args:
+        support_function: Callable support function.
+
+    Returns:
+        Object vertices and face indices.
+    """
+    support_points = support_function(_SURFACE).detach()
+    return extract_mesh_from_support_points(support_points)
+
 
 
 class HomogeneousICNN(Module):

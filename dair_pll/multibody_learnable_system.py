@@ -31,6 +31,7 @@ from torch import Tensor
 
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
+from dair_pll.geometry import MeshRepresentation
 from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.system import System, \
@@ -48,10 +49,15 @@ class MultibodyLearnableSystem(System):
     solver: SAPSolver
     dt: float
 
-    def __init__(self,
-                 init_urdfs: Dict[str, str],
-                 dt: float,
-                 output_urdfs_dir: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        init_urdfs: Dict[str, str],
+        dt: float,
+        output_urdfs_dir: Optional[str] = None,
+        learn_inertial_parameters: bool = False,
+        mesh_representation: MeshRepresentation = MeshRepresentation
+        .POLYGON
+    ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -65,8 +71,13 @@ class MultibodyLearnableSystem(System):
             dt: Time step of system in seconds.
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
+            learn_inertial_parameters: Whether to learn inertial parameters.
+            mesh_representation: Representation type for mesh geometry.
         """
-        multibody_terms = MultibodyTerms(init_urdfs)
+        # pylint: disable=too-many-arguments
+        multibody_terms = MultibodyTerms(init_urdfs,
+                                         learn_inertial_parameters,
+                                         mesh_representation)
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super().__init__(space, integrator)
