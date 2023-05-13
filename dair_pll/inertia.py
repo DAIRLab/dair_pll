@@ -452,7 +452,6 @@ class InertialParameterConverter:
         pi_o = Tensor([mass] + mass_list + inertia_list)
         return pi_o
 
-
     @staticmethod
     def drake_to_theta(spatial_inertia: DrakeSpatialInertia) -> Tensor:
         """Passthrough chain of :py:meth:`drake_to_pi_o` and
