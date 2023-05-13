@@ -46,6 +46,7 @@ from pydrake.multibody.tree import SpatialInertia_, UnitInertia_, \
 from pydrake.symbolic import Expression, Variable  # type: ignore
 from pydrake.symbolic import MakeVectorVariable, Jacobian  # type: ignore
 from pydrake.systems.framework import Context  # type: ignore
+from scipy.spatial.transform import Rotation
 from torch import Tensor
 from torch.nn import Module, ModuleList, Parameter
 
@@ -763,9 +764,13 @@ class MultibodyTerms(Module):
                 - Choose a random set of three length scales between 0.5 and 1.5
                   times the true length.
                 - Choose a random mass fraction :math:`\nu` between 0.5 and 1.5.
-                - Define :math:`I_{xx}` as
+                - Define :math:`I_{xx,princ.axis}` along a principal axis as
                   :math:`\frac{\nu m}{12} (l_y^2 + l_z^2)`, and similarly for
-                  :math:`I_{yy}` and :math:`I_{zz}`.
+                  :math:`I_{yy,princ.axis}` and :math:`I_{zz,princ.axis}`.
+                - Generate a random rotation in SO(3) and transform the
+                  principal axis inertia matrix with it.
+                - Define all moments and products of inertia from this rotated
+                  version.
         """
         def scale_factory(x: Tensor) -> Tensor:
             """Return a scaled version of the input such that each element in
@@ -814,22 +819,23 @@ class MultibodyTerms(Module):
                 # homogeneous density with random mass and random lengths.
                 rand_mass = mass * (torch.rand(1) + 0.5)
                 rand_lengths = (torch.rand(3) + 0.5) * _NOMINAL_HALF_LENGTH
-                Ixx = (rand_mass/12) * (rand_lengths[1]**2 + rand_lengths[2]**2)
-                Iyy = (rand_mass/12) * (rand_lengths[0]**2 + rand_lengths[2]**2)
-                Izz = (rand_mass/12) * (rand_lengths[0]**2 + rand_lengths[1]**2)
-                pi_cm[4:7] = Tensor([Ixx, Iyy, Izz])
+                scaling = rand_mass/12
+                Ixx_pa = scaling * (rand_lengths[1]**2 + rand_lengths[2]**2)
+                Iyy_pa = scaling * (rand_lengths[0]**2 + rand_lengths[2]**2)
+                Izz_pa = scaling * (rand_lengths[0]**2 + rand_lengths[1]**2)
 
-                # Define the products of inertia assuming the mass is
-                # concentrated at a point somewhere within a scaled portion of a
-                # nominal geometry.  The exact 0.3 number is a hack -- the below
-                # rarely produces nans with the 0.3 number which corresponds to
-                # the inner 15% of a nominal geometry.  This should be nan-free
-                # most of the time, but the while loop is to catch if it doesn't
-                # work.
-                rand_com = (torch.rand(3) - 0.5) * _NOMINAL_HALF_LENGTH * 0.3
-                Ixy = -rand_mass * rand_com[0] * rand_com[1]
-                Ixz = -rand_mass * rand_com[0] * rand_com[2]
-                Iyz = -rand_mass * rand_com[1] * rand_com[2]
+                # Randomly rotate the principal axes.
+                rot_mat = Tensor(Rotation.random().as_matrix())
+                I_mat_pa = Tensor([[Ixx_pa, 0., 0.],
+                                   [0., Iyy_pa, 0.],
+                                   [0., 0., Izz_pa]])
+                I_mat_rand = rot_mat.T @ I_mat_pa @ rot_mat
+
+                # Grab the moments and products of inertia from this result.
+                Ixx, Iyy, Izz = I_mat_rand[0,0], I_mat_rand[1,1], I_mat_rand[2,2]
+                Ixy, Ixz, Iyz = I_mat_rand[0,1], I_mat_rand[1,2], I_mat_rand[1,2]
+
+                pi_cm[4:7] = Tensor([Ixx, Iyy, Izz])
                 pi_cm[7:10] = Tensor([Ixy, Ixz, Iyz])
 
                 self.lagrangian_terms.original_pi_cm_params[idx] = pi_cm
