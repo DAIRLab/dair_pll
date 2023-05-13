@@ -686,7 +686,7 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 
 
 @cli.command('sweep')
-@click.option('--sweep_name',
+@click.option('--sweep-name',
               type=str,
               default=None)
 @click.option('--number',
