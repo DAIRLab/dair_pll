@@ -155,8 +155,8 @@ with open('hp_search_3.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=params_dict.keys())
 
     writer.writeheader()
-    for run_info in lookup_by_wandb_id.keys():
-        writer.writerow(lookup_by_wandb_id[run_info])
+    for run_info in lookup_by_run_name.keys():
+        writer.writerow(lookup_by_run_name[run_info])
 
 
 pdb.set_trace()
