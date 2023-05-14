@@ -1,4 +1,5 @@
 """Helper script to determine the run parameters from the W&B group ID."""
+
 import os
 import os.path as op
 import git
@@ -11,11 +12,19 @@ import torch
 from dair_pll.file_utils import *
 
 
-ELBOW_HP_SCRIPT_PATTERN = 'startup_hpreal_elbow_ie????.bash'
-
+# For results that generated hp_search_2.csv:
+# ELBOW_HP_SCRIPT_PATTERN = 'startup_hpreal_elbow_ie????.bash'
+# storage_name = '/home/bibit/dair_pll/results/hpreal_elbow'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-MINIMUM_RUN_NUM = 372
+# MINIMUM_RUN_NUM = 372
+
+# For results that generated hp_search_3.csv:
+ELBOW_HP_SCRIPT_PATTERN = 'startup_elbow_real_re??-?.bash'
+storage_name = '/home/bibit/dair_pll/results/elbow_real'
+# Set a minimum run number since multiple hyperparameter searches were conducted
+# in the same results folder.
+MINIMUM_RUN_NUM = 13   # the maximum for hp_search_3.csv is 33
 
 WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
 WANDB_PROJECT_LOCAL = 'dair_pll-dev'
@@ -30,7 +39,6 @@ POS_ERROR = 'valid_pos_int_traj'
 ROT_ERROR = 'valid_angle_int_traj'
 PENETRATION = 'valid_penetration_int_traj'
 
-storage_name = '/home/bibit/dair_pll/results/hpreal_elbow'
 
 
 repo = git.Repo(search_parent_directories=True)
@@ -73,7 +81,7 @@ for script in startup_scripts_list:
     if fnmatch.fnmatch(script, ELBOW_HP_SCRIPT_PATTERN):
         run_name = script.split('_')[-1].split('.')[0]
         try:
-            run_num = int(run_name[2:])
+            run_num = int(run_name.split('-')[0][2:])
         except:
             continue
 
@@ -143,7 +151,7 @@ for script in startup_scripts_list:
 
 
 
-with open('hp_search_2.csv', 'w', newline='') as csvfile:
+with open('hp_search_3.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=params_dict.keys())
 
     writer.writeheader()

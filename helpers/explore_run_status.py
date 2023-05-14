@@ -1,4 +1,8 @@
-"""Explore the results of a failed experiment run."""
+"""Explore the results of a failed experiment run.
+
+Note:  File gather_hyperparam_results.py now gets all of this information
+individually.
+"""
 
 import pdb
 import torch

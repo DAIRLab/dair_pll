@@ -1,4 +1,8 @@
-"""Helper script to determine the run parameters from the W&B group ID."""
+"""Helper script to determine the run parameters from the W&B group ID.
+
+Note:  File gather_hyperparam_results.py now gets all of this information
+individually.
+"""
 import os
 import os.path as op
 import git
