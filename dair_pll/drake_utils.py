@@ -315,7 +315,7 @@ class MultibodyPlantDiagram:
                 print("Injecting a vortex vector field into dynamics.")
             elif additional_forces == 'viscous':
                 force_vector_field = ViscousDampingVectorField(n_velocity=n_v,
-                    w_linear=1e-1, w_angular=3e-3, w_articulation=1e-1)
+                    w_linear=1e-1, w_angular=3e-3, w_articulation=1e-2)
                 print("Injecting viscous damping vector field into dynamics.")
             else:
                 raise NotImplementedError("Only additional forces implemented"
