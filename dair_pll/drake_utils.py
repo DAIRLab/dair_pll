@@ -22,6 +22,9 @@ from dataclasses import dataclass, field
 from typing import Tuple, Dict, List, Optional, Union, Type, cast, \
     TypeAlias
 
+import pdb
+
+import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
 # pylint: disable-next=import-error
@@ -41,12 +44,15 @@ from pydrake.multibody.tree import SpatialInertia_  # type: ignore
 from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
+from pydrake.systems.drawing import plot_system_graphviz
 from pydrake.systems.framework import DiagramBuilder, \
     DiagramBuilder_  # type: ignore
 # pylint: disable-next=import-error
 from pydrake.visualization import VideoWriter  # type: ignore
 
 from dair_pll import state_space
+from dair_pll.vector_fields import VortexForceVectorField, \
+    ForceVectorFieldInjectorLeafSystem, ViscousDampingVectorField
 
 WORLD_GROUND_PLANE_NAME = "world_ground_plane"
 DRAKE_MATERIAL_GROUP = 'material'
@@ -248,7 +254,8 @@ class MultibodyPlantDiagram:
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
-                 visualization_file: Optional[str] = None) -> None:
+                 visualization_file: Optional[str] = None,
+                 additional_forces: Optional[str] = None) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
         trigger a state update every ``dt``.
@@ -260,6 +267,8 @@ class MultibodyPlantDiagram:
             dt: Time step of plant in seconds.
             visualization_file: Optional output GIF filename for trajectory
               visualization.
+            additional_forces: Optional additional forces to add to plant, e.g.
+              an arbitrary force vector field.
         """
         builder = DiagramBuilder()
         model_ids, plant, scene_graph = add_plant_from_urdfs(builder, urdfs, dt)
@@ -291,10 +300,62 @@ class MultibodyPlantDiagram:
         self.collision_geometry_set = get_collision_geometry_set(
             scene_graph.model_inspector())
 
-        # Builds and initialize simulator from diagram
+        # Finalize multibody plant.
         plant.Finalize()
-        diagram = builder.Build()
-        diagram.CreateDefaultContext()
+
+        if additional_forces != None:
+            # Get sizes for defining appropriately sized input and output ports
+            # for the force vector field injector ``LeafSystem``.
+            n_x = plant.get_state_output_port().size()
+            n_v = plant.get_applied_generalized_force_input_port().size()
+
+            # Define a force vector field.
+            if additional_forces == 'vortex':
+                force_vector_field = VortexForceVectorField(n_velocity=n_v)
+                print("Injecting a vortex vector field into dynamics.")
+            elif additional_forces == 'viscous':
+                force_vector_field = ViscousDampingVectorField(n_velocity=n_v,
+                    w_linear=1e-1, w_angular=3e-3, w_articulation=1e-1)
+                print("Injecting viscous damping vector field into dynamics.")
+            else:
+                raise NotImplementedError("Only additional forces implemented"
+                                          "are vortex and viscous.")
+
+            # Define a force vector field injector based on the vector field.
+            vector_field_injector = ForceVectorFieldInjectorLeafSystem(
+                n_state=n_x, n_velocity=n_v,
+                vector_field=force_vector_field
+            )
+
+            vector_field_injector = builder.AddSystem(vector_field_injector)
+            
+            # Wire in the vector field force injector so it affects the system
+            # dynamics.
+            builder.Connect(
+                plant.get_state_output_port(),
+                vector_field_injector.GetInputPort("mbp_state")
+            )
+            builder.Connect(
+                vector_field_injector.GetOutputPort("force_vector"),
+                plant.get_applied_generalized_force_input_port()
+            )
+
+            # Initialize simulator from diagram.
+            diagram = builder.Build()
+            diagram.CreateDefaultContext()
+
+            # Uncomment the below lines to generate diagram graph.
+            # diagram.set_name("graphviz example")
+            # plt.figure(figsize=(11,8.5), dpi=300)
+            # plot_system_graphviz(diagram)
+            # plt.savefig('/home/bibit/Desktop/graphviz_example.png')
+
+        else:
+            # Build diagram.
+            diagram = builder.Build()
+            diagram.CreateDefaultContext()
+
+        # Initialize simulator from diagram.
         sim = Simulator(diagram)
         sim.Initialize()
         sim.set_publish_every_time_step(False)

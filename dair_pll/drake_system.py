@@ -35,7 +35,8 @@ class DrakeSystem(System):
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float,
-                 visualization_file: Optional[str] = None) -> None:
+                 visualization_file: Optional[str] = None,
+                 additional_forces: Optional[str] = None) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
         Args:
@@ -43,8 +44,11 @@ class DrakeSystem(System):
             dt: Time step of plant in seconds.
             visualization_file: Optional output GIF filename for trajectory
               visualization.
+            additional_forces: Optional additional forces to add to plant, e.g.
+              an arbitrary force vector field.
         """
-        plant_diagram = MultibodyPlantDiagram(urdfs, dt, visualization_file)
+        plant_diagram = MultibodyPlantDiagram(urdfs, dt, visualization_file,
+                                              additional_forces)
 
         space = plant_diagram.generate_state_space()
         integrator = StateIntegrator(space, self.sim_step, dt)

@@ -44,6 +44,11 @@ REAL_SOURCE = 'real'
 DYNAMIC_SOURCE = 'dynamic'
 DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
+# Possible simulation data augmentations.
+VORTEX_AUGMENTATION = 'vortex'
+VISCOUS_AUGMENTATION = 'viscous'
+AUGMENTED_FORCE_TYPES = [VORTEX_AUGMENTATION, VISCOUS_AUGMENTATION]
+
 # Possible inertial parameterizations to learn for the elbow system.
 # The options are:
 # 0 - none (0 parameters)
@@ -165,7 +170,8 @@ def main(storage_folder_name: str = "",
          w_diss: float = 1e0,
          w_pen: float = 1e0,
          w_res: float = 1e0,
-         do_residual: bool = False):
+         do_residual: bool = False,
+         additional_forces: str = None):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -186,6 +192,8 @@ def main(storage_folder_name: str = "",
         w_pen: Weight of penetration term in ContactNets loss.
         w_res: Weight of residual regularization term in loss.
         do_residual: Whether to add residual physics block.
+        additional_forces: Optionally provide additional forces to augment any
+          generated simulation data.  Is ignored if using real data.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -203,7 +211,8 @@ def main(storage_folder_name: str = "",
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
          + f'\n\twith residual: {do_residual}' \
          + f'\n\tand IGNORING provided true_sys={true_sys}, instead' \
-         + f'\n\tstarting with randomized URDF: {True}.')
+         + f'\n\tstarting with randomized URDF: {True}' \
+         + f'\n\tinjecting into dynamics (if sim): {additional_forces}')
 
     simulation = source == SIM_SOURCE
     dynamic = source == DYNAMIC_SOURCE
@@ -294,7 +303,6 @@ def main(storage_folder_name: str = "",
     # Prepare data.
     x_0 = X_0S[system]
     if simulation:
-
         # For simulation, specify the following:
         data_generation_config = DataGenerationConfig(
             dt=DT,
@@ -319,8 +327,14 @@ def main(storage_folder_name: str = "",
             # where to store trajectories
         )
 
-        generator = ExperimentDatasetGenerator(experiment.get_base_system(),
-                                               data_generation_config)
+        if additional_forces == None:
+            data_generation_system = experiment.get_base_system()
+        else:
+            data_generation_system = experiment.get_augmented_system(
+                additional_forces)
+
+        generator = ExperimentDatasetGenerator(
+            data_generation_system, data_generation_config)
         print(f'Generating (or getting existing) simulation trajectories.\n')
         generator.generate()
 
@@ -417,19 +431,24 @@ def main(storage_folder_name: str = "",
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
+@click.option('--additional-forces',
+              type = click.Choice(AUGMENTED_FORCE_TYPES),
+              default=None,
+              help="what kind of additional forces to augment simulation data.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, contactnets: bool, geometry: str,
                  regenerate: bool, dataset_size: int, inertia_params: str,
                  loss_variation: str, true_sys: bool, wandb_project: str,
                  w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                 w_res: float, residual: bool):
+                 w_res: float, residual: bool, additional_forces: str):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, contactnets, geometry,
          regenerate, dataset_size, inertia_params, loss_variation, true_sys,
-         wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, residual)
+         wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, residual,
+         additional_forces)
 
 
 if __name__ == '__main__':

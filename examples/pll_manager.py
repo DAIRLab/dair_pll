@@ -25,10 +25,23 @@ HYPERPARAMETER_SIM = 'hyperparam'
 HYPERPARAMETER_REAL = 'hpreal'
 CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER_SIM, HYPERPARAMETER_REAL]
 
+# Possible dataset types
+SIM_SOURCE = 'simulation'
+REAL_SOURCE = 'real'
+DYNAMIC_SOURCE = 'dynamic'
+DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
+
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
 SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+
+# Possible simulation data augmentations.
+NO_AUGMENTATION = None
+VORTEX_AUGMENTATION = 'vortex'
+VISCOUS_AUGMENTATION = 'viscous'
+AUGMENTED_FORCE_TYPES = [NO_AUGMENTATION, VORTEX_AUGMENTATION,
+                         VISCOUS_AUGMENTATION]
 
 # Possible run name regex patterns.
 CUBE_TEST_PATTERN = 'tc??'
@@ -47,12 +60,6 @@ RUN_PREFIX_TO_FOLDER_NAME = {'tc': f'{TEST}_{CUBE_SYSTEM}',
                              'he': f'{HYPERPARAMETER_SIM}_{ELBOW_SYSTEM}',
                              'ic': f'{HYPERPARAMETER_REAL}_{CUBE_SYSTEM}',
                              'ie': f'{HYPERPARAMETER_REAL}_{ELBOW_SYSTEM}'}
-
-# Possible dataset types
-SIM_SOURCE = 'simulation'
-REAL_SOURCE = 'real'
-DYNAMIC_SOURCE = 'dynamic'
-DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 
 # Possible geometry types
 BOX_TYPE = 'box'
@@ -115,7 +122,10 @@ def create_instance(storage_folder_name: str, run_name: str,
                     w_diss: float = 1e0,
                     w_pen: float = 1e0,
                     w_res: float = 1e0,
-                    do_residual: bool = False):
+                    do_residual: bool = False,
+                    additional_forces: str = None):
+    assert additional_forces in AUGMENTED_FORCE_TYPES
+
     print(f'Generating experiment {storage_folder_name}/{run_name}')
 
     if wandb_group_id is None:
@@ -152,6 +162,8 @@ def create_instance(storage_folder_name: str, run_name: str,
         train_options += ' --true-sys' if true_sys else ' --wrong-sys'
         train_options += f' --wandb-project={WANDB_PROJECTS[local]}'
         train_options += ' --residual' if do_residual else ' --no-residual'
+        train_options += f' --additional-forces={additional_forces}' if \
+                         additional_forces != None else ''
 
         if contactnets:
             train_options += f' --w-pred={w_pred}'
@@ -275,7 +287,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
     inertia_params: str, loss_variation: str, true_sys: bool, overwrite: str,
     w_pred: float, w_comp: float, w_diss: float, w_pen: float, w_res: float,
     dataset_exponent: int = None, last_run_num: int = None, number: int = 1,
-    do_residual: bool = False):
+    do_residual: bool = False, additional_forces: str = None):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -355,7 +367,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
                         loss_variation=loss_variation, true_sys=true_sys,
                         restart=False, wandb_group_id=wandb_group_id,
                         w_pred=w_pred, w_comp=w_comp, w_diss=w_diss,
-                        w_pen=w_pen, w_res=w_res, do_residual=do_residual)
+                        w_pen=w_pen, w_res=w_res, do_residual=do_residual,
+                        additional_forces=additional_forces)
 
 
 @click.group()
@@ -428,12 +441,17 @@ def cli():
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
+@click.option('--additional-forces',
+              type = click.Choice(AUGMENTED_FORCE_TYPES),
+              default=NO_AUGMENTATION,
+              help="what kind of additional forces to augment simulation data.")
 def create_command(storage_folder_name: str, run_name: str, number: int,
                    system: str, source: str, contactnets: bool, geometry: str,
                    regenerate: bool, dataset_size: int, local: bool,
                    inertia_params: str, loss_variation: str, true_sys: bool,
                    overwrite: str, w_pred: float, w_comp: float,
-                   w_diss: float, w_pen: float, w_res: float, residual: bool):
+                   w_diss: float, w_pen: float, w_res: float, residual: bool,
+                   additional_forces: str):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -484,7 +502,8 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
                         inertia_params, loss_variation, true_sys, False,
                         wandb_group_id=wandb_group_id, w_pred=w_pred,
                         w_comp=w_comp, w_diss=w_diss, w_pen=w_pen, w_res=w_res,
-                        do_residual=residual)
+                        do_residual=residual,
+                        additional_forces=additional_forces)
 
 
 @cli.command('test')
@@ -742,11 +761,15 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
+@click.option('--additional-forces',
+              type = click.Choice(AUGMENTED_FORCE_TYPES),
+              default=NO_AUGMENTATION,
+              help="what kind of additional forces to augment simulation data.")
 def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                   geometry: str, regenerate: bool, local: bool,
                   inertia_params: str, loss_variation: str, true_sys: bool,
                   w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                  w_res: float, residual: bool):
+                  w_res: float, residual: bool, additional_forces: str):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -782,7 +805,8 @@ def sweep_command(sweep_name: str, number: int, system: str, contactnets: bool,
                                  overwrite=OVERWRITE_NOTHING,
                                  number=number, w_pred=w_pred, w_comp=w_comp,
                                  w_diss=w_diss, w_pen=w_pen, w_res=w_res,
-                                 do_residual=residual)
+                                 do_residual=residual,
+                                 additional_forces=additional_forces)
 
 
 

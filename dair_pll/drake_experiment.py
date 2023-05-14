@@ -74,6 +74,7 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
 
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
     base_drake_system: Optional[DrakeSystem]
+    augmented_drake_system: Optional[DrakeSystem]
     visualization_system: Optional[DrakeSystem]
 
     def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
@@ -90,6 +91,19 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
 
     def get_base_system(self) -> System:
         return self.get_drake_system()
+
+    def get_augmented_system(self, additional_forces: str) -> DrakeSystem:
+        """Get a ``DrakeSystem`` where the Drake multibody plant has additional
+        forces in the ``applied_generalized_force`` or ``applied_spatial_force``
+        input ports."""
+        print("Getting augmented system!")
+        has_property = hasattr(self, 'augmented_drake_system')
+        if not has_property or self.augmented_drake_system is None:
+            base_config = cast(DrakeSystemConfig, self.config.base_config)
+            dt = self.config.data_config.dt
+            self.augmented_drake_system = DrakeSystem(
+                base_config.urdfs, dt, additional_forces=additional_forces)
+        return self.augmented_drake_system
 
     def get_learned_drake_system(
             self, learned_system: System) -> Optional[DrakeSystem]:
