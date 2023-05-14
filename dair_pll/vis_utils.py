@@ -73,7 +73,7 @@ def get_geometry_inspection_trajectory(learned_system: DrakeSystem) -> Tensor:
         rotation_piece = torch.cat(
             (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME, vels), dim=1)
 
-        trajectory = torch.cat((rotation_piece, rotation_piece), dim=0)
+        trajectory = rotation_piece
         
     elif n_q == 8:
         rotation_piece = torch.cat(
