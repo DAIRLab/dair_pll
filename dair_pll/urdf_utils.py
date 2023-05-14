@@ -230,7 +230,7 @@ class UrdfGeometryRepresentationFactory:
         """Returns URDF representation as ``mesh`` tag with name of saved
         mesh file."""
         return UrdfGeometryRepresentationFactory.mesh_representation(
-            extract_mesh_from_support_points(polygon.vertices.clone()),
+            extract_mesh_from_support_points(polygon.vertices.clone().detach()),
             output_dir)
 
     @staticmethod

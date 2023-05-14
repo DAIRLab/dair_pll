@@ -25,7 +25,6 @@ from typing import Tuple, Optional, Dict, cast
 
 import numpy as np
 import torch
-from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 
 from dair_pll import urdf_utils, tensor_utils, file_utils
@@ -33,11 +32,14 @@ from dair_pll.drake_system import DrakeSystem
 from dair_pll.geometry import MeshRepresentation
 from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
+from dair_pll.solvers import DynamicCvxpyLCQPLayer
 from dair_pll.system import System, \
     SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, project_lorentz, \
     reflect_lorentz
 
+_SAPPY_EPS = 1e-4
+_DEFAULT_MESH = MeshRepresentation.POLYGON
 
 class MultibodyLearnableSystem(System):
     """:py:class:`System` interface for dynamics associated with
@@ -46,17 +48,17 @@ class MultibodyLearnableSystem(System):
     init_urdfs: Dict[str, str]
     output_urdfs_dir: Optional[str] = None
     visualization_system: Optional[DrakeSystem]
-    solver: SAPSolver
+    solver: DynamicCvxpyLCQPLayer
     dt: float
 
     def __init__(
-        self,
-        init_urdfs: Dict[str, str],
-        dt: float,
-        output_urdfs_dir: Optional[str] = None,
-        learn_inertial_parameters: bool = False,
-        mesh_representation: MeshRepresentation = MeshRepresentation
-        .POLYGON
+            self,
+            init_urdfs: Dict[str, str],
+            dt: float,
+            output_urdfs_dir: Optional[str] = None,
+            learn_inertial_parameters: bool = False,
+            mesh_representation: MeshRepresentation = _DEFAULT_MESH,
+            parameter_noise_level: Tensor = torch.tensor(0.0),
     ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
@@ -73,11 +75,12 @@ class MultibodyLearnableSystem(System):
               written to.
             learn_inertial_parameters: Whether to learn inertial parameters.
             mesh_representation: Representation type for mesh geometry.
+            parameter_noise_level: Relative noise level for initial parameters.
         """
         # pylint: disable=too-many-arguments
-        multibody_terms = MultibodyTerms(init_urdfs,
-                                         learn_inertial_parameters,
-                                         mesh_representation)
+        multibody_terms = MultibodyTerms(init_urdfs, learn_inertial_parameters,
+                                         mesh_representation,
+                                         parameter_noise_level)
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super().__init__(space, integrator)
@@ -85,7 +88,7 @@ class MultibodyLearnableSystem(System):
         self.init_urdfs = init_urdfs
         self.output_urdfs_dir = output_urdfs_dir
         self.visualization_system = None
-        self.solver = SAPSolver()
+        self.solver = DynamicCvxpyLCQPLayer(self.space.n_v)
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
@@ -112,10 +115,8 @@ class MultibodyLearnableSystem(System):
 
         return new_urdfs
 
-    def contactnets_loss_ncp(self,
-                         x: Tensor,
-                         u: Tensor,
-                         x_plus: Tensor) -> Tensor:
+    def contactnets_loss_ncp(self, x: Tensor, u: Tensor,
+                             x_plus: Tensor) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
         References:
@@ -136,7 +137,6 @@ class MultibodyLearnableSystem(System):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
-        eps = 1e-3
 
         delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
             q_plus, v_plus, u)
@@ -158,7 +158,7 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        Q = delassus + eps * torch.eye(3 * n_contacts)
+        Q = delassus  # + eps * torch.eye(3 * n_contacts)
         J_M = pbmm(reorder_mat.transpose(-1, -2),
                    pbmm(J, torch.linalg.cholesky(torch.inverse((M)))))
 
@@ -187,10 +187,9 @@ class MultibodyLearnableSystem(System):
         #                          loss_pool).detach()
         force = pbmm(
             reorder_mat,
-            self.solver.apply(
-                J_M,
-                pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                eps).detach().unsqueeze(-1))
+            self.solver(J_M,
+                        pbmm(reorder_mat.transpose(-1, -2),
+                             q).squeeze(-1)).detach().unsqueeze(-1))
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
@@ -205,10 +204,8 @@ class MultibodyLearnableSystem(System):
 
         return loss.squeeze(-1).squeeze(-1)
 
-    def contactnets_loss_anitescu(self,
-                         x: Tensor,
-                         u: Tensor,
-                         x_plus: Tensor) -> Tensor:
+    def contactnets_loss_anitescu(self, x: Tensor, u: Tensor,
+                                  x_plus: Tensor) -> Tensor:
         r"""Variant of ContactNets [1] loss for Anitescu's formulation.
 
         References:
@@ -226,33 +223,37 @@ class MultibodyLearnableSystem(System):
             (\*,) loss batch.
         """
         # pylint: disable-msg=too-many-locals
-        v = self.space.v(x)
-        q_plus, v_plus = self.space.q_v(x_plus)
+        q, v = self.space.q_v(x)
+        v_plus = self.space.v(x_plus)
         dt = self.dt
-        eps = 1e-3
 
-        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
-            q_plus, v_plus, u)
+        # change to linear implicit
+        #delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
+        #    q_plus, v_plus, u)
+        delassus, M, J, phi_minus, non_contact_acceleration = \
+            self.multibody_terms(q, v, u)
+        n_contacts = phi_minus.shape[-1]
+        J_n = J[..., :n_contacts, :]
+        J_t = J[..., n_contacts:, :]
+        phi = phi_minus + (pbmm(J_n, v_plus.unsqueeze(-1)) * dt).squeeze(-1)
 
-        n_contacts = phi.shape[-1]
         reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
         reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
                                           reorder_mat.shape).expand(
                                               delassus.shape)
-        J_t = J[..., n_contacts:, :]
 
         # pylint: disable=E1103
         #double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
         #phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
         sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
-        phi_tilde = torch.cat(
-            (phi, sliding_velocities * dt), dim=-1)
+
+        phi_tilde = torch.cat((phi, sliding_velocities.squeeze(-1) * dt),
+                              dim=-1)
         reflected_phi_tilde = reflect_lorentz(phi_tilde)
         projected_reflected_phi_tilde = project_lorentz(reflected_phi_tilde)
 
         complementarity_penalty = project_lorentz(phi_tilde) + \
                                   projected_reflected_phi_tilde
-
 
         # pylint: disable=E1103
 
@@ -260,7 +261,7 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        Q = delassus + eps * torch.eye(3 * n_contacts)
+        Q = delassus  # + eps * torch.eye(3 * n_contacts)
         J_M = pbmm(reorder_mat.transpose(-1, -2),
                    pbmm(J, torch.linalg.cholesky(torch.inverse((M)))))
 
@@ -273,11 +274,9 @@ class MultibodyLearnableSystem(System):
 
         cone_penalty = (projected_reflected_phi_tilde**2).sum(dim=-1)
 
-        cone_penalty = cone_penalty.reshape(
-            cone_penalty.shape + (1, 1))
+        cone_penalty = cone_penalty.reshape(cone_penalty.shape + (1, 1))
 
-        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(
-            -1, -2))) + cone_penalty
+        constant = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2))) + cone_penalty
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
@@ -288,10 +287,9 @@ class MultibodyLearnableSystem(System):
         #                          loss_pool).detach()
         force = pbmm(
             reorder_mat,
-            self.solver.apply(
-                J_M,
-                pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                eps).detach().unsqueeze(-1))
+            self.solver(J_M,
+                        pbmm(reorder_mat.transpose(-1, -2),
+                             q).squeeze(-1)).detach().unsqueeze(-1))
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
@@ -306,10 +304,7 @@ class MultibodyLearnableSystem(System):
 
         return loss.squeeze(-1).squeeze(-1)
 
-    def forward_dynamics(self,
-                         q: Tensor,
-                         v: Tensor,
-                         u: Tensor) -> Tensor:
+    def forward_dynamics(self, q: Tensor, v: Tensor, u: Tensor) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
         Implement's Anitescu's [1] convex formulation in dual form, derived
@@ -401,10 +396,9 @@ class MultibodyLearnableSystem(System):
 
         impulse_full = pbmm(
             reorder_mat,
-            self.solver.apply(
-                J_M,
-                pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),
-                1e-4).unsqueeze(-1))
+            self.solver(J_M,
+                        pbmm(reorder_mat.transpose(-1, -2),
+                             q_full).squeeze(-1)).unsqueeze(-1))
 
         impulse = torch.zeros_like(impulse_full)
         impulse[contact_filter] += impulse_full[contact_filter]

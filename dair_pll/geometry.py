@@ -15,6 +15,8 @@ via brute force optimization over a short list of vertices.
 All collision geometries implemented here mirror a Drake ``Shape`` object. A
 general purpose converter is implemented in
 ``PydrakeToCollisionGeometryFactory``.
+
+TODO: Remove old references to ``Cylinder`` .
 """
 from __future__ import annotations
 
@@ -415,7 +417,7 @@ class Box(SparseVertexConvexCollisionGeometry):
         scalars = {
             f'len_{axis}': 2 * value.item()
             for axis, value in zip(['x', 'y', 'z'],
-                self.get_half_lengths().view(-1))
+                                   self.get_half_lengths().view(-1))
         }
         return scalars
 
@@ -466,11 +468,20 @@ class Sphere(BoundedConvexCollisionGeometry):
 
 class PydrakeToCollisionGeometryFactory:
     """Utility class for converting Drake ``Shape`` instances to
-    ``CollisionGeometry`` instances."""
-    mesh_representation: MeshRepresentation
+    ``CollisionGeometry`` instances.
 
-    def __init__(self, mesh_representation: MeshRepresentation) -> None:
+    TODO: Document noise level handling properly.
+    """
+    mesh_representation: MeshRepresentation
+    noise_level: Tensor
+
+    def __init__(
+        self,
+        mesh_representation: MeshRepresentation,
+        noise_level: Tensor = torch.tensor(0.)
+    ) -> None:
         self.mesh_representation = mesh_representation
+        self.noise_level = noise_level
 
     def convert(self, drake_shape: Shape) -> CollisionGeometry:
         """Converts abstract ``pydrake.geometry.shape`` to
@@ -504,18 +515,21 @@ class PydrakeToCollisionGeometryFactory:
         """Converts ``pydrake.geometry.HalfSpace`` to ``Plane``."""
         return Plane()
 
-    def convert_mesh(self,
-                     drake_mesh: DrakeMesh) -> Union[Polygon, DeepSupportConvex]:
+    def convert_mesh(
+            self, drake_mesh: DrakeMesh) -> Union[Polygon, DeepSupportConvex]:
         """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
         ``DeepSupportConvex`` depending on mesh representation mode."""
         filename = drake_mesh.filename()
         mesh = pywavefront.Wavefront(filename)
         vertices = Tensor(mesh.vertices)
+        characteristic_lengths = (vertices.max(dim=0, keepdim=True).values -
+                                  vertices.min(dim=0, keepdim=True).values) / 2
+        vertices += characteristic_lengths * (torch.rand_like(
+            vertices) - 0.5) * 2 * self.noise_level
         if self.mesh_representation == MeshRepresentation.DEEP_SUPPORT_CONVEX:
             return DeepSupportConvex(vertices)
 
         return Polygon(vertices)
-
 
 
 class GeometryCollider:

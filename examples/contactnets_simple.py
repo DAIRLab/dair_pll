@@ -2,6 +2,7 @@
 # pylint: disable=E1103
 import os
 import time
+from copy import deepcopy
 from typing import cast
 
 import click
@@ -85,6 +86,7 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500
 PATIENCE = EPOCHS
 BATCH_SIZE = 256
+PARAMETER_NOISE_LEVEL = torch.tensor(0.3)  # initial parameter relative noise
 
 WANDB_PROJECT = 'dair_pll-examples'
 
@@ -146,7 +148,8 @@ def main(run_name: str = "",
     loss = MultibodyLosses.CONTACTNETS_ANITESCU_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=urdfs)
+    learnable_config = MultibodyLearnableSystemConfig(
+        urdfs=urdfs, initial_parameter_noise_level=PARAMETER_NOISE_LEVEL)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -175,8 +178,7 @@ def main(run_name: str = "",
         full_evaluation_period=EPOCHS if dynamic else 1,
         visualize_learned_geometry=True,
         run_wandb=True,
-        wandb_project=WANDB_PROJECT
-    )
+        wandb_project=WANDB_PROJECT)
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
@@ -209,7 +211,10 @@ def main(run_name: str = "",
             # where to store trajectories
         )
 
-        generator = ExperimentDatasetGenerator(experiment.get_base_system(),
+        generation_system = DrakeMultibodyLearnableExperiment(
+            deepcopy(experiment_config)).get_learned_system(Tensor())
+
+        generator = ExperimentDatasetGenerator(generation_system,
                                                data_generation_config)
         generator.generate()
 

@@ -16,6 +16,7 @@ install_reqs = [
     'click',
     'pywavefront',
     'python-fcl',
+    'cvxpylayers',
     # documentation
     'networkx',
     'pydeps==1.10.12',

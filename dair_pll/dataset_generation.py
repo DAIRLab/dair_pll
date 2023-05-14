@@ -120,8 +120,11 @@ class ExperimentDatasetGenerator:
 
         trajectories = []
         for _ in range(num_trajectories):
-            trajectory, _ = system.sample_trajectory(config.trajectory_length)
-            trajectories.append(trajectory)
+            trajectory, carry = system.sample_trajectory(
+                config.trajectory_length)
+            trajectories.append(trajectory.clone().detach())
+            del trajectory
+            del carry
         return trajectories
 
     def make_noised_trajectories(self, traj_set: List[Tensor]) -> List[Tensor]:

@@ -40,6 +40,14 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Relative noise to add to parameter initial conditions."""
     mesh_representation: MeshRepresentation = MeshRepresentation.POLYGON
     """Whether meshes are represented as polygons or deep networks."""
+    initial_parameter_noise_level: Tensor = torch.tensor(0.)
+    """Relative noise level to add to initial parameters."""
+
+    def __post_init__(self) -> None:
+        if self.learn_inertial_parameters:
+            raise NotImplementedError(
+                'Learning inertial parameters is not yet supported, '
+                'as randomized initial conditions are not yet implemented.')
 
 
 @dataclass
@@ -191,7 +199,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             output_urdfs_dir=output_dir,
             learn_inertial_parameters=learnable_config.
             learn_inertial_parameters,
-            mesh_representation=learnable_config.mesh_representation)
+            mesh_representation=learnable_config.mesh_representation,
+            parameter_noise_level=learnable_config.initial_parameter_noise_level
+        )
 
     def visualizer_regeneration_is_required(self) -> bool:
         return cast(DrakeMultibodyLearnableExperimentConfig,
