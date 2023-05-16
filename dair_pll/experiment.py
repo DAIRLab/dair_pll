@@ -26,6 +26,7 @@ from dair_pll.dataset_management import ExperimentDataManager, \
     TrajectorySet
 from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 from dair_pll.state_space import StateSpace
+from dair_pll.summary_statistics_constants import *
 from dair_pll.system import System, SystemSummary
 from dair_pll.wandb_manager import WeightsAndBiasesManager
 
@@ -55,34 +56,7 @@ class TrainingState:
     """Whether training has finished."""
 
 
-TRAIN_SET = 'train'
-VALID_SET = 'valid'
-TEST_SET = 'test'
-
-TRAIN_TIME_SETS = [TRAIN_SET, VALID_SET]
-ALL_SETS = [TRAIN_SET, VALID_SET, TEST_SET]
-
-TRAINING_DURATION = 'training_duration'
-EVALUATION_DURATION = 'evaluation_duration'
-LOGGING_DURATION = 'logging_duration'
-ALL_DURATIONS = [TRAINING_DURATION, EVALUATION_DURATION, LOGGING_DURATION]
-
 MAX_SAVED_TRAJECTORIES = 5
-
-BASE_SYSTEM_NAME = 'base'
-ORACLE_SYSTEM_NAME = 'oracle'
-LEARNED_SYSTEM_NAME = 'model'
-
-LOSS_NAME = 'loss'
-TRAJECTORY_ERROR_NAME = 'trajectory_mse'
-PREDICTED_VELOCITY_SIZE = 'v_plus_squared'
-DELTA_VELOCITY_SIZE = 'delta_v_squared'
-TARGET_NAME = 'target_sample'
-PREDICTION_NAME = 'prediction_sample'
-
-AVERAGE_TAG = 'mean'
-
-EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME]
 
 #:
 EpochCallbackCallable = Callable[[int, System, Tensor, Tensor], None]
@@ -480,7 +454,8 @@ class SupervisedLearningExperiment(ABC):
             self.write_to_wandb(epoch, learned_system, statistics)
 
         # pylint: disable=E1103
-        valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
+        valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_' \
+                         f'{self.config.optimizer_config.validation_variable}' \
                          f'_{AVERAGE_TAG}'
         valid_loss = 0.0 \
             if valid_loss_key not in statistics \
@@ -544,6 +519,7 @@ class SupervisedLearningExperiment(ABC):
             torch.save(dataclasses.asdict(training_state), checkpoint_filename)
 
         if self.config.run_wandb:
+            print(f'STARTING WANDB RUN: {self.config.run_name}')
             assert self.config.wandb_project is not None
             wandb_directory = file_utils.wandb_dir(self.config.storage,
                                                    self.config.run_name)
@@ -601,6 +577,9 @@ class SupervisedLearningExperiment(ABC):
         if training_state.finished_training:
             learned_system.load_state_dict(
                 training_state.best_learned_system_state)
+            if self.config.run_wandb:
+                if self.wandb_manager is not None:
+                    self.wandb_manager.finish()
             return training_loss, training_state.best_valid_loss, learned_system
 
         # Report losses before any parameter updates.
@@ -680,6 +659,9 @@ class SupervisedLearningExperiment(ABC):
 
         # Reload best parameters.
         learned_system.load_state_dict(training_state.best_learned_system_state)
+        if self.config.run_wandb:
+            if self.wandb_manager is not None:
+                self.wandb_manager.finish()
         return training_loss, training_state.best_valid_loss, learned_system
 
     def evaluate_systems_on_sets(

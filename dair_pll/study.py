@@ -3,13 +3,12 @@ import logging
 import os.path
 import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Type, Dict, Any, Union, List, Optional
 
 import optuna
 import optuna.logging
 from torch import Tensor
-from torch.nn import Module
 
 from dair_pll import file_utils, hyperparameter
 from dair_pll.experiment import SupervisedLearningExperiment
@@ -23,20 +22,17 @@ OPTUNA_TRIAL_FINISHED_STATES = [
     optuna.trial.TrialState.COMPLETE, optuna.trial.TrialState.PRUNED
 ]
 
-SweepValue = Union[float, int]
 
 @dataclass
 class OptimalSweepStudyConfig:
-    sweep_domain: List[SweepValue]
-    hyperparameter_dataset_mask: Optional[Tensor] = None
+    experiment_type: Type[SupervisedLearningExperiment]
+    default_experiment_config: SupervisedLearningExperimentConfig
+    sweep_domain: Union[List[float], List[int]]
+    hyperparameter_dataset_mask: Tensor
     n_trials: int = 100
     min_resource: int = 5
     use_remote_storage: bool = True
-    study_name: str = ''
-    experiment_type: Type[
-        SupervisedLearningExperiment] = SupervisedLearningExperiment
-    default_experiment_config: SupervisedLearningExperimentConfig = field(
-        default_factory=SupervisedLearningExperimentConfig)
+    study_name: str = 'default_study_name'
 
     def __post_init__(self) -> None:
         # default config must use raw dataset size for hyperparameter
@@ -61,7 +57,7 @@ class OptimalSweepStudy(ABC):
     def setup_config(self, hyperparameters: ValueDict,
                      run_name: str,
                      is_hyperparameter_optimization: bool,
-                     sweep_value: Optional[SweepValue] = None) -> \
+                     sweep_value: Optional[Union[float, int]] = None) -> \
             SupervisedLearningExperimentConfig:
 
         experiment_config = copy.deepcopy(self.config.default_experiment_config)
@@ -95,8 +91,7 @@ class OptimalSweepStudy(ABC):
             config.study_name, trial.number)
 
         trial_experiment_config = self.setup_config(experiment_suggestion,
-                                                    run_name,
-                                                    True)
+                                                    run_name, True)
 
         experiment = config.experiment_type(trial_experiment_config)
         _, final_valid_loss, _ = experiment.train(epoch_callback)
@@ -109,32 +104,32 @@ class OptimalSweepStudy(ABC):
             hyperparameters = file_utils.load_hyperparameters(
                 config.default_experiment_config.storage, config.study_name)
         except FileNotFoundError:
-            hyperparameters = self.optimize_hyperparameters()
-            file_utils.save_hyperparameters(
-                config.default_experiment_config.storage, config.study_name,
-                hyperparameters)
+            # N.B. we save and reload the hyperparameters, because some
+            # values may change slightly due to floating point precision
+            # interacting with JSON serialization.
+            self.optimize_hyperparameters()
+            hyperparameters = file_utils.load_hyperparameters(
+                config.default_experiment_config.storage, config.study_name)
 
         for sweep_value in config.sweep_domain:
             print(f"running sweep {sweep_number} for value = {sweep_value}")
             sys.stdout.flush()
-            self.run_sweep_sample(hyperparameters, sweep_number,
-                                  sweep_value)
+            self.run_sweep_sample(hyperparameters, sweep_number, sweep_value)
         print("done!")
         sys.stdout.flush()
 
     def run_sweep_sample(self, hyperparameters: ValueDict, sweep_number: int,
-                         sweep_value: int) -> None:
+                         sweep_value: Union[float, int]) -> None:
         run_name = file_utils.sweep_run_name(self.config.study_name,
                                              sweep_number, sweep_value)
 
         sample_experiment_config = self.setup_config(hyperparameters, run_name,
-                                                     False,
-                                                     sweep_value)
+                                                     False, sweep_value)
 
         experiment = self.config.experiment_type(sample_experiment_config)
 
-        def epoch_cb(_epoch: int, _model: Module, _train_loss: float,
-                     _best_valid_loss: float) -> None:
+        def epoch_cb(_epoch: int, _model: System, _train_loss: Tensor,
+                     _best_valid_loss: Tensor) -> None:
             pass
 
         experiment.generate_results(epoch_cb)

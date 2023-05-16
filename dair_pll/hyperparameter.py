@@ -134,7 +134,7 @@ class Int(Scalar):
 
     def default_range(self, value: int, log: bool) -> Tuple[int, int]:
         """Default bounds for integer hyperparameter.
-
+        
         Returns ``(max(1, value // RANGE), value * RANGE)``, where ``RANGE``
         is ``8`` in the log-uniform case and ``2`` otherwise.
         
@@ -143,7 +143,8 @@ class Int(Scalar):
             log: Whether the distribution is uniform or log-uniform.
 
         Returns:
-            Default lower/upper bounds."""
+            Default lower/upper bounds.
+        """
         width = INT_LOG_WIDTH if log else INT_ABS_WIDTH
         return max(1, value // width), value * width
 
@@ -179,9 +180,7 @@ class Float(Scalar):
 
     def suggest(self, trial: Trial, name: str) -> float:
         r"""Returns suggested (log)-uniform distributed float."""
-        if self.log:
-            return trial.suggest_loguniform(name, *self.distribution)
-        return trial.suggest_uniform(name, *self.distribution)
+        return trial.suggest_float(name, *self.distribution, log=self.log)
 
 
 # Only one new public method, but just happens to be a particularly simple

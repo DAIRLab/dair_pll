@@ -62,6 +62,8 @@ class DataConfig:
     """Whether to check for new trajectories after each epoch."""
     exclude_mask: Optional[Tensor] = None
     """List of trajectories to exclude from dataset."""
+    use_ground_truth: bool = False
+    """Whether to use ground truth data for training/evaluation."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""
@@ -196,8 +198,7 @@ class ExperimentDataManager:
     def __init__(self,
                  storage: str,
                  config: DataConfig,
-                 initial_split: Optional[ThreeTensorTuple] = None,
-                 use_ground_truth: bool = False) -> None:
+                 initial_split: Optional[ThreeTensorTuple] = None) -> None:
         """
         Args:
             storage: Storage directory to source trajectories from.
@@ -205,10 +206,8 @@ class ExperimentDataManager:
             initial_split: Optionally, lists of trajectory indices that
               should be sorted into (train, valid, test) sets from the
               beginning.
-            use_ground_truth: Whether trajectories should be sourced from
-              ground-truth or learning data.
         """
-        if use_ground_truth:
+        if config.use_ground_truth:
             self.trajectory_dir = file_utils.ground_truth_data_dir(storage)
         else:
             self.trajectory_dir = file_utils.learning_data_dir(storage)
@@ -222,7 +221,7 @@ class ExperimentDataManager:
             n_on_disk = file_utils.get_trajectory_count(self.trajectory_dir)
             for split in initial_split:
                 assert split.max() < n_on_disk
-                if config.exclude_mask:
+                if config.exclude_mask is not None:
                     assert not torch.any(config.exclude_mask[split])
             self.extend_trajectory_sets(initial_split)
 

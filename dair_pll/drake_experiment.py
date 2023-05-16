@@ -2,7 +2,7 @@
 from abc import ABC
 from dataclasses import field, dataclass
 from enum import Enum
-from typing import Optional, cast, Dict
+from typing import Optional, cast, Dict, List
 
 import torch
 from torch import Tensor
@@ -11,14 +11,17 @@ from dair_pll import file_utils
 from dair_pll import vis_utils
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
-from dair_pll.experiment import SupervisedLearningExperiment, \
-    LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME
+from dair_pll.experiment import SupervisedLearningExperiment
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
-from dair_pll.geometry import MeshRepresentation
+from dair_pll.geometry import MeshRepresentation, GeometryRelativeErrorFactory
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem
+from dair_pll.summary_statistics_constants import LEARNED_SYSTEM_NAME, \
+    TARGET_NAME, PREDICTION_NAME
 from dair_pll.system import System, SystemSummary
+
+PARAMETER_RELATIVE_ERROR = 'parameter_relative_error'
 
 
 @dataclass
@@ -35,8 +38,6 @@ class MultibodyLosses(Enum):
 @dataclass
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     learn_inertial_parameters: bool = False
-    """Whether to learn inertial properties of the system."""
-    initial_condition_relative_noise: Optional[Tensor] = None
     """Relative noise to add to parameter initial conditions."""
     mesh_representation: MeshRepresentation = MeshRepresentation.POLYGON
     """Whether meshes are represented as polygons or deep networks."""
@@ -62,10 +63,13 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
     base_drake_system: Optional[DrakeSystem]
     visualization_system: Optional[DrakeSystem]
+    oracle_multibody_learnable_system: Optional[MultibodyLearnableSystem]
 
     def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
         super().__init__(config)
         self.base_drake_system = None
+        self.visualization_system = None
+        self.oracle_multibody_learnable_system = None
 
     def get_drake_system(self) -> DrakeSystem:
         has_property = hasattr(self, 'base_drake_system')
@@ -74,6 +78,39 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
             dt = self.config.data_config.dt
             self.base_drake_system = DrakeSystem(base_config.urdfs, dt)
         return self.base_drake_system
+
+    def get_multibody_learnable_system_from_drake_config(
+            self, drake_config: DrakeSystemConfig) -> MultibodyLearnableSystem:
+        learn_inertial_parameters = False
+        parameter_noise_level = torch.tensor(0.0)
+        mesh_representation = MeshRepresentation.POLYGON
+
+        if isinstance(drake_config, MultibodyLearnableSystemConfig):
+            learn_inertial_parameters = drake_config.learn_inertial_parameters
+            parameter_noise_level = drake_config.initial_parameter_noise_level
+            mesh_representation = drake_config.mesh_representation
+
+        output_dir = file_utils.get_learned_urdf_dir(self.config.storage,
+                                                     self.config.run_name)
+
+        return MultibodyLearnableSystem(
+            drake_config.urdfs,
+            self.config.data_config.dt,
+            output_urdfs_dir=output_dir,
+            learn_inertial_parameters=learn_inertial_parameters,
+            mesh_representation=mesh_representation,
+            parameter_noise_level=parameter_noise_level)
+
+    def get_oracle_multibody_learnable_system(self) -> MultibodyLearnableSystem:
+        has_property = hasattr(self, 'base_multibody_learnable_system')
+        if not has_property or self.oracle_multibody_learnable_system is None:
+            self.oracle_multibody_learnable_system = \
+                self.get_multibody_learnable_system_from_drake_config(
+                    cast(DrakeSystemConfig, self.config.base_config))
+        return self.oracle_multibody_learnable_system
+
+    def get_oracle_system(self) -> System:
+        return self.get_oracle_multibody_learnable_system()
 
     def get_base_system(self) -> System:
         return self.get_drake_system()
@@ -189,19 +226,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             self.loss_callback = self.contactnets_loss
 
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
-        learnable_config = cast(MultibodyLearnableSystemConfig,
-                                self.config.learnable_config)
-        output_dir = file_utils.get_learned_urdf_dir(self.config.storage,
-                                                     self.config.run_name)
-        return MultibodyLearnableSystem(
-            learnable_config.urdfs,
-            self.config.data_config.dt,
-            output_urdfs_dir=output_dir,
-            learn_inertial_parameters=learnable_config.
-            learn_inertial_parameters,
-            mesh_representation=learnable_config.mesh_representation,
-            parameter_noise_level=learnable_config.initial_parameter_noise_level
-        )
+        return self.get_multibody_learnable_system_from_drake_config(
+            cast(MultibodyLearnableSystemConfig, self.config.learnable_config))
 
     def visualizer_regeneration_is_required(self) -> bool:
         return cast(DrakeMultibodyLearnableExperimentConfig,
@@ -247,3 +273,61 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         if not keep_batch:
             loss = loss.mean()
         return loss
+
+    def base_and_learned_comparison_summary(
+            self, statistics: Dict, learned_system: System) -> SystemSummary:
+        r"""Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares
+        the base system to the learned system.
+
+        This function extends the visualization tools provided in
+        :py:meth:`DrakeExperiment.base_and_learned_comparison_summary` with a
+        calculation of relative parameter error.
+
+        Args:
+            statistics: Dictionary of training statistics.
+            learned_system: Most updated version of learned system during
+              training.
+
+        Returns:
+            Summary containing overlaid video(s).
+        """
+        learnable_config = cast(MultibodyLearnableSystemConfig,
+                                self.config.learnable_config)
+        if learnable_config.learn_inertial_parameters:
+            raise NotImplementedError('TODO: implement relative error for '
+                                      'inertial parameters')
+
+        summary = super().base_and_learned_comparison_summary(
+            statistics, learned_system)
+
+        learned_system = cast(MultibodyLearnableSystem, learned_system)
+        oracle_system = self.get_oracle_multibody_learnable_system()
+
+        all_relative_errors = cast(List[Tensor], [])
+
+        # friction
+        mu_learned = learned_system.multibody_terms.contact_terms. \
+            get_lumped_friction_coefficients()
+        mu_true = oracle_system.multibody_terms.contact_terms. \
+            get_lumped_friction_coefficients()
+        all_relative_errors.append((mu_learned - mu_true).abs() / mu_true)
+
+        # geometry
+        geometries_learned = \
+            learned_system.multibody_terms.contact_terms.geometries
+        geometries_true = \
+            oracle_system.multibody_terms.contact_terms.geometries
+        for geometry_learned, geometry_true in zip(geometries_learned,
+                                                   geometries_true):
+            geometry_relative_error = \
+                GeometryRelativeErrorFactory.calculate_error(
+                    geometry_learned, geometry_true)
+
+            if geometry_relative_error is not None:
+                all_relative_errors.append(geometry_relative_error)
+
+        combined_relative_error = torch.cat(all_relative_errors).mean()
+        summary.scalars[PARAMETER_RELATIVE_ERROR] = \
+            combined_relative_error.item()
+
+        return summary

@@ -2,7 +2,6 @@
 # pylint: disable=E1103
 import os
 import time
-from copy import deepcopy
 from typing import cast
 
 import click
@@ -86,7 +85,7 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500
 PATIENCE = EPOCHS
 BATCH_SIZE = 256
-PARAMETER_NOISE_LEVEL = torch.tensor(0.3)  # initial parameter relative noise
+PARAMETER_NOISE_LEVEL = torch.tensor(0.)  # initial parameter relative noise
 
 WANDB_PROJECT = 'dair_pll-examples'
 
@@ -164,7 +163,8 @@ def main(run_name: str = "",
     data_config = DataConfig(dt=DT,
                              train_valid_test_quantities=train_valid_test_ratio,
                              slice_config=slice_config,
-                             update_dynamically=dynamic)
+                             update_dynamically=dynamic,
+                             use_ground_truth=True)
 
     # Combines everything into config for entire experiment.
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
@@ -211,8 +211,7 @@ def main(run_name: str = "",
             # where to store trajectories
         )
 
-        generation_system = DrakeMultibodyLearnableExperiment(
-            deepcopy(experiment_config)).get_learned_system(Tensor())
+        generation_system = experiment.get_oracle_system()
 
         generator = ExperimentDatasetGenerator(generation_system,
                                                data_generation_config)

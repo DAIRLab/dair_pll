@@ -12,8 +12,10 @@ from cvxpylayers.torch import CvxpyLayer
 from torch import Tensor
 
 _CVXPY_LCQP_EPS = 0.  #1e-7
-_CVXPY_SOLVER_ARGS = {"solve_method": "SCS", "eps_abs": 1e-8, "eps_rel": 1e-8}
-
+#_CVXPY_SOLVER_ARGS = {"solve_method": "SCS", "eps": 1e-10, "use_indirect":
+# True}
+_CVXPY_SOLVER_ARGS = {"solve_method": "ECOS", "max_iters": 300,
+                      "abstol": 1e-10, "reltol": 1e-10, "feastol": 1e-10}
 
 def construct_cvxpy_lcqp_layer(num_contacts: int,
                                num_velocities: int) -> CvxpyLayer:
@@ -28,9 +30,11 @@ def construct_cvxpy_lcqp_layer(num_contacts: int,
         CvxpyLayer for solving a LCQP.
     """
     num_variables = 3 * num_contacts
+
     variables = cp.Variable(num_variables)
     objective_matrix = cp.Parameter((num_variables, num_velocities))
     objective_vector = cp.Parameter(num_variables)
+
     objective = 0.5 * cp.sum_squares(objective_matrix.T @ variables)
     objective += objective_vector.T @ variables
     if _CVXPY_LCQP_EPS > 0.:
@@ -91,5 +95,5 @@ class DynamicCvxpyLCQPLayer:
         assert J.shape[-2] % 3 == 0
 
         layer = self.get_sized_layer(J.shape[-2] // 3)
-
+        #pdb.set_trace()
         return layer(J, q, solver_args=_CVXPY_SOLVER_ARGS)[0]

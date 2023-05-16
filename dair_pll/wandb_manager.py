@@ -82,6 +82,12 @@ class WeightsAndBiasesManager:
 
         return wandb_run_id
 
+    def finish(self):
+        """Finishes the Weights and Biases run, making it possible to start a
+        new run in the same process."""
+        print('WANDB FINISH CALLED')
+        wandb.finish()
+
     @staticmethod
     def log_config(config: Any):
         """Log experiment hyperparameter values."""

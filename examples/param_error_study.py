@@ -2,11 +2,12 @@
 # pylint: disable=E1103
 import os
 from copy import deepcopy
+from itertools import product
 
 import click
 import torch
-from torch import Tensor
 
+from dair_pll import file_utils
 from dair_pll.dataset_generation import DataGenerationConfig, \
     ExperimentDatasetGenerator
 from dair_pll.dataset_management import DataConfig, \
@@ -16,20 +17,22 @@ from dair_pll.drake_experiment import \
     MultibodyLearnableSystemConfig, MultibodyLosses, \
     DrakeMultibodyLearnableExperimentConfig
 from dair_pll.experiment_config import OptimizerConfig
+from dair_pll.geometry import MeshRepresentation
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
 from dair_pll.study import OptimalSweepStudyConfig, OptimalDatasizeSweepStudy
 
-STUDY_NAME = 'noiseless_cube_reconstruction'
+STUDY_NAME_PREFIX = 'noiseless_cube_reconstruction'
 
 # File management.
-STORAGE = os.path.join(os.path.dirname(__file__), 'storage', STUDY_NAME)
+STORAGE = os.path.join(os.path.dirname(__file__), 'storage', STUDY_NAME_PREFIX)
 
-# Cube system definitions.
+# Cube system configuration.
 SYSTEM = 'cube'
 CUBE_DATA_ASSET = 'contactnets_cube'
 CUBE_URDF_ASSET = 'contactnets_cube_mesh.urdf'
-URDFS = {SYSTEM: CUBE_URDF_ASSET}
+URDFS = {SYSTEM: file_utils.get_asset(CUBE_URDF_ASSET)}
+PARAMETER_NOISE_LEVEL = torch.tensor(0.3)
 
 # Data configuration.
 DT = 0.0068
@@ -41,22 +44,24 @@ CUBE_SAMPLER_RANGE = 0.1 * torch.ones(X_0.nelement() - 1)
 TRAJECTORY_LENGTH = 80
 
 # Generation configuration.
-N_HYPERPARMETER_OPTIMIZATION_TRAIN = 2**5
-SWEEP_DOMAIN = [2**i for i in range(3, 8)]
+# dataset size isn't really something we need to sweep over; we just need to
+# set it high enough such that the parameters are identifiable.
+N_HYPERPARMETER_OPTIMIZATION_TRAIN = 32
+SWEEP_DOMAIN = [N_HYPERPARMETER_OPTIMIZATION_TRAIN]
 N_POP = 4 * (N_HYPERPARMETER_OPTIMIZATION_TRAIN + SWEEP_DOMAIN[-1])
 
 # Optimization configuration.
 LR = Float(1e-4, (1e-6, 1e-2), log=True)
 WD = Float(1e-6, (1e-10, 1e-2), log=True)
-EPOCHS = 1000
-PATIENCE = 50
+EPOCHS = 500
+PATIENCE = 30
 BATCH_SIZE = Int(32, (1, 256), log=True)
 
-WANDB_PROJECT = 'contactnets-results'
+# Study configuration.
+N_TRIALS = 100
+MIN_RESOURCES = 5
 
-# TODOS:
-# - [ ] Set up initial noise logging.
-# - [ ] Select ground-truth data usage.
+WANDB_PROJECT = 'contactnets-journal-results'
 
 
 def main(sweep_num: int) -> None:
@@ -76,7 +81,8 @@ def main(sweep_num: int) -> None:
                                        batch_size=BATCH_SIZE)
 
     base_config = DrakeSystemConfig(urdfs=URDFS)
-    learnable_config = MultibodyLearnableSystemConfig(urdfs=URDFS)
+    learnable_config = MultibodyLearnableSystemConfig(
+        urdfs=URDFS, initial_parameter_noise_level=PARAMETER_NOISE_LEVEL)
 
     slice_config = TrajectorySliceConfig()
     train_valid_test_quantities = (N_HYPERPARMETER_OPTIMIZATION_TRAIN,
@@ -97,11 +103,12 @@ def main(sweep_num: int) -> None:
     data_config = DataConfig(
         dt=DT,
         train_valid_test_quantities=train_valid_test_quantities,
-        slice_config=slice_config)
+        slice_config=slice_config,
+        use_ground_truth=True)
 
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
         storage=STORAGE,
-        run_name='',
+        run_name='default_run_name',
         base_config=base_config,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
@@ -126,7 +133,7 @@ def main(sweep_num: int) -> None:
         storage=STORAGE)
 
     generation_system = DrakeMultibodyLearnableExperiment(
-        experiment_config).get_learned_system(Tensor())
+        experiment_config).get_oracle_system()
 
     generator = ExperimentDatasetGenerator(generation_system,
                                            data_generation_config)
@@ -134,20 +141,28 @@ def main(sweep_num: int) -> None:
 
     # Run two dataset size sweep studies: one for prediction loss and another
     # for ContactNets loss.
-    for contactnets in [False, True]:
+    mesh_representations = [MeshRepresentation.POLYGON]
+    losses = [
+        MultibodyLosses.PREDICTION_LOSS,
+        MultibodyLosses.CONTACTNETS_ANITESCU_LOSS
+    ]
+    for mesh_representation, loss in product(mesh_representations, losses):
         default_experiment_config = deepcopy(experiment_config)
-        if contactnets:
-            default_experiment_config.training_loss = \
-                MultibodyLosses.CONTACTNETS_ANITESCU_LOSS
+        assert isinstance(default_experiment_config.learnable_config,
+                          MultibodyLearnableSystemConfig)
+        default_experiment_config.training_loss = loss
+        default_experiment_config.learnable_config.mesh_representation = (
+            mesh_representation)
+        study_name_postfix = f'{mesh_representation.name}_{loss.name}'
 
         # setup study config.
         study_config = OptimalSweepStudyConfig(
             sweep_domain=SWEEP_DOMAIN,
             hyperparameter_dataset_mask=hyperparameter_mask,
-            n_trials=100,
-            min_resource=5,
+            n_trials=N_TRIALS,
+            min_resource=MIN_RESOURCES,
             use_remote_storage=False,
-            study_name=STUDY_NAME,
+            study_name=f'{STUDY_NAME_PREFIX}_{study_name_postfix}',
             experiment_type=DrakeMultibodyLearnableExperiment,
             default_experiment_config=default_experiment_config)
 

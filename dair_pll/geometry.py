@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Tuple, Dict, cast, Union
+from typing import Tuple, Dict, cast, Union, Optional
 
 import fcl  # type: ignore
 import numpy as np
@@ -32,11 +32,14 @@ from pydrake.geometry import Box as DrakeBox  # type: ignore
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from pydrake.geometry import Mesh as DrakeMesh  # type: ignore
 from pydrake.geometry import Shape  # type: ignore
+from scipy.optimize import linprog
+from scipy.spatial import ConvexHull, HalfspaceIntersection
 from torch import Tensor
 from torch.nn import Module, Parameter
 
 from dair_pll.deep_support_function import HomogeneousICNN, \
-    extract_mesh_from_support_function
+    extract_mesh_from_support_function, extract_mesh_from_support_points, \
+    extract_outward_normal_hyperplanes
 from dair_pll.tensor_utils import pbmm, tile_dim, \
     rotation_matrix_from_one_vector
 
@@ -524,8 +527,8 @@ class PydrakeToCollisionGeometryFactory:
         vertices = Tensor(mesh.vertices)
         characteristic_lengths = (vertices.max(dim=0, keepdim=True).values -
                                   vertices.min(dim=0, keepdim=True).values) / 2
-        vertices += characteristic_lengths * (torch.rand_like(
-            vertices) - 0.5) * 2 * self.noise_level
+        vertices += characteristic_lengths * (torch.rand_like(vertices) -
+                                              0.5) * 2 * self.noise_level
         if self.mesh_representation == MeshRepresentation.DEEP_SUPPORT_CONVEX:
             return DeepSupportConvex(vertices)
 
@@ -669,3 +672,108 @@ class GeometryCollider:
         p_AoAc_A = p_AoAc_A.reshape(original_batch_dims + (1, 3))
         p_BoBc_B = p_BoBc_B.reshape(original_batch_dims + (1, 3))
         return phi, R_AC, p_AoAc_A, p_BoBc_B
+
+
+def _get_mesh_interior_point(halfspaces: np.ndarray) -> Tuple[np.ndarray,
+                                                              float]:
+    norm_vector = np.reshape(
+        np.linalg.norm(halfspaces[:, :-1], axis=1),
+        (halfspaces.shape[0], 1)
+    )
+    objective_coefficients = np.zeros((halfspaces.shape[1],))
+    objective_coefficients[-1] = -1
+    A = np.hstack((halfspaces[:, :-1], norm_vector))
+    b = - halfspaces[:, -1:]
+    res = linprog(
+        objective_coefficients, A_ub=A, b_ub=b, bounds=(None, None))
+    interior_point = res.x[:-1]
+    interior_point_gap = res.x[-1]
+    return interior_point, interior_point_gap
+
+class GeometryRelativeErrorFactory:
+    """Factory class for generating geometry relative error functions."""
+
+    @staticmethod
+    def calculate_error(geometry_learned: CollisionGeometry,
+                        geometry_true: CollisionGeometry) -> Optional[Tensor]:
+        r"""Calculate the relative error between the provided learned and true
+        geometry.
+
+        In a sense commensurate with each geometry type, this function
+        measures a discrepancy between the learned and true geometry that is
+        normalized by the size of the true geometry.
+
+        If the geometry is not a learnable type, this function returns ``None``.
+
+        By convention, the normalization is in volume units, and is either
+        directly or approximately equal to
+
+        .. math::
+
+            \frac{\mathrm{vol}((L \setminus T) \cup
+            (T \setminus L))}{\mathrm{vol}(T)}
+        """
+        assert type(geometry_learned) == type(geometry_true)
+        if isinstance(geometry_learned, Polygon):
+            return GeometryRelativeErrorFactory.calculate_error_polygon(
+                geometry_learned, cast(Polygon, geometry_true))
+        if isinstance(geometry_learned, Plane):
+            return None
+        if isinstance(geometry_learned, (DeepSupportConvex, Box)):
+            raise NotImplementedError("volumetric error not "
+                                      "implemented for this type of geometry")
+        return None
+
+    @staticmethod
+    def calculate_error_polygon(geometry_learned: Polygon,
+                                geometry_true: Polygon) -> Tensor:
+        """Relative error between two polygons.
+
+        use the identity that the area of the non-overlapping region is the
+        sum of the areas of the two polygons minus twice the area of their
+        intersection.
+        """
+        # pylint: disable=too-many-locals
+        vertices_learned = geometry_learned.vertices.clone().detach()
+        vertices_true = geometry_true.vertices.clone().detach()
+
+        true_volume = ConvexHull(vertices_true.numpy()).volume
+        sum_volume = ConvexHull(vertices_learned.numpy()).volume + true_volume
+
+        mesh_learned = extract_mesh_from_support_points(vertices_learned)
+        mesh_true = extract_mesh_from_support_points(vertices_true)
+
+        normal_learned, _, extent_learned = extract_outward_normal_hyperplanes(
+            mesh_learned.vertices.unsqueeze(0), mesh_learned.faces.unsqueeze(0))
+        normal_true, _, extent_true = extract_outward_normal_hyperplanes(
+            mesh_true.vertices.unsqueeze(0), mesh_true.faces.unsqueeze(0))
+
+        halfspaces_true = torch.cat(
+            [normal_true.squeeze(), -extent_true.squeeze().unsqueeze(-1)],
+            dim=1)
+
+        halfspaces_learned = torch.cat(
+            [normal_learned.squeeze(), -extent_learned.squeeze().unsqueeze(-1)],
+            dim=1)
+
+        intersection_halfspaces = torch.cat(
+            [halfspaces_true, halfspaces_learned], dim=0).numpy()
+
+        # find interior point of intersection
+        interior_point, interior_point_gap = _get_mesh_interior_point(
+            intersection_halfspaces)
+
+        if interior_point_gap <= 0.:
+            # intersection is empty
+            intersection_volume = 0.
+        else:
+
+            intersection_halfspace_convex = HalfspaceIntersection(
+                intersection_halfspaces, interior_point
+            )
+
+            intersection_volume = ConvexHull(
+                intersection_halfspace_convex.intersections).volume
+
+        return Tensor(
+            [sum_volume - 2 * intersection_volume]).abs() / true_volume

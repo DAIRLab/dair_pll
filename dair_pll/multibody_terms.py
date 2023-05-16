@@ -334,10 +334,20 @@ class ContactTerms(Module):
 
         self.collision_candidates = Tensor(collision_candidates).t().long()
 
-    def get_friction_coefficients(self) -> Tensor:
+    def get_single_body_friction_coefficients(self) -> Tensor:
         """From the stored :py:attr:`friction_params`, compute the friction
         coefficient as its absolute value."""
         return torch.abs(self.friction_params)
+
+    def get_lumped_friction_coefficients(self) -> Tensor:
+        """From the stored :py:attr:`friction_params`, compute the friction
+        coefficient as its absolute value."""
+        single_body_coefficients = self.get_single_body_friction_coefficients()
+        mu_a = single_body_coefficients[self.collision_candidates[0, :]]
+        mu_b = single_body_coefficients[self.collision_candidates[1, :]]
+
+        # combine friction coefficients as in Drake.
+        return (2 * mu_a * mu_b) / (mu_a + mu_b)
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -481,12 +491,8 @@ class ContactTerms(Module):
             for element_index in indices_b
         ]
 
-        friction_coefficients = self.get_friction_coefficients()
-        mu_a = friction_coefficients[indices_a]
-        mu_b = friction_coefficients[indices_b]
-
         # combine friction coefficients as in Drake.
-        mu = (2 * mu_a * mu_b) / (mu_a + mu_b)
+        mu = self.get_lumped_friction_coefficients()
 
         R_WA = R_WC[..., indices_a, :, :]
         R_AW = deal(R_WA.transpose(-1, -2), -3)
@@ -562,7 +568,8 @@ class MultibodyTerms(Module):
                 self.plant_diagram.plant,
                 self.plant_diagram.model_ids)
 
-        friction_coefficients = self.contact_terms.get_friction_coefficients()
+        friction_coefficients = \
+            self.contact_terms.get_single_body_friction_coefficients()
 
         for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(),
                                     all_body_ids):

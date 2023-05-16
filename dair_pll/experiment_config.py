@@ -7,6 +7,7 @@ from torch.optim import Optimizer
 
 from dair_pll.dataset_management import DataConfig
 from dair_pll.hyperparameter import Float, Int
+from dair_pll.summary_statistics_constants import LOSS_NAME
 
 
 @dataclass
@@ -26,6 +27,8 @@ class OptimizerConfig:
     """Learning rate."""
     wd: Float = Float(4e-5, log=True)
     """Weight decay."""
+    validation_variable: str = LOSS_NAME
+    """Which quantity to use for early stopping (default: validation loss)."""
     epochs: int = 10000
     """Maximum number of epochs to optimize."""
     patience: int = 30

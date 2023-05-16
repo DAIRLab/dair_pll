@@ -354,7 +354,8 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
             multibody_terms.plant_diagram.plant,
             multibody_terms.plant_diagram.model_ids)
     pi_cm = multibody_terms.lagrangian_terms.pi_cm()
-    friction_coeffs = multibody_terms.contact_terms.get_friction_coefficients()
+    friction_coeffs = \
+        multibody_terms.contact_terms.get_single_body_friction_coefficients()
 
     for urdf_name, urdf in multibody_terms.urdfs.items():
 
