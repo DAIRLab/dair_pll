@@ -390,17 +390,19 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=unused-argument
         return SystemSummary()
 
-    def write_to_wandb(self, epoch: int, learned_system: System,
-                       statistics: Dict) -> None:
-        """Extracts and writes summary of training progress to Tensorboard.
+    def build_epoch_vars_and_system_summary(self, statistics: Dict,
+            learned_system: System) -> Tuple[Dict, SystemSummary]:
+        """Build epoch variables and system summary for learning process.
 
         Args:
-            epoch: Current epoch.
-            learned_system: System being trained.
             statistics: Summary statistics for learning process.
+            learned_system: System being trained.
+
+        Returns:
+            Dictionary of scalars to log.
+            System summary.
         """
         # begin recording wall-clock logging time.
-        assert self.wandb_manager is not None
         start_log_time = time.time()
 
         epoch_vars = {}
@@ -427,6 +429,22 @@ class SupervisedLearningExperiment(ABC):
         learned_system_summary.videos.update(comparison_summary.videos)
 
         learned_system_summary.meshes.update(comparison_summary.meshes)
+
+        return epoch_vars, learned_system_summary
+
+    def write_to_wandb(self, epoch: int, learned_system: System,
+                       statistics: Dict) -> None:
+        """Extracts and writes summary of training progress to Tensorboard.
+
+        Args:
+            epoch: Current epoch.
+            learned_system: System being trained.
+            statistics: Summary statistics for learning process.
+        """
+        assert self.wandb_manager is not None
+
+        epoch_vars, learned_system_summary = \
+            self.build_epoch_vars_and_system_summary(statistics, learned_system)
 
         self.wandb_manager.update(epoch, epoch_vars,
                                   learned_system_summary.videos,
