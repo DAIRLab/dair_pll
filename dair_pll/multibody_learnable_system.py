@@ -220,11 +220,11 @@ class MultibodyLearnableSystem(System):
             self.calculate_contactnets_loss_terms(x, u, x_plus)
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
-        if len(regularizers) > 0:
-            residual_norm = regularizers[0]
-            regs = self.w_res * residual_norm
-        else:
-            regs = 0.
+
+        # For now just take the first regularization term as the residual
+        # regularization.  Will need to be updated later if more are added.
+        residual_norm = regularizers[0]
+        regs = self.w_res * residual_norm
 
         loss = regs + (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss)
@@ -239,10 +239,21 @@ class MultibodyLearnableSystem(System):
 
         # Residual size regularization.
         if self.residual_net != None:
-            # Penalize the size of the residual
+            # Penalize the size of the residual.  Good with w_res = 0.01.
             residual = self.residual_net(x_plus)
             residual_norm = torch.linalg.norm(residual, dim=1) ** 2
-            regularizers.append(residual_norm)
+
+            # Additionally penalize the residual network weights.  This will get
+            # scaled down to approximately the same size as the residual norm.
+            l2_penalty = torch.zeros((x.shape[0],))
+            for layer in self.residual_net:
+                if isinstance(layer, nn.Linear):
+                    l2_penalty += sum([(p**2).sum() for p in layer.weight])
+            l2_penalty *= 1e-3
+
+            regularizers.append(residual_norm + l2_penalty)
+        else:
+            regularizers.append(torch.zeros((x.shape[0],)))
 
         # # Use the believed geometry to help supervise the learned CoM.
         # if (self.multibody_terms.inertia_mode_txt != 'none') and \
@@ -427,70 +438,13 @@ class MultibodyLearnableSystem(System):
         # Try scaling
         if (self.loss_variation_txt == LOSS_PLL_ORIGINAL) or \
            (self.loss_variation_txt == LOSS_POWER):
-            ### below is best for now:
             trace_M_inv = torch.stack([
                 torch.trace(M_inv_part) 
                 for M_inv_part in M_inv]).reshape(-1, 1, 1)
-            ###
-            # det_M_inv = torch.linalg.det(M_inv).reshape(-1, 1, 1)
-            ###
-            # top_three = torch.cat((M_inv[:, :3, :3], M_inv[:, :3, 6:]), dim=2)
-            # bottom_one = torch.cat((M_inv[:, 6:, :3], M_inv[:, 6:, 6:]), dim=2)
-            # M_inv_no_linear = torch.cat((top_three, bottom_one), dim=1)
-            # trace_M_inv_no_linear = torch.stack([
-            #     torch.trace(M_inv_part) 
-            #     for M_inv_part in M_inv_no_linear]).reshape(-1, 1, 1)
-            ###
-            # M_inv_rotation_only = top_three
-            # trace_M_inv_rotation_only = torch.stack([
-            #     torch.trace(M_inv_part)
-            #     for M_inv_part in M_inv_rotation_only]).reshape(-1, 1, 1)
-            ###
-            # top_three = torch.cat((M[:, :3, :3], M[:, :3, 6:]), dim=2)
-            # bottom_one = torch.cat((M[:, 6:, :3], M[:, 6:, 6:]), dim=2)
-            # M_no_linear = torch.cat((top_three, bottom_one), dim=1)
-            # trace_M_no_linear = torch.stack([
-            #     torch.trace(M_part)
-            #     for M_part in M_no_linear]).reshape(-1, 1, 1)
-            ###
-            # trace_M = torch.stack([
-            #     torch.trace(M_part)
-            #     for M_part in M]).reshape(-1, 1, 1)
-            ###
-            # pi_cm = self.multibody_terms.lagrangian_terms.pi_cm()
-            # sum_of_inertias = pi_cm[:, 4:7].sum() * torch.ones_like(loss_pred)
 
-            # loss_pred = pbmm(1/sum_of_inertias, loss_pred) * 3e-2
-            # loss_comp = pbmm(1/sum_of_inertias, loss_comp) * 3e-2
-            # loss_diss = pbmm(1/sum_of_inertias, loss_diss) * 3e-2
-            ###
-            # loss_pred = pbmm(1/trace_M, loss_pred) * 2.2
-            # loss_comp = pbmm(1/trace_M, loss_comp) * 2.2
-            # loss_diss = pbmm(1/trace_M, loss_diss) * 2.2
-            ###
-            # loss_pred = pbmm(1/trace_M_no_linear, loss_pred) * 1e-2
-            # loss_comp = pbmm(1/trace_M_no_linear, loss_comp) * 1e-2
-            # loss_diss = pbmm(1/trace_M_no_linear, loss_diss) * 1e-2
-            ###
-            # loss_pred = pbmm(trace_M_inv_rotation_only, loss_pred) * 1e-3
-            # loss_comp = pbmm(trace_M_inv_rotation_only, loss_comp) * 1e-3
-            # loss_diss = pbmm(trace_M_inv_rotation_only, loss_diss) * 1e-3
-            ###
-            # loss_pred = pbmm(trace_M_inv_no_linear, loss_pred) * 5e-4
-            # loss_comp = pbmm(trace_M_inv_no_linear, loss_comp) * 5e-4
-            # loss_diss = pbmm(trace_M_inv_no_linear, loss_diss) * 5e-4
-            ### below is best for now:
             loss_pred = pbmm(trace_M_inv, loss_pred) * 5e-4
             loss_comp = pbmm(trace_M_inv, loss_comp) * 5e-4
             loss_diss = pbmm(trace_M_inv, loss_diss) * 5e-4
-            ###
-            # loss_pred = pbmm(det_M_inv, loss_pred) * 1e-10
-            # loss_comp = pbmm(det_M_inv, loss_comp) * 1e-10
-            # loss_diss = pbmm(det_M_inv, loss_diss) * 1e-10
-            ###
-            # loss_pred = pbmm(torch.sqrt(det_M_inv), loss_pred) * 1e-6
-            # loss_comp = pbmm(torch.sqrt(det_M_inv), loss_comp) * 1e-6
-            # loss_diss = pbmm(torch.sqrt(det_M_inv), loss_diss) * 1e-6
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1)
