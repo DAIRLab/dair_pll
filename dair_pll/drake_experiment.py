@@ -16,7 +16,7 @@ from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.experiment import SupervisedLearningExperiment, \
     LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME, \
-    TRAJECTORY_PENETRATION_NAME
+    TRAJECTORY_PENETRATION_NAME, LOGGING_DURATION
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float
@@ -231,9 +231,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
     def __init__(self, config: DrakeMultibodyLearnableExperimentConfig) -> None:
         super().__init__(config)
-        learnable_config = cast(MultibodyLearnableSystemConfig,
+        self.learnable_config = cast(MultibodyLearnableSystemConfig,
                                 self.config.learnable_config)
-        if learnable_config.loss == MultibodyLosses.CONTACTNETS_LOSS:
+        if self.learnable_config.loss == MultibodyLosses.CONTACTNETS_LOSS:
             self.loss_callback = self.contactnets_loss
 
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
@@ -256,33 +256,30 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             represent_geometry_as=learnable_config.represent_geometry_as,
             randomize_initialization=True)
 
-    def write_to_tensorboard(self, epoch: int, learned_system: System,
-                             statistics: Dict) -> None:
+    def write_to_wandb(self, epoch: int, learned_system: System,
+                       statistics: Dict) -> None:
         """In addition to extracting and writing training progress summary via
-        the parent :py:meth:`Experiment.write_to_tensorboard` method, also make
-        a breakdown plot of loss contributions for the ContactNets loss
+        the parent :py:meth:`Experiment.write_to_wandb` method, also make a
+        breakdown plot of loss contributions for the ContactNets loss
         formulation.
-
-        Notes:
-            TODO this is no longer used after the switch to wandb, which doesn't
-            do the overlaid scalars functionality.  It would be nice to have
-            something like this implemented for debugging purposes.
 
         Args:
             epoch: Current epoch.
             learned_system: System being trained.
             statistics: Summary statistics for learning process.
         """
-        assert self.tensorboard_manager is not None
+        assert self.wandb_manager is not None
 
-        # Begin recording wall-clock logging time.
+        # begin recording wall-clock logging time.
         start_log_time = time.time()
-        epoch_vars, system_summary = self.build_epoch_vars_and_system_summary(
-                                            learned_system, statistics)
+
+        epoch_vars, learned_system_summary = \
+            self.build_epoch_vars_and_system_summary(statistics, learned_system)
 
         # Start computing individual loss components.
         # First get a batch sized portion of the shuffled training set.
-        train_traj_set, _, _ = self.data_manager.get_trajectory_split()
+        train_traj_set, _, _ = \
+            self.learning_data_manager.get_updated_trajectory_sets()
         train_dataloader = DataLoader(
             train_traj_set.slices,
             batch_size=self.config.optimizer_config.batch_size.value,
@@ -290,6 +287,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         # Calculate the average loss components.
         losses_pred, losses_comp, losses_pen, losses_diss = [], [], [], []
+        residual_regs = []
         for xy_i in train_dataloader:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
@@ -300,17 +298,22 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
             loss_pred, loss_comp, loss_pen, loss_diss = \
                 learned_system.calculate_contactnets_loss_terms(x, u, x_plus)
+            regularizers = \
+                learned_system.get_regularization_terms(x, u, x_plus)
 
             losses_pred.append(loss_pred.clone().detach())
             losses_comp.append(loss_comp.clone().detach())
             losses_pen.append(loss_pen.clone().detach())
             losses_diss.append(loss_diss.clone().detach())
+            residual_regs.append(regularizers[0].clone().detach())
 
         # Calculate average and scale by hyperparameter weights.
         w_pred = self.learnable_config.w_pred
-        w_comp = self.learnable_config.w_comp
-        w_diss = self.learnable_config.w_diss
-        w_pen = self.learnable_config.w_pen
+        w_comp = self.learnable_config.w_comp.value
+        w_diss = self.learnable_config.w_diss.value
+        w_pen = self.learnable_config.w_pen.value
+        w_res = self.learnable_config.w_res.value
+
         avg_loss_pred = w_pred*cast(Tensor, sum(losses_pred) \
                             / len(losses_pred)).mean()
         avg_loss_comp = w_comp*cast(Tensor, sum(losses_comp) \
@@ -319,27 +322,30 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                             / len(losses_pen)).mean()
         avg_loss_diss = w_diss*cast(Tensor, sum(losses_diss) \
                             / len(losses_diss)).mean()
+        avg_residual_reg = w_res*cast(Tensor, sum(residual_regs) \
+                            / len(residual_regs)).mean()
 
         avg_loss_total = torch.sum(avg_loss_pred + avg_loss_comp + \
-                                   avg_loss_pen + avg_loss_diss)
+                                   avg_loss_pen + avg_loss_diss + \
+                                   avg_residual_reg)
 
         loss_breakdown = {'loss_total': avg_loss_total,
                           'loss_pred': avg_loss_pred,
                           'loss_comp': avg_loss_comp,
                           'loss_pen': avg_loss_pen,
-                          'loss_diss': avg_loss_diss}
+                          'loss_diss': avg_loss_diss,
+                          'loss_res': avg_residual_reg}
 
-        # Include the loss breakdown into system summary.
-        system_summary.overlaid_scalars = [loss_breakdown]
+        # Include the loss components into system summary.
+        epoch_vars.update(loss_breakdown)
         
         # Overwrite the logging time.
         logging_duration = time.time() - start_log_time
         epoch_vars[LOGGING_DURATION] = logging_duration
 
-        self.tensorboard_manager.update(epoch, epoch_vars,
-                                        system_summary.videos,
-                                        system_summary.meshes,
-                                        system_summary.overlaid_scalars)
+        self.wandb_manager.update(epoch, epoch_vars,
+                                  learned_system_summary.videos,
+                                  learned_system_summary.meshes)
 
     def visualizer_regeneration_is_required(self) -> bool:
         return cast(DrakeMultibodyLearnableExperimentConfig,
