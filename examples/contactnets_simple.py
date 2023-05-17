@@ -227,10 +227,11 @@ def main(storage_folder_name: str = "",
     # Next, build the configuration of the learning experiment.
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
+    num_epochs = 0 if true_sys else EPOCHS
     optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
                                        wd=Float(WDS[system]),
                                        patience=PATIENCE,
-                                       epochs=EPOCHS,
+                                       epochs=num_epochs,
                                        batch_size=Int(int(dataset_size/2)))
 
     # Describes the ground truth system; infers everything from the URDF.
