@@ -181,7 +181,6 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
         Returns:
             Summary containing overlaid video(s).
         """
-
         visualization_system = self.get_visualization_system(learned_system)
 
         space = self.get_drake_system().space
@@ -273,8 +272,14 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         # begin recording wall-clock logging time.
         start_log_time = time.time()
 
+        # To save space on W&B storage, only generate comparison videos at first
+        # and best epoch, the latter of which is implemented in
+        # :meth:`_evaluation`.
+        skip_videos = False if epoch==0 else True
+
         epoch_vars, learned_system_summary = \
-            self.build_epoch_vars_and_system_summary(statistics, learned_system)
+            self.build_epoch_vars_and_system_summary(statistics, learned_system,
+                                                     skip_videos=skip_videos)
 
         # Start computing individual loss components.
         # First get a batch sized portion of the shuffled training set.

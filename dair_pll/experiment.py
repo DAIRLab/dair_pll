@@ -391,12 +391,13 @@ class SupervisedLearningExperiment(ABC):
         return SystemSummary()
 
     def build_epoch_vars_and_system_summary(self, statistics: Dict,
-            learned_system: System) -> Tuple[Dict, SystemSummary]:
+        learned_system: System, skip_videos=True) -> Tuple[Dict, SystemSummary]:
         """Build epoch variables and system summary for learning process.
 
         Args:
             statistics: Summary statistics for learning process.
             learned_system: System being trained.
+            skip_videos: Whether to skip making videos or not.
 
         Returns:
             Dictionary of scalars to log.
@@ -415,8 +416,9 @@ class SupervisedLearningExperiment(ABC):
 
         learned_system_summary = learned_system.summary(statistics)
 
-        comparison_summary = self.base_and_learned_comparison_summary(
-            statistics, learned_system)
+        if not skip_videos:
+            comparison_summary = self.base_and_learned_comparison_summary(
+                statistics, learned_system)
 
         epoch_vars.update(learned_system_summary.scalars)
         logging_duration = time.time() - start_log_time
@@ -424,11 +426,10 @@ class SupervisedLearningExperiment(ABC):
         epoch_vars.update(
             {duration: statistics[duration] for duration in ALL_DURATIONS})
 
-        epoch_vars.update(comparison_summary.scalars)
-
-        learned_system_summary.videos.update(comparison_summary.videos)
-
-        learned_system_summary.meshes.update(comparison_summary.meshes)
+        if not skip_videos:
+            epoch_vars.update(comparison_summary.scalars)
+            learned_system_summary.videos.update(comparison_summary.videos)
+            learned_system_summary.meshes.update(comparison_summary.meshes)
 
         return epoch_vars, learned_system_summary
 
@@ -443,8 +444,14 @@ class SupervisedLearningExperiment(ABC):
         """
         assert self.wandb_manager is not None
 
+        # To save space on W&B storage, only generate comparison videos at first
+        # and best epoch, the latter of which is implemented in
+        # :meth:`_evaluation`.
+        skip_videos = False if epoch==0 else True
+
         epoch_vars, learned_system_summary = \
-            self.build_epoch_vars_and_system_summary(statistics, learned_system)
+            self.build_epoch_vars_and_system_summary(statistics, learned_system,
+                                                     skip_videos=skip_videos)
 
         self.wandb_manager.update(epoch, epoch_vars,
                                   learned_system_summary.videos,
@@ -923,6 +930,12 @@ class SupervisedLearningExperiment(ABC):
         evaluation = self.evaluate_systems_on_sets(systems, sets)
         file_utils.save_evaluation(self.config.storage, self.config.run_name,
                                    evaluation)
+
+        # Generate final toss/geometry inspection videos with best parameters.
+        comparison_summary = self.base_and_learned_comparison_summary(
+            evaluation, learned_system)
+        self.wandb_manager.update(int(1e4), {}, comparison_summary.videos, {})
+
         return evaluation
 
     def generate_results(
