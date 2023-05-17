@@ -78,12 +78,6 @@ class OptimalSweepStudy(ABC):
 
     def optuna_optimize(self, trial: optuna.trial.Trial) -> float:
 
-        def epoch_callback(epoch: int, _system: System, _train_loss: Tensor,
-                           best_valid_loss: Tensor) -> None:
-            trial.report(best_valid_loss.item(), step=epoch)
-            if trial.should_prune():
-                raise optuna.TrialPruned()
-
         config = self.config
         experiment_suggestion = hyperparameter.generate_suggestion(
             config.default_experiment_config, trial)
@@ -94,6 +88,16 @@ class OptimalSweepStudy(ABC):
                                                     run_name, True)
 
         experiment = config.experiment_type(trial_experiment_config)
+
+        def epoch_callback(epoch: int, _system: System, _train_loss: Tensor,
+                           best_valid_loss: Tensor) -> None:
+            trial.report(best_valid_loss.item(), step=epoch)
+            if trial.should_prune():
+                if experiment.config.run_wandb:
+                    if experiment.wandb_manager is not None:
+                        experiment.wandb_manager.finish()
+                raise optuna.TrialPruned()
+
         _, final_valid_loss, _ = experiment.train(epoch_callback)
         return final_valid_loss.item()
 
