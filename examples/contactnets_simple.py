@@ -210,8 +210,7 @@ def main(storage_folder_name: str = "",
          + f'\n\tloss weights (pred, comp, diss, pen, res): ' \
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
          + f'\n\twith residual: {do_residual}' \
-         + f'\n\tand IGNORING provided true_sys={true_sys}, instead' \
-         + f'\n\tstarting with randomized URDF: {True}' \
+         + f'\n\tand starting with provided true_sys={true_sys}' \
          + f'\n\tinjecting into dynamics (if sim): {additional_forces}')
 
     simulation = source == SIM_SOURCE
@@ -243,20 +242,6 @@ def main(storage_folder_name: str = "",
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
-    # # Describes the learnable system. The MultibodyLearnableSystem type learns
-    # # a multibody system, which is initialized as the original system URDF, or
-    # # as a provided wrong initialization. For now, this is only implemented with
-    # # the box geoemtry parameterization.
-    # # if geometry == BOX_TYPE and not true_sys:
-    # wrong_urdf_asset = WRONG_URDFS_BY_GEOM_THEN_SYSTEM[geometry][system]['small']
-    # wrong_urdf = file_utils.get_asset(wrong_urdf_asset)
-    # init_urdfs = {system: wrong_urdf}
-    # # # else:  use the initial mesh type anyway
-    # # else:
-    # #     init_urdfs = urdfs
-
-    print(f'Using initial URDF: {urdf}')
-
     loss = MultibodyLosses.CONTACTNETS_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
@@ -268,7 +253,8 @@ def main(storage_folder_name: str = "",
         w_diss=Float(w_diss, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
         w_pen=Float(w_pen, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
         w_res=Float(w_res, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        do_residual=do_residual, represent_geometry_as=geometry)
+        do_residual=do_residual, represent_geometry_as=geometry,
+        randomize_initialization = not true_sys)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(

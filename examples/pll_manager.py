@@ -345,7 +345,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                   64 if category == DEV else \
                   512 if category == HYPERPARAMETER_SIM else \
                   512 if category == HYPERPARAMETER_REAL else \
-                  2**dataset_exponent if category == SWEEP
+                  2**dataset_exponent # if category == SWEEP
 
     source = REAL_SOURCE if category == SWEEP else \
              REAL_SOURCE if category == HYPERPARAMETER_REAL else SIM_SOURCE

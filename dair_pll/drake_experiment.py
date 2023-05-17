@@ -63,6 +63,8 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Depth of residual network."""
     represent_geometry_as: str = 'box'
     """How to represent geometry (box, mesh, or polygon)."""
+    randomize_initialization: bool = True
+    """Whether to randomize initialization."""
 
 
 @dataclass
@@ -253,7 +255,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             output_urdfs_dir=output_dir,
             do_residual=learnable_config.do_residual,
             represent_geometry_as=learnable_config.represent_geometry_as,
-            randomize_initialization=True)
+            randomize_initialization=learnable_config.randomize_initialization)
 
     def write_to_wandb(self, epoch: int, learned_system: System,
                        statistics: Dict) -> None:
