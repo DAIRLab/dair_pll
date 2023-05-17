@@ -410,7 +410,7 @@ def cli():
               help="what inertia parameters to learn.")
 @click.option('--loss-variation',
               type=click.Choice(LOSS_VARIATION_NUMBERS),
-              default='0',
+              default='1',
               help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
@@ -535,7 +535,7 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
               help="what inertia parameters to learn.")
 @click.option('--loss-variation',
               type=click.Choice(LOSS_VARIATION_NUMBERS),
-              default='0',
+              default='1',
               help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
@@ -614,7 +614,7 @@ def test_command(run_name: str, number: int, system: str, contactnets: bool,
               help="what inertia parameters to learn.")
 @click.option('--loss-variation',
               type=click.Choice(LOSS_VARIATION_NUMBERS),
-              default='0',
+              default='1',
               help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
@@ -733,7 +733,7 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
               help="what inertia parameters to learn.")
 @click.option('--loss-variation',
               type=click.Choice(LOSS_VARIATION_NUMBERS),
-              default='0',
+              default='1',
               help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=False,
