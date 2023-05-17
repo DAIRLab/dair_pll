@@ -314,6 +314,25 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_diss.append(loss_diss.clone().detach())
             residual_regs.append(regularizers[0].clone().detach())
 
+        def really_weird_fix_for_cluster_only(list_of_tensors):
+            """For some reason, on the cluster only, the last item in the loss
+            lists can be a different shape than the rest of the items, and this
+            results in an error with the ``sum(losses_pred)`` below.  For now,
+            the fix (hack) is to just drop that last term.
+
+            TODO:  Figure out what is going on.
+            """
+            if (len(list_of_tensors) > 1) and \
+               (list_of_tensors[-1].shape != list_of_tensors[0].shape):
+                    return list_of_tensors[:-1]
+            return list_of_tensors
+
+        losses_pred = really_weird_fix_for_cluster_only(losses_pred)
+        losses_comp = really_weird_fix_for_cluster_only(losses_comp)
+        losses_pen = really_weird_fix_for_cluster_only(losses_pen)
+        losses_diss = really_weird_fix_for_cluster_only(losses_diss)
+        residual_regs = really_weird_fix_for_cluster_only(residual_regs)
+
         # Calculate average and scale by hyperparameter weights.
         w_pred = self.learnable_config.w_pred
         w_comp = self.learnable_config.w_comp.value
