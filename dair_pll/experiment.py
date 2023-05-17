@@ -627,6 +627,9 @@ class SupervisedLearningExperiment(ABC):
                     training_state.best_valid_loss = valid_loss
                     training_state.best_learned_system_state = deepcopy(
                         learned_system.state_dict())
+                    print("Saving training state...")
+                    torch.save(dataclasses.asdict(training_state),
+                               checkpoint_filename)
                     training_state.epochs_since_best = 0
                 else:
                     training_state.epochs_since_best += 1
