@@ -63,6 +63,18 @@ MIN_RESOURCES = 5
 
 WANDB_PROJECT = 'contactnets-journal-results'
 
+MESH_REPRESENTATIONS = [MeshRepresentation.POLYGON]
+LOSSES = [
+    MultibodyLosses.PREDICTION_LOSS,
+    MultibodyLosses.CONTACTNETS_ANITESCU_LOSS
+]
+
+def name_from_mesh_loss(mesh_representation: MeshRepresentation,
+                        loss: MultibodyLosses) -> str:
+    """Generate a name for a sweep instance."""
+    study_name_postfix = f'{mesh_representation.name}_{loss.name}'
+    return f'{STUDY_NAME_PREFIX}_{study_name_postfix}'
+
 
 def main(sweep_num: int) -> None:
     """Execute hyperparameter-optimal training dataset size sweep.
@@ -141,19 +153,13 @@ def main(sweep_num: int) -> None:
 
     # Run two dataset size sweep studies: one for prediction loss and another
     # for ContactNets loss.
-    mesh_representations = [MeshRepresentation.POLYGON]
-    losses = [
-        MultibodyLosses.PREDICTION_LOSS,
-        MultibodyLosses.CONTACTNETS_ANITESCU_LOSS
-    ]
-    for mesh_representation, loss in product(mesh_representations, losses):
+    for mesh_representation, loss in product(MESH_REPRESENTATIONS, LOSSES):
         default_experiment_config = deepcopy(experiment_config)
         assert isinstance(default_experiment_config.learnable_config,
                           MultibodyLearnableSystemConfig)
         default_experiment_config.training_loss = loss
         default_experiment_config.learnable_config.mesh_representation = (
             mesh_representation)
-        study_name_postfix = f'{mesh_representation.name}_{loss.name}'
 
         # setup study config.
         study_config = OptimalSweepStudyConfig(
@@ -162,7 +168,7 @@ def main(sweep_num: int) -> None:
             n_trials=N_TRIALS,
             min_resource=MIN_RESOURCES,
             use_remote_storage=False,
-            study_name=f'{STUDY_NAME_PREFIX}_{study_name_postfix}',
+            study_name=name_from_mesh_loss(mesh_representation, loss),
             experiment_type=DrakeMultibodyLearnableExperiment,
             default_experiment_config=default_experiment_config)
 

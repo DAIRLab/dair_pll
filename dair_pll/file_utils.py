@@ -9,7 +9,7 @@ import json
 import os
 import pickle
 from os import path
-from typing import List, Callable, BinaryIO, Any, TextIO, Optional
+from typing import List, Callable, BinaryIO, Any, TextIO, Optional, Union
 
 from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 
@@ -224,7 +224,8 @@ def hyperparameter_opt_run_name(study_name: str, trial_number: int) -> str:
     return f'{study_name}_hyperparameter_opt_{trial_number}'
 
 
-def sweep_run_name(study_name: str, sweep_run: int, sweep_value: Any) -> str:
+def sweep_run_name(study_name: str, sweep_run: Union[int,str], sweep_value:
+                                                              Any) -> str:
     """Experiment run name for dataset size sweep study."""
     return f'{study_name}_sweep_{sweep_run}_value_{str(sweep_value)}'
 

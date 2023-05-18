@@ -1,14 +1,11 @@
-import numpy as np
 import os
+
 import matplotlib
 # change matplotlib backen to work via ssh
-from matplotlib.collections import LineCollection
-import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
-from matplotlib.path import Path
+import numpy as np
 from matplotlib.patches import PathPatch
-
-import pdb
+from matplotlib.path import Path
 
 USETEX = False
 class PlotStyler():
@@ -28,17 +25,17 @@ class PlotStyler():
   def set_default_styling(self, directory=None, figsize=None):
     self.directory = directory
     matplotlib.rcParams["savefig.directory"] = directory
-    matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
-    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
+    #matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath}"]
+    #matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 8, 5
     if (figsize == None):
-      matplotlib.rcParams['figure.figsize'] = 8, 12
+      matplotlib.rcParams['figure.figsize'] = 8, 8
     else:
       matplotlib.rcParams['figure.figsize'] = figsize[0], figsize[1]
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 24, 'family':'serif', 'serif':['Computer Modern']}
+    font = {'size': 10, 'family':'serif', 'serif':['Computer Modern']}
 
     matplotlib.rc('text', usetex=False)
     matplotlib.rc('font', **font)

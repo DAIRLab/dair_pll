@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from dair_pll import file_utils
-from dair_pll.plot_styler import PlotStyler
+from examples.plot_styler import PlotStyler
 
 
 def average(list: List) -> float:
