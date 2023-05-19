@@ -53,7 +53,7 @@ URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 DT = 0.0068
 
 # Generation configuration.
-N_POP = 256
+N_POP = 32
 CUBE_X_0 = torch.tensor([
     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
     0.014, 1.291, -0.212
@@ -61,7 +61,10 @@ CUBE_X_0 = torch.tensor([
 ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
 X_0S = {CUBE_SYSTEM: CUBE_X_0, ELBOW_SYSTEM: ELBOW_X_0}
-CUBE_SAMPLER_RANGE = 0.1 * torch.ones(CUBE_X_0.nelement() - 1)
+TWO_PI = 2 * 3.14159265358979323846
+CUBE_SAMPLER_RANGE = torch.tensor([
+    TWO_PI, TWO_PI, TWO_PI, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
+])
 ELBOW_SAMPLER_RANGE = torch.tensor([
     2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, np.pi, 6., 6., 6., .5, .5,
     .075, 6.
@@ -85,7 +88,7 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
 EPOCHS = 500
 PATIENCE = EPOCHS
 BATCH_SIZE = 256
-PARAMETER_NOISE_LEVEL = torch.tensor(0.)  # initial parameter relative noise
+PARAMETER_NOISE_LEVEL = torch.tensor(0.3)  # initial parameter relative noise
 
 WANDB_PROJECT = 'dair_pll-examples'
 

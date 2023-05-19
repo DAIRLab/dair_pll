@@ -7,6 +7,8 @@ from itertools import product
 import click
 import torch
 
+from contactnets_simple import CUBE_SAMPLER_RANGE, CUBE_X_0, DT, \
+    CUBE_MESH_URDF_ASSET, CUBE_SYSTEM, PARAMETER_NOISE_LEVEL, TRAJECTORY_LENGTHS
 from dair_pll import file_utils
 from dair_pll.dataset_generation import DataGenerationConfig, \
     ExperimentDatasetGenerator
@@ -28,23 +30,13 @@ STUDY_NAME_PREFIX = 'noiseless_cube_reconstruction'
 STORAGE = os.path.join(os.path.dirname(__file__), 'storage', STUDY_NAME_PREFIX)
 
 # Cube system configuration.
-SYSTEM = 'cube'
-CUBE_DATA_ASSET = 'contactnets_cube'
-CUBE_URDF_ASSET = 'contactnets_cube_mesh.urdf'
+SYSTEM = CUBE_SYSTEM
+CUBE_URDF_ASSET = CUBE_MESH_URDF_ASSET
 URDFS = {SYSTEM: file_utils.get_asset(CUBE_URDF_ASSET)}
-PARAMETER_NOISE_LEVEL = torch.tensor(0.3)
 
 # Data configuration.
-DT = 0.0068
-X_0 = torch.tensor([
-    -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
-    0.014, 1.291, -0.212
-])
-TWO_PI = 2 * 3.14159265358979323846
-CUBE_SAMPLER_RANGE = torch.tensor([
-    TWO_PI, TWO_PI, TWO_PI, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
-])
-TRAJECTORY_LENGTH = 80
+X_0 = CUBE_X_0
+TRAJECTORY_LENGTH = TRAJECTORY_LENGTHS[SYSTEM]
 
 # Generation configuration.
 # dataset size isn't really something we need to sweep over; we just need to
