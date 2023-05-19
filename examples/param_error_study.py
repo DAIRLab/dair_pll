@@ -46,15 +46,15 @@ TRAJECTORY_LENGTH = 80
 # Generation configuration.
 # dataset size isn't really something we need to sweep over; we just need to
 # set it high enough such that the parameters are identifiable.
-N_HYPERPARMETER_OPTIMIZATION_TRAIN = 32
+N_HYPERPARMETER_OPTIMIZATION_TRAIN = 64
 SWEEP_DOMAIN = [N_HYPERPARMETER_OPTIMIZATION_TRAIN]
 N_POP = 4 * (N_HYPERPARMETER_OPTIMIZATION_TRAIN + SWEEP_DOMAIN[-1])
 
 # Optimization configuration.
 LR = Float(1e-4, (1e-6, 1e-2), log=True)
-WD = Float(1e-6, (1e-10, 1e-2), log=True)
-EPOCHS = 500
-PATIENCE = 30
+WD = Float(0.0, (0.0, 0.0), log=False)
+EPOCHS = 100
+PATIENCE = 5
 BATCH_SIZE = Int(32, (1, 256), log=True)
 
 # Study configuration.
@@ -65,8 +65,8 @@ WANDB_PROJECT = 'contactnets-journal-results'
 
 MESH_REPRESENTATIONS = [MeshRepresentation.POLYGON]
 LOSSES = [
-    MultibodyLosses.PREDICTION_LOSS,
-    MultibodyLosses.CONTACTNETS_ANITESCU_LOSS
+    MultibodyLosses.CONTACTNETS_ANITESCU_LOSS,
+    MultibodyLosses.PREDICTION_LOSS
 ]
 
 def name_from_mesh_loss(mesh_representation: MeshRepresentation,
@@ -105,7 +105,7 @@ def main(sweep_num: int) -> None:
     # Select hyperparameter trajectories without removing randomness in the
     # seed for the rest of the runs.
     torch_random_generator_state = torch.random.get_rng_state()
-    torch.manual_seed(12983619278361982)
+    torch.manual_seed(1298361927836198)
     hyperparameter_trajectories = torch.randperm(
         N_POP)[:total_hyperparameter_trajectories]
     hyperparameter_mask = torch.zeros(N_POP, dtype=torch.bool)
@@ -167,7 +167,7 @@ def main(sweep_num: int) -> None:
             hyperparameter_dataset_mask=hyperparameter_mask,
             n_trials=N_TRIALS,
             min_resource=MIN_RESOURCES,
-            use_remote_storage=False,
+            use_remote_storage=True,
             study_name=name_from_mesh_loss(mesh_representation, loss),
             experiment_type=DrakeMultibodyLearnableExperiment,
             default_experiment_config=default_experiment_config)
