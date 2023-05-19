@@ -17,19 +17,22 @@ import git
 from dair_pll import file_utils
 from dair_pll.dataset_generation import DataGenerationConfig, \
     ExperimentDatasetGenerator
-from dair_pll.dataset_management import DataConfig, \
-    TrajectorySliceConfig
+from dair_pll.dataset_management import DataConfig, TrajectorySliceConfig
+from dair_pll.deep_learnable_model import MLP
+from dair_pll.deep_learnable_system import DeepLearnableExperiment, \
+    DeepLearnableSystemConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
-    MultibodyLearnableSystemConfig, MultibodyLosses, \
-    DrakeMultibodyLearnableExperimentConfig
+    MultibodyLearnableSystemConfig, MultibodyLosses
 from dair_pll.experiment import default_epoch_callback
-from dair_pll.experiment_config import OptimizerConfig
+from dair_pll.experiment_config import OptimizerConfig, \
+    SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem, \
     LOSS_PLL_ORIGINAL, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, \
     LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
-from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
+from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser, \
+    FloatingBaseSpace, FixedBaseSpace, ProductSpace
 from dair_pll.system import System
 
 
@@ -110,6 +113,13 @@ WRONG_URDFS_BY_GEOM_THEN_SYSTEM = {MESH_TYPE: WRONG_MESH_URDFS,
                                    POLYGON_TYPE: WRONG_MESH_URDFS,
                                    BOX_TYPE: WRONG_BOX_URDFS}
 
+CUBE_PRODUCT_SPACE = ProductSpace([FixedBaseSpace(n_joints=0),
+                                   FloatingBaseSpace(n_joints=0)])
+ELBOW_PRODUCT_SPACE = ProductSpace([FixedBaseSpace(n_joints=0),
+                                    FloatingBaseSpace(n_joints=1)])
+PRODUCT_SPACES = {CUBE_SYSTEM: CUBE_PRODUCT_SPACE,
+                  ELBOW_SYSTEM: ELBOW_PRODUCT_SPACE}
+
 
 REPO_DIR = os.path.normpath(
     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
@@ -146,7 +156,7 @@ LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 0.0  #1e-4
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
-DEFAULT_LOSS_WEIGHT_RANGE = (1e-2, 1e2)
+DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
 EPOCHS = 200            # change this (originally 500)
 PATIENCE = 100       # change this (originally EPOCHS)
 
@@ -157,6 +167,7 @@ def main(storage_folder_name: str = "",
          run_name: str = "",
          system: str = CUBE_SYSTEM,
          source: str = SIM_SOURCE,
+         structured: bool = True,
          contactnets: bool = True,
          geometry: str = BOX_TYPE,
          regenerate: bool = False,
@@ -200,6 +211,7 @@ def main(storage_folder_name: str = "",
     print(f'Starting test under \'{storage_folder_name}\' ' \
          + f'with name \'{run_name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
+         + f'\n\twith structured parameterization: {structured}' \
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith geometry represented as: {geometry}' \
          + f'\n\tregenerate: {regenerate}' \
@@ -226,8 +238,11 @@ def main(storage_folder_name: str = "",
 
     # Next, build the configuration of the learning experiment.
 
-    # Describes the optimizer settings; by default, the optimizer is Adam.
+    # If starting with true system, no need to train, since we probably just
+    # want to generate statistics.
     num_epochs = 0 if true_sys else EPOCHS
+
+    # Describes the optimizer settings; by default, the optimizer is Adam.
     optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
                                        wd=Float(WDS[system]),
                                        patience=PATIENCE,
@@ -243,20 +258,6 @@ def main(storage_folder_name: str = "",
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
-    loss = MultibodyLosses.CONTACTNETS_LOSS \
-        if contactnets else \
-        MultibodyLosses.PREDICTION_LOSS
-
-    learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=urdfs, loss=loss, inertia_mode=int(inertia_params),
-        loss_variation=int(loss_variation), w_pred=w_pred,
-        w_comp=Float(w_comp, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        w_diss=Float(w_diss, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        w_pen=Float(w_pen, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        w_res=Float(w_res, log=True, distribution=DEFAULT_LOSS_WEIGHT_RANGE),
-        do_residual=do_residual, represent_geometry_as=geometry,
-        randomize_initialization = not true_sys)
-
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
         t_prediction=1 if contactnets else T_PREDICTION)
@@ -269,23 +270,43 @@ def main(storage_folder_name: str = "",
                              slice_config=slice_config,
                              update_dynamically=dynamic)
 
+    if structured:
+        loss = MultibodyLosses.CONTACTNETS_LOSS if contactnets else \
+               MultibodyLosses.PREDICTION_LOSS
+
+        learnable_config = MultibodyLearnableSystemConfig(
+            urdfs=urdfs, loss=loss, inertia_mode=int(inertia_params),
+            loss_variation=int(loss_variation), w_pred=w_pred,
+            w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
+            w_diss = Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
+            w_pen  = Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
+            w_res  = Float(w_res, log=True, distribution=DEFAULT_WEIGHT_RANGE),
+            do_residual=do_residual, represent_geometry_as=geometry,
+            randomize_initialization = not true_sys)
+
+    else:
+        learnable_config = DeepLearnableSystemConfig(
+            space=PRODUCT_SPACES[system], layers=4, hidden_size=256,
+            nonlinearity=torch.nn.Tanh, model_constructor=MLP
+        )
+
     # Combines everything into config for entire experiment.
-    experiment_config = DrakeMultibodyLearnableExperimentConfig(
-        storage=storage_name,
-        run_name=run_name,
+    experiment_config = SupervisedLearningExperimentConfig(
+        data_config=data_config,
         base_config=base_config,
         learnable_config=learnable_config,
         optimizer_config=optimizer_config,
-        data_config=data_config,
-        full_evaluation_period=EPOCHS if dynamic else 1,
-        # full_evaluation_samples=dataset_size,  # use all data for eval
-        visualize_learned_geometry=True,
+        storage=storage_name,
+        run_name=run_name,
         run_wandb=True,
-        wandb_project=wandb_project
+        wandb_project=wandb_project,
+        full_evaluation_period=EPOCHS if dynamic else 1,
+        update_geometry_in_videos=True  # ignored for deep learnable experiments
     )
 
-    # Makes experiment.
-    experiment = DrakeMultibodyLearnableExperiment(experiment_config)
+    # Make experiment.
+    experiment = DrakeMultibodyLearnableExperiment(experiment_config) \
+        if structured else DeepLearnableExperiment(experiment_config)
 
     # Prepare data.
     x_0 = X_0S[system]
@@ -350,9 +371,12 @@ def main(storage_folder_name: str = "",
         regenerate_callback if regenerate else default_epoch_callback)
 
     # Save the final urdf.
-    print(f'\nSaving the final learned URDF.')
-    learned_system = cast(MultibodyLearnableSystem, learned_system)
-    learned_system.generate_updated_urdfs(suffix='best')
+    if structured:
+        print(f'\nSaving the final learned URDF.')
+        learned_system = cast(MultibodyLearnableSystem, learned_system)
+        learned_system.generate_updated_urdfs(suffix='best')
+    else:
+        print(f'\nFinished training deep learnable; no URDF export.')
     print(f'Done!')
 
 
@@ -367,6 +391,9 @@ def main(storage_folder_name: str = "",
 @click.option('--source',
               type=click.Choice(DATA_SOURCES, case_sensitive=True),
               default=SIM_SOURCE)
+@click.option('--structured/--end-to-end',
+              default=True,
+              help="whether to train structured parameters or deep network.")
 @click.option('--contactnets/--prediction',
               default=True,
               help="whether to train on ContactNets or prediction loss.")
@@ -423,19 +450,20 @@ def main(storage_folder_name: str = "",
               default=None,
               help="what kind of additional forces to augment simulation data.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
-                 source: str, contactnets: bool, geometry: str,
-                 regenerate: bool, dataset_size: int, inertia_params: str,
-                 loss_variation: str, true_sys: bool, wandb_project: str,
-                 w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                 w_res: float, residual: bool, additional_forces: str):
+                 source: str, structured: bool, contactnets: bool,
+                 geometry: str, regenerate: bool, dataset_size: int,
+                 inertia_params: str, loss_variation: str, true_sys: bool,
+                 wandb_project: str, w_pred: float, w_comp: float,
+                 w_diss: float, w_pen: float, w_res: float, residual: bool,
+                 additional_forces: str):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
-    main(storage_folder_name, run_name, system, source, contactnets, geometry,
-         regenerate, dataset_size, inertia_params, loss_variation, true_sys,
-         wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, residual,
-         additional_forces)
+    main(storage_folder_name, run_name, system, source, structured, contactnets,
+         geometry, regenerate, dataset_size, inertia_params, loss_variation,
+         true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res,
+         residual, additional_forces)
 
 
 if __name__ == '__main__':

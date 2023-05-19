@@ -169,14 +169,14 @@ class SupervisedLearningExperiment(ABC):
     learning_data_manager: Optional[ExperimentDataManager]
     """Manager of trajectory data used in learning process."""
 
-    def __init__(self, config: SupervisedLearningExperimentConfig) -> \
-            None:
+    def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
         super().__init__()
 
         self.config = config
         file_utils.assure_storage_tree_created(config.storage)
-        base_system = self.get_base_system()
-        self.space = base_system.space
+        if not hasattr(self, 'space'):
+            base_system = self.get_base_system()
+            self.space = base_system.space
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
         self.learning_data_manager = None
 
@@ -271,16 +271,16 @@ class SupervisedLearningExperiment(ABC):
         each trajectory.
 
         Args:
-            x: List of ``(T, space.n_x)`` trajectories.
+            x: List of ``(*, T, space.n_x)`` trajectories.
             system: System to run prediction on.
             do_detach: Whether to detach each prediction from the computation
               graph; useful for memory management for large groups of
               trajectories.
 
         Returns:
-            List of ``(T - t_skip - 1, space.n_x)`` predicted trajectories.
+            List of ``(*, T - t_skip - 1, space.n_x)`` predicted trajectories.
 
-            List of ``(T - t_skip - 1, space.n_x)`` target trajectories.
+            List of ``(*, T - t_skip - 1, space.n_x)`` target trajectories.
 
         """
         t_skip = self.config.data_config.slice_config.t_skip
@@ -289,17 +289,20 @@ class SupervisedLearningExperiment(ABC):
         targets = [x_i[..., t_begin:, :] for x_i in x]
         prediction_horizon = [x_i.shape[-2] - t_skip - 1 for x_i in x]
 
+        target_shape = targets[0].shape
+
         assert system.carry_callback is not None
         carry_0 = system.carry_callback()
         predictions = []
         for x_0_i, horizon_i in zip(x_0, prediction_horizon):
             x_prediction_i, carry_i = system.simulate(x_0_i, carry_0, horizon_i)
             del carry_i
+            to_append = x_prediction_i[..., 1:, :].reshape(target_shape)
             if do_detach:
-                predictions.append(x_prediction_i[..., 1:, :].detach().clone())
+                predictions.append(to_append.detach().clone())
                 del x_prediction_i
             else:
-                predictions.append(x_prediction_i[..., 1:, :])
+                predictions.append(to_append)
         return predictions, targets
 
     def prediction_loss(self,

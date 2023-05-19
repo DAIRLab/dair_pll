@@ -2,19 +2,25 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Tuple, Type, Optional, cast
 
+import pdb
+
 import torch
 from torch import Tensor
 from torch.nn import Module
 
 from dair_pll.deep_learnable_model import DeepLearnableModel, DeepRecurrentModel
-from dair_pll.experiment import SupervisedLearningExperiment
+from dair_pll.experiment import SupervisedLearningExperiment, \
+    SupervisedLearningExperimentConfig
 from dair_pll.experiment_config import SystemConfig
-from dair_pll.integrator import Integrator, VelocityIntegrator
+from dair_pll.integrator import Integrator, VelocityIntegrator, \
+    PartialStepCallback
+from dair_pll.state_space import StateSpace
 from dair_pll.system import System
 
 
 @dataclass
 class DeepLearnableSystemConfig(SystemConfig):
+    space: StateSpace
     integrator_type: Type[Integrator] = VelocityIntegrator
     layers: int = 1
     nonlinearity: Module = torch.nn.ReLU
@@ -26,21 +32,19 @@ class DeepLearnableSystem(System):
     model: Module
 
     def __init__(self,
-                 base_system: System,
+                 space: StateSpace,
+                 dt: float,
                  config: DeepLearnableSystemConfig,
                  training_data: Optional[Tensor] = None) -> None:
-        space = base_system.space
         output_size = config.integrator_type.calc_out_size(space)
-        # pdb.set_trace()
+
         model = config.model_constructor(space.n_x, config.hidden_size,
                                          output_size, config.layers,
                                          config.nonlinearity)
         if not (training_data is None):
-            # pdb.set_trace()
             model.set_normalization(training_data)
 
-        integrator = config.integrator_type(space, model,
-                                            base_system.integrator.dt)
+        integrator = config.integrator_type(space, model, dt)
 
         super().__init__(space, integrator)
         self.model = model
@@ -49,19 +53,38 @@ class DeepLearnableSystem(System):
     def preprocess_initial_condition(self, x_0: Tensor,
                                      carry_0: Tensor) -> Tuple[Tensor, Tensor]:
         """Preload initial condition."""
-        if len(x_0.shape) > 1 and x_0.shape[1] > 1:
+        if len(x_0.shape) > 1 and x_0.shape[-2] > 1:
             # recurrent start, preload trajectory
             x_pre = x_0[..., :(-1), :]
             _, carry_0 = self.model.sequential_eval(x_pre, carry_0)
             return x_0[..., (-1):, :], carry_0
+        elif len(x_0.shape) == 2:
+            return x_0.unsqueeze(1), carry_0
         else:
             return x_0, carry_0
 
 
 class DeepLearnableExperiment(SupervisedLearningExperiment, ABC):
 
-    def get_learned_system(self, train_states: Tensor) -> System:
+    def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
+        self.space = config.learnable_config.space
+        super().__init__(config)
+
+    def get_base_system(self) -> System:
+        space = self.space
+        dt = self.config.data_config.dt
+
         deep_learnable_config = cast(DeepLearnableSystemConfig,
                                      self.config.learnable_config)
-        return DeepLearnableSystem(self.get_base_system(),
-                                   deep_learnable_config, train_states)
+
+        return DeepLearnableSystem(space, dt, deep_learnable_config)
+
+    def get_learned_system(self, train_states: Tensor) -> System:
+        space = self.space
+        dt = self.config.data_config.dt
+
+        deep_learnable_config = cast(DeepLearnableSystemConfig,
+                                     self.config.learnable_config)
+
+        return DeepLearnableSystem(space, dt, deep_learnable_config,
+                                   train_states)
