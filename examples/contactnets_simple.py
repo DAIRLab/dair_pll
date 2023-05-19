@@ -62,9 +62,8 @@ ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
 X_0S = {CUBE_SYSTEM: CUBE_X_0, ELBOW_SYSTEM: ELBOW_X_0}
 TWO_PI = 2 * 3.14159265358979323846
-CUBE_SAMPLER_RANGE = torch.tensor([
-    TWO_PI, TWO_PI, TWO_PI, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
-])
+CUBE_SAMPLER_RANGE = torch.tensor(
+    [TWO_PI, TWO_PI, TWO_PI, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 ELBOW_SAMPLER_RANGE = torch.tensor([
     2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, np.pi, 6., 6., 6., .5, .5,
     .075, 6.
@@ -99,7 +98,8 @@ def main(run_name: str = "",
          contactnets: bool = True,
          box: bool = True,
          regenerate: bool = False,
-         clear_data: bool = False):
+         clear_data: bool = False,
+         perfect_init: bool = False):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -110,6 +110,7 @@ def main(run_name: str = "",
         box: Whether to represent geometry as box or mesh.
         regenerate: Whether save updated URDF's each epoch.
         clear_data: Whether to clear storage folder before running.
+        perfect_init: Whether to initialize with ground-truth parameters.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -150,8 +151,9 @@ def main(run_name: str = "",
     loss = MultibodyLosses.CONTACTNETS_ANITESCU_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
+    initial_noise = torch.tensor(0.) if perfect_init else PARAMETER_NOISE_LEVEL
     learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=urdfs, initial_parameter_noise_level=PARAMETER_NOISE_LEVEL)
+        urdfs=urdfs, initial_parameter_noise_level=initial_noise)
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -267,13 +269,18 @@ def main(run_name: str = "",
 @click.option('--clear-data/--keep-data',
               default=False,
               help="Whether to clear storage folder before running.")
+@click.option('--perfect-init/--noisy-init',
+              default=False,
+              help="Whether to start parameters from ground truth or random.")
 def main_command(run_name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, clear_data: bool):
+                 box: bool, regenerate: bool, clear_data: bool,
+                 perfect_init: bool):
     # pylint: disable=too-many-arguments
     """Executes main function with argument interface."""
     if system == ELBOW_SYSTEM and source == REAL_SOURCE:
         raise NotImplementedError('Elbow real-world data not supported!')
-    main(run_name, system, source, contactnets, box, regenerate, clear_data)
+    main(run_name, system, source, contactnets, box, regenerate, clear_data,
+         perfect_init)
 
 
 if __name__ == '__main__':
