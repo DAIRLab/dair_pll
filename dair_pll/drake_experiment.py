@@ -67,13 +67,6 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Whether to randomize initialization."""
 
 
-@dataclass
-class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
-                                             ):
-    visualize_learned_geometry: bool = True
-    """Whether to use learned geometry in trajectory overlay visualization."""
-
-
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
     base_drake_system: Optional[DrakeSystem]
     augmented_drake_system: Optional[DrakeSystem]
@@ -230,7 +223,7 @@ class DrakeDeepLearnableExperiment(DrakeExperiment, DeepLearnableExperiment):
 
 class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
-    def __init__(self, config: DrakeMultibodyLearnableExperimentConfig) -> None:
+    def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
         super().__init__(config)
         self.learnable_config = cast(MultibodyLearnableSystemConfig,
                                 self.config.learnable_config)
@@ -374,16 +367,12 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                   learned_system_summary.meshes)
 
     def visualizer_regeneration_is_required(self) -> bool:
-        return cast(DrakeMultibodyLearnableExperimentConfig,
-                    self.config).visualize_learned_geometry
+        return cast(SupervisedLearningExperimentConfig,
+                    self.config).update_geometry_in_videos
 
     def get_learned_drake_system(
             self, learned_system: System) -> Optional[DrakeSystem]:
-        visualize_learned_geometry = cast(
-            DrakeMultibodyLearnableExperimentConfig,
-            self.config).visualize_learned_geometry
-
-        if visualize_learned_geometry:
+        if self.visualizer_regeneration_is_required():
             new_urdfs = cast(MultibodyLearnableSystem,
                              learned_system).generate_updated_urdfs('vis')
             return DrakeSystem(new_urdfs, self.get_drake_system().dt)
