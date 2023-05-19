@@ -40,7 +40,10 @@ X_0 = torch.tensor([
     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
     0.014, 1.291, -0.212
 ])
-CUBE_SAMPLER_RANGE = 0.1 * torch.ones(X_0.nelement() - 1)
+TWO_PI = 2 * 3.14159265358979323846
+CUBE_SAMPLER_RANGE = torch.tensor([
+    TWO_PI, TWO_PI, TWO_PI, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
+])
 TRAJECTORY_LENGTH = 80
 
 # Generation configuration.
