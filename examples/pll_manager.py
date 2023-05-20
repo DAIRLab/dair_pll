@@ -316,8 +316,13 @@ def experiment_class_command(category: str, run_name: str, system: str,
         assert dataset_exponent in range(2, 10)
 
     def get_run_name_pattern(category, system):
-        run_name_pattern = 'i' if category == HYPERPARAMETER_REAL else \
-                           category[0]  # t/d/h/i for test/dev/hyperp sim/real
+        run_name_pattern = \
+            'i' if category == HYPERPARAMETER_REAL else \
+            'v' if (category == SWEEP and \
+                    additional_forces==VORTEX_AUGMENTATION) else \
+            'b' if (category == SWEEP and \
+                    additional_forces==VISCOUS_AUGMENTATION) else \
+            category[0]  # t/d/h/i/v/b for test/dev/{hp sim/real}/vortex/viscous
         run_name_pattern += system[0]   # c for cube or e for elbow
         run_name_pattern += '????' if category==HYPERPARAMETER_SIM else \
                             '????' if category==HYPERPARAMETER_REAL else '??'
@@ -326,6 +331,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
 
     # First, take care of data management and how to keep track of results.
     storage_folder_name = f'{category}_{system}'
+    storage_folder_name += f'_{additional_forces}' \
+                           if additional_forces!= None else ''
     storage_folder_name += f'-{dataset_exponent}' if category==SWEEP else ''
 
     repo = git.Repo(search_parent_directories=True)
@@ -343,8 +350,14 @@ def experiment_class_command(category: str, run_name: str, system: str,
                 last_run_num = int(last_run_name.split('-')[0][2:])
             else:
                 last_run_num = -1
-        run_name = 'i' if category == HYPERPARAMETER_REAL else category[0]
-        run_name += 'c' if system==CUBE_SYSTEM else 'e'
+        run_name = 'i' if category == HYPERPARAMETER_REAL else \
+                   'v' if (category == SWEEP and \
+                           additional_forces==VORTEX_AUGMENTATION) else \
+                   'b' if (category == SWEEP and \
+                           additional_forces==VISCOUS_AUGMENTATION) else \
+                   category[0]
+        run_name += 'c' if system==CUBE_SYSTEM else \
+                    'e' if system==ELBOW_SYSTEM else 'a'
         run_name += str(last_run_num+1).zfill(nums_to_display)
         run_name += f'-{dataset_exponent}' if category==SWEEP else ''
 
@@ -368,7 +381,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
                   512 if category == HYPERPARAMETER_REAL else \
                   2**dataset_exponent # if category == SWEEP
 
-    source = REAL_SOURCE if category == SWEEP else \
+    source = SIM_SOURCE if (category==SWEEP and additional_forces!=None) else \
+             REAL_SOURCE if category == SWEEP else \
              REAL_SOURCE if category == HYPERPARAMETER_REAL else SIM_SOURCE
 
     names = [run_name] if number == 1 else \
