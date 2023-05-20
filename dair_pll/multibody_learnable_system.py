@@ -253,9 +253,9 @@ class MultibodyLearnableSystem(System):
 
             regularizers.append(residual_norm + l2_penalty)
         else:
-            regularizers.append(torch.zeros((x.shape[0],)))
+            regularizers.append(torch.zeros((x.shape[-2],)))
 
-        # # Use the believed geometry to help supervise the learned CoM.
+        # TODO: Use the believed geometry to help supervise the learned CoM.
         # if (self.multibody_terms.inertia_mode_txt != 'none') and \
         #    (self.multibody_terms.inertia_mode_txt != 'masses'):
         #     # This means the CoM locations are getting learned.

@@ -231,6 +231,11 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                                 self.config.learnable_config)
         if self.learnable_config.loss == MultibodyLosses.CONTACTNETS_LOSS:
             self.loss_callback = self.contactnets_loss
+        elif self.learnable_config.loss == MultibodyLosses.PREDICTION_LOSS:
+            self.loss_callback = self.prediction_with_regularization_loss
+        else:
+            raise RuntimeError(f"Loss {self.learnable_config.loss} not " + \
+                               f"recognized for Drake multibody experiment.")
 
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
         learnable_config = cast(MultibodyLearnableSystemConfig,
@@ -379,6 +384,38 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                              learned_system).generate_updated_urdfs('vis')
             return DrakeSystem(new_urdfs, self.get_drake_system().dt)
         return None
+
+    def prediction_with_regularization_loss(
+        self, x_past: Tensor, x_future: Tensor, system: System,
+        keep_batch: bool = False) -> Tensor:
+        """Returns prediction loss with possibly some regularization terms,
+        e.g., regularization on the size/weights of a residual network, if there
+        is one.
+        """
+        prediction_loss = self.prediction_loss(x_past, x_future, system,
+                                               keep_batch)
+
+        x = x_past[..., -1, :]
+        u = torch.zeros(x.shape[:-1] + (0,))
+        x_plus = x_future[..., 0, :]
+
+        regularizers = system.get_regularization_terms(x, u, x_plus)
+        if len(regularizers) > 2:
+            assert NotImplementedError(
+                "Don't recognize more than one regularization term.")
+        elif len(regularizers) == 1:
+            reg_term = regularizers[0]
+        else:
+            reg_term = torch.zeros_like(prediction_loss)
+
+        if not keep_batch:
+            prediction_loss = prediction_loss.mean()
+            reg_term = reg_term.mean()
+
+        print(f'{prediction_loss}, {reg_term}')
+        pdb.set_trace()
+
+        return prediction_loss + reg_term
 
     def get_true_geometry_multibody_learnable_system(self
         ) -> MultibodyLearnableSystem:

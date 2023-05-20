@@ -190,3 +190,10 @@ class System(ABC, Module):
         assert statistics is not None
         assert self is not None
         return SystemSummary()
+
+    def get_regularization_terms(self, x: Tensor, u: Tensor,
+                                 x_plus: Tensor) -> List[Tensor]:
+        """Return a list of possible regularization terms.  This template
+        returns no regularizers.
+        """
+        return []
