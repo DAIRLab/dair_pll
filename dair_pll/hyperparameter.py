@@ -5,10 +5,10 @@ Each experiment run (see
 have its
 hyperparameters optimized via :py:mod:`optuna`\ . By design, each experiment
 is fully described via a
-:py:class:`~dair_pll.experiment.SupervisedLearningExperimentConfig` object.
-This file implements a :py:class:`Hyperparameter` class, which can be declared
-as a member variable of a
-:py:class:`~dair_pll.experiment.SupervisedLearningExperimentConfig`,
+:py:class:`~dair_pll.experiment_config.SupervisedLearningExperimentConfig`
+object. This file implements a :py:class:`Hyperparameter` class, which can be
+declared as a member variable of a
+:py:class:`~dair_pll.experiment_config.SupervisedLearningExperimentConfig`,
 or recursively as one of its own :py:func:`~dataclasses.dataclass` members.
 
 The following hyperparameters types and priors are supported:

@@ -12,7 +12,6 @@ import pickle
 from os import path
 from typing import List, Callable, BinaryIO, Any, TextIO, Optional
 
-from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 
 TRAJ_EXTENSION = '.pt'  # trajectory file
 HYPERPARAMETERS_EXTENSION = '.json'  # hyperparameter set file
@@ -341,17 +340,14 @@ def save_string(
             file.write(value)
 
 
-def load_configuration(storage_name: str, run_name: str) -> \
-        SupervisedLearningExperimentConfig:
+def load_configuration(storage_name: str, run_name: str) -> Any:
     """Load configuration file."""
     configuration_filename = get_configuration_filename(storage_name, run_name)
     configuration = load_binary(configuration_filename, pickle.load)
-    assert isinstance(configuration, SupervisedLearningExperimentConfig)
     return configuration
 
 
-def save_configuration(storage_name: str, run_name: str,
-                       config: SupervisedLearningExperimentConfig) -> None:
+def save_configuration(storage_name: str, run_name: str, config: Any) -> None:
     """Save configuration file."""
     configuration_filename = get_configuration_filename(storage_name, run_name)
     save_binary(configuration_filename, config, pickle.dump)
