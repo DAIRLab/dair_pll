@@ -844,6 +844,10 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
             if len(runs_list) > 0:
                 last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
 
+    print(f'Will create experiment number: {last_run_num+1}')
+    if not click.confirm('Continue?'):
+        raise RuntimeError("Figure out experiment numbers next time.")
+
     # Create a pll instance for every dataset size from 4 to 512
     for dataset_exponent in range(2, 10):
         experiment_class_command('sweep', sweep_name, system=system,
