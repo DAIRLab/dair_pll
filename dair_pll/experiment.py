@@ -289,12 +289,12 @@ class SupervisedLearningExperiment(ABC):
         targets = [x_i[..., t_begin:, :] for x_i in x]
         prediction_horizon = [x_i.shape[-2] - t_skip - 1 for x_i in x]
 
-        target_shape = targets[0].shape
-
         assert system.carry_callback is not None
         carry_0 = system.carry_callback()
         predictions = []
-        for x_0_i, horizon_i in zip(x_0, prediction_horizon):
+        for x_0_i, horizon_i, target_i in zip(x_0, prediction_horizon, targets):
+            target_shape = target_i.shape
+
             x_prediction_i, carry_i = system.simulate(x_0_i, carry_0, horizon_i)
             del carry_i
             to_append = x_prediction_i[..., 1:, :].reshape(target_shape)
