@@ -75,6 +75,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
     def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
         super().__init__(config)
         self.base_drake_system = None
+        self.visualization_system = None
 
     def get_drake_system(self) -> DrakeSystem:
         has_property = hasattr(self, 'base_drake_system')
@@ -202,17 +203,18 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
                 videos[f'{set_name}_trajectory_prediction_{traj_num}'] = \
                     (video, framerate)
 
-        # Second do geometry inspection videos.
-        geometry_inspection_traj = \
-            vis_utils.get_geometry_inspection_trajectory(learned_system)
-        target_trajectory = geometry_inspection_traj
-        prediction_trajectory = geometry_inspection_traj
-        visualization_trajectory = torch.cat(
-            (space.q(target_trajectory), space.q(prediction_trajectory),
-             space.v(target_trajectory), space.v(prediction_trajectory)), -1)
-        video, framerate = vis_utils.visualize_trajectory(
-            visualization_system, visualization_trajectory)
-        videos['geometry_inspection'] = (video, framerate)
+        # Second do geometry inspection videos -- only relevant for model-based.
+        if not type(self) == DrakeDeepLearnableExperiment:
+            geometry_inspection_traj = \
+                vis_utils.get_geometry_inspection_trajectory(learned_system)
+            target_trajectory = geometry_inspection_traj
+            prediction_trajectory = geometry_inspection_traj
+            visualization_trajectory = torch.cat(
+                (space.q(target_trajectory), space.q(prediction_trajectory),
+                 space.v(target_trajectory), space.v(prediction_trajectory)), -1)
+            video, framerate = vis_utils.visualize_trajectory(
+                visualization_system, visualization_trajectory)
+            videos['geometry_inspection'] = (video, framerate)
 
         return SystemSummary(scalars={}, videos=videos, meshes={})
 

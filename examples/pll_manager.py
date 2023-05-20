@@ -35,7 +35,8 @@ DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
-SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+ASYMMETRIC_SYSTEM = 'asymmetric'
+SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM, ASYMMETRIC_SYSTEM]
 
 # Possible simulation data augmentations.
 NO_AUGMENTATION = None
@@ -126,7 +127,24 @@ def create_instance(storage_folder_name: str, run_name: str,
                     w_res: float = 1e0,
                     do_residual: bool = False,
                     additional_forces: str = None):
-    assert additional_forces in AUGMENTED_FORCE_TYPES
+    # Do some checks on the requested parameter combinations.
+    if additional_forces != NO_AUGMENTATION:
+        assert source==SIM_SOURCE, "Must use simulation for augmented dynamics."
+    if system == ASYMMETRIC_SYSTEM:
+        assert source==SIM_SOURCE, "Must use simulation for asymmetric object."
+    if not structured:
+        if not contactnets:
+            print("Must use prediction loss with end-to-end model --> " + \
+                  "setting to prediction loss.")
+            contactnets = False
+        if not regenerate:
+            print("Can't regenerate URDFs from end-to-end model --> " + \
+                  "no regeneration.")
+            regenerate = False
+    if system==ASYMMETRIC_SYSTEM and geometry==BOX_TYPE:
+        print("No box representation of asymmetric system --> " + \
+              "using polygon.")
+        geometry = POLYGON_TYPE
 
     print(f'Generating experiment {storage_folder_name}/{run_name}')
 
@@ -152,12 +170,6 @@ def create_instance(storage_folder_name: str, run_name: str,
     script = script.replace('{wandb_group_id}', wandb_group_id)
 
     train_options = ''
-
-    # If training a deep end-to-end network, use prediction loss and don't
-    # attempt to generate URDFs.
-    if not structured:
-        contactnets = False
-        regenerate = False
     
     if not restart:
         train_options = f' --system={system} --source={source}' + \

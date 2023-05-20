@@ -19,11 +19,11 @@ from dair_pll.dataset_generation import DataGenerationConfig, \
     ExperimentDatasetGenerator
 from dair_pll.dataset_management import DataConfig, TrajectorySliceConfig
 from dair_pll.deep_learnable_model import MLP
-from dair_pll.deep_learnable_system import DeepLearnableExperiment, \
-    DeepLearnableSystemConfig
+from dair_pll.deep_learnable_system import DeepLearnableSystemConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
-    MultibodyLearnableSystemConfig, MultibodyLosses
+    MultibodyLearnableSystemConfig, MultibodyLosses, \
+    DrakeDeepLearnableExperiment
 from dair_pll.experiment import default_epoch_callback
 from dair_pll.experiment_config import OptimizerConfig, \
     SupervisedLearningExperimentConfig
@@ -39,7 +39,8 @@ from dair_pll.system import System
 # Possible systems on which to run PLL
 CUBE_SYSTEM = 'cube'
 ELBOW_SYSTEM = 'elbow'
-SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM]
+ASYMMETRIC_SYSTEM = 'asymmetric'
+SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM, ASYMMETRIC_SYSTEM]
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -76,6 +77,7 @@ CUBE_BOX_URDF_ASSET = 'contactnets_cube.urdf'
 CUBE_MESH_URDF_ASSET = 'contactnets_cube_mesh.urdf'
 ELBOW_BOX_URDF_ASSET = 'contactnets_elbow.urdf'
 ELBOW_MESH_URDF_ASSET = 'contactnets_elbow_mesh.urdf'
+ASYMMETRIC_URDF_ASSET = 'contactnets_asymmetric.urdf'
 
 REAL_DATA_ASSETS = {CUBE_SYSTEM: CUBE_DATA_ASSET, ELBOW_SYSTEM: ELBOW_DATA_ASSET}
 
@@ -90,7 +92,10 @@ CUBE_URDFS = {MESH_TYPE: CUBE_MESH_URDF_ASSET,
 ELBOW_URDFS = {MESH_TYPE: ELBOW_MESH_URDF_ASSET,
                BOX_TYPE: ELBOW_BOX_URDF_ASSET,
                POLYGON_TYPE: ELBOW_MESH_URDF_ASSET}
-TRUE_URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
+ASYMMETRIC_URDFS = {MESH_TYPE: ASYMMETRIC_URDF_ASSET,
+                    POLYGON_TYPE: ASYMMETRIC_URDF_ASSET}
+TRUE_URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS,
+              ASYMMETRIC_SYSTEM: ASYMMETRIC_URDFS}
 
 
 CUBE_BOX_URDF_ASSET_BAD = 'contactnets_cube_bad_init.urdf'
@@ -113,14 +118,6 @@ WRONG_URDFS_BY_GEOM_THEN_SYSTEM = {MESH_TYPE: WRONG_MESH_URDFS,
                                    POLYGON_TYPE: WRONG_MESH_URDFS,
                                    BOX_TYPE: WRONG_BOX_URDFS}
 
-CUBE_PRODUCT_SPACE = ProductSpace([FixedBaseSpace(n_joints=0),
-                                   FloatingBaseSpace(n_joints=0)])
-ELBOW_PRODUCT_SPACE = ProductSpace([FixedBaseSpace(n_joints=0),
-                                    FloatingBaseSpace(n_joints=1)])
-PRODUCT_SPACES = {CUBE_SYSTEM: CUBE_PRODUCT_SPACE,
-                  ELBOW_SYSTEM: ELBOW_PRODUCT_SPACE}
-
-
 REPO_DIR = os.path.normpath(
     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
 
@@ -132,7 +129,10 @@ CUBE_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, 0., 0., 0., 0., 0., -.075])
 ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
-X_0S = {CUBE_SYSTEM: CUBE_X_0, ELBOW_SYSTEM: ELBOW_X_0}
+ASYMMETRIC_X_0 = torch.tensor(
+    [1., 0., 0., 0., 0., 0., 0.21 + .015, 0., 0., 0., 0., 0., -.075])
+X_0S = {CUBE_SYSTEM: CUBE_X_0, ELBOW_SYSTEM: ELBOW_X_0,
+        ASYMMETRIC_SYSTEM: ASYMMETRIC_X_0}
 CUBE_SAMPLER_RANGE = torch.tensor([
     2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, 6., 6., 6., 1.5, 1.5, .075
 ])
@@ -140,11 +140,15 @@ ELBOW_SAMPLER_RANGE = torch.tensor([
     2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, np.pi, 6., 6., 6., 1.5,
     1.5, .075, 6.
 ])
+ASYMMETRIC_SAMPLER_RANGE = torch.tensor([
+    2 * np.pi, 2 * np.pi, 2 * np.pi, .03, .03, .015, 6., 6., 6., 1.5, 1.5, .075
+])
 SAMPLER_RANGES = {
     CUBE_SYSTEM: CUBE_SAMPLER_RANGE,
-    ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE
+    ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE,
+    ASYMMETRIC_SYSTEM: ASYMMETRIC_SAMPLER_RANGE
 }
-TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
+TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80}
 
 # Training data configuration.
 T_PREDICTION = 1
@@ -152,10 +156,14 @@ T_PREDICTION = 1
 # Optimization configuration.
 CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
-LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
+ASYMMETRIC_LR = 1e-3
+LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR,
+       ASYMMETRIC_SYSTEM: ASYMMETRIC_LR}
 CUBE_WD = 0.0
 ELBOW_WD = 0.0  #1e-4
-WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD}
+ASYMMETRIC_WD = 0.0
+WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
+       ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
 EPOCHS = 200            # change this (originally 500)
 PATIENCE = 100       # change this (originally EPOCHS)
@@ -286,7 +294,7 @@ def main(storage_folder_name: str = "",
 
     else:
         learnable_config = DeepLearnableSystemConfig(
-            space=PRODUCT_SPACES[system], layers=4, hidden_size=256,
+            layers=4, hidden_size=256,
             nonlinearity=torch.nn.Tanh, model_constructor=MLP
         )
 
@@ -306,7 +314,7 @@ def main(storage_folder_name: str = "",
 
     # Make experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config) \
-        if structured else DeepLearnableExperiment(experiment_config)
+        if structured else DrakeDeepLearnableExperiment(experiment_config)
 
     # Prepare data.
     x_0 = X_0S[system]
