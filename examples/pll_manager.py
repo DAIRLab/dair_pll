@@ -133,6 +133,9 @@ def create_instance(storage_folder_name: str, run_name: str,
     if system == ASYMMETRIC_SYSTEM:
         assert source==SIM_SOURCE, "Must use simulation for asymmetric object."
     if not structured:
+        if geometry != POLYGON_TYPE:
+            print("Use mesh type for end-to-end comparisons --> using polygon.")
+            geometry = POLYGON_TYPE
         if not contactnets:
             print("Must use prediction loss with end-to-end model --> " + \
                   "setting to prediction loss.")

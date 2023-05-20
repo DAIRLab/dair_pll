@@ -218,6 +218,44 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
 
         return SystemSummary(scalars={}, videos=videos, meshes={})
 
+    def get_true_geometry_multibody_learnable_system(self
+        ) -> MultibodyLearnableSystem:
+
+        has_property = hasattr(self, 'true_geom_multibody_system')
+        if not has_property or self.true_geom_multibody_system is None:
+            oracle_system = self.get_oracle_system()
+            dt = oracle_system.dt
+            urdfs = oracle_system.urdfs
+
+            self.true_geom_multibody_system = MultibodyLearnableSystem(
+                init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
+                w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
+                do_residual=False,
+                represent_geometry_as = \
+                    self.config.learnable_config.represent_geometry_as,
+                randomize_initialization = False)
+            
+        return self.true_geom_multibody_system
+
+    def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:
+        true_geom_system = self.get_true_geometry_multibody_learnable_system()
+
+        if x_pred.dim() == 1:
+            x_pred = x_pred.unsqueeze(0)
+        assert x_pred.dim() == 2
+        assert x_pred.shape[1] == true_geom_system.space.n_x
+
+        n_steps = x_pred.shape[0]
+
+        phi, _ = true_geom_system.multibody_terms.contact_terms(x_pred)
+        phi = phi.detach().clone()
+        smallest_phis = phi.min(dim=1).values
+        return -smallest_phis[smallest_phis < 0].sum() / n_steps
+
+    def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
+        # Calculate penetration metric
+        return {TRAJECTORY_PENETRATION_NAME: self.penetration_metric}
+
 
 class DrakeDeepLearnableExperiment(DrakeExperiment, DeepLearnableExperiment):
     pass
@@ -416,45 +454,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         pdb.set_trace()
 
         return prediction_loss + reg_term
-
-    def get_true_geometry_multibody_learnable_system(self
-        ) -> MultibodyLearnableSystem:
-
-        has_property = hasattr(self, 'true_geom_multibody_system')
-        if not has_property or self.true_geom_multibody_system is None:
-            oracle_system = self.get_oracle_system()
-            dt = oracle_system.dt
-            urdfs = oracle_system.urdfs
-
-            self.true_geom_multibody_system = MultibodyLearnableSystem(
-                init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
-                w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
-                do_residual=False,
-                represent_geometry_as = \
-                    self.config.learnable_config.represent_geometry_as,
-                randomize_initialization = False)
-            
-        return self.true_geom_multibody_system
-
-    def penetration_metric(self, x_pred: Tensor, _x_target: Tensor) -> Tensor:
-        true_geom_system = self.get_true_geometry_multibody_learnable_system()
-
-        if x_pred.dim() == 1:
-            x_pred = x_pred.unsqueeze(0)
-        assert x_pred.dim() == 2
-        assert x_pred.shape[1] == true_geom_system.space.n_x
-
-        n_steps = x_pred.shape[0]
-
-        phi, _ = true_geom_system.multibody_terms.contact_terms(x_pred)
-        phi = phi.detach().clone()
-        smallest_phis = phi.min(dim=1).values
-        return -smallest_phis[smallest_phis < 0].sum() / n_steps
-
-    def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
-        # Calculate penetration metric
-
-        return {TRAJECTORY_PENETRATION_NAME: self.penetration_metric}
 
     def contactnets_loss(self,
                          x_past: Tensor,
