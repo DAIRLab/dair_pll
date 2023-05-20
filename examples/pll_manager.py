@@ -832,6 +832,9 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     repo = git.Repo(search_parent_directories=True)
     repo_dir = repo.git.rev_parse("--show-toplevel")
     partial_storage_name = op.join(repo_dir, 'results', f'sweep_{system}')
+
+    partial_storage_name += f'_{additional_forces}' \
+        if additional_forces != None else ''
     
     for dataset_exponent in range(2, 10):
         storage_name = f'{partial_storage_name}-{dataset_exponent}'
