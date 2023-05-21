@@ -95,11 +95,13 @@ BODY_PARAMETERS = {
     'diameter_x': 'Geometry diameter x',
     'diameter_y': 'Geometry diameter x',
     'diameter_z': 'Geometry diameter x'}
+POLYGON_GEOMETRY_PARAMETERS = ['center_x', 'center_y', 'center_z',
+                               'diameter_x', 'diameter_y', 'diameter_z']
 
 INERTIA_KEY = 'multibody_terms.lagrangian_terms.inertial_parameters'
 FRICTION_KEY = 'multibody_terms.contact_terms.friction_params'
-GEOMETRY_KEY = 'multibody_terms.contact_terms.geometries.0.vertices_parameter'
-# GEOMETRY_KEY = 'multibody_terms.contact_terms.geometries.0.length_params'
+GEOMETRY_KEY1 = 'multibody_terms.contact_terms.geometries.0.vertices_parameter'
+GEOMETRY_KEY2 = 'multibody_terms.contact_terms.geometries.0.length_params'
 
 
 PERFORMANCE_METRICS = ['delta_v_squared_mean',    'v_plus_squared_mean',
@@ -162,7 +164,12 @@ def get_physical_parameters(body_names, best_system_state):
 
     theta = best_system_state[INERTIA_KEY]
     friction_params = best_system_state[FRICTION_KEY]
-    geometry_params = best_system_state[GEOMETRY_KEY]
+    try:
+        geometry_params = best_system_state[GEOMETRY_KEY1]
+        pdb.set_trace()
+    except:
+        geometry_params = best_system_state[GEOMETRY_KEY2]
+        print(f'\t\tFound non-polygon geometry.')
 
     inertia_pi_cm_params = InertialParameterConverter.theta_to_pi_cm(theta)
 
@@ -183,7 +190,11 @@ def get_physical_parameters(body_names, best_system_state):
         body_params.update({'mu': friction_params[i].item()})
 
         # Third, get the geometry parameters.
-        pass
+        try:
+            for geom_param in POLYGON_GEOMETRY_PARAMETERS:
+                body_params.update({geom_param: geometry_params[geom_param]})
+        except:
+            pass
 
         # Store the results.
         physical_params_dict.update({body: body_params})
