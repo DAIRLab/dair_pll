@@ -21,7 +21,12 @@ The json file has the following format:
                         ...
                     }
                     learned_params: {
-                        None if not structured, otherwise param_1, param_2, ...
+                        body_1: {
+                            param_1:  float
+                            param_2:  float
+                            ...
+                        }
+                        body_2: {...}
                     }
                     target_trajs: []      <-- excluded from json due to datatype
                     prediction_trajs: []  <-- excluded from json due to datatype
