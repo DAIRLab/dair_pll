@@ -47,14 +47,9 @@ import json
 import os
 import os.path as op
 import pdb
-import fnmatch
 import pickle
 import torch
 
-import numpy as np
-from matplotlib import rc, rcParams
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter, NullFormatter
 import numpy as np
 
 from dair_pll.deep_learnable_system import DeepLearnableSystemConfig
@@ -63,8 +58,8 @@ from dair_pll.geometry import _NOMINAL_HALF_LENGTH
 from dair_pll.inertia import InertialParameterConverter
 
 
-"""Note:  might need the below for backwards compatibility:
-from dair_pll.experiment_config import SupervisedLearningExperimentConfig
+"""Note:  might need the below in drake_experiment.py for backwards
+compatibility:
 
 @dataclass
 class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
@@ -72,11 +67,6 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
     visualize_learned_geometry: bool = True
     \"""Whether to use learned geometry in trajectory overlay visualization.\"""
 """
-
-# Some settings on the plot generation.
-rc('legend', fontsize=30)
-plt.rc('axes', titlesize=40)    # fontsize of the axes title
-plt.rc('axes', labelsize=40)    # fontsize of the x and y labels
 
 
 # Directory management.
@@ -107,8 +97,8 @@ BODY_PARAMETERS = {
 
 INERTIA_KEY = 'multibody_terms.lagrangian_terms.inertial_parameters'
 FRICTION_KEY = 'multibody_terms.contact_terms.friction_params'
-# GEOMETRY_KEY = 'multibody_terms.contact_terms.geometries.0.vertices_parameter'
-GEOMETRY_KEY = 'multibody_terms.contact_terms.geometries.0.length_params'
+GEOMETRY_KEY = 'multibody_terms.contact_terms.geometries.0.vertices_parameter'
+# GEOMETRY_KEY = 'multibody_terms.contact_terms.geometries.0.length_params'
 
 
 PERFORMANCE_METRICS = ['delta_v_squared_mean',    'v_plus_squared_mean',
@@ -280,7 +270,7 @@ for experiment in EXPERIMENTS.keys():
             print(f'Could not find {results_folder_name} runs; skipping.')
             continue
         
-        print(f'Found {results_folder_name}!')
+        print(f'\nFound {results_folder_name}.')
 
         for run in os.listdir(runs_path):
             config, stats, checkpoint = \
@@ -293,7 +283,7 @@ for experiment in EXPERIMENTS.keys():
                 continue
 
             assert config != None and checkpoint != None
-            print(f'\tFound statistics for {run}!')
+            print(f'\tFound statistics for {run}.')
 
             run_key, run_dict = get_run_info_from_config(config)
 
