@@ -457,9 +457,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             prediction_loss = prediction_loss.mean()
             reg_term = reg_term.mean()
 
-        print(f'{prediction_loss}, {reg_term}')
-        pdb.set_trace()
-
         return prediction_loss + reg_term
 
     def contactnets_loss(self,
