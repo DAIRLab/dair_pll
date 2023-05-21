@@ -135,9 +135,11 @@ EXPERIMENT_DICT = {'system': None, 'prefix': None,
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
 EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
-               'elbow': {'system': 'elbow', 'prefix': 'se'} }#,
-              # 'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},
-              # 'elbow_vortex': {'system': 'elbow', 'prefix': 've'} }
+               'elbow': {'system': 'elbow', 'prefix': 'se'},
+               'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},
+               'elbow_vortex': {'system': 'elbow', 'prefix': 've'},
+               'asymmetric_viscous': {'system': 'asymmetric', 'prefix': 'ba'},
+               'elbow_viscous': {'system': 'elbow', 'prefix': 'be'}}
 
 
 # ============================= Helper functions ============================= #
