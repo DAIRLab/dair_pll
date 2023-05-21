@@ -165,8 +165,8 @@ ASYMMETRIC_WD = 0.0
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
-EPOCHS = 1000            # change this (originally 500)
-PATIENCE = 100       # change this (originally EPOCHS)
+EPOCHS = 200            # change this (originally 500)
+PATIENCE = 10       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
 
