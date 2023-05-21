@@ -18,6 +18,7 @@ install_reqs = [
     'python-fcl',
     'gitpython',
     'protobuf==3.20.*',
+    'cvxpylayers',
     # documentation
     'networkx',
     'protobuf==3.20.*',

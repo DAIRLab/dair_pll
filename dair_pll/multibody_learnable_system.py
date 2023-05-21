@@ -29,7 +29,7 @@ import numpy as np
 import torch
 import pdb
 import time
-from sappy import SAPSolver  # type: ignore
+# from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 from torch.nn import Module
 import torch.nn as nn
@@ -39,11 +39,11 @@ from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.quaternion import quaternion_to_rotmat_vec
+from dair_pll.solvers import DynamicCvxpyLCQPLayer
 from dair_pll.state_space import FloatingBaseSpace
 from dair_pll.system import System, SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
-    one_vector_block_diagonal
-
+    one_vector_block_diagonal, project_lorentz, reflect_lorentz
 
 
 # Loss variations options
@@ -74,7 +74,7 @@ class MultibodyLearnableSystem(System):
     init_urdfs: Dict[str, str]
     output_urdfs_dir: Optional[str] = None
     visualization_system: Optional[DrakeSystem]
-    solver: SAPSolver
+    solver: DynamicCvxpyLCQPLayer
     dt: float
     loss_variation_txt: str
 
@@ -135,13 +135,13 @@ class MultibodyLearnableSystem(System):
         if randomize_initialization:
             # Add noise and export.
             print(f'Randomizing initialization.')
-            multibody_terms.randomize_multibody_terms()
+            multibody_terms.randomize_multibody_terms(inertia_mode)
             self.multibody_terms = multibody_terms
             self.generate_updated_urdfs('init')
 
         self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
         self.visualization_system = None
-        self.solver = SAPSolver()
+        self.solver = DynamicCvxpyLCQPLayer(self.space.n_v)
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
@@ -293,7 +293,7 @@ class MultibodyLearnableSystem(System):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
-        eps = 1e-3
+        # eps = 1e-3
 
         # Begin loss calculation.
         delassus, M, J, phi, non_contact_acceleration = \
@@ -354,8 +354,8 @@ class MultibodyLearnableSystem(System):
         elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
             half_delassus = delassus
 
-        Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
-            eps * torch.eye(3 * n_contacts)
+        Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) #+ \
+            #eps * torch.eye(3 * n_contacts)
 
         J_M = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
 
@@ -415,10 +415,12 @@ class MultibodyLearnableSystem(System):
         # pylint: disable=E1103
         force = pbmm(
             reorder_mat,
-            self.solver.apply(
+            self.solver(  #.apply(
                 J_M,
-                pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                eps).detach().unsqueeze(-1))
+                pbmm(reorder_mat.transpose(-1, -2),
+                     q).squeeze(-1)).detach().unsqueeze(-1))
+                # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                #eps).detach().unsqueeze(-1))
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
@@ -598,10 +600,12 @@ class MultibodyLearnableSystem(System):
 
         impulse_full = pbmm(
             reorder_mat,
-            self.solver.apply(
+            self.solver(  #.apply(
                 J_M,
-                pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),
-                1e-4).unsqueeze(-1))
+                pbmm(reorder_mat.transpose(-1, -2),
+                     q).squeeze(-1)).detach().unsqueeze(-1))
+                # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                #eps).detach().unsqueeze(-1))
 
         impulse = torch.zeros_like(impulse_full)
         impulse[contact_filter] += impulse_full[contact_filter]

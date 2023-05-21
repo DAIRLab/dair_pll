@@ -754,7 +754,7 @@ class MultibodyTerms(Module):
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs
 
-    def randomize_multibody_terms(self) -> None:
+    def randomize_multibody_terms(self, inertia_int) -> None:
         r"""Adds random noise to multibody terms in the following ways:
             - Geometry lengths can be between 0.5 and 1.5 times their original
               length.
@@ -800,50 +800,60 @@ class MultibodyTerms(Module):
                     Parameter(scale_factory(geometry.vertices_parameter),
                               requires_grad=True)
             else:
-                raise NotImplementedError("Can only randomize Box and Polygon"
+                raise NotImplementedError("Can only randomize Box and Polygon "
                                           "geometries.")
 
-        # Third, randomize the inertia.
-        # Use a while loop to prevent nan situations.
-        keep_trying = True
-        while keep_trying:
-            for idx in range(self.lagrangian_terms.inertial_parameters.shape[0]):
-                pi_cm = self.lagrangian_terms.original_pi_cm_params[idx]
+        # Third, randomize the inertia.  Only randomize the learnable params.
+        if INERTIA_PARAM_OPTIONS[inertia_int] != 'none' and \
+           INERTIA_PARAM_OPTIONS[inertia_int] != 'masses':
+            # Use a while loop to prevent nan situations.
+            keep_trying = True
+            while keep_trying:
+                n_bodies = self.lagrangian_terms.inertial_parameters.shape[0]
+                for idx in range(n_bodies):
+                    pi_cm = self.lagrangian_terms.original_pi_cm_params[idx]
 
-                # Let the center of mass be anywhere within the inner half of a
-                # nominal geometry.
-                mass = pi_cm[0].item()
-                pi_cm[1:4] += mass*(torch.rand(3) - 0.5) * _NOMINAL_HALF_LENGTH
+                    # Let the center of mass be anywhere within the inner half
+                    # of a nominal geometry.
+                    mass = pi_cm[0].item()
+                    pi_cm[1:4] += mass*(torch.rand(3) - 0.5) \
+                        * _NOMINAL_HALF_LENGTH
 
-                # Define the moments of inertia assuming a solid block of
-                # homogeneous density with random mass and random lengths.
-                rand_mass = mass * (torch.rand(1) + 0.5)
-                rand_lengths = (torch.rand(3) + 0.5) * _NOMINAL_HALF_LENGTH
-                scaling = rand_mass/12
-                Ixx_pa = scaling * (rand_lengths[1]**2 + rand_lengths[2]**2)
-                Iyy_pa = scaling * (rand_lengths[0]**2 + rand_lengths[2]**2)
-                Izz_pa = scaling * (rand_lengths[0]**2 + rand_lengths[1]**2)
+                    if INERTIA_PARAM_OPTIONS[inertia_int] == 'all':
+                        # Define the moments of inertia assuming a solid block
+                        # of homogeneous density with random mass and random
+                        # lengths.
+                        rand_mass = mass * (torch.rand(1) + 0.5)
+                        rand_lens = (torch.rand(3) + 0.5) * _NOMINAL_HALF_LENGTH
+                        scaling = rand_mass/12
+                        Ixx_pa = scaling * (rand_lens[1]**2 + rand_lens[2]**2)
+                        Iyy_pa = scaling * (rand_lens[0]**2 + rand_lens[2]**2)
+                        Izz_pa = scaling * (rand_lens[0]**2 + rand_lens[1]**2)
 
-                # Randomly rotate the principal axes.
-                rot_mat = Tensor(Rotation.random().as_matrix())
-                I_mat_pa = Tensor([[Ixx_pa, 0., 0.],
-                                   [0., Iyy_pa, 0.],
-                                   [0., 0., Izz_pa]])
-                I_mat_rand = rot_mat.T @ I_mat_pa @ rot_mat
+                        # Randomly rotate the principal axes.
+                        rot_mat = Tensor(Rotation.random().as_matrix())
+                        I_mat_pa = Tensor([[Ixx_pa, 0., 0.],
+                                           [0., Iyy_pa, 0.],
+                                           [0., 0., Izz_pa]])
+                        I_rand = rot_mat.T @ I_mat_pa @ rot_mat
 
-                # Grab the moments and products of inertia from this result.
-                Ixx, Iyy, Izz = I_mat_rand[0,0], I_mat_rand[1,1], I_mat_rand[2,2]
-                Ixy, Ixz, Iyz = I_mat_rand[0,1], I_mat_rand[1,2], I_mat_rand[1,2]
+                        # Grab the moments and products of inertia from this
+                        # result.
+                        Ixx, Iyy, Izz = I_rand[0,0], I_rand[1,1], I_rand[2,2]
+                        Ixy, Ixz, Iyz = I_rand[0,1], I_rand[1,2], I_rand[1,2]
 
-                pi_cm[4:7] = Tensor([Ixx, Iyy, Izz])
-                pi_cm[7:10] = Tensor([Ixy, Ixz, Iyz])
+                        pi_cm[4:7] = Tensor([Ixx, Iyy, Izz])
+                        pi_cm[7:10] = Tensor([Ixy, Ixz, Iyz])
 
-                self.lagrangian_terms.original_pi_cm_params[idx] = pi_cm
+                    self.lagrangian_terms.original_pi_cm_params[idx] = pi_cm
 
-            new_theta_params = InertialParameterConverter.pi_cm_to_theta(
-                self.lagrangian_terms.original_pi_cm_params)
-            if not torch.any(torch.isnan(new_theta_params)):
-                keep_trying = False
+                new_theta_params = InertialParameterConverter.pi_cm_to_theta(
+                    self.lagrangian_terms.original_pi_cm_params)
+                if not torch.any(torch.isnan(new_theta_params)):
+                    keep_trying = False
+
+        new_theta_params = InertialParameterConverter.pi_cm_to_theta(
+            self.lagrangian_terms.original_pi_cm_params)
 
         self.lagrangian_terms.inertial_parameters = Parameter(
             new_theta_params, requires_grad=True)
