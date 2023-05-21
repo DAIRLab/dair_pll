@@ -100,9 +100,12 @@ POLYGON_GEOMETRY_PARAMETERS = ['center_x', 'center_y', 'center_z',
 
 INERTIA_KEY = 'multibody_terms.lagrangian_terms.inertial_parameters'
 FRICTION_KEY = 'multibody_terms.contact_terms.friction_params'
-GEOMETRY_KEY1 = 'multibody_terms.contact_terms.geometries.0.vertices_parameter'
-GEOMETRY_KEY2 = 'multibody_terms.contact_terms.geometries.0.length_params'
+GEOMETRY_PREFIX = 'multibody_terms.contact_terms.geometries'
+GEOMETRY_KEY_BODY_1 = f'{GEOMETRY_PREFIX}.2.vertices_parameter'
+GEOMETRY_KEY_BODY_2 = f'{GEOMETRY_PREFIX}.0.vertices_parameter'
+# GEOMETRY_KEY2 = 'multibody_terms.contact_terms.geometries.0.length_params'
 
+FRICTION_INDEX_BY_BODY_NAME = {'body': 0, 'elbow_2': 0, 'elbow_1': 2}
 
 PERFORMANCE_METRICS = ['delta_v_squared_mean',    'v_plus_squared_mean',
                     'model_loss_mean',            'oracle_loss_mean',
@@ -158,17 +161,45 @@ def get_run_info_from_config(config):
     return run_name, run_dict
 
 
+# Calculate geometry measurements from a set of polygon vertices.
+def get_geometry_metrics_from_params(geom_params):
+    # First, convert the parameters to meters.
+    vertices = geom_params * _NOMINAL_HALF_LENGTH
+
+    # Extract diameters and centers.
+    mins = vertices.min(axis=0).values
+    maxs = vertices.max(axis=0).values
+
+    diameters = maxs - mins
+    centers = (maxs + mins)/2
+
+    geom_dict = {'diameter_x': diameters[0].item(),
+                 'diameter_y': diameters[1].item(),
+                 'diameter_z': diameters[2].item(),
+                 'center_x': centers[0].item(),
+                 'center_y': centers[1].item(),
+                 'center_z': centers[2].item()}
+    return geom_dict
+
+
+def geometry_keys_by_sys_and_bodies(system, body_name):
+    if system == 'cube' or system == 'asymmetric':
+        return {'body': GEOMETRY_KEY_BODY_1}
+    return {'elbow_1': GEOMETRY_KEY_BODY_1, 'elbow_2': GEOMETRY_KEY_BODY_2}
+
+
+
 # Get individual physical parameters from best learned system state.
 def get_physical_parameters(system, body_names, best_system_state):
     physical_params_dict = {}
 
     theta = best_system_state[INERTIA_KEY]
     friction_params = best_system_state[FRICTION_KEY]
-    try:
-        geometry_params = best_system_state[GEOMETRY_KEY1]
-    except:
-        geometry_params = best_system_state[GEOMETRY_KEY2]
-        print(f'\t\tFound non-polygon geometry.')
+    if GEOMETRY_KEY_BODY_1 in best_system_state.keys():
+        geometry_keys = geometry_keys_by_sys_and_bodies(system, body_names)
+    else:
+        geometry_keys = {}
+        print(f'\t\tFound non-polygon; won\'t gather geometry results.')
 
     inertia_pi_cm_params = InertialParameterConverter.theta_to_pi_cm(theta)
 
@@ -186,13 +217,14 @@ def get_physical_parameters(system, body_names, best_system_state):
             body_params.update({ORDERED_INERTIA_PARAMS[j]: i_params[j].item()})
 
         # Second, get the friction parameters.
-        body_params.update({'mu': friction_params[i].item()})
+        mu_index = FRICTION_INDEX_BY_BODY_NAME[body]
+        body_params.update({'mu': friction_params[mu_index].item()})
 
         # Third, get the geometry parameters.
         try:
-            for geom_param in POLYGON_GEOMETRY_PARAMETERS:
-                original_key = f'{system}_{body}_{geom_param}'
-                body_params.update({geom_param: geometry_params[original_key]})
+            geometry_params = best_system_state[geometry_keys[body]]
+            geom_dict = get_geometry_metrics_from_params(geometry_params)
+            body_params.update(geom_dict)
         except:
             pass
 
