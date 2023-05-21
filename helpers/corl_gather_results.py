@@ -184,9 +184,8 @@ def get_geometry_metrics_from_params(geom_params):
 
 def geometry_keys_by_sys_and_bodies(system, body_name):
     if system == 'cube' or system == 'asymmetric':
-        return {'body': GEOMETRY_KEY_BODY_1}
+        return {'body': GEOMETRY_KEY_BODY_2}
     return {'elbow_1': GEOMETRY_KEY_BODY_1, 'elbow_2': GEOMETRY_KEY_BODY_2}
-
 
 
 # Get individual physical parameters from best learned system state.
@@ -195,7 +194,7 @@ def get_physical_parameters(system, body_names, best_system_state):
 
     theta = best_system_state[INERTIA_KEY]
     friction_params = best_system_state[FRICTION_KEY]
-    if GEOMETRY_KEY_BODY_1 in best_system_state.keys():
+    if GEOMETRY_KEY_BODY_2 in best_system_state.keys():
         geometry_keys = geometry_keys_by_sys_and_bodies(system, body_names)
     else:
         geometry_keys = {}
