@@ -49,6 +49,7 @@ import os.path as op
 import pdb
 import pickle
 import torch
+from copy import deepcopy
 
 import numpy as np
 
@@ -139,7 +140,7 @@ def make_empty_data_sweep_dict():
 
 # Extract information out of a configuration object.
 def get_run_info_from_config(config):
-    run_dict = RUN_DICT.copy()
+    run_dict = deepcopy(RUN_DICT)
 
     run_dict['structured'] = False if \
         isinstance(config.learnable_config, DeepLearnableSystemConfig) else \
@@ -256,7 +257,7 @@ results = {}
 
 for experiment in EXPERIMENTS.keys():
     print(f'\n\n============== Starting {experiment} ==============')
-    exp_dict = EXPERIMENT_DICT.copy()
+    exp_dict = deepcopy(EXPERIMENT_DICT)
     exp_dict['system'] = EXPERIMENTS[experiment]['system']
     exp_dict['prefix'] = EXPERIMENTS[experiment]['prefix']
     exp_dict['data_sweep'] = make_empty_data_sweep_dict()
