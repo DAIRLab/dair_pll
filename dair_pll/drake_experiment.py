@@ -38,6 +38,13 @@ class MultibodyLosses(Enum):
 
 
 @dataclass
+class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
+                                             ):
+    visualize_learned_geometry: bool = True
+    """Whether to use learned geometry in trajectory overlay visualization."""
+
+
+@dataclass
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss."""
