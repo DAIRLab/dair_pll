@@ -159,14 +159,13 @@ def get_run_info_from_config(config):
 
 
 # Get individual physical parameters from best learned system state.
-def get_physical_parameters(body_names, best_system_state):
+def get_physical_parameters(system, body_names, best_system_state):
     physical_params_dict = {}
 
     theta = best_system_state[INERTIA_KEY]
     friction_params = best_system_state[FRICTION_KEY]
     try:
         geometry_params = best_system_state[GEOMETRY_KEY1]
-        pdb.set_trace()
     except:
         geometry_params = best_system_state[GEOMETRY_KEY2]
         print(f'\t\tFound non-polygon geometry.')
@@ -192,7 +191,8 @@ def get_physical_parameters(body_names, best_system_state):
         # Third, get the geometry parameters.
         try:
             for geom_param in POLYGON_GEOMETRY_PARAMETERS:
-                body_params.update({geom_param: geometry_params[geom_param]})
+                original_key = f'{system}_{body}_{geom_param}'
+                body_params.update({geom_param: geometry_params[original_key]})
         except:
             pass
 
@@ -269,11 +269,12 @@ results = {}
 for experiment in EXPERIMENTS.keys():
     print(f'\n\n============== Starting {experiment} ==============')
     exp_dict = deepcopy(EXPERIMENT_DICT)
-    exp_dict['system'] = EXPERIMENTS[experiment]['system']
+    system = EXPERIMENTS[experiment]['system']
+    exp_dict['system'] = system
     exp_dict['prefix'] = EXPERIMENTS[experiment]['prefix']
     exp_dict['data_sweep'] = make_empty_data_sweep_dict()
 
-    body_names = BODY_NAMES_BY_SYSTEM[exp_dict['system']]
+    body_names = BODY_NAMES_BY_SYSTEM[system]
 
     for exponent in DATASET_EXPONENTS:
         results_folder_name = f'sweep_{experiment}-{exponent}'
@@ -305,7 +306,7 @@ for experiment in EXPERIMENTS.keys():
 
             if run_dict['structured']:
                 best_system_state = checkpoint['best_learned_system_state']
-                params_dict = get_physical_parameters(body_names,
+                params_dict = get_physical_parameters(system, body_names,
                                                       best_system_state)
                 run_dict['learned_params'] = params_dict
 
