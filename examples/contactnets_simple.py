@@ -248,8 +248,7 @@ def main(storage_folder_name: str = "",
 
     # If starting with true system, no need to train, since we probably just
     # want to generate statistics.
-    # num_epochs = 0 if true_sys else EPOCHS  #UNDO
-    num_epochs = EPOCHS
+    num_epochs = 0 if true_sys else EPOCHS
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
     optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
@@ -267,8 +266,6 @@ def main(storage_folder_name: str = "",
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
-    wrong_urdfs = {system: file_utils.get_asset(ELBOW_MESH_URDF_ASSET_SMALL)}  #UNDO
-
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
         t_prediction=1 if contactnets else T_PREDICTION)
@@ -285,15 +282,15 @@ def main(storage_folder_name: str = "",
         loss = MultibodyLosses.CONTACTNETS_LOSS if contactnets else \
                MultibodyLosses.PREDICTION_LOSS
 
-        learnable_config = MultibodyLearnableSystemConfig(  #UNDO wrong_urdfs
-            urdfs=wrong_urdfs, loss=loss, inertia_mode=int(inertia_params),
+        learnable_config = MultibodyLearnableSystemConfig(
+            urdfs=urdfs, loss=loss, inertia_mode=int(inertia_params),
             loss_variation=int(loss_variation), w_pred=w_pred,
             w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_diss = Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_pen  = Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_res  = Float(w_res, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             do_residual=do_residual, represent_geometry_as=geometry,
-            randomize_initialization = False) #not true_sys)
+            randomize_initialization = not true_sys)
 
     else:
         learnable_config = DeepLearnableSystemConfig(
@@ -381,14 +378,13 @@ def main(storage_folder_name: str = "",
     learned_system, stats = experiment.generate_results(
         regenerate_callback if regenerate else default_epoch_callback)
 
-#UNDO
-#    # Save the final urdf.
-#    if structured:
-#        print(f'\nSaving the final learned URDF.')
-#        learned_system = cast(MultibodyLearnableSystem, learned_system)
-#        learned_system.generate_updated_urdfs(suffix='best')
-#    else:
-#        print(f'\nFinished training deep learnable; no URDF export.')
+   # # Save the final urdf.
+   # if structured:
+   #     print(f'\nSaving the final learned URDF.')
+   #     learned_system = cast(MultibodyLearnableSystem, learned_system)
+   #     learned_system.generate_updated_urdfs(suffix='best')
+   # else:
+   #     print(f'\nFinished training deep learnable; no URDF export.')
     print(f'Done!')
 
 
