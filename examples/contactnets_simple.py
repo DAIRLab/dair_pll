@@ -166,7 +166,7 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
 EPOCHS = 50            # change this (originally 500)
-PATIENCE = 8       # change this (originally EPOCHS)
+PATIENCE = 10       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
 
@@ -249,6 +249,7 @@ def main(storage_folder_name: str = "",
     # If starting with true system, no need to train, since we probably just
     # want to generate statistics.
     # num_epochs = 0 if true_sys else EPOCHS  #UNDO
+    num_epochs = EPOCHS
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
     optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
@@ -266,7 +267,7 @@ def main(storage_folder_name: str = "",
     urdfs = {system: urdf}
     base_config = DrakeSystemConfig(urdfs=urdfs)
 
-    wrong_urdfs = {system: ELBOW_MESH_URDF_ASSET_SMALL}  #UNDO
+    wrong_urdfs = {system: file_utils.get_asset(ELBOW_MESH_URDF_ASSET_SMALL)}  #UNDO
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -380,13 +381,14 @@ def main(storage_folder_name: str = "",
     learned_system, stats = experiment.generate_results(
         regenerate_callback if regenerate else default_epoch_callback)
 
-    # Save the final urdf.
-    if structured:
-        print(f'\nSaving the final learned URDF.')
-        learned_system = cast(MultibodyLearnableSystem, learned_system)
-        learned_system.generate_updated_urdfs(suffix='best')
-    else:
-        print(f'\nFinished training deep learnable; no URDF export.')
+#UNDO
+#    # Save the final urdf.
+#    if structured:
+#        print(f'\nSaving the final learned URDF.')
+#        learned_system = cast(MultibodyLearnableSystem, learned_system)
+#        learned_system.generate_updated_urdfs(suffix='best')
+#    else:
+#        print(f'\nFinished training deep learnable; no URDF export.')
     print(f'Done!')
 
 

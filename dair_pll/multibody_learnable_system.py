@@ -371,7 +371,7 @@ class MultibodyLearnableSystem(System):
             q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
             q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
-            # q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+            q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
             # q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
             # q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
             q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))

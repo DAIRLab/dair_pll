@@ -23,7 +23,7 @@ TEST = 'test'
 DEV = 'dev'
 SWEEP = 'sweep'
 HYPERPARAMETER_SIM = 'hyperparam'
-HYPERPARAMETER_REAL = 'hpreal'
+HYPERPARAMETER_REAL = 'hpr'  #eal'
 CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER_SIM, HYPERPARAMETER_REAL]
 
 # Possible dataset types
@@ -103,7 +103,7 @@ WANDB_NO_GROUP_MESSAGE = \
     'echo "Not exporting WANDB_RUN_GROUP since restarting."'
 
 # Weights to try in hyperparameter search
-HYPERPARAMETER_WEIGHTS = [1e-2, 3e-2, 1e-1, 3e-1, 1e0, 3e0, 1e1, 3e1, 1e2]
+HYPERPARAMETER_WEIGHTS = [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3]
 
 
 def create_instance(storage_folder_name: str, run_name: str,
@@ -378,10 +378,11 @@ def experiment_class_command(category: str, run_name: str, system: str,
         raise RuntimeError(f'Found experiment run {storage_folder_name}/' + \
                            f'{run_name}-0.  Choose a new base name next time.')
 
+    #UNDO changed 512 to 64
     dataset_size = 4 if category == TEST else \
                   64 if category == DEV else \
                   512 if category == HYPERPARAMETER_SIM else \
-                  512 if category == HYPERPARAMETER_REAL else \
+                  64 if category == HYPERPARAMETER_REAL else \
                   2**dataset_exponent # if category == SWEEP
 
     source = SIM_SOURCE if (category==SWEEP and additional_forces!=None) else \
@@ -918,7 +919,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
 
     # Call the project 'hpreal' for "hyper parameter real" if using real data,
     # else 'hyperparam' for simulation data.
-    experiment_name = 'hpreal' if source == REAL_SOURCE else 'hyperparam'
+    experiment_name = 'hpr'  #UNDO'hpreal' if source == REAL_SOURCE else 'hyperparam'
 
     # First determine what run number to use so they are consistent for each
     # dataset size.
@@ -943,11 +944,17 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                 #     # Already ran many tests with (1, 1, 1, 1) weights, so can
                 #     # skip repeating this hyperparameter set.
                 #     continue
+                if w_comp > 1:
+                    continue
+                if w_diss > 1:
+                    continue
+                if w_pen < 1e-2:
+                    continue
 
                 for loss_variation in [1, 2, 4]:
                     experiment_class_command(
                         experiment_name, hp_name, system=system,
-                        contactnets=contactnets, geometry=geometry,
+                        structured=True, contactnets=contactnets, geometry=geometry,
                         regenerate=regenerate, local=local,
                         inertia_params=inertia_params,
                         loss_variation=loss_variation, true_sys=true_sys,
