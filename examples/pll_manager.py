@@ -944,7 +944,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                 #     # skip repeating this hyperparameter set.
                 #     continue
 
-                for loss_variation in [1]:
+                for loss_variation in [1, 2, 4]:
                     experiment_class_command(
                         experiment_name, hp_name, system=system,
                         contactnets=contactnets, geometry=geometry,

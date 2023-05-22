@@ -371,7 +371,9 @@ class MultibodyLearnableSystem(System):
             q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
             q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
-            q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+            # q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
+            # q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+            # q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
             q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
             q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
                           dim=-2))
@@ -387,7 +389,8 @@ class MultibodyLearnableSystem(System):
             q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
                           dim=-2))
 
-        q = q_pred + q_comp + q_diss
+        q = q_pred + (self.w_comp/self.w_pred)*q_comp + \
+                     (self.w_diss/self.w_pred)*q_diss
 
         constant_pen = (torch.maximum(
                             -phi, torch.zeros_like(phi))**2).sum(dim=-1)
@@ -447,6 +450,15 @@ class MultibodyLearnableSystem(System):
             loss_pred = pbmm(trace_M_inv, loss_pred) * 5e-4
             loss_comp = pbmm(trace_M_inv, loss_comp) * 5e-4
             loss_diss = pbmm(trace_M_inv, loss_diss) * 5e-4
+
+        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
+            normal_forces = force[..., :n_contacts, :]
+            max_normal_forces = normal_forces.max(axis=1).values + 1e0
+            max_normal_forces = max_normal_forces.reshape(loss_comp.shape)
+
+            loss_comp = (1/max_normal_forces) * loss_comp
+            loss_diss = (1/max_normal_forces) * loss_diss
+
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1)
