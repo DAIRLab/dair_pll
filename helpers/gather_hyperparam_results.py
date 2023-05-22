@@ -27,7 +27,7 @@ from dair_pll.file_utils import *
 # MINIMUM_RUN_NUM = 13   # the maximum for hp_search_3.csv is 33
 
 # For results that generated hp_search_3.csv:
-ELBOW_HP_SCRIPT_PATTERN = 'startup_hrp_elbow_ie????-?.bash'
+ELBOW_HP_SCRIPT_PATTERN = 'startup_hpr_elbow_ie????.bash'
 storage_name = '/home/bibit/dair_pll/results/hpr_elbow'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
@@ -84,6 +84,8 @@ def get_params_from_bash_script(script_name):
 
 lookup_by_wandb_id = {}
 lookup_by_run_name = {}
+
+params_dict = {}
 
 for script in startup_scripts_list:
     if fnmatch.fnmatch(script, ELBOW_HP_SCRIPT_PATTERN):
