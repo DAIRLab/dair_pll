@@ -951,7 +951,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                 if w_pen < 1e-2:
                     continue
 
-                for loss_variation in [1, 2, 3]:
+                for loss_variation in [1, 2]:
                     experiment_class_command(
                         experiment_name, hp_name, system=system,
                         structured=True, contactnets=contactnets, geometry=geometry,
