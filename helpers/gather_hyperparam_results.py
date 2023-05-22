@@ -20,11 +20,19 @@ from dair_pll.file_utils import *
 # MINIMUM_RUN_NUM = 372
 
 # For results that generated hp_search_3.csv:
-ELBOW_HP_SCRIPT_PATTERN = 'startup_elbow_real_re??-?.bash'
-storage_name = '/home/bibit/dair_pll/results/elbow_real'
+# ELBOW_HP_SCRIPT_PATTERN = 'startup_elbow_real_re??-?.bash'
+# storage_name = '/home/bibit/dair_pll/results/elbow_real'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-MINIMUM_RUN_NUM = 13   # the maximum for hp_search_3.csv is 33
+# MINIMUM_RUN_NUM = 13   # the maximum for hp_search_3.csv is 33
+
+# For results that generated hp_search_3.csv:
+ELBOW_HP_SCRIPT_PATTERN = 'startup_hrp_elbow_ie????-?.bash'
+storage_name = '/home/bibit/dair_pll/results/hpr_elbow'
+# Set a minimum run number since multiple hyperparameter searches were conducted
+# in the same results folder.
+MINIMUM_RUN_NUM = 0   # the maximum for hp_search_3.csv is 33
+
 
 WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
 WANDB_PROJECT_LOCAL = 'dair_pll-dev'
@@ -151,7 +159,7 @@ for script in startup_scripts_list:
 
 
 
-with open('hp_search_3.csv', 'w', newline='') as csvfile:
+with open('hp_search_4.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=params_dict.keys())
 
     writer.writeheader()
