@@ -13,6 +13,7 @@ The json file has the following format:
                 run_1: {
                     structured:  bool
                     contactnets:  bool
+                    loss_variation:  int
                     residual:  bool
                     result_set:  test/validation
                     results: {
@@ -128,8 +129,9 @@ PREDICTION_SAMPLE_KEY = 'model_prediction_sample'
 
 
 # Template dictionaries, from low- to high-level.
-RUN_DICT = {'structured': None, 'contactnets': None, 'residual': None,
-            'result_set': None, 'results': None, 'learned_params': None}
+RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
+            'residual': None, 'result_set': None, 'results': None,
+            'learned_params': None}
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
@@ -160,6 +162,8 @@ def get_run_info_from_config(config):
     run_dict['contactnets'] = False if not run_dict['structured'] else \
         True if config.learnable_config.loss==MultibodyLosses.CONTACTNETS_LOSS \
         else False
+    run_dict['loss_variation'] = 0 if not run_dict['structured'] else \
+        config.learnable_config.loss_variation
     run_dict['residual'] = False if not run_dict['structured'] else \
         config.learnable_config.do_residual
     run_dict['result_set'] = 'test'
