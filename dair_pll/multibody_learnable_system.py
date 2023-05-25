@@ -457,7 +457,7 @@ class MultibodyLearnableSystem(System):
         if self.residual_net != None:
             # Get the residual network's contribution.
             x = torch.cat((q, v), dim=1)
-            residual = self.residual_net(x)
+            residual = self.residual_net(x)/self.dt
             amended_acceleration = non_contact_acceleration + residual
 
         else:
