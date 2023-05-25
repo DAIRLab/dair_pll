@@ -471,16 +471,22 @@ class MultibodyLearnableSystem(System):
         system state as input and outputs the size of the multibody system's
         velocity space."""
 
+        def make_small_linear_layer(input_size, output_size):
+            layer_with_small_init = nn.Linear(input_size, output_size)
+            layer_with_small_init.weight *= 1e-2
+            layer_with_small_init.bias *= 1e-2
+            return layer_with_small_init
+
         layers: List[Module] = []
 
         layers.append(DeepStateAugment3D())
 
         n_augmented_state = self.space.n_x - 4 + 9
-        layers.append(nn.Linear(n_augmented_state, network_width))
+        layers.append(make_small_linear_layer(n_augmented_state, network_width))
         layers.append(nn.ReLU())
 
         for _ in range(network_depth - 1):
-            layers.append(nn.Linear(network_width, network_width))
+            layers.append(make_small_linear_layer(network_width, network_width))
             layers.append(nn.ReLU())
 
         layers.append(nn.Linear(network_width, self.space.n_v))
