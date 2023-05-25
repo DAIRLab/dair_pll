@@ -42,8 +42,9 @@ SYSTEMS = [CUBE_SYSTEM, ELBOW_SYSTEM, ASYMMETRIC_SYSTEM]
 NO_AUGMENTATION = None
 VORTEX_AUGMENTATION = 'vortex'
 VISCOUS_AUGMENTATION = 'viscous'
+GRAVITY_AUGMENTATION = 'gravity'
 AUGMENTED_FORCE_TYPES = [NO_AUGMENTATION, VORTEX_AUGMENTATION,
-                         VISCOUS_AUGMENTATION]
+                         VISCOUS_AUGMENTATION, GRAVITY_AUGMENTATION]
 
 # Possible run name regex patterns.
 CUBE_TEST_PATTERN = 'tc??'
@@ -126,9 +127,10 @@ def create_instance(storage_folder_name: str, run_name: str,
                     w_pen: float = 1e0,
                     w_res: float = 1e0,
                     do_residual: bool = False,
-                    additional_forces: str = None):
+                    additional_forces: str = None,
+                    g_frac: float = 1.0):
     # Do some checks on the requested parameter combinations.
-    if additional_forces != NO_AUGMENTATION:
+    if not additional_forces in [NO_AUGMENTATION, GRAVITY_AUGMENTATION]:
         assert source==SIM_SOURCE, "Must use simulation for augmented dynamics."
     if system == ASYMMETRIC_SYSTEM:
         assert source==SIM_SOURCE, "Must use simulation for asymmetric object."
@@ -144,6 +146,10 @@ def create_instance(storage_folder_name: str, run_name: str,
             print("Can't regenerate URDFs from end-to-end model --> " + \
                   "no regeneration.")
             regenerate = False
+    elif additional_forces != GRAVITY_AUGMENTATION:
+        if g_frac != 1.0:
+            print("No gravity augmentation --> setting g_frac to 1.")
+            g_frac = 1.0
     if system==ASYMMETRIC_SYSTEM and geometry==BOX_TYPE:
         print("No box representation of asymmetric system --> " + \
               "using polygon.")
@@ -195,6 +201,8 @@ def create_instance(storage_folder_name: str, run_name: str,
             train_options += f' --w-diss={w_diss}'
             train_options += f' --w-pen={w_pen}'
             train_options += f' --w-res={w_res}'
+        if structured:
+            train_options += f' --g-frac={g_frac}'
 
     script = script.replace('{train_args}', train_options)
 
@@ -311,7 +319,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     local: bool, inertia_params: str, loss_variation: str, true_sys: bool,
     overwrite: str, w_pred: float, w_comp: float, w_diss: float, w_pen: float,
     w_res: float, dataset_exponent: int = None, last_run_num: int = None,
-    number: int = 1, do_residual: bool = False, additional_forces: str = None):
+    number: int = 1, do_residual: bool = False, additional_forces: str = None,
+    g_frac: float = 1.0):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -407,7 +416,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                         restart=False, wandb_group_id=wandb_group_id,
                         w_pred=w_pred, w_comp=w_comp, w_diss=w_diss,
                         w_pen=w_pen, w_res=w_res, do_residual=do_residual,
-                        additional_forces=additional_forces)
+                        additional_forces=additional_forces, g_frac=g_frac)
 
 
 @click.group()
@@ -487,13 +496,18 @@ def cli():
               type = click.Choice(AUGMENTED_FORCE_TYPES),
               default=NO_AUGMENTATION,
               help="what kind of additional forces to augment simulation data.")
+@click.option('--g-frac',
+              type=float,
+              default=1e0,
+              help="fraction of gravity constant to use.")
 def create_command(storage_folder_name: str, run_name: str, number: int,
                    system: str, source: str, structured: bool,
                    contactnets: bool, geometry: str, regenerate: bool,
                    dataset_size: int, local: bool, inertia_params: str,
                    loss_variation: str, true_sys: bool, overwrite: str,
                    w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                   w_res: float, residual: bool, additional_forces: str):
+                   w_res: float, residual: bool, additional_forces: str,
+                   g_frac: float):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -546,7 +560,7 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
                         wandb_group_id=wandb_group_id, w_pred=w_pred,
                         w_comp=w_comp, w_diss=w_diss, w_pen=w_pen, w_res=w_res,
                         do_residual=residual,
-                        additional_forces=additional_forces)
+                        additional_forces=additional_forces, g_frac=g_frac)
 
 
 @cli.command('test')
@@ -612,11 +626,20 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
+@click.option('--additional-forces',
+              type = click.Choice(AUGMENTED_FORCE_TYPES),
+              default=NO_AUGMENTATION,
+              help="what kind of additional forces to augment simulation data.")
+@click.option('--g-frac',
+              type=float,
+              default=1e0,
+              help="fraction of gravity constant to use.")
 def test_command(run_name: str, number: int, system: str, structured: bool,
                  contactnets: bool, geometry: str, regenerate: bool,
                  local: bool, inertia_params: str, loss_variation: str,
                  true_sys: bool, overwrite: str, w_pred: float, w_comp: float,
-                 w_diss: float, w_pen: float, w_res: float, residual: bool):
+                 w_diss: float, w_pen: float, w_res: float, residual: bool,
+                 additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -629,7 +652,8 @@ def test_command(run_name: str, number: int, system: str, structured: bool,
                              loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite, number=number, w_pred=w_pred,
                              w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
-                             w_res=w_res, do_residual=residual)
+                             w_res=w_res, do_residual=residual, 
+                             additional_forces=additional_forces, g_frac=g_frac)
 
 @cli.command('dev')
 @click.option('--run_name',
@@ -694,11 +718,20 @@ def test_command(run_name: str, number: int, system: str, structured: bool,
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
+@click.option('--additional-forces',
+              type = click.Choice(AUGMENTED_FORCE_TYPES),
+              default=NO_AUGMENTATION,
+              help="what kind of additional forces to augment simulation data.")
+@click.option('--g-frac',
+              type=float,
+              default=1e0,
+              help="fraction of gravity constant to use.")
 def dev_command(run_name: str, number: int, system: str, structured: bool,
                 contactnets: bool, geometry: str, regenerate: bool, local: bool,
                 inertia_params: str, loss_variation: str, true_sys: bool,
                 overwrite: str, w_pred: float, w_comp: float, w_diss: float,
-                w_pen: float, w_res: float, residual: bool):
+                w_pen: float, w_res: float, residual: bool,
+                additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -711,7 +744,8 @@ def dev_command(run_name: str, number: int, system: str, structured: bool,
                              loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite, number=number, w_pred=w_pred,
                              w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
-                             w_res=w_res, do_residual=residual)
+                             w_res=w_res, do_residual=residual,
+                             additional_forces=additional_forces, g_frac=g_frac)
 
 
 @cli.command('restart')
@@ -817,12 +851,16 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
               type = click.Choice(AUGMENTED_FORCE_TYPES),
               default=NO_AUGMENTATION,
               help="what kind of additional forces to augment simulation data.")
+@click.option('--g-frac',
+              type=float,
+              default=1e0,
+              help="fraction of gravity constant to use.")
 def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
                   contactnets: bool, geometry: str, regenerate: bool,
                   local: bool, inertia_params: str, loss_variation: str,
                   true_sys: bool, w_pred: float, w_comp: float, w_diss: float,
                   w_pen: float, w_res: float, residual: bool,
-                  additional_forces: str):
+                  additional_forces: str, g_frac: float):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -866,7 +904,8 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
                                  number=number, w_pred=w_pred, w_comp=w_comp,
                                  w_diss=w_diss, w_pen=w_pen, w_res=w_res,
                                  do_residual=residual,
-                                 additional_forces=additional_forces)
+                                 additional_forces=additional_forces,
+                                 g_frac=g_frac)
 
 
 

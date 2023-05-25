@@ -72,6 +72,8 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """How to represent geometry (box, mesh, or polygon)."""
     randomize_initialization: bool = True
     """Whether to randomize initialization."""
+    g_frac: float = 1.0
+    """What fraction of the true gravitational constant to use."""
 
 
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
@@ -300,7 +302,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             output_urdfs_dir=output_dir,
             do_residual=learnable_config.do_residual,
             represent_geometry_as=learnable_config.represent_geometry_as,
-            randomize_initialization=learnable_config.randomize_initialization)
+            randomize_initialization=learnable_config.randomize_initialization,
+            g_frac=learnable_config.g_frac)
 
     def write_to_wandb(self, epoch: int, learned_system: System,
                        statistics: Dict) -> None:
@@ -427,7 +430,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         if self.visualizer_regeneration_is_required():
             new_urdfs = cast(MultibodyLearnableSystem,
                              learned_system).generate_updated_urdfs('vis')
-            return DrakeSystem(new_urdfs, self.get_drake_system().dt)
+            return DrakeSystem(new_urdfs, self.get_drake_system().dt,
+                               g_frac=self.config.learnable_config.g_frac)
         return None
 
     def prediction_with_regularization_loss(

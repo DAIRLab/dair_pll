@@ -255,7 +255,8 @@ class MultibodyPlantDiagram:
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
                  visualization_file: Optional[str] = None,
-                 additional_forces: Optional[str] = None) -> None:
+                 additional_forces: Optional[str] = None,
+                 g_frac: Optional[float] = 1.0) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
         trigger a state update every ``dt``.
@@ -300,10 +301,16 @@ class MultibodyPlantDiagram:
         self.collision_geometry_set = get_collision_geometry_set(
             scene_graph.model_inspector())
 
+        # Edit the gravitational constant.
+        new_gravity_vector = np.array([0., 0., -9.81*g_frac])
+        plant.mutable_gravity_field().set_gravity_vector(new_gravity_vector)
+
         # Finalize multibody plant.
         plant.Finalize()
 
-        if additional_forces != None:
+        # Handle augmented dynamics.  The gravity case was handled via the
+        # gravity vector edit above.
+        if not additional_forces in [None, 'gravity']:
             # Get sizes for defining appropriately sized input and output ports
             # for the force vector field injector ``LeafSystem``.
             n_x = plant.get_state_output_port().size()
@@ -318,8 +325,8 @@ class MultibodyPlantDiagram:
                     w_linear=1e-1, w_angular=3e-3, w_articulation=1e-2)
                 print("Injecting viscous damping vector field into dynamics.")
             else:
-                raise NotImplementedError("Only additional forces implemented"
-                                          "are vortex and viscous.")
+                raise NotImplementedError("Only additional forces implemented "
+                                          "are vortex, viscous, geometry.")
 
             # Define a force vector field injector based on the vector field.
             vector_field_injector = ForceVectorFieldInjectorLeafSystem(

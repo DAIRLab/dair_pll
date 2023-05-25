@@ -701,7 +701,8 @@ class MultibodyTerms(Module):
 
     def __init__(self, urdfs: Dict[str, str], inertia_mode: int,
                  represent_geometry_as: str = 'box',
-                 randomize_initialization: bool = False) -> None:
+                 randomize_initialization: bool = False,
+                 g_frac: float = 1.0) -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs
 
         Interpretation is performed as a thin wrapper around
@@ -725,7 +726,7 @@ class MultibodyTerms(Module):
         """
         super().__init__()
 
-        plant_diagram = MultibodyPlantDiagram(urdfs)
+        plant_diagram = MultibodyPlantDiagram(urdfs, g_frac=g_frac)
         plant = plant_diagram.plant.ToSymbolic()
         inspector = plant_diagram.scene_graph.model_inspector()
 

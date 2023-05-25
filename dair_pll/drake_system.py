@@ -36,7 +36,8 @@ class DrakeSystem(System):
                  urdfs: Dict[str, str],
                  dt: float,
                  visualization_file: Optional[str] = None,
-                 additional_forces: Optional[str] = None) -> None:
+                 additional_forces: Optional[str] = None,
+                 g_frac: Optional[float] = 1.0) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
         Args:
@@ -48,7 +49,7 @@ class DrakeSystem(System):
               an arbitrary force vector field.
         """
         plant_diagram = MultibodyPlantDiagram(urdfs, dt, visualization_file,
-                                              additional_forces)
+                                              additional_forces, g_frac=g_frac)
 
         space = plant_diagram.generate_state_space()
         integrator = StateIntegrator(space, self.sim_step, dt)

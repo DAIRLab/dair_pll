@@ -450,7 +450,7 @@ class SupervisedLearningExperiment(ABC):
         # To save space on W&B storage, only generate comparison videos at first
         # and best epoch, the latter of which is implemented in
         # :meth:`_evaluation`.
-        skip_videos = False if epoch==0 else True
+        skip_videos = False  #if epoch==0 else True BIBIT temporary for debugging
 
         epoch_vars, learned_system_summary = \
             self.build_epoch_vars_and_system_summary(statistics, learned_system,

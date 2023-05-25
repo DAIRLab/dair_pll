@@ -93,7 +93,8 @@ class MultibodyLearnableSystem(System):
                  network_width: int = 128,
                  network_depth: int = 2,
                  represent_geometry_as: str = 'box',
-                 randomize_initialization: bool = False) -> None:
+                 randomize_initialization: bool = False,
+                 g_frac: float = 1.0) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -122,7 +123,8 @@ class MultibodyLearnableSystem(System):
 
         multibody_terms = MultibodyTerms(init_urdfs, inertia_mode,
                                          represent_geometry_as,
-                                         randomize_initialization)
+                                         randomize_initialization,
+                                         g_frac=g_frac)
 
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
@@ -456,11 +458,12 @@ class MultibodyLearnableSystem(System):
             # Get the residual network's contribution.
             x = torch.cat((q, v), dim=1)
             residual = self.residual_net(x)
+            amended_acceleration = non_contact_acceleration + residual
 
         else:
-            residual = torch.zeros_like(non_contact_acceleration)
+            amended_acceleration = non_contact_acceleration
 
-        return delassus, M, J, phi, non_contact_acceleration + residual
+        return delassus, M, J, phi, amended_acceleration
 
     def init_residual_network(self, network_width: int, network_depth: int
         ) -> None:

@@ -51,7 +51,9 @@ DATA_SOURCES = [SIM_SOURCE, REAL_SOURCE, DYNAMIC_SOURCE]
 # Possible simulation data augmentations.
 VORTEX_AUGMENTATION = 'vortex'
 VISCOUS_AUGMENTATION = 'viscous'
-AUGMENTED_FORCE_TYPES = [VORTEX_AUGMENTATION, VISCOUS_AUGMENTATION]
+GRAVITY_AUGMENTATION = 'gravity'
+AUGMENTED_FORCE_TYPES = [VORTEX_AUGMENTATION, VISCOUS_AUGMENTATION,
+                         GRAVITY_AUGMENTATION]
 
 # Possible inertial parameterizations to learn for the elbow system.
 # The options are:
@@ -190,7 +192,8 @@ def main(storage_folder_name: str = "",
          w_pen: float = 1e0,
          w_res: float = 1e0,
          do_residual: bool = False,
-         additional_forces: str = None):
+         additional_forces: str = None,
+         g_frac: float = 1.0):
     """Execute ContactNets basic example on a system.
 
     Args:
@@ -213,6 +216,8 @@ def main(storage_folder_name: str = "",
         do_residual: Whether to add residual physics block.
         additional_forces: Optionally provide additional forces to augment any
           generated simulation data.  Is ignored if using real data.
+        g_frac: Fraction of gravity to use with initial model.  Is ignored
+          unless additional_forces == gravity.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -290,13 +295,12 @@ def main(storage_folder_name: str = "",
             w_pen  = Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_res  = Float(w_res, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             do_residual=do_residual, represent_geometry_as=geometry,
-            randomize_initialization = not true_sys)
+            randomize_initialization = not true_sys, g_frac=g_frac)
 
     else:
         learnable_config = DeepLearnableSystemConfig(
             layers=4, hidden_size=256,
-            nonlinearity=torch.nn.Tanh, model_constructor=MLP
-        )
+            nonlinearity=torch.nn.Tanh, model_constructor=MLP)
 
     # Combines everything into config for entire experiment.
     experiment_config = SupervisedLearningExperimentConfig(
@@ -457,13 +461,17 @@ def main(storage_folder_name: str = "",
               type = click.Choice(AUGMENTED_FORCE_TYPES),
               default=None,
               help="what kind of additional forces to augment simulation data.")
+@click.option('--g-frac',
+              type=float,
+              default=1e0,
+              help="fraction of gravity constant to use.")
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, structured: bool, contactnets: bool,
                  geometry: str, regenerate: bool, dataset_size: int,
                  inertia_params: str, loss_variation: str, true_sys: bool,
                  wandb_project: str, w_pred: float, w_comp: float,
                  w_diss: float, w_pen: float, w_res: float, residual: bool,
-                 additional_forces: str):
+                 additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
@@ -471,7 +479,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
     main(storage_folder_name, run_name, system, source, structured, contactnets,
          geometry, regenerate, dataset_size, inertia_params, loss_variation,
          true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res,
-         residual, additional_forces)
+         residual, additional_forces, g_frac)
 
 
 if __name__ == '__main__':
