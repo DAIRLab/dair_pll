@@ -14,6 +14,7 @@ from param_error_study import MESH_REPRESENTATIONS, LOSSES, \
     name_from_mesh_loss, STUDY_NAME_PREFIX, WANDB_PROJECT
 from plot_styler import PlotStyler
 
+#MESH_REPRESENTATIONS = reversed(MESH_REPRESENTATIONS)
 storage_name = STUDY_NAME_PREFIX
 study_names = [
     name_from_mesh_loss(mesh, loss)
@@ -29,11 +30,12 @@ def display_name_from_mesh_loss(mesh_representation: MeshRepresentation,
         MeshRepresentation.DEEP_SUPPORT_CONVEX: "DNN"
     }[mesh_representation]
     loss_display = {
-        MultibodyLosses.PREDICTION_LOSS: "Prediction Loss",
-        MultibodyLosses.CONTACTNETS_ANITESCU_LOSS: "ContactNets",
+        MultibodyLosses.PREDICTION_LOSS: "Prediction Error",
+        MultibodyLosses.CONTACTNETS_ANITESCU_LOSS: "Implicit Loss (Ours)",
         MultibodyLosses.CONTACTNETS_NCP_LOSS: "ContactNets"
     }[loss]
-    return f'{mesh_display} + {loss_display}'
+    #return f'{mesh_display} + {loss_display}'
+    return loss_display
 
 display_names = [
     display_name_from_mesh_loss(mesh, loss)
@@ -41,9 +43,9 @@ display_names = [
     for loss in LOSSES
 ]
 
-#scatter_name = 'parameter_relative_error'
-scatter_name = 'valid_trajectory_mse'
-scatter_value = 32
+scatter_name = 'parameter_relative_error'
+#scatter_name = 'valid_trajectory_mse'
+scatter_value = 64
 WANDB_ENTITY = 'mshalm95'
 ANY_INT = '[0-9]*'
 PLOT_DIR = os.path.join(os.path.dirname(__file__), 'plots')
@@ -101,6 +103,7 @@ def wandb_comparison_scatter():
     styler = PlotStyler()
     styler.set_default_styling(directory=PLOT_DIR)
     plt.figure()
+    color_map = [styler.green, styler.red]
     for i, study_name in enumerate(study_names):
         sweep_instances = find_sweep_instances(storage_name, study_name)
         scatter_sweep_instances = sweep_instances[scatter_value]
@@ -115,7 +118,7 @@ def wandb_comparison_scatter():
 
         # draw matplotlib scatter plot with init_scatter as the x-axis and
         # min_scatter as the y-axis.
-        plt.scatter(init_scatter, min_scatter, c=styler.penn_color_wheel[i],
+        plt.scatter(init_scatter, min_scatter, c=color_map[i],
                     zorder=1)
 
     # set log axes

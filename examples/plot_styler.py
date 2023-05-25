@@ -15,6 +15,7 @@ class PlotStyler():
     self.cmap = plt.get_cmap('tab20')
     self.blue = '#011F5B'
     self.red = '#990000'
+    self.green = '#008E00'
     self.yellow = '#F2C100'
     self.grey = '#909090'
     self.orange = '#FE7F0E'
@@ -31,7 +32,7 @@ class PlotStyler():
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     # matplotlib.rcParams['figure.figsize'] = 8, 5
     if (figsize == None):
-      matplotlib.rcParams['figure.figsize'] = 8, 8
+        matplotlib.rcParams['figure.figsize'] = 4, 4
     else:
       matplotlib.rcParams['figure.figsize'] = figsize[0], figsize[1]
     matplotlib.rcParams['figure.autolayout'] = True

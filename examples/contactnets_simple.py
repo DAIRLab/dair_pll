@@ -53,7 +53,7 @@ URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 DT = 0.0068
 
 # Generation configuration.
-N_POP = 32
+N_POP = 512
 CUBE_X_0 = torch.tensor([
     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
     0.014, 1.291, -0.212
