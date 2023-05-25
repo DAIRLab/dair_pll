@@ -135,6 +135,9 @@ RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
+BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+                   18, 19, 21, 23, 26]
+
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
 EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
                'elbow': {'system': 'elbow', 'prefix': 'se'},
@@ -308,6 +311,8 @@ def get_config_stats_checkpoint(runs_path, run):
 runs_needing_statistics = []
 results = {}
 
+sent_warning = False
+
 for experiment in EXPERIMENTS.keys():
     print(f'\n\n============== Starting {experiment} ==============')
     exp_dict = deepcopy(EXPERIMENT_DICT)
@@ -328,6 +333,10 @@ for experiment in EXPERIMENTS.keys():
         print(f'\nFound {results_folder_name}.')
 
         for run in os.listdir(runs_path):
+            if int(run[2:4]) in RUN_NUMBERS_TO_SKIP and not sent_warning:
+                print(f'WARNING: Skipping run numbers {RUN_NUMBERS_TO_SKIP}')
+                sent_warning = True
+
             config, stats, checkpoint = \
                 get_config_stats_checkpoint(runs_path, run)
 
