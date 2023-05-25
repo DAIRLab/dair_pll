@@ -41,8 +41,9 @@ display_names = [
     for loss in LOSSES
 ]
 
-scatter_name = 'parameter_relative_error'
-scatter_value = 4
+#scatter_name = 'parameter_relative_error'
+scatter_name = 'valid_trajectory_mse'
+scatter_value = 32
 WANDB_ENTITY = 'mshalm95'
 ANY_INT = '[0-9]*'
 PLOT_DIR = os.path.join(os.path.dirname(__file__), 'plots')
@@ -74,7 +75,8 @@ def recover_wandb_run_id(storage_name: str, run_name: str) -> str:
     checkpoint_file = file_utils.get_training_state_filename(storage, run_name)
     checkpoint = torch.load(checkpoint_file)
     wandb_run_id_base = checkpoint['wandb_run_id']
-    assert wandb_run_id_base is not None
+    if wandb_run_id_base is None:
+        raise ValueError('wandb id not stored for run %s' % run_name)
     wandb_run_id = f'{WANDB_ENTITY}/{WANDB_PROJECT}/{wandb_run_id_base}'
     return wandb_run_id
 
@@ -117,8 +119,8 @@ def wandb_comparison_scatter():
                     zorder=1)
 
     # set log axes
-    plt.xscale('log')
-    plt.yscale('log')
+    #plt.xscale('log')
+    #plt.yscale('log')
     plt.xlabel('Initial Parameter Relative Error')
     plt.ylabel('Final Parameter Relative Error')
     plt.title('Improvement in Parameter Estimation over Training')
@@ -133,7 +135,7 @@ def wandb_comparison_scatter():
     plt.ylim(min_min, max_max)
 
     #plt.show()
-    styler.savefig("wandb_comparison_scatter.png")
+    styler.save_fig("wandb_comparison_scatter.png")
 
 if __name__ == '__main__':
     wandb_comparison_scatter()
