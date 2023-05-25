@@ -169,3 +169,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /docsrc/source/index.rst
+
+# Some generated result files
+helpers/*.json
+helpers/*.csv
