@@ -903,6 +903,12 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
             if len(runs_list) > 0:
                 last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
 
+    if op.isdir(partial_storage_name):
+        runs_dir = file_utils.all_runs_dir(partial_storage_name)
+        runs_list = sorted(os.listdir(runs_dir))
+        if len(runs_list) > 0:
+            last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
+
     print(f'Will create experiment number: {last_run_num+1}')
     if not click.confirm('Continue?'):
         raise RuntimeError("Figure out experiment numbers next time.")
