@@ -473,8 +473,8 @@ class MultibodyLearnableSystem(System):
 
         def make_small_linear_layer(input_size, output_size):
             layer_with_small_init = nn.Linear(input_size, output_size)
-            layer_with_small_init.weight *= 1e-2
-            layer_with_small_init.bias *= 1e-2
+            layer_with_small_init.weight *= 1e-1
+            layer_with_small_init.bias *= 1e-1
             return layer_with_small_init
 
         layers: List[Module] = []
