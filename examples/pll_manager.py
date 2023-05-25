@@ -24,7 +24,9 @@ DEV = 'dev'
 SWEEP = 'sweep'
 HYPERPARAMETER_SIM = 'hyperparam'
 HYPERPARAMETER_REAL = 'hpr'  #eal'
-CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER_SIM, HYPERPARAMETER_REAL]
+GRAVITY_SWEEP = 'gravity_sweep'
+CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER_SIM, HYPERPARAMETER_REAL,
+              GRAVITY_SWEEP]
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -105,6 +107,9 @@ WANDB_NO_GROUP_MESSAGE = \
 
 # Weights to try in hyperparameter search
 HYPERPARAMETER_WEIGHTS = [1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3]
+
+# Gravity fractions to try
+GRAVITY_FRACTIONS = [0., 0.5, 1., 1.5, 2.]
 
 
 def create_instance(storage_folder_name: str, run_name: str,
@@ -338,13 +343,13 @@ def experiment_class_command(category: str, run_name: str, system: str,
         run_name_pattern += system[0]   # c for cube or e for elbow
         run_name_pattern += '????' if category==HYPERPARAMETER_SIM else \
                             '????' if category==HYPERPARAMETER_REAL else '??'
-        run_name_pattern += '-?' if category==SWEEP else ''
+        run_name_pattern += '-?' if category in [SWEEP, GRAVITY_SWEEP] else ''
         return run_name_pattern
 
     # First, take care of data management and how to keep track of results.
     storage_folder_name = f'{category}_{system}'
-    storage_folder_name += f'_{additional_forces}' \
-                           if additional_forces!= None else ''
+    storage_folder_name += f'_{additional_forces}' if \
+        not additional_forces in [None, GRAVITY_AUGMENTATION] else ''
     storage_folder_name += f'-{dataset_exponent}' if category==SWEEP else ''
 
     repo = git.Repo(search_parent_directories=True)
@@ -371,7 +376,9 @@ def experiment_class_command(category: str, run_name: str, system: str,
         run_name += 'c' if system==CUBE_SYSTEM else \
                     'e' if system==ELBOW_SYSTEM else 'a'
         run_name += str(last_run_num+1).zfill(nums_to_display)
-        run_name += f'-{dataset_exponent}' if category==SWEEP else ''
+        run_name += f'-{dataset_exponent}' if category==SWEEP else \
+                    f'-{GRAVITY_FRACTIONS.index(g_frac)}' \
+                    if category==GRAVITY_SWEEP else ''
 
     run_name_pattern = get_run_name_pattern(category, system)
     assert fnmatch.fnmatch(run_name, run_name_pattern)
@@ -392,6 +399,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                   64 if category == DEV else \
                   512 if category == HYPERPARAMETER_SIM else \
                   64 if category == HYPERPARAMETER_REAL else \
+                  512 if category == GRAVITY_SWEEP else \
                   2**dataset_exponent # if category == SWEEP
 
     source = SIM_SOURCE if (category==SWEEP and additional_forces!=None) else \
@@ -868,6 +876,13 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     repo = git.Repo(search_parent_directories=True)
     check_for_git_updates(repo)
 
+    if additional_forces == GRAVITY_AUGMENTATION:
+        print('Gravity augmentation --> sweeping over gravity instead of ' + \
+              'dataset size.')
+        category = GRAVITY_SWEEP
+    else:
+        category = SWEEP
+
     # First determine what run number to use so they are consistent for each
     # dataset size.
     last_run_num = -1
@@ -878,8 +893,10 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     partial_storage_name += f'_{additional_forces}' \
         if additional_forces != None else ''
     
-    for dataset_exponent in range(2, 10):
-        storage_name = f'{partial_storage_name}-{dataset_exponent}'
+    sweep_range = range(2, 10) if category==SWEEP else \
+                  range(len(GRAVITY_FRACTIONS))
+    for sweep_i in sweep_range:
+        storage_name = f'{partial_storage_name}-{sweep_i}'
         if op.isdir(storage_name):
             runs_dir = file_utils.all_runs_dir(storage_name)
             runs_list = sorted(os.listdir(runs_dir))
@@ -890,22 +907,43 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     if not click.confirm('Continue?'):
         raise RuntimeError("Figure out experiment numbers next time.")
 
-    # Create a pll instance for every dataset size from 4 to 512
-    for dataset_exponent in range(2, 10):
-        experiment_class_command('sweep', sweep_name, system=system,
-                                 structured=structured, contactnets=contactnets,
-                                 geometry=geometry, regenerate=regenerate,
-                                 local=local, inertia_params=inertia_params,
-                                 loss_variation=loss_variation,
-                                 true_sys=true_sys,
-                                 dataset_exponent=dataset_exponent,
-                                 last_run_num=last_run_num,
-                                 overwrite=OVERWRITE_NOTHING,
-                                 number=number, w_pred=w_pred, w_comp=w_comp,
-                                 w_diss=w_diss, w_pen=w_pen, w_res=w_res,
-                                 do_residual=residual,
-                                 additional_forces=additional_forces,
-                                 g_frac=g_frac)
+    if category==SWEEP:
+        # Create a pll instance for every dataset size from 4 to 512
+        for dataset_exponent in range(2, 10):
+            experiment_class_command(category, sweep_name, system=system,
+                                     structured=structured,
+                                     contactnets=contactnets,
+                                     geometry=geometry, regenerate=regenerate,
+                                     local=local, inertia_params=inertia_params,
+                                     loss_variation=loss_variation,
+                                     true_sys=true_sys,
+                                     dataset_exponent=dataset_exponent,
+                                     last_run_num=last_run_num,
+                                     overwrite=OVERWRITE_NOTHING,
+                                     number=number, w_pred=w_pred,
+                                     w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
+                                     w_res=w_res, do_residual=residual,
+                                     additional_forces=additional_forces,
+                                     g_frac=g_frac)
+    elif category==GRAVITY_SWEEP:
+        # Create a pll instance for every gravity fraction.  Use full dataset.
+        dataset_exponent = 9
+        for g_frac in GRAVITY_FRACTIONS:
+            experiment_class_command(category, sweep_name, system=system,
+                                     structured=structured,
+                                     contactnets=contactnets,
+                                     geometry=geometry, regenerate=regenerate,
+                                     local=local, inertia_params=inertia_params,
+                                     loss_variation=loss_variation,
+                                     true_sys=true_sys,
+                                     dataset_exponent=dataset_exponent,
+                                     last_run_num=last_run_num,
+                                     overwrite=OVERWRITE_NOTHING,
+                                     number=number, w_pred=w_pred,
+                                     w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
+                                     w_res=w_res, do_residual=residual,
+                                     additional_forces=additional_forces,
+                                     g_frac=g_frac)
 
 
 

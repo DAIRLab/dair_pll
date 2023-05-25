@@ -236,7 +236,8 @@ def main(storage_folder_name: str = "",
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
          + f'\n\twith residual: {do_residual}' \
          + f'\n\tand starting with provided true_sys={true_sys}' \
-         + f'\n\tinjecting into dynamics (if sim): {additional_forces}')
+         + f'\n\tinjecting into dynamics (if sim): {additional_forces}' \
+         + f'\n\twith gravity fraction (if gravity): {g_frac}')
 
     simulation = source == SIM_SOURCE
     dynamic = source == DYNAMIC_SOURCE
