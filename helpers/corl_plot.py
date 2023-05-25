@@ -35,41 +35,73 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'plots')
 JSON_OUTPUT_FILE = op.join(op.dirname(__file__), 'results_cluster.json')
 
 
-METHOD_RESULTS = {'ContactNets': '#01256e',
-                  'ContactNets + Residual': '#398537',
+METHOD_RESULTS = {'ContactNetsI': '#01256e',
+                  'ContactNetsI + Residual': '#398537',
                   'Prediction': '#95001a',
                   'Prediction + Residual': '#92668d',
-                  'End-to-End': '#4a0042'}
+                  'End-to-End': '#4a0042',
+                  'ContactNets': '#1111ff',
+                  'ContactNets + Residual': '#11ff11',}
 METRICS = {'model_loss_mean': {
                 'label': 'Loss',
-                'yformat': "%.0f", 'scaling': 1.0},
+                'yformat': "%.0f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'oracle_loss_mean': {
                 'label': 'Oracle loss',
-                'yformat': "%.0f", 'scaling': 1.0},
+                'yformat': "%.0f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'model_trajectory_mse_mean': {
                 'label': 'Accumulated trajectory error',
-                'yformat': "%.0f", 'scaling': 1.0},
+                'yformat': "%.0f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'oracle_trajectory_mse_mean': {
                 'label': 'Oracle accumulated trajectory error',
-                'yformat': "%.0f", 'scaling': 1.0},
+                'yformat': "%.0f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'model_pos_int_traj': {
                 'label': 'Trajectory positional error [m]',
-                'yformat': "%.2f", 'scaling': 1.0},
+                'yformat': "%.2f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, 0.4], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'oracle_pos_int_traj': {
                 'label': 'Oracle trajectory positional error [m]',
-                'yformat': "%.2f", 'scaling': 1.0},
+                'yformat': "%.2f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'model_angle_int_traj': {
                 'label': 'Trajectory rotational error [deg]',
-                'yformat': "%.0f", 'scaling': 180/np.pi},
+                'yformat': "%.0f", 'scaling': 180/np.pi,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'lower right'},
            'oracle_angle_int_traj': {
                 'label': 'Oracle trajectory rotational error [deg]',
-                'yformat': "%.0f", 'scaling': 180/np.pi},
+                'yformat': "%.0f", 'scaling': 180/np.pi,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'model_penetration_int_traj': {
                 'label': 'Trajectory penetration [m]',
-                'yformat': "%.3f", 'scaling': 1.0},
+                'yformat': "%.3f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'},
            'oracle_penetration_int_traj': {
                 'label': 'Oracle trajectory penetration [m]',
-                'yformat': "%.3f", 'scaling': 1.0}
+                'yformat': "%.3f", 'scaling': 1.0,
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': 'best'}
             }
 
 PARAMETER_VALUES = ["m", "px", "py", "pz", "I_xx", "I_yy", "I_zz", "I_xy",
@@ -80,9 +112,17 @@ GEOMETRY_PARAMETER_ERROR = 'geometry_parameter_error'
 FRICTION_PARAMETER_ERROR = 'friction_error'
 PARAMETER_ERRORS = {
     GEOMETRY_PARAMETER_ERROR: {'label': 'Geometry parameter error [m]',
-                               'yformat': "%.3f", 'scaling': 1.0},
+                               'yformat': "%.2f", 'scaling': 1.0,
+                               'ylims': {'elbow': [0.0, None],
+                                         'cube': [None, None],
+                                         'asymmetric': [None, None]},
+                               'legend_loc': 'upper left'},
     FRICTION_PARAMETER_ERROR: {'label': 'Friction error',
-                               'yformat': "%.2f", 'scaling': 1.0}
+                               'yformat': "%.2f", 'scaling': 1.0,
+                               'ylims': {'elbow': [None, None],
+                                         'cube': [None, None],
+                                         'asymmetric': [None, None]},
+                               'legend_loc': 'best'}
 }
 
 PARAMETER_METRICS_BY_EXPERIMENT = {
@@ -135,7 +175,14 @@ DATASET_SIZE_DICT = {2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: []}
 # The following are t values for 95% confidence interval.
 T_SCORE_PER_DOF = {1: 12.71, 2: 4.303, 3: 3.182, 4: 2.776,
                    5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306,
-                   9: 2.262, 10: 2.228}
+                   9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179,
+                   13: 2.160, 14: 2.145, 15: 2.131, 16: 2.120,
+                   17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+                   21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064,
+                   25: 2.060, 26: 2.056, 27: 2.052, 28: 2.048,
+                   29: 2.045, 30: 2.042}
+
+RUN_NUMBERS_TO_SKIP = [str(i).zfill(2) for i in range(20)]
 
 XS = [2**(key-1) for key in DATASET_SIZE_DICT.keys()]
 
@@ -165,7 +212,7 @@ def get_empty_experiment_dict_by_experiment(experiment):
     return empty_dict_per_experiment
 
 def set_of_vals_to_t_confidence_interval(ys):
-    if len(ys) == 0:
+    if len(ys) <= 1:
         return None, None, None
 
     dof = len(ys) - 1
@@ -181,14 +228,20 @@ def set_of_vals_to_t_confidence_interval(ys):
 def get_method_name_by_run_dict(run_dict):
     if not run_dict['structured']:
         return 'End-to-End'
-    if run_dict['contactnets'] and run_dict['residual']:
-        return 'ContactNets + Residual'
-    elif run_dict['contactnets'] and not run_dict['residual']:
-        return 'ContactNets'
     elif not run_dict['contactnets'] and run_dict['residual']:
         return 'Prediction + Residual'
     elif not run_dict['contactnets'] and not run_dict['residual']:
         return 'Prediction'
+    elif run_dict['loss_variation'] == 3:
+        if run_dict['contactnets'] and run_dict['residual']:
+            return 'ContactNetsI + Residual'
+        elif run_dict['contactnets'] and not run_dict['residual']:
+            return 'ContactNetsI'
+    elif run_dict['loss_variation'] == 1:
+        if run_dict['contactnets'] and run_dict['residual']:
+            return 'ContactNets + Residual'
+        elif run_dict['contactnets'] and not run_dict['residual']:
+            return 'ContactNets'
 
     raise RuntimeError(f"Unknown method with run_dict: {run_dict}")
 
@@ -214,8 +267,8 @@ def convert_lists_to_t_conf_dict(exp_dict, exponent):
         # Here "quantity" can be a metric or parameter.
         for quantity in exp_dict[method].keys():
             vals = exp_dict[method][quantity][exponent]
-            if len(vals) > 9:
-                pdb.set_trace()
+            # if len(vals) > 9:
+            #     pdb.set_trace()
             mean, lower, upper = set_of_vals_to_t_confidence_interval(vals)
 
             exp_dict[method][quantity][exponent] = {
@@ -262,10 +315,12 @@ def convert_parameters_to_errors(run_dict, experiment):
 
     return run_dict
 
-def format_plot(ax, fig, metric, metric_lookup):
+def format_plot(ax, fig, metric, metric_lookup, system):
     ax.set_xscale('log')
-    ax.set_yscale('log')
     ax.set_xlim(min(XS), max(XS))
+
+    ax.set_ylim(bottom=metric_lookup[metric]['ylims'][system][0],
+                   top=metric_lookup[metric]['ylims'][system][1])
 
     ax.xaxis.set_major_formatter(NullFormatter())
     ax.xaxis.set_minor_formatter(NullFormatter())
@@ -301,7 +356,8 @@ def format_plot(ax, fig, metric, metric_lookup):
     handles, labels = plt.gca().get_legend_handles_labels()
 
     plt.legend(handles, labels)
-    plt.legend(loc=1, prop=dict(weight='bold'))
+    plt.legend(loc=metric_lookup[metric]['legend_loc'],
+               prop=dict(weight='bold'))
 
     fig.set_size_inches(13, 13)
 
@@ -376,7 +432,7 @@ with open(JSON_OUTPUT_FILE) as file:
 sent_warning = False
 
 # Iterate over experiments.
-for experiment in results.keys():
+for experiment in ['elbow', 'cube']:   #results.keys():
     system = SYSTEM_BY_EXPERIMENT[experiment]
     exp_dict = get_empty_experiment_dict_by_experiment(experiment)
 
@@ -388,10 +444,10 @@ for experiment in results.keys():
 
         # Iterate over runs.
         for run_name, run_dict in data_sweep[exponent_str].items():
-            if '00' in run_name or '06' in run_name or '07' in run_name or \
-               '08' in run_name or '09' in run_name:
+            if run_name[2:4] in RUN_NUMBERS_TO_SKIP:
                 if not sent_warning:
-                    print(f'WARNING: Skipping some runs, e.g. {run_name}.')
+                    print(f'WARNING: Skipping any run numbers in ' + \
+                          f'{RUN_NUMBERS_TO_SKIP}.')
                     sent_warning = True
                 continue
 
@@ -420,7 +476,7 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, metric, METRICS)
+        format_plot(ax, fig, metric, METRICS, system)
         plt.title(experiment)
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{metric}.png')
         fig.savefig(fig_path, dpi=100)
@@ -445,7 +501,7 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS)
+        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, system)
         plt.title(experiment)
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{parameter_metric}.png')
         fig.savefig(fig_path, dpi=100)
