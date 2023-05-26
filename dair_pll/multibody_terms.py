@@ -568,7 +568,7 @@ class MultibodyTerms(Module):
                 self.plant_diagram.plant,
                 self.plant_diagram.model_ids)
 
-        friction_coefficients = \
+        single_body_coefficients = \
             self.contact_terms.get_single_body_friction_coefficients()
 
         for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(),
@@ -587,7 +587,7 @@ class MultibodyTerms(Module):
                     for scalar_name, scalar in geometry_scalars.items()
                 })
                 scalars[f'{body_id}_mu'] = \
-                    friction_coefficients[geometry_index].item()
+                    single_body_coefficients[geometry_index].item()
 
                 if isinstance(geometry, (DeepSupportConvex, Polygon)):
                     if isinstance(geometry, DeepSupportConvex):
@@ -609,6 +609,14 @@ class MultibodyTerms(Module):
                         f'{body_id}_center_{axis}': value.item()
                         for axis, value in zip(['x', 'y', 'z'], center)
                     })
+
+        # log lumped parameters
+        lumped_coefficients = \
+            self.contact_terms.get_lumped_friction_coefficients()
+        for i, bodies in enumerate(self.contact_terms.collision_candidates.T):
+            scalar_name = f'mu_lumped_{i}_{bodies[0].item()}_{bodies[1].item()}'
+            scalars[scalar_name] = lumped_coefficients[i].item()
+
 
         return scalars, meshes
 

@@ -674,21 +674,19 @@ class GeometryCollider:
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 
 
-def _get_mesh_interior_point(halfspaces: np.ndarray) -> Tuple[np.ndarray,
-                                                              float]:
-    norm_vector = np.reshape(
-        np.linalg.norm(halfspaces[:, :-1], axis=1),
-        (halfspaces.shape[0], 1)
-    )
+def _get_mesh_interior_point(
+        halfspaces: np.ndarray) -> Tuple[np.ndarray, float]:
+    norm_vector = np.reshape(np.linalg.norm(halfspaces[:, :-1], axis=1),
+                             (halfspaces.shape[0], 1))
     objective_coefficients = np.zeros((halfspaces.shape[1],))
     objective_coefficients[-1] = -1
     A = np.hstack((halfspaces[:, :-1], norm_vector))
-    b = - halfspaces[:, -1:]
-    res = linprog(
-        objective_coefficients, A_ub=A, b_ub=b, bounds=(None, None))
+    b = -halfspaces[:, -1:]
+    res = linprog(objective_coefficients, A_ub=A, b_ub=b, bounds=(None, None))
     interior_point = res.x[:-1]
     interior_point_gap = res.x[-1]
     return interior_point, interior_point_gap
+
 
 class GeometryRelativeErrorFactory:
     """Factory class for generating geometry relative error functions."""
@@ -720,8 +718,10 @@ class GeometryRelativeErrorFactory:
         if isinstance(geometry_learned, Plane):
             return None
         if isinstance(geometry_learned, (DeepSupportConvex, Box)):
+            learned_type = type(geometry_learned).__name__
             raise NotImplementedError("volumetric error not "
-                                      "implemented for this type of geometry")
+                                      "implemented for geometry type %s" %
+                                      learned_type)
         return None
 
     @staticmethod
@@ -769,11 +769,10 @@ class GeometryRelativeErrorFactory:
         else:
 
             intersection_halfspace_convex = HalfspaceIntersection(
-                intersection_halfspaces, interior_point
-            )
+                intersection_halfspaces, interior_point)
 
             intersection_volume = ConvexHull(
                 intersection_halfspace_convex.intersections).volume
 
-        return Tensor(
-            [sum_volume - 2 * intersection_volume]).abs() / true_volume
+        return Tensor([sum_volume - 2 * intersection_volume
+                      ]).abs() / true_volume
