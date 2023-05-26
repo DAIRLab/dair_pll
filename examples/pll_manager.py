@@ -202,15 +202,15 @@ def create_instance(storage_folder_name: str, run_name: str,
         train_options += f' --additional-forces={additional_forces}' if \
                          additional_forces != None else ''
 
+        if structured:
+            train_options += f' --w-res={w_res}'
+            train_options += f' --w-res-w={w_res_w}'
+            train_options += f' --g-frac={g_frac}'
         if structured and contactnets:
             train_options += f' --w-pred={w_pred}'
             train_options += f' --w-comp={w_comp}'
             train_options += f' --w-diss={w_diss}'
             train_options += f' --w-pen={w_pen}'
-            train_options += f' --w-res={w_res}'
-            train_options += f' --w-res-w={w_res_w}'
-        if structured:
-            train_options += f' --g-frac={g_frac}'
 
     script = script.replace('{train_args}', train_options)
 
@@ -1053,9 +1053,9 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
     # Search over weights for 3 of the loss components for loss variations 1, 2,
     # and 3 (leave out 0 since it's a scaled version of 1).
     w_pred = 1e0
-    w_comp_by_loss_var = {3: 0.01, 1: 0.001}
-    w_diss_by_loss_var = {3: 0.0001, 1: 0.1}
-    w_pen_by_loss_var = {3: 1000, 1: 100}
+    w_comp_by_loss_var = {3: 0.01, 1: 0.001, 0: 1.0}
+    w_diss_by_loss_var = {3: 0.0001, 1: 0.1, 0: 1.0}
+    w_pen_by_loss_var = {3: 1000, 1: 100, 0: 1.0}
     for w_res in HYPERPARAMETER_WEIGHTS:
         for w_res_w in HYPERPARAMETER_WEIGHTS:
             # for w_pen in HYPERPARAMETER_WEIGHTS:
@@ -1070,7 +1070,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                 # if w_pen < 1e-2:
                 #     continue
 
-            for loss_variation in [1, 3]:
+            for loss_variation in [0]:
                 w_comp = w_comp_by_loss_var[loss_variation]
                 w_diss = w_diss_by_loss_var[loss_variation]
                 w_pen = w_pen_by_loss_var[loss_variation]
