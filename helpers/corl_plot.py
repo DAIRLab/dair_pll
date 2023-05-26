@@ -3,6 +3,7 @@ is a json file that this script accesses to generate plots.
 
 experiment/
     method/
+        n_runs:  dataset size --> number of experiments
         metric/
             dataset size/
                 [list of values]
@@ -35,6 +36,8 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'plots')
 JSON_OUTPUT_FILE = op.join(op.dirname(__file__), 'results_cluster.json')
 
 
+CN_METHODS_ONLY = ['ContactNetsI', 'ContactNetsI + Residual',
+                   'ContactNets', 'ContactNets + Residual']
 METHOD_RESULTS = {'ContactNetsI': '#01256e',
                   'ContactNetsI + Residual': '#398537',
                   'Prediction': '#95001a',
@@ -42,26 +45,20 @@ METHOD_RESULTS = {'ContactNetsI': '#01256e',
                   'End-to-End': '#4a0042',
                   'ContactNets': '#1111ff',
                   'ContactNets + Residual': '#11ff11',}
-METRICS = {'model_loss_mean': {
-                'label': 'Loss',
-                'yformat': "%.0f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
-                          'asymmetric': [None, None]},
-                'legend_loc': 'best'},
-           'oracle_loss_mean': {
-                'label': 'Oracle loss',
-                'yformat': "%.0f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
-                          'asymmetric': [None, None]},
-                'legend_loc': 'best'},
+METRICS = {#'model_loss_mean': {
+           #      'label': 'Loss',
+           #      'yformat': "%.0f", 'scaling': 1.0,
+           #      'ylims': {'elbow': [None, None], 'cube': [None, None],
+           #                'asymmetric': [None, None]},
+           #      'legend_loc': 'best'},
+           # 'oracle_loss_mean': {
+           #      'label': 'Loss',
+           #      'yformat': "%.0f", 'scaling': 1.0,
+           #      'ylims': {'elbow': [None, None], 'cube': [None, None],
+           #                'asymmetric': [None, None]},
+           #      'legend_loc': 'best'},
            'model_trajectory_mse_mean': {
                 'label': 'Accumulated trajectory error',
-                'yformat': "%.0f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
-                          'asymmetric': [None, None]},
-                'legend_loc': 'best'},
-           'oracle_trajectory_mse_mean': {
-                'label': 'Oracle accumulated trajectory error',
                 'yformat': "%.0f", 'scaling': 1.0,
                 'ylims': {'elbow': [None, None], 'cube': [None, None],
                           'asymmetric': [None, None]},
@@ -69,14 +66,8 @@ METRICS = {'model_loss_mean': {
            'model_pos_int_traj': {
                 'label': 'Trajectory positional error [m]',
                 'yformat': "%.2f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, 0.4], 'cube': [None, None],
-                          'asymmetric': [None, None]},
-                'legend_loc': 'best'},
-           'oracle_pos_int_traj': {
-                'label': 'Oracle trajectory positional error [m]',
-                'yformat': "%.2f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
-                          'asymmetric': [None, None]},
+                'ylims': {'elbow': [-0.01, 0.4], 'cube': [-0.01, 0.4],
+                          'asymmetric': [-0.01, 0.4]},
                 'legend_loc': 'best'},
            'model_angle_int_traj': {
                 'label': 'Trajectory rotational error [deg]',
@@ -84,22 +75,10 @@ METRICS = {'model_loss_mean': {
                 'ylims': {'elbow': [None, None], 'cube': [None, None],
                           'asymmetric': [None, None]},
                 'legend_loc': 'lower right'},
-           'oracle_angle_int_traj': {
-                'label': 'Oracle trajectory rotational error [deg]',
-                'yformat': "%.0f", 'scaling': 180/np.pi,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
-                          'asymmetric': [None, None]},
-                'legend_loc': 'best'},
            'model_penetration_int_traj': {
                 'label': 'Trajectory penetration [m]',
                 'yformat': "%.3f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
-                          'asymmetric': [None, None]},
-                'legend_loc': 'best'},
-           'oracle_penetration_int_traj': {
-                'label': 'Oracle trajectory penetration [m]',
-                'yformat': "%.3f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                'ylims': {'elbow': [None, 0.02], 'cube': [None, None],
                           'asymmetric': [None, None]},
                 'legend_loc': 'best'}
             }
@@ -161,6 +140,7 @@ CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY = {
             'mu': 0.15}
     }
 }
+N_RUNS = 'n_runs'
 
 SYSTEM_BY_EXPERIMENT = {
     'cube': 'cube',
@@ -202,12 +182,16 @@ def get_empty_experiment_dict_by_experiment(experiment):
     empty_dict_per_experiment = deepcopy(METHOD_RESULTS)
     for method in empty_dict_per_experiment.keys():
         empty_dict_per_experiment[method] = deepcopy(METRICS)
+        empty_dict_per_experiment[method].update(
+            {N_RUNS: deepcopy(DATASET_SIZE_DICT)})
         for metric in METRICS.keys():
             empty_dict_per_experiment[method][metric] = \
                 deepcopy(DATASET_SIZE_DICT)
         for param_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
             empty_dict_per_experiment[method].update(
                 {param_metric: deepcopy(DATASET_SIZE_DICT)})
+        for exponent in DATASET_SIZE_DICT.keys():
+            empty_dict_per_experiment[method][N_RUNS][exponent] = 0
 
     return empty_dict_per_experiment
 
@@ -266,14 +250,18 @@ def convert_lists_to_t_conf_dict(exp_dict, exponent):
     for method in METHOD_RESULTS.keys():
         # Here "quantity" can be a metric or parameter.
         for quantity in exp_dict[method].keys():
+            if quantity == N_RUNS:
+                continue
+
             vals = exp_dict[method][quantity][exponent]
-            # if len(vals) > 9:
-            #     pdb.set_trace()
+
             mean, lower, upper = set_of_vals_to_t_confidence_interval(vals)
 
             exp_dict[method][quantity][exponent] = {
                 'mean': mean, 'lower': lower, 'upper': upper
             }
+            exp_dict[method][N_RUNS][exponent] = \
+                max(len(vals), exp_dict[method][N_RUNS][exponent])
 
     return exp_dict
 
@@ -300,6 +288,17 @@ def get_plottable_values(exp_dict, metric, method, metric_lookup):
 
     return xs, ys, lowers, uppers
 
+def get_plottable_run_counts(exp_dict, method):
+    data_dict = exp_dict[method][N_RUNS]
+
+    xs, ys = [], []
+
+    for x in data_dict.keys():
+        xs.append(2**(x-1))
+        ys.append(data_dict[x])
+
+    return xs, ys
+
 def convert_parameters_to_errors(run_dict, experiment):
     params_dict = run_dict['learned_params']
     if params_dict == None:
@@ -317,6 +316,7 @@ def convert_parameters_to_errors(run_dict, experiment):
 
 def format_plot(ax, fig, metric, metric_lookup, system):
     ax.set_xscale('log')
+    ax.set_yscale('log')
     ax.set_xlim(min(XS), max(XS))
 
     ax.set_ylim(bottom=metric_lookup[metric]['ylims'][system][0],
@@ -423,6 +423,61 @@ def calculate_friction_error(run_dict, experiment):
     run_dict['results'].update({FRICTION_PARAMETER_ERROR: friction_error})
     return run_dict
 
+def do_run_num_plot(exp_dict, experiment):
+    # Start a plot.
+    fig = plt.figure()
+    ax = plt.gca()
+
+    for method in METHOD_RESULTS.keys():
+        xs, ys = get_plottable_run_counts(exp_dict, method)
+
+        # Plot the run numbers.
+        ax.plot(xs, ys, label=method, linewidth=5,
+                color=METHOD_RESULTS[method])
+
+    ax.set_xscale('log')
+    ax.set_xlim(min(XS), max(XS))
+
+    ax.xaxis.set_major_formatter(NullFormatter())
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.yaxis.set_major_formatter(NullFormatter())
+
+    xs_rounded = [round(x, 1) for x in XS]
+    ax.set_xticks([])
+    ax.set_xticklabels([])
+    ax.set_xticks(xs_rounded)
+    ax.set_xticklabels(xs_rounded)
+
+    ax.tick_params(axis='x', which='minor', bottom=False, labelsize=20)
+    ax.tick_params(axis='x', which='major', bottom=False, labelsize=20)
+    ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+
+    ax.tick_params(axis='y', which='minor', labelsize=20)
+    ax.tick_params(axis='y', which='major', labelsize=20)
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+    ax.yaxis.set_minor_formatter(FormatStrFormatter("%.0f"))
+
+    plt.xlabel('Training tosses')
+    plt.ylabel('Number of runs')
+
+    ax.yaxis.grid(True, which='both')
+    ax.xaxis.grid(True, which='major')
+
+    lines = ax.get_lines()
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+
+    plt.legend(handles, labels)
+    plt.legend(prop=dict(weight='bold'))
+
+    fig.set_size_inches(13, 13)
+
+    plt.title(experiment)
+    fig_path = op.join(OUTPUT_DIR, f'{experiment}_run_nums.png')
+    fig.savefig(fig_path, dpi=100)
+    plt.close()
 
 # =============================== Plot results =============================== #
 # Load the results from the json file.
@@ -432,7 +487,7 @@ with open(JSON_OUTPUT_FILE) as file:
 sent_warning = False
 
 # Iterate over experiments.
-for experiment in ['elbow', 'cube']:   #results.keys():
+for experiment in results.keys():
     system = SYSTEM_BY_EXPERIMENT[experiment]
     exp_dict = get_empty_experiment_dict_by_experiment(experiment)
 
@@ -506,6 +561,9 @@ for experiment in ['elbow', 'cube']:   #results.keys():
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{parameter_metric}.png')
         fig.savefig(fig_path, dpi=100)
         plt.close()
+
+    # Add in a test plot of the number of experiments.
+    do_run_num_plot(exp_dict, experiment)
         
 
 pdb.set_trace()

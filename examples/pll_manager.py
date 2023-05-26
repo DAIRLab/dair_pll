@@ -24,9 +24,10 @@ DEV = 'dev'
 SWEEP = 'sweep'
 HYPERPARAMETER_SIM = 'hyperparam'
 HYPERPARAMETER_REAL = 'hpr'  #eal'
+SIM_AUG_HYPERPARAMETER = 'shp'
 GRAVITY_SWEEP = 'gravity_sweep'
 CATEGORIES = [TEST, DEV, SWEEP, HYPERPARAMETER_SIM, HYPERPARAMETER_REAL,
-              GRAVITY_SWEEP]
+              GRAVITY_SWEEP, SIM_AUG_HYPERPARAMETER]
 
 # Possible dataset types
 SIM_SOURCE = 'simulation'
@@ -131,6 +132,7 @@ def create_instance(storage_folder_name: str, run_name: str,
                     w_diss: float = 1e0,
                     w_pen: float = 1e0,
                     w_res: float = 1e0,
+                    w_res_w: float = 1e0,
                     do_residual: bool = False,
                     additional_forces: str = None,
                     g_frac: float = 1.0):
@@ -206,6 +208,7 @@ def create_instance(storage_folder_name: str, run_name: str,
             train_options += f' --w-diss={w_diss}'
             train_options += f' --w-pen={w_pen}'
             train_options += f' --w-res={w_res}'
+            train_options += f' --w-res-w={w_res_w}'
         if structured:
             train_options += f' --g-frac={g_frac}'
 
@@ -323,9 +326,9 @@ def experiment_class_command(category: str, run_name: str, system: str,
     structured: bool, contactnets: bool, geometry: str, regenerate: bool,
     local: bool, inertia_params: str, loss_variation: str, true_sys: bool,
     overwrite: str, w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-    w_res: float, dataset_exponent: int = None, last_run_num: int = None,
-    number: int = 1, do_residual: bool = False, additional_forces: str = None,
-    g_frac: float = 1.0):
+    w_res: float, w_res_w: float, dataset_exponent: int = None,
+    last_run_num: int = None, number: int = 1, do_residual: bool = False,
+    additional_forces: str = None, g_frac: float = 1.0):
     """Executes main function with argument interface."""
 
     assert category in CATEGORIES
@@ -339,10 +342,12 @@ def experiment_class_command(category: str, run_name: str, system: str,
                     additional_forces==VORTEX_AUGMENTATION) else \
             'b' if (category == SWEEP and \
                     additional_forces==VISCOUS_AUGMENTATION) else \
+            'a' if category==SIM_AUG_HYPERPARAMETER else \
             category[0]  # t/d/h/i/v/b for test/dev/{hp sim/real}/vortex/viscous
         run_name_pattern += system[0]   # c for cube or e for elbow
         run_name_pattern += '????' if category==HYPERPARAMETER_SIM else \
-                            '????' if category==HYPERPARAMETER_REAL else '??'
+                            '????' if category==HYPERPARAMETER_REAL else \
+                            '????' if category==SIM_AUG_HYPERPARAMETER else '??'
         run_name_pattern += '-?' if category in [SWEEP, GRAVITY_SWEEP] else ''
         return run_name_pattern
 
@@ -358,7 +363,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
     
     if run_name is None:
         nums_to_display = 4 if category == HYPERPARAMETER_SIM else \
-                          4 if category == HYPERPARAMETER_REAL else 2
+                          4 if category == HYPERPARAMETER_REAL else \
+                          4 if category == SIM_AUG_HYPERPARAMETER else 2
         if last_run_num is None:
             runs_dir = file_utils.all_runs_dir(storage_name)
             runs_list = sorted(os.listdir(runs_dir))
@@ -372,6 +378,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                            additional_forces==VORTEX_AUGMENTATION) else \
                    'b' if (category == SWEEP and \
                            additional_forces==VISCOUS_AUGMENTATION) else \
+                   'a' if category==SIM_AUG_HYPERPARAMETER else \
                    category[0]
         run_name += 'c' if system==CUBE_SYSTEM else \
                     'e' if system==ELBOW_SYSTEM else 'a'
@@ -400,6 +407,7 @@ def experiment_class_command(category: str, run_name: str, system: str,
                   512 if category == HYPERPARAMETER_SIM else \
                   64 if category == HYPERPARAMETER_REAL else \
                   512 if category == GRAVITY_SWEEP else \
+                  64 if category == SIM_AUG_HYPERPARAMETER else \
                   2**dataset_exponent # if category == SWEEP
 
     source = SIM_SOURCE if (category==SWEEP and additional_forces!=None) else \
@@ -423,7 +431,8 @@ def experiment_class_command(category: str, run_name: str, system: str,
                         loss_variation=loss_variation, true_sys=true_sys,
                         restart=False, wandb_group_id=wandb_group_id,
                         w_pred=w_pred, w_comp=w_comp, w_diss=w_diss,
-                        w_pen=w_pen, w_res=w_res, do_residual=do_residual,
+                        w_pen=w_pen, w_res=w_res, w_res_w=w_res_w,
+                        do_residual=do_residual,
                         additional_forces=additional_forces, g_frac=g_frac)
 
 
@@ -496,7 +505,11 @@ def cli():
 @click.option('--w-res',
               type=float,
               default=1e0,
-              help="weight of residual regularization term in loss")
+              help="weight of residual norm regularization term in loss")
+@click.option('--w-res-w',
+              type=float,
+              default=1e0,
+              help="weight of residual weight regularization term in loss")
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
@@ -514,8 +527,8 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
                    dataset_size: int, local: bool, inertia_params: str,
                    loss_variation: str, true_sys: bool, overwrite: str,
                    w_pred: float, w_comp: float, w_diss: float, w_pen: float,
-                   w_res: float, residual: bool, additional_forces: str,
-                   g_frac: float):
+                   w_res: float, w_res_w: float, residual: bool,
+                   additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
 
     # Check if git repository has uncommitted changes.
@@ -567,7 +580,7 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
                         loss_variation, true_sys, restart=False,
                         wandb_group_id=wandb_group_id, w_pred=w_pred,
                         w_comp=w_comp, w_diss=w_diss, w_pen=w_pen, w_res=w_res,
-                        do_residual=residual,
+                        w_res_w=w_res_w, do_residual=residual,
                         additional_forces=additional_forces, g_frac=g_frac)
 
 
@@ -630,7 +643,11 @@ def create_command(storage_folder_name: str, run_name: str, number: int,
 @click.option('--w-res',
               type=float,
               default=1e0,
-              help="weight of penetration term in ContactNets loss")
+              help="weight of residual norm regularization in loss")
+@click.option('--w-res-w',
+              type=float,
+              default=1e0,
+              help="weight of residual weight regularization term in loss")
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
@@ -646,8 +663,8 @@ def test_command(run_name: str, number: int, system: str, structured: bool,
                  contactnets: bool, geometry: str, regenerate: bool,
                  local: bool, inertia_params: str, loss_variation: str,
                  true_sys: bool, overwrite: str, w_pred: float, w_comp: float,
-                 w_diss: float, w_pen: float, w_res: float, residual: bool,
-                 additional_forces: str, g_frac: float):
+                 w_diss: float, w_pen: float, w_res: float, w_res_w: float,
+                 residual: bool, additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
     repo = git.Repo(search_parent_directories=True)
@@ -660,7 +677,7 @@ def test_command(run_name: str, number: int, system: str, structured: bool,
                              loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite, number=number, w_pred=w_pred,
                              w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
-                             w_res=w_res, do_residual=residual, 
+                             w_res=w_res, w_res_w=w_res_w, do_residual=residual, 
                              additional_forces=additional_forces, g_frac=g_frac)
 
 @cli.command('dev')
@@ -722,7 +739,11 @@ def test_command(run_name: str, number: int, system: str, structured: bool,
 @click.option('--w-res',
               type=float,
               default=1e0,
-              help="weight of penetration term in ContactNets loss")
+              help="weight of residual norm regularization in loss")
+@click.option('--w-res-w',
+              type=float,
+              default=1e0,
+              help="weight of residual weight regularization term in loss")
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
@@ -738,7 +759,7 @@ def dev_command(run_name: str, number: int, system: str, structured: bool,
                 contactnets: bool, geometry: str, regenerate: bool, local: bool,
                 inertia_params: str, loss_variation: str, true_sys: bool,
                 overwrite: str, w_pred: float, w_comp: float, w_diss: float,
-                w_pen: float, w_res: float, residual: bool,
+                w_pen: float, w_res: float, w_res_w: float, residual: bool,
                 additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
     # Check if git repository has uncommitted changes.
@@ -752,7 +773,7 @@ def dev_command(run_name: str, number: int, system: str, structured: bool,
                              loss_variation=loss_variation, true_sys=true_sys,
                              overwrite=overwrite, number=number, w_pred=w_pred,
                              w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
-                             w_res=w_res, do_residual=residual,
+                             w_res=w_res, w_res_w=w_res_w, do_residual=residual,
                              additional_forces=additional_forces, g_frac=g_frac)
 
 
@@ -851,7 +872,11 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
 @click.option('--w-res',
               type=float,
               default=1e0,
-              help="weight of penetration term in ContactNets loss")
+              help="weight of residual norm regularization in loss")
+@click.option('--w-res-w',
+              type=float,
+              default=1e0,
+              help="weight of residual weight regularization term in loss")
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
@@ -867,7 +892,7 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
                   contactnets: bool, geometry: str, regenerate: bool,
                   local: bool, inertia_params: str, loss_variation: str,
                   true_sys: bool, w_pred: float, w_comp: float, w_diss: float,
-                  w_pen: float, w_res: float, residual: bool,
+                  w_pen: float, w_res: float, w_res_w: float, residual: bool,
                   additional_forces: str, g_frac: float):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
@@ -928,7 +953,8 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
                                      overwrite=OVERWRITE_NOTHING,
                                      number=number, w_pred=w_pred,
                                      w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
-                                     w_res=w_res, do_residual=residual,
+                                     w_res=w_res, w_res_w=w_res_w,
+                                     do_residual=residual,
                                      additional_forces=additional_forces,
                                      g_frac=g_frac)
     elif category==GRAVITY_SWEEP:
@@ -947,7 +973,8 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
                                      overwrite=OVERWRITE_NOTHING,
                                      number=number, w_pred=w_pred,
                                      w_comp=w_comp, w_diss=w_diss, w_pen=w_pen,
-                                     w_res=w_res, do_residual=residual,
+                                     w_res=w_res, w_res_w=w_res_w,
+                                     do_residual=residual,
                                      additional_forces=additional_forces,
                                      g_frac=g_frac)
 
@@ -989,10 +1016,14 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
+@click.option('--additional-forces',
+              type = click.Choice(AUGMENTED_FORCE_TYPES),
+              default=NO_AUGMENTATION,
+              help="what kind of additional forces to augment simulation data.")
 def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                            contactnets: bool, geometry: str, regenerate: bool,
                            local: bool, inertia_params: str, true_sys: bool,
-                           residual: bool):
+                           residual: bool, additional_forces: str):
     """Starts a series of instances, sweeping over dataset size."""
     assert hp_name is None or '-' not in hp_name
 
@@ -1002,7 +1033,8 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
 
     # Call the project 'hpreal' for "hyper parameter real" if using real data,
     # else 'hyperparam' for simulation data.
-    experiment_name = 'hpr'  #UNDO'hpreal' if source == REAL_SOURCE else 'hyperparam'
+    # experiment_name = 'hpr'  #UNDO'hpreal' if source == REAL_SOURCE else 'hyperparam'
+    experiment_name = 'shp'
 
     # First determine what run number to use so they are consistent for each
     # dataset size.
@@ -1010,6 +1042,7 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
     repo = git.Repo(search_parent_directories=True)
     repo_dir = repo.git.rev_parse("--show-toplevel")
     storage_name = op.join(repo_dir, 'results', f'{experiment_name}_{system}')
+    storage_name += f'_{additional_forces}' if additional_forces != None else ''
 
     if op.isdir(storage_name):
         runs_dir = file_utils.all_runs_dir(storage_name)
@@ -1020,32 +1053,39 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
     # Search over weights for 3 of the loss components for loss variations 1, 2,
     # and 3 (leave out 0 since it's a scaled version of 1).
     w_pred = 1e0
-    for w_comp in HYPERPARAMETER_WEIGHTS:
-        for w_diss in HYPERPARAMETER_WEIGHTS:
-            for w_pen in HYPERPARAMETER_WEIGHTS:
+    w_comp_by_loss_var = {3: 0.01, 1: 0.001}
+    w_diss_by_loss_var = {3: 0.0001, 1: 0.1}
+    w_pen_by_loss_var = {3: 1000, 1: 100}
+    for w_res in HYPERPARAMETER_WEIGHTS:
+        for w_res_w in HYPERPARAMETER_WEIGHTS:
+            # for w_pen in HYPERPARAMETER_WEIGHTS:
                 # if w_comp == w_diss == w_pen == 1e0:
                 #     # Already ran many tests with (1, 1, 1, 1) weights, so can
                 #     # skip repeating this hyperparameter set.
                 #     continue
-                if w_comp > 1:
-                    continue
-                if w_diss > 1:
-                    continue
-                if w_pen < 1e-2:
-                    continue
+                # if w_comp > 1:
+                #     continue
+                # if w_diss > 1:
+                #     continue
+                # if w_pen < 1e-2:
+                #     continue
 
-                for loss_variation in [1, 2]:
-                    experiment_class_command(
-                        experiment_name, hp_name, system=system,
-                        structured=True, contactnets=contactnets, geometry=geometry,
-                        regenerate=regenerate, local=local,
-                        inertia_params=inertia_params,
-                        loss_variation=loss_variation, true_sys=true_sys,
-                        last_run_num=last_run_num, overwrite=OVERWRITE_NOTHING,
-                        number=number, w_pred=w_pred, w_comp=w_comp,
-                        w_diss=w_diss, w_pen=w_pen, w_res=1.0,
-                        do_residual=residual)
-                    last_run_num += 1
+            for loss_variation in [1, 3]:
+                w_comp = w_comp_by_loss_var[loss_variation]
+                w_diss = w_diss_by_loss_var[loss_variation]
+                w_pen = w_pen_by_loss_var[loss_variation]
+
+                experiment_class_command(
+                    experiment_name, hp_name, system=system,
+                    structured=True, contactnets=contactnets, geometry=geometry,
+                    regenerate=regenerate, local=local,
+                    inertia_params=inertia_params,
+                    loss_variation=loss_variation, true_sys=true_sys,
+                    last_run_num=last_run_num, overwrite=OVERWRITE_NOTHING,
+                    number=number, w_pred=w_pred, w_comp=w_comp,
+                    w_diss=w_diss, w_pen=w_pen, w_res=w_res, w_res_w=w_res_w,
+                    do_residual=residual, additional_forces=additional_forces)
+                last_run_num += 1
 
 
 

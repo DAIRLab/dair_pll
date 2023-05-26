@@ -61,7 +61,9 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     w_pen: Float = Float(1e0, log=True)  #1e1
     """Weight of penetration term in ContactNets loss."""
     w_res: Float = Float(1e0, log=True)
-    """Weight of residual size in loss."""
+    """Weight of residual norm in loss."""
+    w_res_w: Float = Float(1e0, log=True)
+    """Weight of residual weights in loss."""
     do_residual: bool = False
     """Whether to include a residual physics block."""
     network_width: int = 128
@@ -239,7 +241,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
             self.true_geom_multibody_system = MultibodyLearnableSystem(
                 init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
                 w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
-                do_residual=False,
+                w_res_w=1.0, do_residual=False,
                 represent_geometry_as = \
                     self.config.learnable_config.represent_geometry_as,
                 randomize_initialization = False)
@@ -299,6 +301,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             w_diss = learnable_config.w_diss.value,
             w_pen = learnable_config.w_pen.value,
             w_res = learnable_config.w_res.value,
+            w_res_w = learnable_config.w_res_w.value,
             output_urdfs_dir=output_dir,
             do_residual=learnable_config.do_residual,
             represent_geometry_as=learnable_config.represent_geometry_as,
@@ -342,7 +345,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         # Calculate the average loss components.
         losses_pred, losses_comp, losses_pen, losses_diss = [], [], [], []
-        residual_regs = []
+        residual_norm, residual_weight = [], []
         for xy_i in train_dataloader:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
@@ -360,7 +363,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_comp.append(loss_comp.clone().detach())
             losses_pen.append(loss_pen.clone().detach())
             losses_diss.append(loss_diss.clone().detach())
-            residual_regs.append(regularizers[0].clone().detach())
+            residual_norm.append(regularizers[0].clone().detach())
+            residual_weight.append(regularizers[1].clone().detach())
 
         def really_weird_fix_for_cluster_only(list_of_tensors):
             """For some reason, on the cluster only, the last item in the loss
@@ -379,7 +383,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         losses_comp = really_weird_fix_for_cluster_only(losses_comp)
         losses_pen = really_weird_fix_for_cluster_only(losses_pen)
         losses_diss = really_weird_fix_for_cluster_only(losses_diss)
-        residual_regs = really_weird_fix_for_cluster_only(residual_regs)
+        residual_norm = really_weird_fix_for_cluster_only(residual_norm)
+        residual_weight = really_weird_fix_for_cluster_only(residual_weight)
 
         # Calculate average and scale by hyperparameter weights.
         w_pred = self.learnable_config.w_pred
@@ -387,6 +392,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         w_diss = self.learnable_config.w_diss.value
         w_pen = self.learnable_config.w_pen.value
         w_res = self.learnable_config.w_res.value
+        w_res_w = self.learnable_config.w_res_w.value
 
         avg_loss_pred = w_pred*cast(Tensor, sum(losses_pred) \
                             / len(losses_pred)).mean()
@@ -396,19 +402,22 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                             / len(losses_pen)).mean()
         avg_loss_diss = w_diss*cast(Tensor, sum(losses_diss) \
                             / len(losses_diss)).mean()
-        avg_residual_reg = w_res*cast(Tensor, sum(residual_regs) \
-                            / len(residual_regs)).mean()
+        avg_residual_norm = w_res*cast(Tensor, sum(residual_norm) \
+                            / len(residual_norm)).mean()
+        avg_residual_weight = w_res*cast(Tensor, sum(residual_weight) \
+                            / len(residual_weight)).mean()
 
         avg_loss_total = torch.sum(avg_loss_pred + avg_loss_comp + \
                                    avg_loss_pen + avg_loss_diss + \
-                                   avg_residual_reg)
+                                   avg_residual_norm + avg_residual_weight)
 
         loss_breakdown = {'loss_total': avg_loss_total,
                           'loss_pred': avg_loss_pred,
                           'loss_comp': avg_loss_comp,
                           'loss_pen': avg_loss_pen,
                           'loss_diss': avg_loss_diss,
-                          'loss_res': avg_residual_reg}
+                          'loss_res_norm': avg_residual_norm,
+                          'loss_res_weight': avg_residual_weight}
 
         # Include the loss components into system summary.
         epoch_vars.update(loss_breakdown)
@@ -441,6 +450,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         e.g., regularization on the size/weights of a residual network, if there
         is one.
         """
+        w_res = self.learnable_config.w_res.value
+        w_res_w = self.learnable_config.w_res_w.value
+
         prediction_loss = self.prediction_loss(x_past, x_future, system,
                                                keep_batch)
 
@@ -451,9 +463,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         regularizers = system.get_regularization_terms(x, u, x_plus)
         if len(regularizers) > 2:
             assert NotImplementedError(
-                "Don't recognize more than one regularization term.")
-        elif len(regularizers) == 1:
-            reg_term = regularizers[0]
+                "Don't recognize more than two regularization terms.")
+        elif len(regularizers) == 2:
+            reg_term = regularizers[0] * w_res + regularizers[1] * w_res_w
         else:
             reg_term = torch.zeros_like(prediction_loss)
 

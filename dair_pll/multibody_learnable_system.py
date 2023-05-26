@@ -88,6 +88,7 @@ class MultibodyLearnableSystem(System):
                  w_diss: float,
                  w_pen: float,
                  w_res: float,
+                 w_res_w: float,
                  do_residual: bool = False,
                  output_urdfs_dir: Optional[str] = None,
                  network_width: int = 128,
@@ -152,6 +153,7 @@ class MultibodyLearnableSystem(System):
         self.w_diss = w_diss
         self.w_pen = w_pen
         self.w_res = w_res
+        self.w_res_w = w_res_w
 
         self.residual_net = None
 
@@ -225,10 +227,13 @@ class MultibodyLearnableSystem(System):
 
         # For now just take the first regularization term as the residual
         # regularization.  Will need to be updated later if more are added.
-        residual_norm = regularizers[0]
-        regs = self.w_res * residual_norm
+        # residual_norm = regularizers[0]
+        # regs = self.w_res * residual_norm
+        reg_norm = regularizers[0]
+        reg_weight = regularizers[1]
 
-        loss = regs + (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
+        loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
+               (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss)
 
         return loss
@@ -244,6 +249,7 @@ class MultibodyLearnableSystem(System):
             # Penalize the size of the residual.  Good with w_res = 0.01.
             residual = self.residual_net(x_plus)
             residual_norm = torch.linalg.norm(residual, dim=1) ** 2
+            regularizers.append(residual_norm)
 
             # Additionally penalize the residual network weights.  This will get
             # scaled down to approximately the same size as the residual norm.
@@ -251,9 +257,9 @@ class MultibodyLearnableSystem(System):
             for layer in self.residual_net:
                 if isinstance(layer, nn.Linear):
                     l2_penalty += sum([(p**2).sum() for p in layer.weight])
-            l2_penalty *= 1e-3
+            # l2_penalty *= 1e-3
 
-            regularizers.append(residual_norm + l2_penalty)
+            regularizers.append(l2_penalty)
         else:
             regularizers.append(torch.zeros((x.shape[-2],)))
 
@@ -489,7 +495,7 @@ class MultibodyLearnableSystem(System):
             layers.append(make_small_linear_layer(network_width, network_width))
             layers.append(nn.ReLU())
 
-        layers.append(nn.Linear(network_width, self.space.n_v))
+        layers.append(make_small_linear_layer(network_width, self.space.n_v))
 
         self.residual_net = nn.Sequential(*layers)
 

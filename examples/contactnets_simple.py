@@ -191,6 +191,7 @@ def main(storage_folder_name: str = "",
          w_diss: float = 1e0,
          w_pen: float = 1e0,
          w_res: float = 1e0,
+         w_res_w: float = 1e0,
          do_residual: bool = False,
          additional_forces: str = None,
          g_frac: float = 1.0):
@@ -232,8 +233,8 @@ def main(storage_folder_name: str = "",
          + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
          + f'\n\tloss variation: {loss_variation}' \
          + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
-         + f'\n\tloss weights (pred, comp, diss, pen, res): ' \
-         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res})' \
+         + f'\n\tloss weights (pred, comp, diss, pen, res, res_w): ' \
+         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w})' \
          + f'\n\twith residual: {do_residual}' \
          + f'\n\tand starting with provided true_sys={true_sys}' \
          + f'\n\tinjecting into dynamics (if sim): {additional_forces}' \
@@ -295,6 +296,7 @@ def main(storage_folder_name: str = "",
             w_diss = Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_pen  = Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_res  = Float(w_res, log=True, distribution=DEFAULT_WEIGHT_RANGE),
+            w_res_w = Float(w_res_w, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             do_residual=do_residual, represent_geometry_as=geometry,
             randomize_initialization = not true_sys, g_frac=g_frac)
 
@@ -454,7 +456,11 @@ def main(storage_folder_name: str = "",
 @click.option('--w-res',
               type=float,
               default=1e0,
-              help="weight of residual regularization term in loss")
+              help="weight of residual norm regularization term in loss")
+@click.option('--w-res-w',
+              type=float,
+              default=1e0,
+              help="weight of residual weight regularization term in loss")
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
@@ -471,15 +477,15 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
                  geometry: str, regenerate: bool, dataset_size: int,
                  inertia_params: str, loss_variation: str, true_sys: bool,
                  wandb_project: str, w_pred: float, w_comp: float,
-                 w_diss: float, w_pen: float, w_res: float, residual: bool,
-                 additional_forces: str, g_frac: float):
+                 w_diss: float, w_pen: float, w_res: float, w_res_w: float,
+                 residual: bool, additional_forces: str, g_frac: float):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, structured, contactnets,
          geometry, regenerate, dataset_size, inertia_params, loss_variation,
-         true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res,
+         true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, w_res_w,
          residual, additional_forces, g_frac)
 
 
