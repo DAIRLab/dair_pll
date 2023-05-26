@@ -465,7 +465,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             assert NotImplementedError(
                 "Don't recognize more than two regularization terms.")
         elif len(regularizers) == 2:
-            reg_term = regularizers[0] * w_res + regularizers[1] * w_res_w
+            reg_term = (regularizers[0] * w_res) + (regularizers[1] * w_res_w)
         else:
             reg_term = torch.zeros_like(prediction_loss)
 
