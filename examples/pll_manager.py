@@ -1050,6 +1050,10 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
         if len(runs_list) > 0:
             last_run_num = max(last_run_num, int(runs_list[-1][2:6]))
 
+    print(f'Will create experiment number: {last_run_num+1}')
+    if not click.confirm('Continue?'):
+        raise RuntimeError("Figure out experiment numbers next time.")
+
     # Search over weights for 3 of the loss components for loss variations 1, 2,
     # and 3 (leave out 0 since it's a scaled version of 1).
     w_pred = 1e0
