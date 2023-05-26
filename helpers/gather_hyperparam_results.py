@@ -13,25 +13,36 @@ from dair_pll.file_utils import *
 
 
 # For results that generated hp_search_2.csv:
-# ELBOW_HP_SCRIPT_PATTERN = 'startup_hpreal_elbow_ie????.bash'
+# CSV_NAME = 'hp_search_2.csv'
+# HP_SCRIPT_PATTERN = 'startup_hpreal_elbow_ie????.bash'
 # storage_name = '/home/bibit/dair_pll/results/hpreal_elbow'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
 # MINIMUM_RUN_NUM = 372
 
 # For results that generated hp_search_3.csv:
-# ELBOW_HP_SCRIPT_PATTERN = 'startup_elbow_real_re??-?.bash'
+# CSV_NAME = 'hp_search_3.csv'
+# HP_SCRIPT_PATTERN = 'startup_elbow_real_re??-?.bash'
 # storage_name = '/home/bibit/dair_pll/results/elbow_real'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-# MINIMUM_RUN_NUM = 13   # the maximum for hp_search_3.csv is 33
+# MINIMUM_RUN_NUM = 13   # the minimum for hp_search_3.csv is 33
 
-# For results that generated hp_search_3.csv:
-ELBOW_HP_SCRIPT_PATTERN = 'startup_hpr_elbow_ie????.bash'
-storage_name = '/home/bibit/dair_pll/results/hpr_elbow'
+# For results that generated hp_search_4.csv:
+# CSV_NAME = 'hp_search_4.csv'
+# HP_SCRIPT_PATTERN = 'startup_hpr_elbow_ie????.bash'
+# storage_name = '/home/bibit/dair_pll/results/hpr_elbow'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-MINIMUM_RUN_NUM = 0   # the maximum for hp_search_3.csv is 33
+# MINIMUM_RUN_NUM = 0   # the minimum for hp_search_4.csv is 0
+
+# For results that generated viscous_hp_search.csv:
+CSV_NAME = 'viscous_hp_search.csv'
+HP_SCRIPT_PATTERN = 'startup_shp_asymmetric_viscous_aa????.bash'
+storage_name = '/home/bibit/dair_pll/results/shp_asymmetric_viscous'
+# Set a minimum run number since multiple hyperparameter searches were conducted
+# in the same results folder.
+MINIMUM_RUN_NUM = 0   # the minimum for hp_search_4.csv is 0
 
 
 WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
@@ -72,6 +83,7 @@ def get_params_from_bash_script(script_name):
     w_diss = get_parameter_from_string('w-diss', script)
     w_pen = get_parameter_from_string('w-pen', script)
     w_res = get_parameter_from_string('w-res', script)
+    w_res_w = get_parameter_from_string('w-res-w', script)
 
     return {'wandb_id': wandb_id,
             'loss variation': loss_variation,
@@ -79,7 +91,8 @@ def get_params_from_bash_script(script_name):
             'w_comp': w_comp,
             'w_diss': w_diss,
             'w_pen': w_pen,
-            'w_res': w_res,}
+            'w_res': w_res,
+            'w_res_w': w_res_w}
 
 
 lookup_by_wandb_id = {}
@@ -88,7 +101,7 @@ lookup_by_run_name = {}
 params_dict = {}
 
 for script in startup_scripts_list:
-    if fnmatch.fnmatch(script, ELBOW_HP_SCRIPT_PATTERN):
+    if fnmatch.fnmatch(script, HP_SCRIPT_PATTERN):
         run_name = script.split('_')[-1].split('.')[0]
         try:
             run_num = int(run_name.split('-')[0][2:])
@@ -125,6 +138,7 @@ for script in startup_scripts_list:
                     print('')
                 except:
                     print(' --> Could not find W&B run, skipping.')
+                    continue
 
                 run_history = run.history(pandas=False)
 
@@ -161,7 +175,7 @@ for script in startup_scripts_list:
 
 
 
-with open('hp_search_4.csv', 'w', newline='') as csvfile:
+with open(CSV_NAME, 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=params_dict.keys())
 
     writer.writeheader()
