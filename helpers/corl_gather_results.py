@@ -333,9 +333,11 @@ for experiment in EXPERIMENTS.keys():
         print(f'\nFound {results_folder_name}.')
 
         for run in os.listdir(runs_path):
-            if int(run[2:4]) in RUN_NUMBERS_TO_SKIP and not sent_warning:
-                print(f'WARNING: Skipping run numbers {RUN_NUMBERS_TO_SKIP}')
-                sent_warning = True
+            if int(run[2:4]) in BAD_RUN_NUMBERS:
+                continue
+                if not sent_warning:
+                    print(f'WARNING: Skipping run numbers {BAD_RUN_NUMBERS}')
+                    sent_warning = True
 
             config, stats, checkpoint = \
                 get_config_stats_checkpoint(runs_path, run)
