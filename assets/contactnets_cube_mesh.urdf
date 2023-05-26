@@ -27,7 +27,7 @@
             </geometry>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <drake:proximity_properties>
-                <drake:mu_static value="0.15" />
+                <drake:mu_static value="0.11638291934" />
             </drake:proximity_properties>
         </collision>
     </link>
