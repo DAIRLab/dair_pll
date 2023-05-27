@@ -1074,7 +1074,9 @@ def hyperparameter_command(hp_name: str, number: int, system: str, source: str,
                 # if w_pen < 1e-2:
                 #     continue
 
-            for loss_variation in [0]:
+            for loss_variation in [0, 1, 3]:
+                contactnets=False if loss_variation==0 else True
+
                 w_comp = w_comp_by_loss_var[loss_variation]
                 w_diss = w_diss_by_loss_var[loss_variation]
                 w_pen = w_pen_by_loss_var[loss_variation]
