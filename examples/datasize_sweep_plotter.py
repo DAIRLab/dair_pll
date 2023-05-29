@@ -13,15 +13,17 @@ from sweep_study_plotter import PLOT_DIR, find_sweep_instances
 STYLER = PlotStyler()
 STYLER.set_default_styling(directory=PLOT_DIR)
 STORAGE_NAME = STUDY_NAME_PREFIX
-# plot config: (evaluation key, plot label, scale factor)
+# plot config: (evaluation key, plot label, scale factor, filename)
 STUDY_COLORS = [STYLER.blue]
 STUDY_DISPLAY_NAMES = ['End-to-end DNN']
 ROT_PLOT = ('test_model_rot_err_1',
             'Rotation Error [Degrees]',
-            180. / (2 * 3.14159))
+            180. / (2 * 3.14159),
+            'rot_err.png')
 POS_PLOT = ('test_model_pos_err_1',
             'Position Error [% Block Width]',
-            1000.)
+            1000.,
+            'pos_err.png')
 PLOT_CONFIGS = [
     ROT_PLOT,
     POS_PLOT
@@ -79,10 +81,13 @@ def log_gaussian_confidence_interval(
 def get_confidence_interval_from_instances(
         sweep_instances: List[str], quantity_name: str, scale: float) -> \
         ConfidenceInterval:
-    quantities = [
-        get_quantity_from_sweep_instance(sweep_instance, quantity_name, scale)
-        for sweep_instance in sweep_instances
-    ]
+    quantities = []
+    for sweep_instance in sweep_instances:
+        try:
+            quantities.append(get_quantity_from_sweep_instance(
+                sweep_instance, quantity_name, scale))
+        except FileNotFoundError:
+            continue
     return log_gaussian_confidence_interval(quantities)
 
 
@@ -133,8 +138,7 @@ def datasize_comparison():
         #ax.set_xticks(sweep_values)
         plt.xlim(sweep_values[0], sweep_values[-1])
         plt.legend(STUDY_DISPLAY_NAMES)
-
-    plt.show()
+        STYLER.save_fig(plot_config[3])
 
 
 
