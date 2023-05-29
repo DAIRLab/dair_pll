@@ -23,6 +23,7 @@ class DeepLearnableSystemConfig(SystemConfig):
     hidden_size: Int = Int(64, log=True)
     model_constructor: Type[DeepLearnableModel] = field(
         default_factory=lambda: DeepRecurrentModel)
+    manual_bias: Optional[Tensor] = None
 
 
 class DeepLearnableSystem(System):
@@ -37,7 +38,8 @@ class DeepLearnableSystem(System):
         # pdb.set_trace()
         model = config.model_constructor(space.n_x, config.hidden_size.value,
                                          output_size, config.layers.value,
-                                         config.nonlinearity)
+                                         config.nonlinearity,
+                                         config.manual_bias)
         if not (training_data is None):
             # pdb.set_trace()
             model.set_normalization(training_data)

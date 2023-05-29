@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type, cast, List, Tuple, Callable
+from typing import Type, cast, List, Tuple, Callable, Optional
 
 import torch
 from torch import Tensor, nn
@@ -11,7 +11,8 @@ class DeepLearnableModel(ABC, Module):
     std_dev: Parameter
 
     def __init__(self, in_size: int, _hidden_size: int, _out_size: int,
-                 _layers: int, _nonlinearity: Type[Module]):
+                 _layers: int, _nonlinearity: Type[Module], _manual_bias:
+            Optional[Tensor] = None):
         super().__init__()
         self.mean = Parameter(torch.ones(in_size), requires_grad=False)
         self.std = Parameter(torch.ones(in_size), requires_grad=False)
@@ -34,7 +35,9 @@ class DeepRecurrentModel(DeepLearnableModel):
     encoder: Callable[[Tensor], Tensor]
 
     def __init__(self, in_size: int, hidden_size: int, out_size: int,
-                 layers: int, nonlinearity: Type[Module]) -> None:
+                 layers: int, nonlinearity: Type[Module], manual_bias:
+            Optional[Tensor] = None) -> None:
+        # todo: fix bias
         super().__init__(in_size, hidden_size, out_size, layers, nonlinearity)
         encode = True
         if encode:
@@ -80,18 +83,26 @@ def _mlp(in_size: int, hidden_size: int, out_size: int, layers: int,
 
 class MLP(DeepLearnableModel):
     net: Module
+    bias: Tensor
 
     def __init__(self, in_size: int, hidden_size: int, out_size: int,
-                 layers: int, nonlinearity: Type[Module]) -> None:
+                 layers: int, nonlinearity: Type[Module], manual_bias:
+            Optional[Tensor] = None) -> None:
         super().__init__(in_size, hidden_size, out_size, layers, nonlinearity)
         self.net = _mlp(in_size, hidden_size, out_size, layers, nonlinearity)
+        self.bias = torch.zeros(out_size)
+        if manual_bias is not None:
+            self.bias = manual_bias
 
     def forward(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
-        return self.net(self.normalize(x)), carry
+        stepped = self.net(self.normalize(x))
+        broadcast_bias = self.bias.clone().reshape(
+            (1,) * (len(x.shape) - 1) + (-1,))
+        return stepped + broadcast_bias, carry
 
     def sequential_eval(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         # x is B x L x N
-        return self.net(self.normalize(x[:, -1, :])).unsqueeze(-2), carry
+        return self(x[:, -1, :]).unsqueeze(-2), carry
 
 
 class ZeroModel(DeepLearnableModel):

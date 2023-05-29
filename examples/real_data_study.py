@@ -40,20 +40,21 @@ IMPORT_DIRECTORY = file_utils.get_asset(CUBE_DATA_ASSET)
 
 # Optimization configuration.
 LR = Float(1e-4, (1e-6, 1e-2), log=True)
-WD = Float(1e-6, (1e-10, 1e-2), log=False)
-EPOCHS = 100
-PATIENCE = 5
+WD = Float(1e-6, (1e-10, 1e-2), log=True)
+EPOCHS = 200
+PATIENCE = 20
 BATCH_SIZE = Int(32, (1, 256), log=True)
 
 # Experiment configuration.
 LEGNTH_SCALE = DT
 
 # Study configuration.
-N_HYPERPARMETER_OPTIMIZATION_TRAIN = 32
 N_POP = 550
 SWEEP_DOMAIN = [8, 16, 32, 64, 128]
+N_HYPERPARMETER_OPTIMIZATION_TRAIN = SWEEP_DOMAIN[-1]
 N_TRIALS = 100
 MIN_RESOURCES = 5
+MANUAL_BIAS = torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, -9.81 * DT])
 
 WANDB_PROJECT = 'contactnets-journal-results'
 
@@ -99,7 +100,9 @@ def main(sweep_num: int) -> None:
         urdfs=URDFS, initial_parameter_noise_level=PARAMETER_NOISE_LEVEL)
 
     deep_learnable_config = DeepLearnableSystemConfig(
-        model_constructor=MLP, integrator_type=DeltaVelocityIntegrator)
+        model_constructor=MLP, integrator_type=DeltaVelocityIntegrator,
+        manual_bias=MANUAL_BIAS
+    )
 
     slice_config = TrajectorySliceConfig()
     train_valid_test_quantities = (N_HYPERPARMETER_OPTIMIZATION_TRAIN,
@@ -118,9 +121,9 @@ def main(sweep_num: int) -> None:
     torch.random.set_rng_state(torch_random_generator_state)
 
     # Import data.
-    if not os.path.exists(IMPORT_DIRECTORY):
-        file_utils.import_data_to_storage(STORAGE,
-                                          import_data_dir=IMPORT_DIRECTORY)
+    #if not os.path.exists(IMPORT_DIRECTORY):
+    file_utils.import_data_to_storage(STORAGE,
+                                      import_data_dir=IMPORT_DIRECTORY)
 
     data_config = DataConfig(
         dt=DT,
