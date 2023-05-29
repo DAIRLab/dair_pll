@@ -82,7 +82,7 @@ class Integrator(ABC, Module):
             steps: number of steps to simulate forward in time (>= 0)
 
         Returns:
-            (\*, space.n_x, steps + 1) simulated trajectory.
+            (\*, steps + 1, space.n_x) simulated trajectory.
         """
         assert steps >= 0
         assert x_0.shape[-1] == self.space.n_x

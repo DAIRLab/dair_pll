@@ -40,8 +40,8 @@ from torch.nn import Module, Parameter
 from dair_pll.deep_support_function import HomogeneousICNN, \
     extract_mesh_from_support_function, extract_mesh_from_support_points, \
     extract_outward_normal_hyperplanes
-from dair_pll.tensor_utils import pbmm, tile_dim, \
-    rotation_matrix_from_one_vector
+from dair_pll.tensor_utils import pbmm, rotation_matrix_from_one_vector, \
+    unit_direction_perturbations
 
 _UNIT_BOX_VERTICES = Tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
     0, 0, 1, 1, 0, 0, 1, 1.
@@ -53,7 +53,8 @@ _ROT_Z_45 = Tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
 _total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere', 'DeepSupportConvex']
 
 _POLYGON_DEFAULT_N_QUERY = 4
-_DEEP_SUPPORT_DEFAULT_N_QUERY = 4
+_DEEP_SUPPORT_DEFAULT_N_QUERY = 5
+_DEEP_SUPPORT_DEFAULT_THETA_PERTURB = 3.14159 / 16.
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
 
@@ -288,8 +289,8 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
     :py:class:`~dair_pll.deep_support_function.HomogeneousICNN`\)."""
     network: HomogeneousICNN
     """Support function representation as a neural net."""
-    perturbations: Tensor
-    """Perturbed support directions, which aid mesh-plane contact stability."""
+    theta_perturb: float
+    """Support direction perturbation; aids mesh-plane contact stability."""
     fcl_geometry: fcl.BVHModel
     r""":py:mod:`fcl` mesh collision geometry representation."""
 
@@ -298,7 +299,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
                  n_query: int = _DEEP_SUPPORT_DEFAULT_N_QUERY,
                  depth: int = _DEEP_SUPPORT_DEFAULT_DEPTH,
                  width: int = _DEEP_SUPPORT_DEFAULT_WIDTH,
-                 perturbation: float = 0.4) -> None:
+                 theta_perturb: float = _DEEP_SUPPORT_DEFAULT_THETA_PERTURB) -> None:
         r"""Inits ``DeepSupportConvex`` object with initial vertex set.
 
         When calculating a sparse vertex set with :py:meth:`get_vertices`,
@@ -309,15 +310,14 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             n_query: Number of vertices to return in witness point set.
             depth: Depth of support function network.
             width: Width of support function network.
-            perturbation: support direction sampling parameter.
+            theta_perturb: support direction perturbation angle.
         """
         # pylint: disable=too-many-arguments,E1103
         super().__init__(n_query)
         length_scale = (vertices.max(dim=0).values -
                         vertices.min(dim=0).values).norm() / 2
         self.network = HomogeneousICNN(depth, width, scale=length_scale)
-        self.perturbations = torch.cat((torch.zeros(
-            (1, 3)), perturbation * (torch.rand((n_query - 1, 3)) - 0.5)))
+        self.theta_perturb = theta_perturb
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Return batched view of support points of interest.
@@ -331,11 +331,10 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         Returns:
             ``(*, n_query, 3)`` sampled support points.
         """
-        perturbed = directions.unsqueeze(-2)
-        perturbed = tile_dim(perturbed, self.n_query, -2)
-        perturbed += self.perturbations.expand(perturbed.shape)
-        perturbed /= perturbed.norm(dim=-1, keepdim=True)
-        return self.network(perturbed)
+        perturbed = unit_direction_perturbations(directions, self.theta_perturb,
+                                                 self.n_query - 1)
+        all_vectors = torch.cat([directions.unsqueeze(-2), perturbed], -2)
+        return self.network(all_vectors)
 
     def train(self, mode: bool = True) -> DeepSupportConvex:
         r"""Override training-mode setter from :py:mod:`torch`.
@@ -711,13 +710,23 @@ class GeometryRelativeErrorFactory:
             \frac{\mathrm{vol}((L \setminus T) \cup
             (T \setminus L))}{\mathrm{vol}(T)}
         """
-        assert type(geometry_learned) == type(geometry_true)
-        if isinstance(geometry_learned, Polygon):
-            return GeometryRelativeErrorFactory.calculate_error_polygon(
-                geometry_learned, cast(Polygon, geometry_true))
+        same_type = type(geometry_learned) == type(geometry_true)
+        mesh_comparison = all([
+            isinstance(geometry, (DeepSupportConvex, Polygon))
+            for geometry in [geometry_learned, geometry_true]
+        ])
+        assert same_type or mesh_comparison
+        if mesh_comparison:
+            vertices_learned = \
+                GeometryRelativeErrorFactory.get_vertices_from_mesh(
+                geometry_learned)
+            vertices_true = GeometryRelativeErrorFactory.get_vertices_from_mesh(
+                geometry_true)
+            return GeometryRelativeErrorFactory.calculate_error_vertices(
+                vertices_learned, vertices_true)
         if isinstance(geometry_learned, Plane):
             return None
-        if isinstance(geometry_learned, (DeepSupportConvex, Box)):
+        if isinstance(geometry_learned, Box):
             learned_type = type(geometry_learned).__name__
             raise NotImplementedError("volumetric error not "
                                       "implemented for geometry type %s" %
@@ -725,18 +734,26 @@ class GeometryRelativeErrorFactory:
         return None
 
     @staticmethod
-    def calculate_error_polygon(geometry_learned: Polygon,
-                                geometry_true: Polygon) -> Tensor:
-        """Relative error between two polygons.
+    def get_vertices_from_mesh(geometry: CollisionGeometry) -> Tensor:
+        if isinstance(geometry, DeepSupportConvex):
+            return extract_mesh_from_support_function(
+                geometry.network).vertices.clone().detach()
+        if isinstance(geometry, Polygon):
+            return geometry.vertices.clone().detach()
+        raise NotImplementedError("vertex extraction not implemented for "
+                                  "geometry type "
+                                  "%s" % type(geometry).__name__)
+
+    @staticmethod
+    def calculate_error_vertices(vertices_learned: Tensor,
+                                 vertices_true: Tensor) -> Tensor:
+        """Relative error between two convex hulls of provided vertices.
 
         use the identity that the area of the non-overlapping region is the
         sum of the areas of the two polygons minus twice the area of their
         intersection.
         """
         # pylint: disable=too-many-locals
-        vertices_learned = geometry_learned.vertices.clone().detach()
-        vertices_true = geometry_true.vertices.clone().detach()
-
         true_volume = ConvexHull(vertices_true.numpy()).volume
         sum_volume = ConvexHull(vertices_learned.numpy()).volume + true_volume
 
@@ -763,11 +780,10 @@ class GeometryRelativeErrorFactory:
         interior_point, interior_point_gap = _get_mesh_interior_point(
             intersection_halfspaces)
 
-        if interior_point_gap <= 0.:
-            # intersection is empty
-            intersection_volume = 0.
-        else:
+        intersection_volume = 0.
 
+        if interior_point_gap > 0.:
+            # intersection is non-empty
             intersection_halfspace_convex = HalfspaceIntersection(
                 intersection_halfspaces, interior_point)
 

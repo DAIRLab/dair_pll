@@ -10,6 +10,7 @@ from dair_pll.system import MeshSummary
 from dair_pll.tensor_utils import pbmm, rotation_matrix_from_one_vector
 
 # pylint: disable=E1103
+torch.set_default_dtype(torch.float64)
 _LINEAR_SPACE = torch.linspace(-1, 1, steps=8)
 _GRID = torch.cartesian_prod(_LINEAR_SPACE, _LINEAR_SPACE, _LINEAR_SPACE)
 _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]

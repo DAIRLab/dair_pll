@@ -22,6 +22,8 @@ from dair_pll.summary_statistics_constants import LEARNED_SYSTEM_NAME, \
 from dair_pll.system import System, SystemSummary
 
 PARAMETER_RELATIVE_ERROR = 'parameter_relative_error'
+GEOMETRY_PREFIX = 'geometry'
+FRICTION_PREFIX = 'friction'
 
 
 @dataclass
@@ -58,6 +60,8 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
     """Whether to use learned geometry in trajectory overlay visualization."""
     training_loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss for training."""
+    contactnets_length_scale: float = 1.0
+    """How much to weight velocities vs. positions in ContactNets loss."""
 
 
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
@@ -226,8 +230,12 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             self.loss_callback = self.contactnets_loss
 
     def get_learned_system(self, _: Tensor) -> MultibodyLearnableSystem:
-        return self.get_multibody_learnable_system_from_drake_config(
+        system = self.get_multibody_learnable_system_from_drake_config(
             cast(MultibodyLearnableSystemConfig, self.config.learnable_config))
+        system.contactnets_length_scale = cast(
+            DrakeMultibodyLearnableExperimentConfig,
+            self.config).contactnets_length_scale
+        return system
 
     def visualizer_regeneration_is_required(self) -> bool:
         return cast(DrakeMultibodyLearnableExperimentConfig,
@@ -303,31 +311,39 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         learned_system = cast(MultibodyLearnableSystem, learned_system)
         oracle_system = self.get_oracle_multibody_learnable_system()
 
-        all_relative_errors = cast(List[Tensor], [])
-
         # friction
         mu_learned = learned_system.multibody_terms.contact_terms. \
             get_lumped_friction_coefficients()
         mu_true = oracle_system.multibody_terms.contact_terms. \
             get_lumped_friction_coefficients()
-        all_relative_errors.append((mu_learned - mu_true).abs() / mu_true)
+        friction_relative_errors = [(mu_l - mu_t).abs().unsqueeze(0) / mu_t
+                                    for (mu_l,
+                                         mu_t) in zip(mu_learned, mu_true)]
 
         # geometry
         geometries_learned = \
             learned_system.multibody_terms.contact_terms.geometries
         geometries_true = \
             oracle_system.multibody_terms.contact_terms.geometries
+
+        geometry_relative_errors = cast(List[Tensor], [])
         for geometry_learned, geometry_true in zip(geometries_learned,
                                                    geometries_true):
-            geometry_relative_error = \
+            geometry_pair_error = \
                 GeometryRelativeErrorFactory.calculate_error(
                     geometry_learned, geometry_true)
 
-            if geometry_relative_error is not None:
-                all_relative_errors.append(geometry_relative_error)
+            if geometry_pair_error is not None:
+                geometry_relative_errors.append(geometry_pair_error)
 
-        combined_relative_error = torch.cat(all_relative_errors).mean()
+        summary.scalars[f'{FRICTION_PREFIX}_{PARAMETER_RELATIVE_ERROR}'] = \
+            torch.cat(friction_relative_errors).mean().item()
+
+        summary.scalars[f'{GEOMETRY_PREFIX}_{PARAMETER_RELATIVE_ERROR}'] = \
+            torch.cat(geometry_relative_errors).mean().item()
+
         summary.scalars[PARAMETER_RELATIVE_ERROR] = \
-            combined_relative_error.item()
+            torch.cat(friction_relative_errors +
+                      geometry_relative_errors).mean().item()
 
         return summary

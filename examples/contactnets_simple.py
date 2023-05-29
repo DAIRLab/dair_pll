@@ -20,6 +20,7 @@ from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperimentConfig
 from dair_pll.experiment import default_epoch_callback
 from dair_pll.experiment_config import OptimizerConfig
+from dair_pll.geometry import MeshRepresentation
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser
@@ -53,7 +54,7 @@ URDFS = {CUBE_SYSTEM: CUBE_URDFS, ELBOW_SYSTEM: ELBOW_URDFS}
 DT = 0.0068
 
 # Generation configuration.
-N_POP = 512
+N_POP = 64
 CUBE_X_0 = torch.tensor([
     -0.525, 0.394, -0.296, -0.678, 0.186, 0.026, 0.222, 1.463, -4.854, 9.870,
     0.014, 1.291, -0.212
@@ -78,7 +79,7 @@ TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120}
 T_PREDICTION = 1
 
 # Optimization configuration.
-CUBE_LR = 1e-3
+CUBE_LR = 1e-4
 ELBOW_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR}
 CUBE_WD = 0.0
@@ -97,6 +98,7 @@ def main(run_name: str = "",
          source: str = SIM_SOURCE,
          contactnets: bool = True,
          box: bool = True,
+         polygon: bool = True,
          regenerate: bool = False,
          clear_data: bool = False,
          perfect_init: bool = False):
@@ -108,6 +110,7 @@ def main(run_name: str = "",
         source: Where to get data from.
         contactnets: Whether to use ContactNets or prediction loss
         box: Whether to represent geometry as box or mesh.
+        polygon: Whether to use polygonal or deep geometry for meshes.
         regenerate: Whether save updated URDF's each epoch.
         clear_data: Whether to clear storage folder before running.
         perfect_init: Whether to initialize with ground-truth parameters.
@@ -151,9 +154,16 @@ def main(run_name: str = "",
     loss = MultibodyLosses.CONTACTNETS_ANITESCU_LOSS \
         if contactnets else \
         MultibodyLosses.PREDICTION_LOSS
+    mesh_representation = MeshRepresentation.POLYGON \
+        if polygon else \
+        MeshRepresentation.DEEP_SUPPORT_CONVEX
+
     initial_noise = torch.tensor(0.) if perfect_init else PARAMETER_NOISE_LEVEL
     learnable_config = MultibodyLearnableSystemConfig(
-        urdfs=urdfs, initial_parameter_noise_level=initial_noise)
+        urdfs=urdfs,
+        initial_parameter_noise_level=initial_noise,
+        mesh_representation=mesh_representation
+    )
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -172,8 +182,11 @@ def main(run_name: str = "",
                              use_ground_truth=True)
 
     # Combines everything into config for entire experiment.
+    length_scale = 1.0 if source == SIM_SOURCE else DT
+
     experiment_config = DrakeMultibodyLearnableExperimentConfig(
         training_loss=loss,
+        contactnets_length_scale=length_scale,
         storage=storage_name,
         run_name=run_name,
         base_config=base_config,
@@ -183,7 +196,8 @@ def main(run_name: str = "",
         full_evaluation_period=EPOCHS if dynamic else 1,
         visualize_learned_geometry=True,
         run_wandb=True,
-        wandb_project=WANDB_PROJECT)
+        wandb_project=WANDB_PROJECT
+    )
 
     # Makes experiment.
     experiment = DrakeMultibodyLearnableExperiment(experiment_config)
@@ -263,8 +277,11 @@ def main(run_name: str = "",
 @click.option('--box/--mesh',
               default=True,
               help="whether to represent geometry as box or mesh.")
+@click.option('--polygon/--deep',
+              default=True,
+              help="whether to represent meshes as polytopes or deep networks")
 @click.option('--regenerate/--no-regenerate',
-              default=False,
+              default=True,
               help="whether save updated URDF's each epoch.")
 @click.option('--clear-data/--keep-data',
               default=False,
@@ -273,13 +290,14 @@ def main(run_name: str = "",
               default=False,
               help="Whether to start parameters from ground truth or random.")
 def main_command(run_name: str, system: str, source: str, contactnets: bool,
-                 box: bool, regenerate: bool, clear_data: bool,
+                 box: bool, polygon: bool, regenerate: bool, clear_data: bool,
                  perfect_init: bool):
     # pylint: disable=too-many-arguments
     """Executes main function with argument interface."""
     if system == ELBOW_SYSTEM and source == REAL_SOURCE:
         raise NotImplementedError('Elbow real-world data not supported!')
-    main(run_name, system, source, contactnets, box, regenerate, clear_data,
+    main(run_name, system, source, contactnets, box, polygon, regenerate,
+         clear_data,
          perfect_init)
 
 

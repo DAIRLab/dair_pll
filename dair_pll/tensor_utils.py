@@ -9,8 +9,11 @@ with the following exceptions:
 """
 from typing import List, cast
 
+import numpy as np
 import torch
 from torch import Tensor
+
+from dair_pll import quaternion
 
 
 def tile_dim(tiling_tensor: Tensor, copies: int, dim: int = 0) -> Tensor:
@@ -467,3 +470,43 @@ def sappy_reorder_mat(n_cones: int) -> Tensor:
         matrix[n_cones + 2 * cone][3 * cone] = 1
         matrix[n_cones + 2 * cone + 1][3 * cone + 1] = 1
     return matrix
+
+
+def unit_direction_perturbations(directions: Tensor, theta_perturb: float,
+                                 n_perturbs: int) -> Tensor:
+    """Utility function that generates perturbations to unit vectors.
+
+    for each direction, generates ``n_perturbs`` unit vectors that are
+    perturbed by a rotation of ``theta_perturb`` radians about the direction.
+
+    The axes of rotation are chosen to be uniformly spaced, such that the
+    perturbed vectors form a regular polygon about the original direction on
+    the unit sphere.
+
+    Args:
+        directions: ``(*, 3)`` unit vectors to be perturbed.
+        theta_perturb: perturbation angle in radians.
+        n_perturbs: number of perturbed vectors to generate.
+    """
+    # get bases vectors for perturbation directions
+    directional_rotations = rotation_matrix_from_one_vector(directions, 2)
+    perturbation_bases = directional_rotations[..., :2]
+
+    # get evenly spaced perturbation angles
+    perturb_angles = torch.linspace(0, 2 * np.pi, n_perturbs + 1)[:-1]
+
+    # get perturbation directions in the unit plane, broadcasted to batch
+    perturb_coordinates = torch.stack(
+        (torch.cos(perturb_angles), torch.sin(perturb_angles)),
+        dim=0) * theta_perturb
+
+    # get perturbation rotation vector
+    perturb_vectors = pbmm(perturbation_bases, perturb_coordinates).mT
+
+    # transform perturbation vectors to quaternions
+    perturb_quats = quaternion.exp(perturb_vectors)
+    directions_broadcasted = directions.unsqueeze(-2).expand(
+        perturb_quats.shape[:-1] + (-1,))
+    perturbed_axes = quaternion.rotate(perturb_quats, directions_broadcasted)
+
+    return perturbed_axes

@@ -542,7 +542,7 @@ class FloatingBaseSpace(StateSpace):
         rot = quaternion.log(quat_shift)
 
         # pylint: disable=E1103
-        return torch.sqrt((rot**2).sum(dim=-1)).sum() / x_1.shape[0]
+        return rot.norm(dim=-1).sum() / x_1.shape[0]
 
     def base_error(self, x_1: Tensor, x_2: Tensor) -> Tensor:
         """Auxiliary comparison that returns floating base translation geodesic
@@ -569,7 +569,7 @@ class FloatingBaseSpace(StateSpace):
         pos = base1 - base2
 
         # pylint: disable=E1103
-        return torch.sqrt((pos**2).sum(dim=-1)).sum() / x_1.shape[0]
+        return pos.norm(dim=-1).sum() / x_1.shape[0]
 
 
 class FixedBaseSpace(StateSpace):
@@ -671,6 +671,24 @@ class ProductSpace(StateSpace):
         self.v_splits = torch.cumsum(torch.tensor(n_vs), 0)[:-1]
         self.x_splits = torch.cumsum(torch.tensor(n_xs), 0)[:-1]
         self.spaces = spaces
+        for i, space in enumerate(spaces):
+            self.comparisons.update({
+                f'{name}_{i}': self.indexed_state_comparison(i, comparison)
+                for name, comparison in space.comparisons.items()
+            })
+
+    def indexed_state_comparison(
+            self, space_num: int,
+            comparison: ComparisonCallable) -> ComparisonCallable:
+        """Returns a state comparison function for the given subspace.
+
+        Args:
+            space_num: index of subspace to compare.
+            comparison: comparison function for subspace.
+        """
+        return lambda x_1, x_2: comparison(
+            self.x_split(x_1)[space_num],
+            self.x_split(x_2)[space_num])
 
     def q_split(self, q: Tensor) -> List[Tensor]:
         """Splits configuration into list of subspace configurations."""

@@ -35,11 +35,11 @@ from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
 from dair_pll.system import System, \
     SystemSummary
-from dair_pll.tensor_utils import pbmm, broadcast_lorentz, project_lorentz, \
-    reflect_lorentz
+from dair_pll.tensor_utils import pbmm, broadcast_lorentz, project_lorentz
 
 _SAPPY_EPS = 1e-4
 _DEFAULT_MESH = MeshRepresentation.POLYGON
+
 
 class MultibodyLearnableSystem(System):
     """:py:class:`System` interface for dynamics associated with
@@ -50,6 +50,7 @@ class MultibodyLearnableSystem(System):
     visualization_system: Optional[DrakeSystem]
     solver: DynamicCvxpyLCQPLayer
     dt: float
+    contactnets_length_scale: float
 
     def __init__(
             self,
@@ -59,6 +60,7 @@ class MultibodyLearnableSystem(System):
             learn_inertial_parameters: bool = False,
             mesh_representation: MeshRepresentation = _DEFAULT_MESH,
             parameter_noise_level: Tensor = torch.tensor(0.0),
+            contactnets_length_scale: float = 1.0
     ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
@@ -92,6 +94,7 @@ class MultibodyLearnableSystem(System):
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
+        self.contactnets_length_scale = contactnets_length_scale
 
     def generate_updated_urdfs(self) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
@@ -226,6 +229,8 @@ class MultibodyLearnableSystem(System):
         q, v = self.space.q_v(x)
         v_plus = self.space.v(x_plus)
         dt = self.dt
+        cone_shift = dt
+        length_scale = self.contactnets_length_scale
 
         # change to linear implicit
         #delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
@@ -245,21 +250,26 @@ class MultibodyLearnableSystem(System):
         # pylint: disable=E1103
         #double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
         #phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
-        sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
+        sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1)).squeeze(-1)
 
-        phi_tilde = torch.cat((phi, sliding_velocities.squeeze(-1) * dt),
-                              dim=-1)
-        reflected_phi_tilde = reflect_lorentz(phi_tilde)
+        phi_tangential = sliding_velocities * cone_shift \
+            if cone_shift > 0. else torch.zeros_like(sliding_velocities)
+
+        reflected_phi_tilde = torch.cat((-phi, phi_tangential), dim=-1)
         projected_reflected_phi_tilde = project_lorentz(reflected_phi_tilde)
-
-        complementarity_penalty = project_lorentz(phi_tilde) + \
-                                  projected_reflected_phi_tilde
-
-        # pylint: disable=E1103
 
         sliding_speeds = sliding_velocities.reshape(phi.shape[:-1] +
                                                     (n_contacts, 2)).norm(
-                                                        dim=-1, keepdim=True)
+                                                        dim=-1)
+
+        complementarity_normal = torch.max(sliding_speeds * cone_shift,
+                                           phi.abs())
+
+        complementarity_penalty = torch.cat(
+            (complementarity_normal, phi_tangential), dim=-1)
+
+        dissipation_penalty = torch.cat(
+            (sliding_speeds, sliding_velocities), dim=-1) * length_scale
 
         Q = delassus  # + eps * torch.eye(3 * n_contacts)
         J_M = pbmm(reorder_mat.transpose(-1, -2),
@@ -268,11 +278,12 @@ class MultibodyLearnableSystem(System):
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         q_pred = -pbmm(J, dv.transpose(-1, -2))
-        q_comp = torch.abs(complementarity_penalty).unsqueeze(-1)
-        q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q_comp = complementarity_penalty.unsqueeze(-1)
+        q_diss = dissipation_penalty.unsqueeze(-1)
         q = q_pred + q_comp + q_diss
 
-        cone_penalty = (projected_reflected_phi_tilde**2).sum(dim=-1)
+        cone_penalty = 0.5 * (projected_reflected_phi_tilde**2).sum(dim=-1) / \
+            length_scale
 
         cone_penalty = cone_penalty.reshape(cone_penalty.shape + (1, 1))
 
