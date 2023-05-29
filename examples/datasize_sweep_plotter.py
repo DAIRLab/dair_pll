@@ -15,7 +15,7 @@ STYLER.set_default_styling(directory=PLOT_DIR)
 STORAGE_NAME = STUDY_NAME_PREFIX
 # plot config: (evaluation key, plot label, scale factor, filename)
 STUDY_COLORS = [STYLER.blue, STYLER.orange]
-STUDY_DISPLAY_NAMES = ['End-to-end DNN', 'End-to-end DNN (Tuned)']
+STUDY_DISPLAY_NAMES = ['End-to-end DNN (Tuned)', 'End-to-end DNN']
 ROT_PLOT = ('test_model_rot_err_1',
             'Rotation Error [Degrees]',
             180. / 3.14159,
@@ -105,7 +105,7 @@ def get_sweep_confidence_intervals(
 def datasize_comparison():
     for plot_config in PLOT_CONFIGS:
         plt.figure()
-        for study_params, color in zip(STUDY_PARAMS, STUDY_COLORS):
+        for study_params, color, name in zip(STUDY_PARAMS, STUDY_COLORS, STUDY_DISPLAY_NAMES):
             study_name = study_name_from_params(study_params)
             sweep_instances = find_sweep_instances(STORAGE_NAME, study_name)
             confidence_intervals = get_sweep_confidence_intervals(sweep_instances,
@@ -116,7 +116,7 @@ def datasize_comparison():
                 bounds.append(np.array([confidence_intervals[sweep_value][i]
                                for sweep_value in sweep_values]))
             #pdb.set_trace()
-            STYLER.plot(sweep_values, bounds[1], color=color)
+            STYLER.plot(sweep_values, bounds[1], color=color, data_label=name)
             STYLER.plot_bands(sweep_values, sweep_values, bounds[0], bounds[2],
                               color=color)
         plt.xlabel('Number of Training Trajectories')
@@ -137,7 +137,7 @@ def datasize_comparison():
                  )
         #ax.set_xticks(sweep_values)
         plt.xlim(sweep_values[0], sweep_values[-1])
-        plt.legend(STUDY_DISPLAY_NAMES)
+        plt.legend()#STUDY_DISPLAY_NAMES)
         STYLER.save_fig(plot_config[3])
 
 

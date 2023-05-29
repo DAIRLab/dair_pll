@@ -119,14 +119,15 @@ class PlotStyler():
 
     plt.grid(grid, which='major')
 
-  def plot_bands(self, x_low, x_high, y_low, y_high, color='C0'):
+  def plot_bands(self, x_low, x_high, y_low, y_high, color='C0', label='__nolegend__'):
     #pdb.set_trace()
     vertices = np.block([[x_low, x_high[::-1]],
                          [y_low, y_high[::-1]]]).T
     codes = Path.LINETO * np.ones(len(vertices), dtype=Path.code_type)
     codes[0] = Path.MOVETO
     path = Path(vertices, codes)
-    patch = PathPatch(path, facecolor=color, edgecolor='none', alpha=0.3)
+    patch = PathPatch(path, facecolor=color, edgecolor='none', alpha=0.3,
+                      label=label)
     ax = plt.gca()
     # ax.plot(xdata, ydata)
     ax.add_patch(patch)
