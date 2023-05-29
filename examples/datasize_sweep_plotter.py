@@ -18,7 +18,7 @@ STUDY_COLORS = [STYLER.blue]
 STUDY_DISPLAY_NAMES = ['End-to-end DNN']
 ROT_PLOT = ('test_model_rot_err_1',
             'Rotation Error [Degrees]',
-            180. / (2 * 3.14159),
+            180. / 3.14159,
             'rot_err.png')
 POS_PLOT = ('test_model_pos_err_1',
             'Position Error [% Block Width]',
