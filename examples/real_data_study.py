@@ -60,6 +60,7 @@ WANDB_PROJECT = 'contactnets-journal-results'
 
 StudyParams = Tuple[bool, Optional[MeshRepresentation],
                     Optional[MultibodyLosses], str]
+SAM_RECREATION_STUDY_PARAMS = (False, None, None, 'SAM')
 DEEP_LEARNED_STUDY_PARAMS = (False, None, None, 'MLP')
 DEEP_DIFF_PHYS_STUDY_PARAMS = (True, MeshRepresentation.DEEP_SUPPORT_CONVEX,
                                MultibodyLosses.PREDICTION_LOSS,
@@ -70,6 +71,7 @@ DEEP_CONTACTNETS_STUDY_PARAMS = (True, MeshRepresentation.DEEP_SUPPORT_CONVEX,
 STUDY_PARAMS = cast(
     List[StudyParams],
     [
+        SAM_RECREATION_STUDY_PARAMS,
         DEEP_LEARNED_STUDY_PARAMS,
         #DEEP_DIFF_PHYS_STUDY_PARAMS,
         #DEEP_CONTACTNETS_STUDY_PARAMS,

@@ -14,8 +14,8 @@ STYLER = PlotStyler()
 STYLER.set_default_styling(directory=PLOT_DIR)
 STORAGE_NAME = STUDY_NAME_PREFIX
 # plot config: (evaluation key, plot label, scale factor, filename)
-STUDY_COLORS = [STYLER.blue]
-STUDY_DISPLAY_NAMES = ['End-to-end DNN']
+STUDY_COLORS = [STYLER.blue, STYLER.orange]
+STUDY_DISPLAY_NAMES = ['End-to-end DNN', 'End-to-end DNN (Tuned)']
 ROT_PLOT = ('test_model_rot_err_1',
             'Rotation Error [Degrees]',
             180. / 3.14159,
