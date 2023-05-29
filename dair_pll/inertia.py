@@ -29,7 +29,7 @@ i.e. :math:`m > 0`).
       :py:attr:`~pydrake.multibody.tree.UnitInertia`)::
 
         [m, p_x, p_y, p_z, ...
-            I_xx / m, I_yy / m, I_zz / m, I_xy / m, I_xz / m, I_yz / m]
+            I_xx , I_yy , I_zz , I_xy, I_xz, I_yz]
 
     * ``drake`` is a packaging of ``drake_inertia_vector`` into
       a Drake :py:attr:`~pydrake.multibody.tree.SpatialInertia` object,
@@ -271,7 +271,9 @@ class InertialParameterConverter:
     def pi_cm_to_drake_spatial_inertia_vector(pi_cm: Tensor) -> Tensor:
         """Converts batch of ``pi-cm`` parameters to ``drake_inertia_vector``
         parameters."""
-        return torch.cat((pi_cm[..., 0:1], pi_cm[..., 1:] / pi_cm[..., 0:1]),
+        return torch.cat((pi_cm[..., 0:1],
+                          pi_cm[..., 1:4] / pi_cm[..., 0:1],
+                          pi_cm[..., 4:]),
                          dim=-1)
 
     @staticmethod

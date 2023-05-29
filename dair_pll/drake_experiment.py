@@ -11,15 +11,18 @@ from dair_pll import file_utils
 from dair_pll import vis_utils
 from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
-from dair_pll.experiment import SupervisedLearningExperiment
+from dair_pll.experiment import SupervisedLearningExperiment, \
+    LossCallbackCallable
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.geometry import MeshRepresentation, GeometryRelativeErrorFactory
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem
+from dair_pll.state_space import partial_sum_batch
 from dair_pll.summary_statistics_constants import LEARNED_SYSTEM_NAME, \
     TARGET_NAME, PREDICTION_NAME
 from dair_pll.system import System, SystemSummary
+from dair_pll.tensor_utils import pbmm
 
 PARAMETER_RELATIVE_ERROR = 'parameter_relative_error'
 GEOMETRY_PREFIX = 'geometry'
@@ -69,11 +72,48 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
     visualization_system: Optional[DrakeSystem]
     oracle_multibody_learnable_system: Optional[MultibodyLearnableSystem]
 
+    def prediction_loss(self,
+                        x_past: Tensor,
+                        x_future: Tensor,
+                        system: System,
+                        keep_batch: bool = False) -> Tensor:
+        r"""Default :py:data:`LossCallbackCallable` which evaluates to system's
+        :math:`l_2` prediction error on batch:
+
+        .. math::
+
+            \mathcal{L}(x_{p,i,\cdot}, x_{f,i,\cdot}) = \sum_{j} ||\hat x_{f,
+            i,j} - x_{f,i,j}||^2,
+
+        where :math:`x_{p,i,\cdot}, x_{f,i,\cdot}` are the :math:`i`\ th
+        elements of the past and future batches; and
+        :math:`\hat x_{f,i,j}` is the :math:`j`-step forward prediction of the
+        model from the past batch.
+
+        See :py:data:`LossCallbackCallable` for additional type signature info.
+        """
+        space = self.space
+        x_predicted = self.batch_predict(x_past, system)
+        v_future = space.v(x_future)
+        v_predicted = space.v(x_predicted)
+        avg_const = v_predicted.nelement() // v_predicted.shape[0]
+        # scale by mass
+        q_future = space.q(x_future)
+        mass = self.get_oracle_multibody_learnable_system(
+        ).multibody_terms.lagrangian_terms.get_mass_matrix(q_future)
+        if not keep_batch:
+            avg_const *= x_predicted.shape[0]
+        velocity_error = (v_predicted - v_future).unsqueeze(-1)
+        energetic_error = pbmm(velocity_error.mT,
+                               pbmm(mass, velocity_error)).squeeze(-1)
+        return partial_sum_batch(energetic_error, keep_batch) / avg_const
+
     def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
         super().__init__(config)
         self.base_drake_system = None
         self.visualization_system = None
         self.oracle_multibody_learnable_system = None
+        self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
 
     def get_drake_system(self) -> DrakeSystem:
         has_property = hasattr(self, 'base_drake_system')
@@ -106,7 +146,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
             parameter_noise_level=parameter_noise_level)
 
     def get_oracle_multibody_learnable_system(self) -> MultibodyLearnableSystem:
-        has_property = hasattr(self, 'base_multibody_learnable_system')
+        has_property = hasattr(self, 'oracle_multibody_learnable_system')
         if not has_property or self.oracle_multibody_learnable_system is None:
             self.oracle_multibody_learnable_system = \
                 self.get_multibody_learnable_system_from_drake_config(

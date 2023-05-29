@@ -217,6 +217,15 @@ class LagrangianTerms(Module):
         return InertialParameterConverter.theta_to_pi_cm(
             self.inertial_parameters)
 
+    def get_mass_matrix(self, q: Tensor) -> Tensor:
+        """Returns mass matrix evaluated at given configuration."""
+        assert self.mass_matrix is not None
+        inertia = InertialParameterConverter. \
+            pi_cm_to_drake_spatial_inertia_vector(self.pi_cm())
+        inertia = inertia.expand(q.shape[:-1] + inertia.shape)
+
+        return self.mass_matrix(q, inertia)
+
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
         r"""Evaluates Lagrangian dynamics terms at given state and input.
 
