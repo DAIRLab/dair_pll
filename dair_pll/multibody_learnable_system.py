@@ -260,7 +260,10 @@ class MultibodyLearnableSystem(System):
             # l2_penalty *= 1e-3
 
             regularizers.append(l2_penalty)
+
         else:
+            # Otherwise, append 0 twice for the residual norm and weights.
+            regularizers.append(torch.zeros((x.shape[-2],)))
             regularizers.append(torch.zeros((x.shape[-2],)))
 
         # TODO: Use the believed geometry to help supervise the learned CoM.

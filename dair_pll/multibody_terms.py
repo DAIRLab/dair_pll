@@ -295,7 +295,8 @@ class LagrangianTerms(Module):
         # pylint: disable=not-callable
         assert self.mass_matrix is not None
         assert self.lagrangian_forces is not None
-        inertia = InertialParameterConverter.pi_cm_to_drake_spatial_inertia(
+        inertia = \
+            InertialParameterConverter.pi_cm_to_drake_spatial_inertia_vector(
             self.pi_cm())
         inertia = inertia.expand(q.shape[:-1] + inertia.shape)
 
