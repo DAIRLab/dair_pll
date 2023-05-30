@@ -42,7 +42,16 @@ HP_SCRIPT_PATTERN = 'startup_shp_asymmetric_viscous_aa????.bash'
 storage_name = '/home/bibit/dair_pll/results/shp_asymmetric_viscous'
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-MINIMUM_RUN_NUM = 0   # the minimum for hp_search_4.csv is 0
+MINIMUM_RUN_NUM = 0   # the minimum for viscous_hp_search.csv is 0
+
+# For results that generated viscous_elbow_hp.csv:
+CSV_NAME = 'viscous_elbow_hp.csv'
+HP_SCRIPT_PATTERN = 'startup_shp_elbow_viscous_ae????.bash'
+storage_name = '/home/bibit/dair_pll/results/shp_elbow_viscous'
+# Set a minimum run number since multiple hyperparameter searches were conducted
+# in the same results folder.
+MINIMUM_RUN_NUM = 0   # the minimum for viscous_elbow_hp.csv is 0
+
 
 
 WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
