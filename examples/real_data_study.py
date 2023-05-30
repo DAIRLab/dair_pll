@@ -56,7 +56,7 @@ N_TRIALS = 100
 MIN_RESOURCES = 5
 MANUAL_BIAS = torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, -9.81 * DT])
 
-WANDB_PROJECT = 'contactnets-journal-results' #TODO
+WANDB_PROJECT = 'contactnets-journal-results'
 
 StudyParams = Tuple[bool, Optional[MeshRepresentation],
                     Optional[MultibodyLosses], str]
@@ -72,9 +72,9 @@ STUDY_PARAMS = cast(
     List[StudyParams],
     [
         #SAM_RECREATION_STUDY_PARAMS,
-        DEEP_LEARNED_STUDY_PARAMS,
+        #DEEP_LEARNED_STUDY_PARAMS,
         #DEEP_DIFF_PHYS_STUDY_PARAMS,
-        #DEEP_CONTACTNETS_STUDY_PARAMS,
+        DEEP_CONTACTNETS_STUDY_PARAMS,
     ])
 
 
