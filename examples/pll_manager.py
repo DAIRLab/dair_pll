@@ -934,11 +934,6 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
         if len(runs_list) > 0:
             last_run_num = max(last_run_num, int(runs_list[-1][2:4]))
 
-    print(f'Using hyperparameters: ({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w})')
-    print(f'Will create experiment number: {last_run_num+1}')
-    if not click.confirm('Continue?'):
-        raise RuntimeError("Figure out experiment numbers next time.")
-
     # Automatically set the hyperparameter weights.
     w_pred = 1e0
     W_COMP_BY_LOSS_VAR = {3: 0.01, 1: 0.001, 0: 1.0}
@@ -953,6 +948,11 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     w_pen = W_PEN_BY_LOSS_VAR[loss_variation]
     w_res = W_RES_BY_LOSS_VAR[loss_variation]
     w_res_w = W_RES_W_BY_LOSS_VAR[loss_variation]
+    
+    print(f'Using hyperparameters: ({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w})')
+    print(f'Will create experiment number: {last_run_num+1}')
+    if not click.confirm('Continue?'):
+        raise RuntimeError("Figure out experiment numbers next time.")
 
     if category==SWEEP:
         # Create a pll instance for every dataset size from 4 to 512
