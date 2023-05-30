@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from matplotlib.ticker import (LogLocator, AutoMinorLocator)
 
 from dair_pll import file_utils
 from plot_styler import PlotStyler
@@ -15,7 +16,7 @@ STYLER.set_default_styling(directory=PLOT_DIR)
 STORAGE_NAME = STUDY_NAME_PREFIX
 # plot config: (evaluation key, plot label, scale factor, filename)
 STUDY_COLORS = [STYLER.blue, STYLER.orange]
-STUDY_DISPLAY_NAMES = ['End-to-end DNN (Tuned)', 'End-to-end DNN']
+STUDY_DISPLAY_NAMES = ['End-to-end DNN']# (Tuned)', 'End-to-end DNN']
 ROT_PLOT = ('test_model_rot_err_1',
             'Rotation Error [Degrees]',
             180. / 3.14159,
@@ -124,20 +125,34 @@ def datasize_comparison():
         plt.yscale('log')
         plt.ylabel(plot_config[1])
         ax = plt.gca()
-        ax.minorticks_off()
+        #ax.minorticks_off()
         #ax.majorticks_off()
         ylim = plt.ylim()
         yticks, ylabels = get_ylabels(ylim)
         #pdb.set_trace()
+        #ax.xaxis.set_major_locator(MultipleLocator(2))
+        #ax.xaxis.set_major_formatter('{x:.0f}')
+        """
         plt.setp(ax,
                  xticks=sweep_values,
                  xticklabels=[str(int(s)) for s in sweep_values],
                  yticks=yticks,
                  yticklabels=ylabels
                  )
+        """
         #ax.set_xticks(sweep_values)
         plt.xlim(sweep_values[0], sweep_values[-1])
         plt.legend()#STUDY_DISPLAY_NAMES)
+        ax.minorticks_on()
+        ax.xaxis.set_major_locator(LogLocator(2))
+        ax.yaxis.set_major_locator(LogLocator(10))
+        ax.xaxis.set_minor_locator(LogLocator(2))
+        ax.yaxis.set_minor_locator(LogLocator(10,subs=range(10)))
+        ax.xaxis.set_major_formatter('{x:.0f}')
+        ax.yaxis.set_major_formatter('{x:.0f}')
+        ax.xaxis.set_minor_formatter('{x:.0f}')
+        ax.yaxis.set_minor_formatter('{x:.1f}')
+        ax.xaxis.set_tick_params(which='minor', bottom=False)
         STYLER.save_fig(plot_config[3])
 
 

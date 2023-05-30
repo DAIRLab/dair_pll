@@ -72,7 +72,7 @@ class PlotStyler():
     if legend:
       plt.legend(legend)
 
-    plt.grid(grid, which='major')
+    plt.grid(grid, which='both')
 
   def step(self, xdata, ydata, xlim=None, ylim=None, color=None,
            grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):
