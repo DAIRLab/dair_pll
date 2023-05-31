@@ -78,7 +78,8 @@ class WeightsAndBiasesManager:
                    name=self.run_name,
                    id=wandb_run_id,
                    config={},
-                   resume=WANDB_ALLOW if resuming else WANDB_NEVER)
+                   resume=WANDB_ALLOW if resuming else WANDB_NEVER,
+                   allow_val_change=True) # TODO: revert temprary hack
 
         return wandb_run_id
 
@@ -91,8 +92,10 @@ class WeightsAndBiasesManager:
     @staticmethod
     def log_config(config: Any):
         """Log experiment hyperparameter values."""
-        wandb.config.update(hyperparameter_values(config))
-        wandb.config.update({"ExperimentConfig": str(config)})
+        wandb.config.update(hyperparameter_values(config),
+                            allow_val_change=True) # TODO: revert temprary hack
+        wandb.config.update({"ExperimentConfig": str(config)},
+                            allow_val_change=True) # TODO: revert temprary hack
 
     @staticmethod
     def update(epoch: int, scalars: Dict[str, float],
