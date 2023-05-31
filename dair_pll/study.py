@@ -201,5 +201,21 @@ class OptimalDatasizeSweepStudy(OptimalSweepStudy):
               dataset sizes.
             sweep_value: The training set size.
         """
+        # rescale epochs and patience to account for different dataset size
+        data_config = experiment_config.data_config
+        default_training_set_size = data_config.train_valid_test_quantities[0]
+
+        new_epochs = int(
+            experiment_config.optimizer_config.epochs *
+            default_training_set_size / sweep_value)
+
+        new_patience = int(
+            experiment_config.optimizer_config.patience *
+            default_training_set_size / sweep_value)
+
+        experiment_config.optimizer_config.epochs = new_epochs
+        experiment_config.optimizer_config.patience = new_patience
+
+        # now, update the dataset sizes
         experiment_config.data_config.train_valid_test_quantities = (
             sweep_value, sweep_value // 2, sweep_value // 2)
