@@ -136,7 +136,7 @@ EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
 BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                   18, 19, 21, 23, 26]
+                   18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
 EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
