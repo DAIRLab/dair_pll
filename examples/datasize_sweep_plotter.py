@@ -16,7 +16,7 @@ STYLER.set_default_styling(directory=PLOT_DIR)
 STORAGE_NAME = STUDY_NAME_PREFIX
 # plot config: (evaluation key, plot label, scale factor, filename)
 STUDY_COLORS = [STYLER.blue, STYLER.orange]
-STUDY_DISPLAY_NAMES = ['End-to-end DNN']# (Tuned)', 'End-to-end DNN']
+STUDY_DISPLAY_NAMES = ['End-to-end DNN','ContactNets (Ours)']# (Tuned)', 'End-to-end DNN']
 ROT_PLOT = ('test_model_rot_err_1',
             'Rotation Error [Degrees]',
             180. / 3.14159,
@@ -25,10 +25,18 @@ POS_PLOT = ('test_model_pos_err_1',
             'Position Error [% Block Width]',
             1000.,
             'pos_err.png')
+TRAJ_PLOT = ('test_model_trajectory_mse',
+             'Trajectory Squared Error',
+             1.0,
+             'traj_mse.png')
 PLOT_CONFIGS = [
     ROT_PLOT,
-    POS_PLOT
+    POS_PLOT,
+    TRAJ_PLOT
 ]
+
+CONF_99 = 2.576
+CONF_95 = 1.96
 
 def get_ylabels(yim: Tuple[float, float]) -> Tuple[List[float], List[str]]:
     """construct y tick labels as powers of ten, displayed as decimals,
@@ -60,7 +68,7 @@ ConfidenceInterval = Tuple[float, float, float]
 
 def log_gaussian_confidence_interval(
         quantity_list: List[float],
-        z_score: float = 2.576) -> ConfidenceInterval:
+        z_score: float = CONF_95) -> ConfidenceInterval:
     """Construct a log-gaussian confidence interval via Cox's method."""
     quantities = torch.tensor(quantity_list)
     Y = quantities.log()
@@ -98,8 +106,10 @@ def get_sweep_confidence_intervals(
         scale: float) -> Dict[int, ConfidenceInterval]:
     sweep_values = {}
     for sweep_value, sweep_instances in sweep_instance_map.items():
-        sweep_values[sweep_value] = get_confidence_interval_from_instances(
+        confidence_interval = get_confidence_interval_from_instances(
             sweep_instances, quantity_name, scale)
+        if not np.isnan(confidence_interval[0]):
+            sweep_values[sweep_value] = confidence_interval
     return sweep_values
 
 
@@ -112,6 +122,7 @@ def datasize_comparison():
             confidence_intervals = get_sweep_confidence_intervals(sweep_instances,
                 plot_config[0], plot_config[2])
             sweep_values = np.array(sorted(confidence_intervals.keys()))
+            print(f'confidence intervals for {name}: {confidence_intervals}')
             bounds = []
             for i in range(3):
                 bounds.append(np.array([confidence_intervals[sweep_value][i]
