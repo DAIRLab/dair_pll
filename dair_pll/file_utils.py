@@ -45,7 +45,11 @@ def assure_created(directory: str) -> str:
     directory = path.abspath(directory)
     if not path.exists(directory):
         assure_created(path.dirname(directory))
-        os.mkdir(directory)
+        try:
+            os.mkdir(directory)
+        except FileExistsError:
+            # File was created by another concurrent process.
+            pass
     return directory
 
 

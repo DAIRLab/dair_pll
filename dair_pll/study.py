@@ -213,8 +213,13 @@ class OptimalDatasizeSweepStudy(OptimalSweepStudy):
             experiment_config.optimizer_config.patience *
             default_training_set_size / sweep_value)
 
+        new_evaluation_period = int(
+            experiment_config.full_evaluation_period *
+            default_training_set_size / sweep_value)
+
         experiment_config.optimizer_config.epochs = new_epochs
         experiment_config.optimizer_config.patience = new_patience
+        experiment_config.full_evaluation_period = new_evaluation_period
 
         # now, update the dataset sizes
         experiment_config.data_config.train_valid_test_quantities = (

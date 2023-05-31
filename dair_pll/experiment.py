@@ -616,27 +616,31 @@ class SupervisedLearningExperiment(ABC):
                 training_loss = self.train_epoch(train_dataloader,
                                                  learned_system, optimizer)
                 training_duration = time.time() - start_train_time
-                learned_system.eval()
-                valid_loss = self.per_epoch_evaluation(training_state.epoch,
-                                                       learned_system,
-                                                       training_loss,
-                                                       training_duration)
+                time_to_eval = (training_state.epoch %
+                                self.config.full_evaluation_period) == 0
+                if time_to_eval:
+                    learned_system.eval()
+                    valid_loss = self.per_epoch_evaluation(training_state.epoch,
+                                                           learned_system,
+                                                           training_loss,
+                                                           training_duration)
 
-                # Check for validation loss improvement.
-                if valid_loss < training_state.best_valid_loss:
-                    training_state.best_valid_loss = valid_loss
-                    training_state.best_learned_system_state = deepcopy(
-                        learned_system.state_dict())
-                    print("Saving training state...")
-                    torch.save(dataclasses.asdict(training_state),
-                               checkpoint_filename)
-                    training_state.epochs_since_best = 0
-                else:
-                    training_state.epochs_since_best += 1
+                    # Check for validation loss improvement.
+                    if valid_loss < training_state.best_valid_loss:
+                        training_state.best_valid_loss = valid_loss
+                        training_state.best_learned_system_state = deepcopy(
+                            learned_system.state_dict())
+                        print("Saving training state...")
+                        torch.save(dataclasses.asdict(training_state),
+                                   checkpoint_filename)
+                        training_state.epochs_since_best = 0
+                    else:
+                        training_state.epochs_since_best += \
+                            self.config.full_evaluation_period
 
-                # Decide to early-stop or not.
-                if training_state.epochs_since_best >= patience:
-                    break
+                    # Decide to early-stop or not.
+                    if training_state.epochs_since_best >= patience:
+                        break
 
                 epoch_callback(training_state.epoch, learned_system,
                                training_loss, training_state.best_valid_loss)
