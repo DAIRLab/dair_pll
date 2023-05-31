@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
-from matplotlib.ticker import (LogLocator, AutoMinorLocator)
+from matplotlib.ticker import (LogLocator)
 
 from dair_pll import file_utils
 from plot_styler import PlotStyler
@@ -17,17 +17,17 @@ STORAGE_NAME = STUDY_NAME_PREFIX
 # plot config: (evaluation key, plot label, scale factor, filename)
 STUDY_COLORS = [STYLER.blue, STYLER.orange]
 STUDY_DISPLAY_NAMES = ['End-to-end DNN','ContactNets (Ours)']# (Tuned)', 'End-to-end DNN']
-ROT_PLOT = ('test_model_rot_err_1',
+ROT_PLOT = (['test_model_rot_err_1'],
             'Rotation Error [Degrees]',
-            180. / 3.14159,
+            [180. / 3.14159],
             'rot_err.png')
-POS_PLOT = ('test_model_pos_err_1',
+POS_PLOT = (['test_model_pos_err_1'],
             'Position Error [% Block Width]',
-            1000.,
+            [1000.],
             'pos_err.png')
-TRAJ_PLOT = ('test_model_trajectory_mse',
-             'Trajectory Squared Error',
-             1.0,
+TRAJ_PLOT = (['test_model_pos_err_1', 'test_model_rot_err_1'],
+             'Trajectory Error [m]',
+             [1.0, (.37 / .00081) ** 0.5],
              'traj_mse.png')
 PLOT_CONFIGS = [
     ROT_PLOT,
@@ -88,13 +88,16 @@ def log_gaussian_confidence_interval(
 
 
 def get_confidence_interval_from_instances(
-        sweep_instances: List[str], quantity_name: str, scale: float) -> \
+        sweep_instances: List[str], quantity_names: List[str], scales:
+        List[float]) -> \
         ConfidenceInterval:
     quantities = []
     for sweep_instance in sweep_instances:
         try:
-            quantities.append(get_quantity_from_sweep_instance(
-                sweep_instance, quantity_name, scale))
+            values = [get_quantity_from_sweep_instance(sweep_instance, n, s)
+                      for n, s in zip(quantity_names, scales)]
+
+            quantities.append(sum(values))
         except FileNotFoundError:
             continue
     return log_gaussian_confidence_interval(quantities)
@@ -102,12 +105,12 @@ def get_confidence_interval_from_instances(
 
 def get_sweep_confidence_intervals(
         sweep_instance_map: Dict[int, List[str]],
-        quantity_name: str,
-        scale: float) -> Dict[int, ConfidenceInterval]:
+        quantity_names: List[str],
+        scales: List[float]) -> Dict[int, ConfidenceInterval]:
     sweep_values = {}
     for sweep_value, sweep_instances in sweep_instance_map.items():
         confidence_interval = get_confidence_interval_from_instances(
-            sweep_instances, quantity_name, scale)
+            sweep_instances, quantity_names, scales)
         if not np.isnan(confidence_interval[0]):
             sweep_values[sweep_value] = confidence_interval
     return sweep_values
