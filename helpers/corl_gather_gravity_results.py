@@ -360,8 +360,7 @@ for experiment in EXPERIMENTS.keys():
             run_dict['learned_params'] = params_dict
 
         grav_frac = run_dict['g_frac']
-        exp_dict['gravity_sweep'][GRAVITY_FRACTIONS[grav_frac]].update(
-            {run_key: run_dict})
+        exp_dict['gravity_sweep'][grav_frac].update({run_key: run_dict})
 
     results.update({experiment: exp_dict})
 
