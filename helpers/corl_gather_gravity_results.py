@@ -359,7 +359,7 @@ for experiment in EXPERIMENTS.keys():
                                                   best_system_state)
             run_dict['learned_params'] = params_dict
 
-        grav_frac = config['g_frac']
+        grav_frac = run_dict['g_frac']
         exp_dict['gravity_sweep'][GRAVITY_FRACTIONS[grav_frac]].update(
             {run_key: run_dict})
 
