@@ -34,23 +34,26 @@ import numpy as np
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'results')
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'plots')
 JSON_OUTPUT_FILE = op.join(op.dirname(__file__), 'results_cluster.json')
+JSON_GRAVITY_FILE = op.join(op.dirname(__file__), 'gravity_results.json')
 
 
-CN_METHODS_ONLY = ['ContactNetsI', 'ContactNetsI + Residual',
-                   'ContactNets', 'ContactNets + Residual']
-METHOD_RESULTS = {'ContactNetsI': '#01256e',
-                  'ContactNetsI + Residual': '#398537',
-                  'Prediction': '#95001a',
-                  'Prediction + Residual': '#92668d',
-                  'End-to-End': '#4a0042',
-                  'ContactNets': '#1111ff',
-                  'ContactNets + Residual': '#11ff11',}
-METRICS = {#'model_loss_mean': {
-           #      'label': 'Loss',
-           #      'yformat': "%.0f", 'scaling': 1.0,
-           #      'ylims': {'elbow': [None, None], 'cube': [None, None],
-           #                'asymmetric': [None, None]},
-           #      'legend_loc': 'best'},
+CN_METHODS_ONLY = ['VimpI', 'VimpI RP',
+                   'Vimp', 'Vimp RP']
+METHOD_RESULTS = {'VimpI': '#01256e',
+                  'VimpI RP': '#398537',
+                  'Vimp': '#1111ff',
+                  'Vimp RP': '#11ff11',
+                  'DiffSim': '#95001a',
+                  'DiffSim RP': '#92668d',
+                  'End-to-End': '#4a0042',}
+METRICS = {'model_loss_mean': {
+                'label': 'Loss', 'scaling': 1.0,
+                'yformat': {'elbow': "%.0f", 'cube': "%.0f",
+                            'asymmetric': "%.0f"},
+                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                          'asymmetric': [None, None]},
+                'legend_loc': {'elbow': 'best', 'cube': 'best',
+                               'asymmetric': 'best'}},
            # 'oracle_loss_mean': {
            #      'label': 'Loss',
            #      'yformat': "%.0f", 'scaling': 1.0,
@@ -58,29 +61,38 @@ METRICS = {#'model_loss_mean': {
            #                'asymmetric': [None, None]},
            #      'legend_loc': 'best'},
            'model_trajectory_mse_mean': {
-                'label': 'Accumulated trajectory error',
-                'yformat': "%.0f", 'scaling': 1.0,
+                'label': 'Accumulated trajectory error', 'scaling': 1.0,
+                'yformat': {'elbow': "%.0f", 'cube': "%.0f",
+                            'asymmetric': "%.0f"},
                 'ylims': {'elbow': [None, None], 'cube': [None, None],
                           'asymmetric': [None, None]},
-                'legend_loc': 'best'},
+                'legend_loc': {'elbow': 'best', 'cube': 'best',
+                               'asymmetric': 'best'}},
            'model_pos_int_traj': {
-                'label': 'Trajectory positional error [m]',
-                'yformat': "%.2f", 'scaling': 1.0,
-                'ylims': {'elbow': [-0.01, 0.4], 'cube': [-0.01, 0.4],
+                'label': 'Trajectory positional error [m]', 'scaling': 1.0,
+                'yformat': {'elbow': "%.2f", 'cube': "%.1f",
+                            'asymmetric': "%.2f"},
+                'ylims': {'elbow': [0.0, 0.45], 'cube': [-0.01, 0.45],
                           'asymmetric': [-0.01, 0.4]},
-                'legend_loc': 'best'},
+                'legend_loc': {'elbow': 'best', 'cube': 'best',
+                               'asymmetric': 'best'}},
            'model_angle_int_traj': {
                 'label': 'Trajectory rotational error [deg]',
-                'yformat': "%.0f", 'scaling': 180/np.pi,
-                'ylims': {'elbow': [None, None], 'cube': [None, None],
+                'scaling': 180/np.pi,
+                'yformat': {'elbow': "%.0f", 'cube': "%.0f",
+                            'asymmetric': "%.0f"},
+                'ylims': {'elbow': [None, None], 'cube': [None, 100],
                           'asymmetric': [None, None]},
-                'legend_loc': 'lower right'},
+                'legend_loc': {'elbow': 'best', 'cube': 'best',
+                               'asymmetric': 'best'}},
            'model_penetration_int_traj': {
-                'label': 'Trajectory penetration [m]',
-                'yformat': "%.3f", 'scaling': 1.0,
-                'ylims': {'elbow': [None, 0.02], 'cube': [None, None],
+                'label': 'Trajectory penetration [m]', 'scaling': 1.0,
+                'yformat': {'elbow': "%.3f", 'cube': "%.3f",
+                            'asymmetric': "%.3f"},
+                'ylims': {'elbow': [-0.005, 0.03], 'cube': [None, None],
                           'asymmetric': [None, None]},
-                'legend_loc': 'best'}
+                'legend_loc': {'elbow': 'best', 'cube': 'best',
+                               'asymmetric': 'best'}}
             }
 
 PARAMETER_VALUES = ["m", "px", "py", "pz", "I_xx", "I_yy", "I_zz", "I_xy",
@@ -91,17 +103,23 @@ GEOMETRY_PARAMETER_ERROR = 'geometry_parameter_error'
 FRICTION_PARAMETER_ERROR = 'friction_error'
 PARAMETER_ERRORS = {
     GEOMETRY_PARAMETER_ERROR: {'label': 'Geometry parameter error [m]',
-                               'yformat': "%.2f", 'scaling': 1.0,
+                               'scaling': 1.0,
+                               'yformat': {'elbow': "%.2f", 'cube': "%.2f",
+                                           'asymmetric': "%.2f"},
                                'ylims': {'elbow': [0.0, None],
                                          'cube': [None, None],
                                          'asymmetric': [None, None]},
-                               'legend_loc': 'upper left'},
+                               'legend_loc': {'elbow': 'best', 'cube': 'best',
+                                              'asymmetric': 'best'}},
     FRICTION_PARAMETER_ERROR: {'label': 'Friction error',
-                               'yformat': "%.2f", 'scaling': 1.0,
+                               'scaling': 1.0,
+                               'yformat': {'elbow': "%.2f", 'cube': "%.2f",
+                                           'asymmetric': "%.2f"},
                                'ylims': {'elbow': [None, None],
                                          'cube': [None, None],
                                          'asymmetric': [None, None]},
-                               'legend_loc': 'best'}
+                               'legend_loc': {'elbow': 'best', 'cube': 'best',
+                                              'asymmetric': 'best'}}
 }
 
 PARAMETER_METRICS_BY_EXPERIMENT = {
@@ -151,6 +169,7 @@ SYSTEM_BY_EXPERIMENT = {
     'elbow_viscous': 'elbow'}
 
 DATASET_SIZE_DICT = {2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: []}
+GRAVITY_FRACTION_DICT = {0.: [], 0.5: [], 1.: [], 1.5: [], 2.0: []}
     
 # The following are t values for 95% confidence interval.
 T_SCORE_PER_DOF = {1: 12.71, 2: 4.303, 3: 3.182, 4: 2.776,
@@ -163,6 +182,7 @@ T_SCORE_PER_DOF = {1: 12.71, 2: 4.303, 3: 3.182, 4: 2.776,
                    29: 2.045, 30: 2.042}
 
 RUN_NUMBERS_TO_SKIP = [str(i).zfill(2) for i in range(20)]
+GRAVITY_RUN_NUMBERS_TO_SKIP = [str(i).zfill(2) for i in range(3)]
 
 XS = [2**(key-1) for key in DATASET_SIZE_DICT.keys()]
 
@@ -195,6 +215,28 @@ def get_empty_experiment_dict_by_experiment(experiment):
 
     return empty_dict_per_experiment
 
+def get_empty_gravity_experiment_dict_by_experiment(experiment):
+    # First get a list of bodies in the system.
+    system = SYSTEM_BY_EXPERIMENT[experiment]
+    bodies = CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys()
+
+    # Then build structure.
+    empty_dict_per_experiment = deepcopy(METHOD_RESULTS)
+    for method in empty_dict_per_experiment.keys():
+        empty_dict_per_experiment[method] = deepcopy(METRICS)
+        empty_dict_per_experiment[method].update(
+            {N_RUNS: deepcopy(GRAVITY_FRACTION_DICT)})
+        for metric in METRICS.keys():
+            empty_dict_per_experiment[method][metric] = \
+                deepcopy(GRAVITY_FRACTION_DICT)
+        for param_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
+            empty_dict_per_experiment[method].update(
+                {param_metric: deepcopy(GRAVITY_FRACTION_DICT)})
+        for gravity_frac in GRAVITY_FRACTION_DICT.keys():
+            empty_dict_per_experiment[method][N_RUNS][gravity_frac] = 0
+
+    return empty_dict_per_experiment
+
 def set_of_vals_to_t_confidence_interval(ys):
     if len(ys) <= 1:
         return None, None, None
@@ -213,23 +255,23 @@ def get_method_name_by_run_dict(run_dict):
     if not run_dict['structured']:
         return 'End-to-End'
     elif not run_dict['contactnets'] and run_dict['residual']:
-        return 'Prediction + Residual'
+        return 'DiffSim RP'
     elif not run_dict['contactnets'] and not run_dict['residual']:
-        return 'Prediction'
+        return 'DiffSim'
     elif run_dict['loss_variation'] == 3:
         if run_dict['contactnets'] and run_dict['residual']:
-            return 'ContactNetsI + Residual'
+            return 'VimpI RP'
         elif run_dict['contactnets'] and not run_dict['residual']:
-            return 'ContactNetsI'
+            return 'VimpI'
     elif run_dict['loss_variation'] == 1:
         if run_dict['contactnets'] and run_dict['residual']:
-            return 'ContactNets + Residual'
+            return 'Vimp RP'
         elif run_dict['contactnets'] and not run_dict['residual']:
-            return 'ContactNets'
+            return 'Vimp'
 
     raise RuntimeError(f"Unknown method with run_dict: {run_dict}")
 
-def fill_exp_dict_with_single_run_data(run_dict, exponent, exp_dict):
+def fill_exp_dict_with_single_run_data(run_dict, sweep_instance, exp_dict):
     method = get_method_name_by_run_dict(run_dict)
 
     for result_metric in run_dict['results'].keys():
@@ -237,15 +279,15 @@ def fill_exp_dict_with_single_run_data(run_dict, exponent, exp_dict):
             result_metric
 
         if new_key in METRICS:    
-            exp_dict[method][new_key][exponent].append(
+            exp_dict[method][new_key][sweep_instance].append(
                 run_dict['results'][result_metric])
         elif new_key in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
-            exp_dict[method][new_key][exponent].append(
+            exp_dict[method][new_key][sweep_instance].append(
                 run_dict['results'][result_metric])
 
     return exp_dict
 
-def convert_lists_to_t_conf_dict(exp_dict, exponent):
+def convert_lists_to_t_conf_dict(exp_dict, sweep_instance):
     # Iterate over methods then metrics and parameters.
     for method in METHOD_RESULTS.keys():
         # Here "quantity" can be a metric or parameter.
@@ -253,19 +295,19 @@ def convert_lists_to_t_conf_dict(exp_dict, exponent):
             if quantity == N_RUNS:
                 continue
 
-            vals = exp_dict[method][quantity][exponent]
+            vals = exp_dict[method][quantity][sweep_instance]
 
             mean, lower, upper = set_of_vals_to_t_confidence_interval(vals)
 
-            exp_dict[method][quantity][exponent] = {
+            exp_dict[method][quantity][sweep_instance] = {
                 'mean': mean, 'lower': lower, 'upper': upper
             }
-            exp_dict[method][N_RUNS][exponent] = \
-                max(len(vals), exp_dict[method][N_RUNS][exponent])
+            exp_dict[method][N_RUNS][sweep_instance] = \
+                max(len(vals), exp_dict[method][N_RUNS][sweep_instance])
 
     return exp_dict
 
-def get_plottable_values(exp_dict, metric, method, metric_lookup):
+def get_plottable_values(exp_dict, metric, method, metric_lookup, gravity=False):
     try:
         data_dict = exp_dict[method][metric]
     except:
@@ -276,7 +318,10 @@ def get_plottable_values(exp_dict, metric, method, metric_lookup):
     scaling = metric_lookup[metric]['scaling']
 
     for x in data_dict.keys():
-        xs.append(2**(x-1))
+        if gravity:
+            xs.append(x)
+        else:
+            xs.append(2**(x-1))
         ys.append(data_dict[x]['mean'])
         lowers.append(data_dict[x]['lower'])
         uppers.append(data_dict[x]['upper'])
@@ -288,13 +333,16 @@ def get_plottable_values(exp_dict, metric, method, metric_lookup):
 
     return xs, ys, lowers, uppers
 
-def get_plottable_run_counts(exp_dict, method):
+def get_plottable_run_counts(exp_dict, method, gravity=False):
     data_dict = exp_dict[method][N_RUNS]
 
     xs, ys = [], []
 
     for x in data_dict.keys():
-        xs.append(2**(x-1))
+        if not gravity:
+            xs.append(2**(x-1))
+        else:
+            xs.append(x)
         ys.append(data_dict[x])
 
     return xs, ys
@@ -314,10 +362,14 @@ def convert_parameters_to_errors(run_dict, experiment):
 
     return run_dict
 
-def format_plot(ax, fig, metric, metric_lookup, system):
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlim(min(XS), max(XS))
+def format_plot(ax, fig, metric, metric_lookup, system, gravity=False):
+    if not gravity:
+        ax.set_xscale('log')
+        ax.set_xlim(min(XS), max(XS))
+        x_markers = [round(x, 1) for x in XS]
+    else:
+        ax.set_xlim(0, 2)
+        x_markers = [0, 0.5, 1, 1.5, 2]
 
     ax.set_ylim(bottom=metric_lookup[metric]['ylims'][system][0],
                    top=metric_lookup[metric]['ylims'][system][1])
@@ -327,25 +379,29 @@ def format_plot(ax, fig, metric, metric_lookup, system):
     ax.yaxis.set_minor_formatter(NullFormatter())
     ax.yaxis.set_major_formatter(NullFormatter())
 
-    xs_rounded = [round(x, 1) for x in XS]
     ax.set_xticks([])
     ax.set_xticklabels([])
-    ax.set_xticks(xs_rounded)
-    ax.set_xticklabels(xs_rounded)
+    ax.set_xticks(x_markers)
+    ax.set_xticklabels(x_markers)
 
     ax.tick_params(axis='x', which='minor', bottom=False, labelsize=20)
     ax.tick_params(axis='x', which='major', bottom=False, labelsize=20)
-    ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
 
     ax.tick_params(axis='y', which='minor', labelsize=20)
     ax.tick_params(axis='y', which='major', labelsize=20)
 
     ax.yaxis.set_major_formatter(
-        FormatStrFormatter(metric_lookup[metric]['yformat']))
+        FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
     ax.yaxis.set_minor_formatter(
-        FormatStrFormatter(metric_lookup[metric]['yformat']))
+        FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
 
-    plt.xlabel('Training tosses')
+    if not gravity:
+        plt.xlabel('Training tosses')
+        ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+    else:
+        plt.xlabel('Gravity fraction')
+        ax.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+
     plt.ylabel(metric_lookup[metric]['label'])
 
     ax.yaxis.grid(True, which='both')
@@ -356,7 +412,7 @@ def format_plot(ax, fig, metric, metric_lookup, system):
     handles, labels = plt.gca().get_legend_handles_labels()
 
     plt.legend(handles, labels)
-    plt.legend(loc=metric_lookup[metric]['legend_loc'],
+    plt.legend(loc=metric_lookup[metric]['legend_loc'][system],
                prop=dict(weight='bold'))
 
     fig.set_size_inches(13, 13)
@@ -423,35 +479,40 @@ def calculate_friction_error(run_dict, experiment):
     run_dict['results'].update({FRICTION_PARAMETER_ERROR: friction_error})
     return run_dict
 
-def do_run_num_plot(exp_dict, experiment):
+def do_run_num_plot(exp_dict, experiment, gravity=False):
     # Start a plot.
     fig = plt.figure()
     ax = plt.gca()
 
     for method in METHOD_RESULTS.keys():
-        xs, ys = get_plottable_run_counts(exp_dict, method)
+        xs, ys = get_plottable_run_counts(exp_dict, method, gravity=gravity)
 
         # Plot the run numbers.
         ax.plot(xs, ys, label=method, linewidth=5,
                 color=METHOD_RESULTS[method])
 
-    ax.set_xscale('log')
-    ax.set_xlim(min(XS), max(XS))
+    if not gravity:
+        ax.set_xscale('log')
+        ax.set_xlim(min(XS), max(XS))
+        x_markers = [round(x, 1) for x in XS]
+    else:
+        ax.set_xlim(0, 2)
+        x_markers = [0, 0.5, 1, 1.5, 2]
+
+    ax.set_ylim(0, 10)
 
     ax.xaxis.set_major_formatter(NullFormatter())
     ax.xaxis.set_minor_formatter(NullFormatter())
     ax.yaxis.set_minor_formatter(NullFormatter())
     ax.yaxis.set_major_formatter(NullFormatter())
 
-    xs_rounded = [round(x, 1) for x in XS]
     ax.set_xticks([])
     ax.set_xticklabels([])
-    ax.set_xticks(xs_rounded)
-    ax.set_xticklabels(xs_rounded)
+    ax.set_xticks(x_markers)
+    ax.set_xticklabels(x_markers)
 
     ax.tick_params(axis='x', which='minor', bottom=False, labelsize=20)
     ax.tick_params(axis='x', which='major', bottom=False, labelsize=20)
-    ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
 
     ax.tick_params(axis='y', which='minor', labelsize=20)
     ax.tick_params(axis='y', which='major', labelsize=20)
@@ -459,7 +520,13 @@ def do_run_num_plot(exp_dict, experiment):
     ax.yaxis.set_major_formatter(FormatStrFormatter("%.0f"))
     ax.yaxis.set_minor_formatter(FormatStrFormatter("%.0f"))
 
-    plt.xlabel('Training tosses')
+    if not gravity:
+        plt.xlabel('Training tosses')
+        ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+    else:
+        plt.xlabel('Gravity fraction')
+        ax.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+
     plt.ylabel('Number of runs')
 
     ax.yaxis.grid(True, which='both')
@@ -475,7 +542,9 @@ def do_run_num_plot(exp_dict, experiment):
     fig.set_size_inches(13, 13)
 
     plt.title(experiment)
-    fig_path = op.join(OUTPUT_DIR, f'{experiment}_run_nums.png')
+    fig_name = 'gravity_' if gravity else ''
+    fig_name += f'{experiment}_run_nums.png'
+    fig_path = op.join(OUTPUT_DIR, fig_name)
     fig.savefig(fig_path, dpi=100)
     plt.close()
 
@@ -566,12 +635,93 @@ for experiment in results.keys():
     do_run_num_plot(exp_dict, experiment)
         
 
-pdb.set_trace()
 
+# =========================== Plot gravity results =========================== #
+# Load the results from the gravity json file.
+with open(JSON_GRAVITY_FILE) as file:
+    results = json.load(file)
 
+send_warning = False
 
+# Iterate over gravity experiments.
+for experiment in results.keys():
+    system = SYSTEM_BY_EXPERIMENT[experiment]
+    exp_dict = get_empty_gravity_experiment_dict_by_experiment(experiment)
 
+    gravity_sweep = results[experiment]['gravity_sweep']
 
+    # Iterate over dataset sizes to collect all the data.
+    for grav_frac in gravity_sweep.keys():
+        grav_frac = float(grav_frac)
+
+        # Iterate over runs.
+        for run_name, run_dict in gravity_sweep[str(grav_frac)].items():
+            if run_name[2:4] in GRAVITY_RUN_NUMBERS_TO_SKIP:
+                if not sent_warning:
+                    print(f'WARNING: Skipping any run numbers in ' + \
+                          f'{GRAVITY_RUN_NUMBERS_TO_SKIP}.')
+                    sent_warning = True
+                continue
+
+            run_dict = convert_parameters_to_errors(run_dict, experiment)
+            exp_dict = fill_exp_dict_with_single_run_data(run_dict, grav_frac,
+                                                          exp_dict)
+
+        # Convert lists to dictionary with keys average, upper, and lower.
+        exp_dict = convert_lists_to_t_conf_dict(exp_dict, grav_frac)
+
+    # Iterate over the metrics to do plots of each.
+    for metric in METRICS.keys():
+        # Start a plot.
+        fig = plt.figure()
+        ax = plt.gca()
+
+        for method in METHOD_RESULTS.keys():
+            xs, ys, lowers, uppers = get_plottable_values(
+                exp_dict, metric, method, METRICS, gravity=True)
+
+            # Plot the method unless there are any None objects.
+            if None in ys or None in lowers or None in lowers:
+                continue
+
+            ax.plot(xs, ys, label=method, linewidth=5,
+                    color=METHOD_RESULTS[method])
+            ax.fill_between(xs, lowers, uppers, alpha=0.3,
+                            color=METHOD_RESULTS[method])
+
+        format_plot(ax, fig, metric, METRICS, system, gravity=True)
+        plt.title(experiment)
+        fig_path = op.join(OUTPUT_DIR, f'gravity_{experiment}_{metric}.png')
+        fig.savefig(fig_path, dpi=100)
+        plt.close()
+
+    # Iterate over parameter metrics to do plots of each.
+    for parameter_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
+        # Start a plot.
+        fig = plt.figure()
+        ax = plt.gca()
+
+        for method in METHOD_RESULTS.keys():
+            xs, ys, lowers, uppers = get_plottable_values(
+                exp_dict, parameter_metric, method, PARAMETER_ERRORS)
+
+            # Plot the method unless there are any None objects.
+            if None in ys or None in lowers or None in lowers:
+                continue
+
+            ax.plot(xs, ys, label=method, linewidth=5,
+                    color=METHOD_RESULTS[method])
+            ax.fill_between(xs, lowers, uppers, alpha=0.3,
+                            color=METHOD_RESULTS[method])
+
+        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, system)
+        plt.title(experiment)
+        fig_path = op.join(OUTPUT_DIR, f'{experiment}_{parameter_metric}.png')
+        fig.savefig(fig_path, dpi=100)
+        plt.close()
+
+    # Add in a test plot of the number of experiments.
+    do_run_num_plot(exp_dict, experiment, gravity=True)
 
 
 
