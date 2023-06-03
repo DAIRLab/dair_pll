@@ -15,6 +15,7 @@ The json file has the following format:
                     contactnets:  bool
                     loss_variation:  int
                     residual:  bool
+                    g_frac:  float
                     result_set:  test/validation
                     results: {
                         metric_1:  float
@@ -135,8 +136,7 @@ RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'gravity_sweep': None}
 
-BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                   18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+BAD_RUN_NUMBERS = [0, 1, 2]
 
 # Prepend the below with 'gravity_sweep_' and postpend with '-#' to get the
 # folders.
@@ -157,16 +157,15 @@ def make_empty_gravity_sweep_dict():
 def get_run_info_from_config(config):
     run_dict = deepcopy(RUN_DICT)
 
-    run_dict['structured'] = False if \
-        isinstance(config.learnable_config, DeepLearnableSystemConfig) else \
-        True
-    run_dict['contactnets'] = False if not run_dict['structured'] else \
-        True if config.learnable_config.loss==MultibodyLosses.CONTACTNETS_LOSS \
+    assert not isinstance(config.learnable_config, DeepLearnableSystemConfig)
+
+    run_dict['structured'] = True
+    run_dict['contactnets'] = True if \
+        config.learnable_config.loss==MultibodyLosses.CONTACTNETS_LOSS \
         else False
-    run_dict['loss_variation'] = 0 if not run_dict['structured'] else \
-        config.learnable_config.loss_variation
-    run_dict['residual'] = False if not run_dict['structured'] else \
-        config.learnable_config.do_residual
+    run_dict['loss_variation'] = config.learnable_config.loss_variation
+    run_dict['residual'] = config.learnable_config.do_residual
+    run_dict['g_frac'] = config.learnable_config.g_frac
     run_dict['result_set'] = 'test'
     run_name = config.run_name
 
@@ -321,48 +320,48 @@ for experiment in EXPERIMENTS.keys():
 
     body_names = BODY_NAMES_BY_SYSTEM[system]
 
-    for grav_i in GRAVITY_FRACTIONS.keys():
-        results_folder_name = f'gravity_sweep_{experiment}-{grav_i}'
-        runs_path = op.join(RESULTS_DIR, results_folder_name, 'runs')
-        if not op.isdir(runs_path):
-            print(f'Could not find {results_folder_name} runs; skipping.')
-            continue
+    results_folder_name = f'gravity_sweep_{experiment}'
+    runs_path = op.join(RESULTS_DIR, results_folder_name, 'runs')
+    if not op.isdir(runs_path):
+        print(f'Could not find {results_folder_name} runs; skipping.')
+        continue
         
-        print(f'\nFound {results_folder_name}.')
+    print(f'\nFound {results_folder_name}.')
 
-        for run in os.listdir(runs_path):
-            if int(run[2:4]) in BAD_RUN_NUMBERS:
-                continue
-                if not sent_warning:
-                    print(f'WARNING: Skipping run numbers {BAD_RUN_NUMBERS}')
-                    sent_warning = True
+    for run in os.listdir(runs_path):
+        if int(run[2:4]) in BAD_RUN_NUMBERS:
+            continue
+            if not sent_warning:
+                print(f'WARNING: Skipping run numbers {BAD_RUN_NUMBERS}')
+                sent_warning = True
 
-            config, stats, checkpoint = \
-                get_config_stats_checkpoint(runs_path, run)
+        config, stats, checkpoint = \
+            get_config_stats_checkpoint(runs_path, run)
 
-            if stats == None:
-                print(f'\tNo stats file for {run}; skipping.')
-                runs_needing_statistics.append(
-                    op.join(runs_path, run).split('results/')[-1])
-                continue
+        if stats == None:
+            print(f'\tNo stats file for {run}; skipping.')
+            runs_needing_statistics.append(
+                op.join(runs_path, run).split('results/')[-1])
+            continue
 
-            assert config != None and checkpoint != None
-            print(f'\tFound statistics for {run}.')
+        assert config != None and checkpoint != None
+        print(f'\tFound statistics for {run}.')
 
-            run_key, run_dict = get_run_info_from_config(config)
+        run_key, run_dict = get_run_info_from_config(config)
 
-            performance_dict = \
-                get_performance_from_stats(stats, run_dict['result_set'])
-            run_dict['results'] = performance_dict
+        performance_dict = \
+            get_performance_from_stats(stats, run_dict['result_set'])
+        run_dict['results'] = performance_dict
 
-            if run_dict['structured']:
-                best_system_state = checkpoint['best_learned_system_state']
-                params_dict = get_physical_parameters(system, body_names,
-                                                      best_system_state)
-                run_dict['learned_params'] = params_dict
+        if run_dict['structured']:
+            best_system_state = checkpoint['best_learned_system_state']
+            params_dict = get_physical_parameters(system, body_names,
+                                                  best_system_state)
+            run_dict['learned_params'] = params_dict
 
-            exp_dict['gravity_sweep'][GRAVITY_FRACTIONS[grav_i]].update(
-                {run_key: run_dict})
+        grav_frac = config['g_frac']
+        exp_dict['gravity_sweep'][GRAVITY_FRACTIONS[grav_frac]].update(
+            {run_key: run_dict})
 
     results.update({experiment: exp_dict})
 
