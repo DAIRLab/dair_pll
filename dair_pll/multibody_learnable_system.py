@@ -595,8 +595,8 @@ class MultibodyLearnableSystem(System):
                 min_eig_val = min(torch.linalg.eigvals(M))
                 print(f'\nIssue with M: min eigenvalue of {min_eig_val}')
             except:
-                pdb.set_trace()
                 print(f'\nCannot calculate eigenvalues of M: {M}')
+                pdb.set_trace()
 
         J_M = pbmm(reorder_mat.transpose(-1, -2), pbmm(J, L))
 
