@@ -225,16 +225,17 @@ class MultibodyLearnableSystem(System):
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
 
-        # For now just take the first regularization term as the residual
-        # regularization.  Will need to be updated later if more are added.
-        # residual_norm = regularizers[0]
-        # regs = self.w_res * residual_norm
+        # For now the regularization terms are: 0) residual norm, 1) residual
+        # weights, 2) inertia matrix condition number.  Will need to be updated
+        # later if more are added.
         reg_norm = regularizers[0]
         reg_weight = regularizers[1]
+        reg_inertia_cond = regularizers[2]
 
         loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
                (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
-               (self.w_pen * loss_pen) + (self.w_diss * loss_diss)
+               (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
+               (1e-5 * regularizers[2])
 
         return loss
 
@@ -265,6 +266,12 @@ class MultibodyLearnableSystem(System):
             # Otherwise, append 0 twice for the residual norm and weights.
             regularizers.append(torch.zeros((x.shape[-2],)))
             regularizers.append(torch.zeros((x.shape[-2],)))
+
+        # Penalize the condition number of the mass matrix.
+        q_plus, v_plus = self.space.q_v(x_plus)
+        _, M, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
+        I_BBcm_B = M[..., :3, :3]
+        regularizers.append(torch.linalg.cond(I_BBcm_B))
 
         # TODO: Use the believed geometry to help supervise the learned CoM.
         # if (self.multibody_terms.inertia_mode_txt != 'none') and \

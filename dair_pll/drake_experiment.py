@@ -345,7 +345,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         # Calculate the average loss components.
         losses_pred, losses_comp, losses_pen, losses_diss = [], [], [], []
-        residual_norm, residual_weight = [], []
+        residual_norm, residual_weight, inertia_cond_num = [], [], []
         for xy_i in train_dataloader:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
@@ -365,6 +365,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_diss.append(loss_diss.clone().detach())
             residual_norm.append(regularizers[0].clone().detach())
             residual_weight.append(regularizers[1].clone().detach())
+            inertia_cond_num.append(regularizers[2].clone().detach())
 
         def really_weird_fix_for_cluster_only(list_of_tensors):
             """For some reason, on the cluster only, the last item in the loss
@@ -385,6 +386,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         losses_diss = really_weird_fix_for_cluster_only(losses_diss)
         residual_norm = really_weird_fix_for_cluster_only(residual_norm)
         residual_weight = really_weird_fix_for_cluster_only(residual_weight)
+        inertia_cond_num = really_weird_fix_for_cluster_only(inertia_cond_num)
 
         # Calculate average and scale by hyperparameter weights.
         w_pred = self.learnable_config.w_pred
@@ -406,10 +408,13 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                             / len(residual_norm)).mean()
         avg_residual_weight = w_res*cast(Tensor, sum(residual_weight) \
                             / len(residual_weight)).mean()
+        avg_inertia_cond_num = 1e-5 * cast(Tensor, sum(inertia_cond_num) \
+                            / len(inertia_cond_num)).mean()
 
         avg_loss_total = torch.sum(avg_loss_pred + avg_loss_comp + \
                                    avg_loss_pen + avg_loss_diss + \
-                                   avg_residual_norm + avg_residual_weight)
+                                   avg_residual_norm + avg_residual_weight + \
+                                   avg_inertia_cond_num)
 
         loss_breakdown = {'loss_total': avg_loss_total,
                           'loss_pred': avg_loss_pred,
@@ -417,7 +422,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                           'loss_pen': avg_loss_pen,
                           'loss_diss': avg_loss_diss,
                           'loss_res_norm': avg_residual_norm,
-                          'loss_res_weight': avg_residual_weight}
+                          'loss_res_weight': avg_residual_weight,
+                          'loss_inertia_cond': avg_inertia_cond_num}
 
         # Include the loss components into system summary.
         epoch_vars.update(loss_breakdown)
@@ -461,11 +467,13 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         x_plus = x_future[..., 0, :]
 
         regularizers = system.get_regularization_terms(x, u, x_plus)
-        if len(regularizers) > 2:
+        if len(regularizers) > 3:
             assert NotImplementedError(
-                "Don't recognize more than two regularization terms.")
-        elif len(regularizers) == 2:
-            reg_term = (regularizers[0] * w_res) + (regularizers[1] * w_res_w)
+                "Don't recognize more than three regularization terms.")
+        elif len(regularizers) == 3:
+            reg_term = (regularizers[0] * w_res) + \
+                       (regularizers[1] * w_res_w) \
+                       (regularizers[2] * 1e-5)
         else:
             reg_term = torch.zeros_like(prediction_loss)
 
