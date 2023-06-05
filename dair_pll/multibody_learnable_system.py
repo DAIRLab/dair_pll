@@ -427,14 +427,19 @@ class MultibodyLearnableSystem(System):
         # Therefore, we can detach ``force`` from pytorch's computation graph
         # without causing error in the overall loss gradient.
         # pylint: disable=E1103
-        force = pbmm(
-            reorder_mat,
-            self.solver(  #.apply(
-                J_M,
-                pbmm(reorder_mat.transpose(-1, -2),
-                     q).squeeze(-1)).detach().unsqueeze(-1))
-                # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                #eps).detach().unsqueeze(-1))
+        try:
+            force = pbmm(
+                reorder_mat,
+                self.solver(  #.apply(
+                    J_M,
+                    pbmm(reorder_mat.transpose(-1, -2),
+                         q).squeeze(-1)).detach().unsqueeze(-1))
+                    # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                    #eps).detach().unsqueeze(-1))
+        except:
+            print(f'J_M: {J_M}')
+            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
+            pdb.set_trace()
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
@@ -608,14 +613,20 @@ class MultibodyLearnableSystem(System):
         Q[contact_matrix_filter] += Q_full[contact_matrix_filter]
         q[contact_filter] += q_full[contact_filter]
 
-        impulse_full = pbmm(
-            reorder_mat,
-            self.solver(  #.apply(
-                J_M,
-                pbmm(reorder_mat.transpose(-1, -2),
-                     q).squeeze(-1)).detach().unsqueeze(-1))
-                # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                #eps).detach().unsqueeze(-1))
+        try:
+            impulse_full = pbmm(
+                reorder_mat,
+                self.solver(  #.apply(
+                    J_M,
+                    pbmm(reorder_mat.transpose(-1, -2),
+                         q).squeeze(-1)).detach().unsqueeze(-1))
+                    # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                    #eps).detach().unsqueeze(-1))
+        except:
+            print(f'J_M: {J_M}')
+            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
+            pdb.set_trace()
+
 
         impulse = torch.zeros_like(impulse_full)
         impulse[contact_filter] += impulse_full[contact_filter]
