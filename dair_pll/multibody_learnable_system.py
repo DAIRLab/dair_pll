@@ -29,7 +29,7 @@ import numpy as np
 import torch
 import pdb
 import time
-# from sappy import SAPSolver  # type: ignore
+from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 from torch.nn import Module
 import torch.nn as nn
@@ -74,7 +74,7 @@ class MultibodyLearnableSystem(System):
     init_urdfs: Dict[str, str]
     output_urdfs_dir: Optional[str] = None
     visualization_system: Optional[DrakeSystem]
-    solver: DynamicCvxpyLCQPLayer
+    solver: SAPSolver  # DynamicCvxpyLCQPLayer
     dt: float
     loss_variation_txt: str
 
@@ -144,7 +144,7 @@ class MultibodyLearnableSystem(System):
 
         self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
         self.visualization_system = None
-        self.solver = DynamicCvxpyLCQPLayer(self.space.n_v)
+        self.solver = SAPSolver()  #DynamicCvxpyLCQPLayer(self.space.n_v)
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
@@ -304,7 +304,8 @@ class MultibodyLearnableSystem(System):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
-        # eps = 1e-3
+        eps = 1e-4
+        solver_eps = 1e-4
 
         # Begin loss calculation.
         delassus, M, J, phi, non_contact_acceleration = \
@@ -365,8 +366,8 @@ class MultibodyLearnableSystem(System):
         elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
             half_delassus = delassus
 
-        Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) #+ \
-            #eps * torch.eye(3 * n_contacts)
+        Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
+            eps * torch.eye(3 * n_contacts)
 
         J_M = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
 
@@ -430,12 +431,12 @@ class MultibodyLearnableSystem(System):
         try:
             force = pbmm(
                 reorder_mat,
-                self.solver(  #.apply(
+                self.solver.apply(
                     J_M,
-                    pbmm(reorder_mat.transpose(-1, -2),
-                         q).squeeze(-1)).detach().unsqueeze(-1))
-                    # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                    #eps).detach().unsqueeze(-1))
+                    #pbmm(reorder_mat.transpose(-1, -2),
+                    #     q).squeeze(-1)).detach().unsqueeze(-1))
+                    pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                    solver_eps).detach().unsqueeze(-1))
         except:
             print(f'J_M: {J_M}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
@@ -573,6 +574,7 @@ class MultibodyLearnableSystem(System):
         # pylint: disable=too-many-locals
         dt = self.dt
         eps = 1e6
+        solver_eps = 1e-4
         delassus, M, J, phi, non_contact_acceleration = \
             self.get_multibody_terms(q, v, u)
         n_contacts = phi.shape[-1]
@@ -616,12 +618,12 @@ class MultibodyLearnableSystem(System):
         try:
             impulse_full = pbmm(
                 reorder_mat,
-                self.solver(  #.apply(
+                self.solver.apply(
                     J_M,
-                    pbmm(reorder_mat.transpose(-1, -2),
-                         q).squeeze(-1)).detach().unsqueeze(-1))
-                    # pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                    #eps).detach().unsqueeze(-1))
+                    #pbmm(reorder_mat.transpose(-1, -2),
+                    #     q).squeeze(-1)).detach().unsqueeze(-1))
+                    pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                    solver_eps).detach().unsqueeze(-1))
         except:
             print(f'J_M: {J_M}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
