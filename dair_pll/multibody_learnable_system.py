@@ -29,7 +29,7 @@ import numpy as np
 import torch
 import pdb
 import time
-from sappy import SAPSolver  # type: ignore
+# from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 from torch.nn import Module
 import torch.nn as nn
@@ -74,7 +74,7 @@ class MultibodyLearnableSystem(System):
     init_urdfs: Dict[str, str]
     output_urdfs_dir: Optional[str] = None
     visualization_system: Optional[DrakeSystem]
-    solver: SAPSolver  # DynamicCvxpyLCQPLayer
+    solver: DynamicCvxpyLCQPLayer
     dt: float
     loss_variation_txt: str
 
@@ -144,7 +144,7 @@ class MultibodyLearnableSystem(System):
 
         self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
         self.visualization_system = None
-        self.solver = SAPSolver()  #DynamicCvxpyLCQPLayer(self.space.n_v)
+        self.solver = DynamicCvxpyLCQPLayer(self.space.n_v)
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
@@ -304,7 +304,7 @@ class MultibodyLearnableSystem(System):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
-        eps = 1e-4
+        eps = 0  #1e-4
         solver_eps = 1e-4
 
         # Begin loss calculation.
@@ -431,12 +431,12 @@ class MultibodyLearnableSystem(System):
         try:
             force = pbmm(
                 reorder_mat,
-                self.solver.apply(
+                self.solver(  #.apply(
                     J_M,
-                    #pbmm(reorder_mat.transpose(-1, -2),
-                    #     q).squeeze(-1)).detach().unsqueeze(-1))
-                    pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                    solver_eps).detach().unsqueeze(-1))
+                    pbmm(reorder_mat.transpose(-1, -2),
+                         q).squeeze(-1)).detach().unsqueeze(-1))
+                    #pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                    #solver_eps).detach().unsqueeze(-1))
         except:
             print(f'J_M: {J_M}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
@@ -620,12 +620,12 @@ class MultibodyLearnableSystem(System):
         try:
             impulse_full = pbmm(
                 reorder_mat,
-                self.solver.apply(
+                self.solver(  #.apply(
                     J_M,
-                    #pbmm(reorder_mat.transpose(-1, -2),
-                    #     q).squeeze(-1)).detach().unsqueeze(-1))
-                    pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                    solver_eps).detach().unsqueeze(-1))
+                    pbmm(reorder_mat.transpose(-1, -2),
+                         q).squeeze(-1)).detach().unsqueeze(-1))
+                    #pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
+                    #solver_eps).detach().unsqueeze(-1))
         except:
             print(f'J_M: {J_M}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
