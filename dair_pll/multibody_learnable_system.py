@@ -589,14 +589,16 @@ class MultibodyLearnableSystem(System):
                                               delassus.shape)
 
         try:
-            L = torch.linalg.cholesky(torch.inverse((M)))
+            M_inv = torch.inverse((M))
         except:
-            try:
-                min_eig_val = min(torch.linalg.eigvals(M))
-                print(f'\nIssue with M: min eigenvalue of {min_eig_val}')
-            except:
-                print(f'\nCannot calculate eigenvalues of M: {M}')
-                pdb.set_trace()
+            print(f'M: {M}')
+            pdb.set_trace()
+
+        try:
+            L = torch.linalg.cholesky(M_inv)
+        except:
+            print(f'\nCannot calculate Cholesky of M_inv (M={M})')
+            pdb.set_trace()
 
         J_M = pbmm(reorder_mat.transpose(-1, -2), pbmm(J, L))
 
