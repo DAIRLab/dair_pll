@@ -630,16 +630,18 @@ EXPERIMENT_TYPE_BY_PREFIX = {'sc': 'cube_real', 'se': 'elbow_real',
                              'be': 'viscous_elbow',
                              'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
 
-BAD_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)]
-RUNS_TO_LOAD = os.listdir(op.join(RESULTS_DIR, 'sweep_elbow-2', 'runs'))
-i = 0
-while i < len(RUNS_TO_LOAD):
-    if int(RUNS_TO_LOAD[i][2:4]) in BAD_RUN_NUMBERS:
-        RUNS_TO_LOAD.remove(RUNS_TO_LOAD[i])
-    else:
-        i += 1
-               #['se30-9-0', 'se31-9-0', 'se32-9-0', 'se33-9-0', 'se34-9-0',
-               # 'se35-9-0', 'se24-9-0']
+BAD_REAL_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)]
+BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
+                      [31, 33, 35]
+FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] + \
+                  [f'sweep_cube-{i}' for i in range(2, 10)] + \
+                  [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
+                  [f'sweep_cube_vortex-{i}' for i in range(2, 10)] + \
+                  [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
+                  [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
+
+# RUNS_TO_LOAD = ['se30-9-0', 'se31-9-0', 'se32-9-0', 'se33-9-0', 'se34-9-0',
+#                 'se35-9-0', 'se24-9-0']
 
 PLL_TOSS_NUMS_TO_GENERATE = [0]
 
@@ -805,45 +807,67 @@ def save_post_processing_stats(pos_errors, rot_errors, run_dir):
     with open(filename, 'wb') as file:
         pickle.dump(stats, file)
 
+def get_runs_to_load(folder, real=True):
+    bad_numbers = BAD_REAL_RUN_NUMBERS if real else BAD_SIM_RUN_NUMBERS
+
+    runs_to_load = os.listdir(op.join(RESULTS_DIR, folder, 'runs'))
+    i = 0
+    while i < len(runs_to_load):
+        if int(runs_to_load[i][2:4]) in bad_numbers:
+            runs_to_load.remove(runs_to_load[i])
+        else:
+            i += 1
+
+    return runs_to_load
+
 # ============================= Compute rollouts ============================= #
-for run_name in RUNS_TO_LOAD:
-    if experiment_finished(run_name):
-        if post_processing_done(run_name):
-            print(f'{run_name} already post-processed.')
-            continue
-        experiment = load_experiment(run_name)
-        run_dir = run_name_to_run_dir(run_name)
-        print(f'Loading {run_dir}')
-    else:
-        print(f'Skipping unfinished {run_name}')
+for folder in FOLDERS_TO_LOAD:
+    real = True if ('viscous' not in folder and 'vortex' not in folder) \
+        else False
 
-    learned_system = get_best_system_from_experiment(experiment)
+    runs_to_load = get_runs_to_load(folder, real=real)
 
-    # If do experiment test set, use the first test set trajectory in the stats
-    # file, and predict with different rollout lengths.
-    if DO_EXPERIMENT_TEST_SET:
-        gt_traj, pred_120 = get_test_set_traj_target_and_prediction(experiment)
+    for run_name in runs_to_load:
+        if experiment_finished(run_name):
+            if post_processing_done(run_name):
+                print(f'{run_name} already post-processed.')
+                continue
+            experiment = load_experiment(run_name)
+            run_dir = run_name_to_run_dir(run_name)
+            print(f'Loading {run_dir}')
+        else:
+            print(f'Skipping unfinished {run_name}')
 
-        rollouts = []
-        for rollout_len in ROLLOUT_LENGTHS[:-1]:
-            rollouts.append(
-                get_traj_with_rollout_of_len(gt_traj, rollout_len, experiment,
-                                             learned_system))
+        learned_system = get_best_system_from_experiment(experiment)
 
-        rollouts.append(pred_120)
+        # If do experiment test set, use the first test set trajectory in the
+        # stats file, and predict with different rollout lengths.
+        if DO_EXPERIMENT_TEST_SET:
+            gt_traj, pred_120 = get_test_set_traj_target_and_prediction(
+                experiment)
 
-        save_rollout_sweep_trajs(rollouts, run_name)
-        pos_errors, rot_errors = compute_pos_rot_trajectory_errors(
-            gt_traj, rollouts, experiment)
-        save_post_processing_stats(pos_errors, rot_errors, run_dir)
+            rollouts = []
+            for rollout_len in ROLLOUT_LENGTHS[:-1]:
+                rollouts.append(
+                    get_traj_with_rollout_of_len(gt_traj, rollout_len,
+                                                 experiment, learned_system))
 
-    # Otherwise, iterate over the PLL toss numbers.
-    else:
-        for pll_toss_num in PLL_TOSS_NUMS_TO_GENERATE:
-            gt_traj = load_ground_truth_toss_trajectory('elbow', pll_toss_num)
-            l_traj = compute_predicted_trajectory(experiment, learned_system, gt_traj)
+            rollouts.append(pred_120)
 
-            save_predicted_bag_trajectory(l_traj, run_name, pll_toss_num)
+            save_rollout_sweep_trajs(rollouts, run_name)
+            pos_errors, rot_errors = compute_pos_rot_trajectory_errors(
+                gt_traj, rollouts, experiment)
+            save_post_processing_stats(pos_errors, rot_errors, run_dir)
+
+        # Otherwise, iterate over the PLL toss numbers.
+        else:
+            for pll_toss_num in PLL_TOSS_NUMS_TO_GENERATE:
+                gt_traj = load_ground_truth_toss_trajectory(
+                    'elbow', pll_toss_num)
+                l_traj = compute_predicted_trajectory(
+                    experiment, learned_system, gt_traj)
+
+                save_predicted_bag_trajectory(l_traj, run_name, pll_toss_num)
 
 pdb.set_trace()
 # ======================= Compute metrics on rollouts ======================== #
