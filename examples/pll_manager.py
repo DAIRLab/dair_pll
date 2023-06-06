@@ -913,7 +913,11 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     last_run_num = -1
     repo = git.Repo(search_parent_directories=True)
     repo_dir = repo.git.rev_parse("--show-toplevel")
-    partial_storage_name = op.join(repo_dir, 'results', f'{category}_{system}')
+    if (category == GRAVITY_SWEEP) or (additional_forces == None):
+        partial_storage_name = op.join(repo_dir, 'results', f'{category}_{system}')
+    else:
+        partial_storage_name = op.join(repo_dir, 'results',
+                                       f'{category}_{system}_{additional_forces}')
 
     sweep_range = range(2, 10) if category==SWEEP else \
                   range(len(GRAVITY_FRACTIONS))
