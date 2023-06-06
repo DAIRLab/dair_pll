@@ -658,8 +658,8 @@ def run_name_to_run_dir(run_name):
     run_prefix = run_name[:2]
     experiment_type = EXPERIMENT_TYPE_BY_PREFIX[run_prefix]
 
-    assert('real' in experiment_type,
-           f'run_name: {run_name}, experiment_type: {experiment_type}')
+    assert 'real' in experiment_type, \
+           f'run_name: {run_name}, experiment_type: {experiment_type}'
 
     system = experiment_type.split('_real')[0]
     sub_number = run_name.split('-')[1]
