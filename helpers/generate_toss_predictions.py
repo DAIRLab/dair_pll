@@ -838,6 +838,7 @@ for folder in FOLDERS_TO_LOAD:
             print(f'Loading {run_dir}')
         else:
             print(f'Skipping unfinished {run_name}')
+            continue
 
         learned_system = get_best_system_from_experiment(experiment)
 

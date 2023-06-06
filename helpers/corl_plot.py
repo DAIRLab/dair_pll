@@ -70,9 +70,9 @@ METRICS = {'model_loss_mean': {
                                'asymmetric': 'best'}},
            'model_pos_int_traj': {
                 'label': 'Trajectory positional error [m]', 'scaling': 1.0,
-                'yformat': {'elbow': "%.2f", 'cube': "%.1f",
+                'yformat': {'elbow': "%.2f", 'cube': "%.2f",
                             'asymmetric': "%.2f"},
-                'ylims': {'elbow': [0.0, 0.45], 'cube': [-0.01, 0.45],
+                'ylims': {'elbow': [0.0, 0.45], 'cube': [-0.01, 0.25],
                           'asymmetric': [-0.01, 0.4]},
                 'legend_loc': {'elbow': 'best', 'cube': 'best',
                                'asymmetric': 'best'}},
@@ -499,7 +499,7 @@ def do_run_num_plot(exp_dict, experiment, gravity=False):
         ax.set_xlim(0, 2)
         x_markers = [0, 0.5, 1, 1.5, 2]
 
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, None)
 
     ax.xaxis.set_major_formatter(NullFormatter())
     ax.xaxis.set_minor_formatter(NullFormatter())
@@ -635,13 +635,12 @@ for experiment in results.keys():
     do_run_num_plot(exp_dict, experiment)
         
 
-
 # =========================== Plot gravity results =========================== #
 # Load the results from the gravity json file.
 with open(JSON_GRAVITY_FILE) as file:
     results = json.load(file)
 
-send_warning = False
+sent_warning = False
 
 # Iterate over gravity experiments.
 for experiment in results.keys():
@@ -721,6 +720,7 @@ for experiment in results.keys():
         plt.close()
 
     # Add in a test plot of the number of experiments.
+    pdb.set_trace()
     do_run_num_plot(exp_dict, experiment, gravity=True)
 
 
