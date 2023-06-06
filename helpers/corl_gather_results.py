@@ -135,12 +135,12 @@ RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
-BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                   18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29]
+BAD_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
+                  [31, 33, 35]
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
-EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
-               'elbow': {'system': 'elbow', 'prefix': 'se'},
+EXPERIMENTS = {#'cube': {'system': 'cube', 'prefix': 'sc'},
+               #'elbow': {'system': 'elbow', 'prefix': 'se'},
                'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},
                'elbow_vortex': {'system': 'elbow', 'prefix': 've'},
                'asymmetric_viscous': {'system': 'asymmetric', 'prefix': 'ba'},
