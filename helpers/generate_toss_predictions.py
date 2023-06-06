@@ -624,21 +624,24 @@ RESULTS_DIR = op.join(REPO_DIR, 'results')
 ELBOW_ASSET_DIR = op.join(REPO_DIR, 'assets', 'contactnets_elbow')
 
 EXPERIMENT_TYPE_BY_PREFIX = {'sc': 'cube_real', 'se': 'elbow_real',
-                             'va': 'vortex_asymmetric',
-                             've': 'vortex_elbow',
-                             'ba': 'viscous_asymmetric',
-                             'be': 'viscous_elbow',
-                             'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
+                             'va': 'vortex_asymmetric',}
+                             # 've': 'vortex_elbow',
+                             # 'ba': 'viscous_asymmetric',
+                             # 'be': 'viscous_elbow',
+                             #'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
+SYSTEM_BY_PREFIX = {'sc': 'cube', 'se': 'elbow', 'va': 'asymmetric'}
 
 BAD_REAL_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)]
 BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
                       [31, 33, 35]
 FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] + \
                   [f'sweep_cube-{i}' for i in range(2, 10)] + \
-                  [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
-                  [f'sweep_cube_vortex-{i}' for i in range(2, 10)] + \
-                  [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
-                  [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
+                  # [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
+                  [f'sweep_cube_vortex-{i}' for i in range(2, 10)] #+ \
+                  # [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
+                  # [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
+
+N_STATE = {'cube': 13, 'elbow': 15, 'asymmetric': 13}
 
 # RUNS_TO_LOAD = ['se30-9-0', 'se31-9-0', 'se32-9-0', 'se33-9-0', 'se34-9-0',
 #                 'se35-9-0', 'se24-9-0']
@@ -753,7 +756,7 @@ def get_test_set_traj_target_and_prediction(experiment):
     return Tensor(test_traj_target), Tensor(test_traj_prediction)
 
 def get_traj_with_rollout_of_len(traj, rollout_len, experiment, learned_system):
-    assert traj.shape == (120, 15)
+    assert traj.shape == (120, N_STATE[SYSTEM_BY_PREFIX[experiment[:2]]])
 
     gt_traj_target = traj[(-rollout_len-1):].reshape(rollout_len+1, 15)
 
@@ -825,6 +828,7 @@ def get_runs_to_load(folder, real=True):
 for folder in FOLDERS_TO_LOAD:
     real = True if ('viscous' not in folder and 'vortex' not in folder) \
         else False
+    system = 'cube' if 'cube' in folder else 'elbow'
 
     runs_to_load = get_runs_to_load(folder, real=real)
 
