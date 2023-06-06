@@ -635,13 +635,11 @@ RUNS_TO_LOAD = os.listdir(op.join(RESULTS_DIR, 'sweep_elbow-2', 'runs'))
 i = 0
 while i < len(RUNS_TO_LOAD):
     if int(RUNS_TO_LOAD[i][2:4]) in BAD_RUN_NUMBERS:
-        RUNS_TO_LOAD.remove(run)
+        RUNS_TO_LOAD.remove(RUNS_TO_LOAD[i])
     else:
         i += 1
                #['se30-9-0', 'se31-9-0', 'se32-9-0', 'se33-9-0', 'se34-9-0',
                # 'se35-9-0', 'se24-9-0']
-
-pdb.set_trace()
 
 PLL_TOSS_NUMS_TO_GENERATE = [0]
 
@@ -660,7 +658,8 @@ def run_name_to_run_dir(run_name):
     run_prefix = run_name[:2]
     experiment_type = EXPERIMENT_TYPE_BY_PREFIX[run_prefix]
 
-    assert 'real' in experiment_type
+    assert('real' in experiment_type,
+           f'run_name: {run_name}, experiment_type: {experiment_type}')
 
     system = experiment_type.split('_real')[0]
     sub_number = run_name.split('-')[1]
@@ -673,6 +672,11 @@ def run_name_to_run_dir(run_name):
 def experiment_finished(run_name):
     run_dir = run_name_to_run_dir(run_name)
     return os.path.isfile(op.join(run_dir, 'statistics.pkl'))
+
+def post_processing_done(run_name):
+    run_dir = run_name_to_run_dir(run_name)
+    return os.path.isfile(
+        op.join(run_dir, 'post_processing', 'post_statistics.pkl'))
 
 def load_experiment(run_name):
     run_path = run_name_to_run_dir(run_name)
@@ -804,6 +808,9 @@ def save_post_processing_stats(pos_errors, rot_errors, run_dir):
 # ============================= Compute rollouts ============================= #
 for run_name in RUNS_TO_LOAD:
     if experiment_finished(run_name):
+        if post_processing_done(run_name):
+            print(f'{run_name} already post-processed.')
+            continue
         experiment = load_experiment(run_name)
         run_dir = run_name_to_run_dir(run_name)
         print(f'Loading {run_dir}')
