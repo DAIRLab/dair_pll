@@ -631,10 +631,13 @@ EXPERIMENT_TYPE_BY_PREFIX = {'sc': 'cube_real', 'se': 'elbow_real',
                              'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
 
 BAD_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)]
-RUNS_TO_LOAD = op.listdir(op.join(RESULTS_DIR, 'sweep_elbow-2', 'runs'))
-for run in RUNS_TO_LOAD:
-    if int(run[2:4]) in BAD_RUN_NUMBERS:
+RUNS_TO_LOAD = os.listdir(op.join(RESULTS_DIR, 'sweep_elbow-2', 'runs'))
+i = 0
+while i < len(RUNS_TO_LOAD):
+    if int(RUNS_TO_LOAD[i][2:4]) in BAD_RUN_NUMBERS:
         RUNS_TO_LOAD.remove(run)
+    else:
+        i += 1
                #['se30-9-0', 'se31-9-0', 'se32-9-0', 'se33-9-0', 'se34-9-0',
                # 'se35-9-0', 'se24-9-0']
 
