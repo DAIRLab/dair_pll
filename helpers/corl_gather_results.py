@@ -135,12 +135,21 @@ RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
-BAD_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
-                  [31, 33, 35]
+BAD_RUN_NUMBERS = {
+    'elbow': [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
+    'cube':  [i for i in range(24)] + [i for i in range(25, 30)],
+    'asymmetric_vortex': 
+        [i for i in range(24)] + [i for i in range(25, 30)] +[31, 33, 35],
+    'elbow_vortex':
+        [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
+    'asymmetric_viscous':
+        [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
+    'elbow_viscous':
+        [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35]}
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
-EXPERIMENTS = {#'cube': {'system': 'cube', 'prefix': 'sc'},
-               #'elbow': {'system': 'elbow', 'prefix': 'se'},
+EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
+               'elbow': {'system': 'elbow', 'prefix': 'se'},
                'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},
                'elbow_vortex': {'system': 'elbow', 'prefix': 've'},
                'asymmetric_viscous': {'system': 'asymmetric', 'prefix': 'ba'},
@@ -311,7 +320,7 @@ def get_config_stats_checkpoint(runs_path, run):
 runs_needing_statistics = []
 results = {}
 
-sent_warning = False
+sent_warning = {'elbow': False, 'cube': False}
 
 for experiment in EXPERIMENTS.keys():
     print(f'\n\n============== Starting {experiment} ==============')
@@ -333,11 +342,12 @@ for experiment in EXPERIMENTS.keys():
         print(f'\nFound {results_folder_name}.')
 
         for run in os.listdir(runs_path):
-            if int(run[2:4]) in BAD_RUN_NUMBERS:
+            if int(run[2:4]) in BAD_RUN_NUMBERS[experiment]:
                 continue
-                if not sent_warning:
-                    print(f'WARNING: Skipping run numbers {BAD_RUN_NUMBERS}')
-                    sent_warning = True
+                if not sent_warning[experiment]:
+                    print(f'WARNING: Skipping run numbers ' + \
+                          f'{BAD_RUN_NUMBERS[experiment]}')
+                    sent_warning[experiment] = True
 
             config, stats, checkpoint = \
                 get_config_stats_checkpoint(runs_path, run)
