@@ -755,8 +755,10 @@ def get_test_set_traj_target_and_prediction(experiment):
     
     return Tensor(test_traj_target), Tensor(test_traj_prediction)
 
-def get_traj_with_rollout_of_len(traj, rollout_len, experiment, learned_system):
-    assert traj.shape == (120, N_STATE[SYSTEM_BY_PREFIX[experiment[:2]]])
+def get_traj_with_rollout_of_len(
+    traj, rollout_len, experiment, learned_system, system_name):
+
+    assert traj.shape == (120, N_STATE[system_name])
 
     gt_traj_target = traj[(-rollout_len-1):].reshape(rollout_len+1, 15)
 
@@ -828,7 +830,8 @@ def get_runs_to_load(folder, real=True):
 for folder in FOLDERS_TO_LOAD:
     real = True if ('viscous' not in folder and 'vortex' not in folder) \
         else False
-    system = 'cube' if 'cube' in folder else 'elbow'
+    system = 'cube' if 'cube' in folder else 'elbow' if 'elbow' in folder else \
+        'asymmetric'
 
     runs_to_load = get_runs_to_load(folder, real=real)
 
@@ -855,8 +858,9 @@ for folder in FOLDERS_TO_LOAD:
             rollouts = []
             for rollout_len in ROLLOUT_LENGTHS[:-1]:
                 rollouts.append(
-                    get_traj_with_rollout_of_len(gt_traj, rollout_len,
-                                                 experiment, learned_system))
+                    get_traj_with_rollout_of_len(
+                        gt_traj, rollout_len, experiment, learned_system,
+                        system))
 
             rollouts.append(pred_120)
 
