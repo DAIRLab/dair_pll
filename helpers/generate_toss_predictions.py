@@ -688,6 +688,7 @@ def load_experiment(run_name):
 
     if isinstance(experiment_config.learnable_config,
                   MultibodyLearnableSystemConfig):
+        experiment_config.learnable_config.randomize_initialization = False
         return DrakeMultibodyLearnableExperiment(experiment_config)
     elif isinstance(experiment_config.learnable_config,
                     DeepLearnableSystemConfig):
