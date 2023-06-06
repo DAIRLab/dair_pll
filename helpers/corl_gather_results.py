@@ -136,7 +136,7 @@ EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
 BAD_RUN_NUMBERS = {
-    'elbow': [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
+    'elbow': [i for i in range(24)] + [i for i in range(25, 30)] + [31, 35],
     'cube':  [i for i in range(24)] + [i for i in range(25, 30)],
     'asymmetric_vortex': 
         [i for i in range(24)] + [i for i in range(25, 30)] +[31, 33, 35],
