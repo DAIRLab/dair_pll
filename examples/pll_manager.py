@@ -888,12 +888,16 @@ def restart_command(run_name: str, storage_folder_name: str, local: bool):
               type=float,
               default=1e0,
               help="fraction of gravity constant to use.")
+@click.option('--min-exponent',
+              type=int,
+              default=2,
+              help="minimum dataset exponent to use")
 def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
                   contactnets: bool, geometry: str, regenerate: bool,
                   local: bool, inertia_params: str, loss_variation: str,
                   true_sys: bool, w_pred: float, w_comp: float, w_diss: float,
                   w_pen: float, w_res: float, w_res_w: float, residual: bool,
-                  additional_forces: str, g_frac: float):
+                  additional_forces: str, g_frac: float, min_exponent: int):
     """Starts a series of instances, sweeping over dataset size."""
     assert sweep_name is None or '-' not in sweep_name
 
@@ -958,8 +962,8 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
         raise RuntimeError("Figure out experiment numbers next time.")
 
     if category==SWEEP:
-        # Create a pll instance for every dataset size from 4 to 512
-        for dataset_exponent in range(2, 10):
+        # Create a pll instance for every dataset size from 4 (or more) to 512
+        for dataset_exponent in range(min_exponent, 10):
             experiment_class_command(category, sweep_name, system=system,
                                      structured=structured,
                                      contactnets=contactnets,
