@@ -636,8 +636,8 @@ BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
                       [31, 33, 35]
 FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] + \
                   [f'sweep_cube-{i}' for i in range(2, 10)] + \
-                  # [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
                   [f'sweep_cube_vortex-{i}' for i in range(2, 10)] #+ \
+                  # [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
                   # [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
                   # [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
 
