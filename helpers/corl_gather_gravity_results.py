@@ -143,6 +143,8 @@ BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 19, 21, 2
 EXPERIMENTS = {#'cube': {'system': 'cube', 'prefix': 'gc'},
                'elbow': {'system': 'elbow', 'prefix': 'ge'}}
 
+g_index_to_use = 0
+
 
 # ============================= Helper functions ============================= #
 # Return an empty data sweep dictionary, to prevent unintended data retention.
@@ -157,17 +159,25 @@ def make_empty_gravity_sweep_dict():
 def get_run_info_from_config(config):
     run_dict = deepcopy(RUN_DICT)
 
-    assert not isinstance(config.learnable_config, DeepLearnableSystemConfig)
+    run_dict['structured'] = False if \
+        isinstance(config.learnable_config, DeepLearnableSystemConfig) else True
 
-    run_dict['structured'] = True
-    run_dict['contactnets'] = True if \
-        config.learnable_config.loss==MultibodyLosses.CONTACTNETS_LOSS \
-        else False
-    run_dict['loss_variation'] = config.learnable_config.loss_variation
-    run_dict['residual'] = config.learnable_config.do_residual
-    run_dict['g_frac'] = config.learnable_config.g_frac
-    run_dict['result_set'] = 'test'
-    run_name = config.run_name
+    if run_dict['structured']:
+        run_dict['contactnets'] = rue if \
+            config.learnable_config.loss==MultibodyLosses.CONTACTNETS_LOSS \
+            else False
+        run_dict['loss_variation'] = config.learnable_config.loss_variation
+        run_dict['residual'] = config.learnable_config.do_residual
+        run_dict['g_frac'] = config.learnable_config.g_frac
+        run_dict['result_set'] = 'test'
+        run_name = config.run_name
+
+    else:
+        # Can randomly (but evenly) assign gravity fraction to end-to-end
+        # experiments since the g_frac doesn't affect the experiment.
+        global g_index_to_use
+        run_dict['g_frac'] = GRAVITY_FRACTIONS[g_index_to_use]
+        g_index_to_use = (g_index_to_use+1) % 5
 
     return run_name, run_dict
 
