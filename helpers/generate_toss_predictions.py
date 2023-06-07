@@ -722,9 +722,11 @@ def load_ground_truth_toss_trajectory(system_name, toss_num):
     toss_filename = op.join(ELBOW_ASSET_DIR, f'{toss_num}.pt')
     return torch.load(toss_filename)
 
-def compute_predicted_trajectory(experiment, learned_system, target_traj):
+def compute_predicted_trajectory(
+    experiment, learned_system, target_traj, system_name):
+    state_n = N_STATE[system_name]
     assert target_traj.ndim == 2
-    assert target_traj.shape[1] == 15
+    assert target_traj.shape[1] == state_n
 
     target_traj_list = [target_traj.reshape(1, -1, 15)]
 
@@ -877,7 +879,7 @@ for folder in FOLDERS_TO_LOAD:
                 gt_traj = load_ground_truth_toss_trajectory(
                     'elbow', pll_toss_num)
                 l_traj = compute_predicted_trajectory(
-                    experiment, learned_system, gt_traj)
+                    experiment, learned_system, gt_traj, system)
 
                 save_predicted_bag_trajectory(l_traj, run_name, pll_toss_num)
 
