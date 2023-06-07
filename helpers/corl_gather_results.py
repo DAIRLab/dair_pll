@@ -29,6 +29,11 @@ The json file has the following format:
                         }
                         body_2: {...}
                     }
+                    post_results: {
+                        post_metric_1:  float
+                        post_metric_2:  float
+                        ...
+                    }
                     target_trajs: []      <-- excluded from json due to datatype
                     prediction_trajs: []  <-- excluded from json due to datatype
                 }
@@ -81,6 +86,8 @@ RESULTS_DIR = op.join(op.dirname(__file__), '..', 'results')
 OUTPUT_DIR = op.join(op.dirname(__file__), '..', 'plots')
 JSON_OUTPUT_FILE = op.join(op.dirname(__file__), 'results.json')
 
+ROLLOUT_LENGTHS = [1, 2, 4, 8, 16, 32, 64, 120]
+
 BODY_NAMES_BY_SYSTEM = {'cube': ['body'], 'elbow': ['elbow_1', 'elbow_2'],
                         'asymmetric': ['body']}
 BODY_PARAMETERS = {
@@ -119,6 +126,9 @@ PERFORMANCE_METRICS = ['delta_v_squared_mean',    'v_plus_squared_mean',
                     'model_pos_int_traj',         'oracle_pos_int_traj',
                     'model_angle_int_traj',       'oracle_angle_int_traj',
                     'model_penetration_int_traj', 'oracle_penetration_int_traj']
+POST_PERFORMANCE_METRICS =
+    [f'pos_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS] + \
+    [f'rot_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS]
 
 DATASET_EXPONENTS = [2, 3, 4, 5, 6, 7, 8, 9]
 SYSTEMS = ['cube', 'elbow', 'asymmetric']
@@ -131,7 +141,7 @@ PREDICTION_SAMPLE_KEY = 'model_prediction_sample'
 # Template dictionaries, from low- to high-level.
 RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
             'residual': None, 'result_set': None, 'results': None,
-            'learned_params': None}
+            'learned_params': None, 'post_results': None}
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
@@ -163,7 +173,6 @@ def make_empty_data_sweep_dict():
     for exp in DATASET_EXPONENTS: new_dict.update({exp: {}})
     return new_dict
 
-
 # Extract information out of a configuration object.
 def get_run_info_from_config(config):
     run_dict = deepcopy(RUN_DICT)
@@ -182,7 +191,6 @@ def get_run_info_from_config(config):
     run_name = config.run_name
 
     return run_name, run_dict
-
 
 # Calculate geometry measurements from a set of polygon vertices.
 def get_geometry_metrics_from_params(geom_params):
@@ -204,12 +212,10 @@ def get_geometry_metrics_from_params(geom_params):
                  'center_z': centers[2].item()}
     return geom_dict
 
-
 def geometry_keys_by_sys_and_bodies(system, body_name):
     if system == 'cube' or system == 'asymmetric':
         return {'body': GEOMETRY_KEY_BODY_2}
     return {'elbow_1': GEOMETRY_KEY_BODY_1, 'elbow_2': GEOMETRY_KEY_BODY_2}
-
 
 # Get individual physical parameters from best learned system state.
 def get_physical_parameters(system, body_names, best_system_state):
@@ -255,12 +261,13 @@ def get_physical_parameters(system, body_names, best_system_state):
 
     return physical_params_dict
 
-
 # Extract the desired statistics from the larger stats file.  Will convert
 # numpy arrays into averages.
-def get_performance_from_stats(stats, set_name):
+def get_performance_from_stats(stats, set_name, post=False):
+    metrics = PERFORMANCE_METRICS if not post else POST_PERFORMANCE_METRICS
+
     performance_dict = {}
-    for metric in PERFORMANCE_METRICS:
+    for metric in metrics:
         key = f'{set_name}_{metric}'
         try:
             if type(stats[key]) == np.ndarray:
@@ -270,7 +277,6 @@ def get_performance_from_stats(stats, set_name):
         except:
             print(f'\t\tDidn\'t find {key} in stats...')
     return performance_dict
-
 
 # Extract the target and prediction trajectories from the larger stats file.
 # This isn't called since the datatype isn't json serializable, but keeping this
@@ -291,7 +297,6 @@ def get_sample_trajectories_from_stats(stats, set_name):
         print(f'\t\tDidn\'t find {prediction_key} in stats...')
 
     return targets, predictions
-
 
 # Get run configuration, statistics, and checkpoint objects.  Returns None for
 # any that don't exist.
@@ -314,10 +319,19 @@ def get_config_stats_checkpoint(runs_path, run):
 
     return config, stats, checkpoint
 
+def get_post_processed_stats_file(runs_path, run):
+    stats = None
+    stats_file = op.join(runs_path, run, 'post_processing',
+                         'post_statistics.pkl')
+    if op.exists(stats_file):
+        with open(stats_file, 'rb') as file:
+            stats = pickle.load(file)
+    return stats
 
 # =============================== Gather data ================================ #
 # Loop over dataset categories, then dataset size, then individual runs.
 runs_needing_statistics = []
+finished_runs_needing_post_statistics = []
 results = {}
 
 sent_warning = {'elbow': False, 'cube': False}
@@ -359,7 +373,7 @@ for experiment in EXPERIMENTS.keys():
                 continue
 
             assert config != None and checkpoint != None
-            print(f'\tFound statistics for {run}.')
+            print(f'\tFound statistics for {run}.', end='')
 
             run_key, run_dict = get_run_info_from_config(config)
 
@@ -367,12 +381,28 @@ for experiment in EXPERIMENTS.keys():
                 get_performance_from_stats(stats, run_dict['result_set'])
             run_dict['results'] = performance_dict
 
+            # Check for post-processed statistics.
+            post_stats = get_post_processed_stats_file(runs_path, run)
+            if post_stats == None:
+                print(f'  No post-processing statistics found.')
+                finished_runs_needing_post_statistics.append(
+                    op.join(runs_path, run).split('results/')[-1])
+                continue
+
+            print(f'  Found post-processed stats, too.')
+
+            post_performance_dict = \
+                get_performance_from_stats(post_stats, 'test', post=True)
+            run_dict['post_results'] = post_performance_dict
+
+            # If structured, save learned physical parameters.
             if run_dict['structured']:
                 best_system_state = checkpoint['best_learned_system_state']
                 params_dict = get_physical_parameters(system, body_names,
                                                       best_system_state)
                 run_dict['learned_params'] = params_dict
 
+            # Store everything in larger dictionary.
             exp_dict['data_sweep'][exponent].update({run_key: run_dict})
 
     results.update({experiment: exp_dict})
