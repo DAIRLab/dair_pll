@@ -126,7 +126,7 @@ PERFORMANCE_METRICS = ['delta_v_squared_mean',    'v_plus_squared_mean',
                     'model_pos_int_traj',         'oracle_pos_int_traj',
                     'model_angle_int_traj',       'oracle_angle_int_traj',
                     'model_penetration_int_traj', 'oracle_penetration_int_traj']
-POST_PERFORMANCE_METRICS =
+POST_PERFORMANCE_METRICS = \
     [f'pos_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS] + \
     [f'rot_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS]
 
