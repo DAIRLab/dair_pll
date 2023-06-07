@@ -767,8 +767,8 @@ def get_traj_with_rollout_of_len(
 
     gt_traj_target = traj[(-rollout_len-1):].reshape(rollout_len+1, state_n)
 
-    partial_pred_traj = compute_predicted_trajectory(experiment, learned_system,
-                                                     gt_traj_target)
+    partial_pred_traj = compute_predicted_trajectory(
+        experiment, learned_system, gt_traj_target, system_name)
     first_portion = traj[:(-rollout_len-1)]
     pred_traj = torch.cat((first_portion, partial_pred_traj), dim=0)
 
