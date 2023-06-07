@@ -160,7 +160,7 @@ BAD_RUN_NUMBERS = {
         [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35]}
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
-EXPERIMENTS = {#'cube': {'system': 'cube', 'prefix': 'sc'},
+EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
                'elbow': {'system': 'elbow', 'prefix': 'se'},}
                #'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},}
                #'elbow_vortex': {'system': 'elbow', 'prefix': 've'},
@@ -199,6 +199,8 @@ def get_geometry_metrics_from_params(geom_params):
     # First, convert the parameters to meters.
     vertices = geom_params * _NOMINAL_HALF_LENGTH
 
+    pdb.set_trace()
+
     # Extract diameters and centers.
     mins = vertices.min(axis=0).values
     maxs = vertices.max(axis=0).values
@@ -211,7 +213,8 @@ def get_geometry_metrics_from_params(geom_params):
                  'diameter_z': diameters[2].item(),
                  'center_x': centers[0].item(),
                  'center_y': centers[1].item(),
-                 'center_z': centers[2].item()}
+                 'center_z': centers[2].item(),
+                 'vertices': None}
     return geom_dict
 
 def geometry_keys_by_sys_and_bodies(system, body_name):
