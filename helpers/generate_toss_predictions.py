@@ -3,6 +3,7 @@ dataset.  Also saves a post-processed statistics file that has the position and
 angle trajectory errors."""
 
 import git
+import math
 import os
 import os.path as op
 import pickle
@@ -634,9 +635,9 @@ SYSTEM_BY_PREFIX = {'sc': 'cube', 'se': 'elbow', 'va': 'asymmetric'}
 BAD_REAL_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)]
 BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
                       [31, 33, 35]
-FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] + \
-                  [f'sweep_cube-{i}' for i in range(2, 10)] + \
-                  [f'sweep_cube_vortex-{i}' for i in range(2, 10)] #+ \
+FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] #+ \
+                  #[f'sweep_cube-{i}' for i in range(2, 10)] + \
+                  #[f'sweep_asymmetric_vortex-{i}' for i in range(2, 10)] #+ \
                   # [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
                   # [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
                   # [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
@@ -653,8 +654,13 @@ PLL_TOSS_NUMS_TO_GENERATE = [0]
 # number.  When this is the case, since the test set prediction is already
 # provided in the statistics file, we will iterate over rollout horizon and
 # generate many per trajectory.
-DO_EXPERIMENT_TEST_SET = True
+MODE_TEST_SET = 'test set'
+MODE_HORIZON_SWEEP = 'horizon sweep'
+MODE_FIXED_HORIZON_TRAJECTORY_SWEEP = 'fixed horizon trajectory sweep'
+MODE = MODE_FIXED_HORIZON_TRAJECTORY_SWEEP
 
+FIXED_HORIZON = 16
+STEP_SIZE = 5
 ROLLOUT_LENGTHS = [1, 2, 4, 8, 16, 32, 64, 120]
 
 
@@ -682,6 +688,11 @@ def post_processing_done(run_name):
     run_dir = run_name_to_run_dir(run_name)
     return os.path.isfile(
         op.join(run_dir, 'post_processing', 'post_statistics.pkl'))
+
+def post_processing_traj_sweep_done(run_name):
+    run_dir = run_name_to_run_dir(run_name)
+    return os.path.isfile(
+        op.join(run_dir, 'traj_sweep_statistics.pkl'))
 
 def load_experiment(run_name):
     run_path = run_name_to_run_dir(run_name)
@@ -722,8 +733,7 @@ def load_ground_truth_toss_trajectory(system_name, toss_num):
     toss_filename = op.join(ELBOW_ASSET_DIR, f'{toss_num}.pt')
     return torch.load(toss_filename)
 
-def compute_predicted_trajectory(
-    experiment, learned_system, target_traj, system_name):
+def compute_predicted_trajectory(experiment, learned_system, target_traj, system_name):
     state_n = N_STATE[system_name]
     assert target_traj.ndim == 2
     assert target_traj.shape[1] == state_n
@@ -758,9 +768,7 @@ def get_test_set_traj_target_and_prediction(experiment):
     
     return Tensor(test_traj_target), Tensor(test_traj_prediction)
 
-def get_traj_with_rollout_of_len(
-    traj, rollout_len, experiment, learned_system, system_name):
-
+def get_traj_with_rollout_of_len(traj, rollout_len, experiment, learned_system, system_name):
     state_n = N_STATE[system_name]
     assert traj.ndim == 2
     assert traj.shape[1] == state_n
@@ -779,20 +787,22 @@ def save_rollout_sweep_trajs(rollouts, run_name):
     for horizon, traj in zip(ROLLOUT_LENGTHS, rollouts):
         torch.save(traj, op.join(post_dir, f'test_w_horizon_{horizon}.pt'))
 
-def compute_pos_rot_trajectory_errors(target, predicteds, experiment):
+def compute_pos_rot_trajectory_errors(target, predicteds, experiment, use_different_trajs=False):
     space = experiment.space
     pos_errors, rot_errors = [], []
 
-    # Iterate over horizon lengths.
-    for tp, horizon in zip(predicteds, ROLLOUT_LENGTHS):
+    targets = target if use_different_trajs else [target] * len(predicteds)
+
+    # Iterate over trajectories lengths.
+    for tp, tt in zip(predicteds, targets):
 
         running_pos_mse = 0
         running_angle_mse = 0
 
         for space_i in space.spaces:
             if isinstance(space_i, FloatingBaseSpace):
-                pos_mse = torch.stack([space_i.base_error(tp, target)])
-                angle_mse = torch.stack([space_i.quaternion_error(tp, target)])
+                pos_mse = torch.stack([space_i.base_error(tp, tt)])
+                angle_mse = torch.stack([space_i.quaternion_error(tp, tt)])
                 
                 running_pos_mse += pos_mse
                 running_angle_mse += angle_mse
@@ -818,6 +828,29 @@ def save_post_processing_stats(pos_errors, rot_errors, run_dir):
     with open(filename, 'wb') as file:
         pickle.dump(stats, file)
 
+def save_post_processing_traj_sweep_stats(pos_errors, rot_errors, run_dir):
+    # Make a dictionary.
+    stats = {}
+
+    pos_key = f'test_pos_error_w_horizon_{FIXED_HORIZON}'
+    rot_key = f'test_rot_error_w_horizon_{FIXED_HORIZON}'
+
+    stats[pos_key] = 0
+    stats[rot_key] = 0
+
+    n_trajs = len(pos_errors)
+
+    for pos_error, rot_error in zip(pos_errors, rot_errors):
+        stats[pos_key] += pos_error.item()
+        stats[rot_key] += rot_error.item()
+
+    stats[pos_key] /= n_trajs
+    stats[rot_key] /= n_trajs
+
+    filename = op.join(run_dir, 'traj_sweep_statistics.pkl')
+    with open(filename, 'wb') as file:
+        pickle.dump(stats, file)
+
 def get_runs_to_load(folder, real=True):
     bad_numbers = BAD_REAL_RUN_NUMBERS if real else BAD_SIM_RUN_NUMBERS
 
@@ -831,6 +864,32 @@ def get_runs_to_load(folder, real=True):
 
     return runs_to_load
 
+def load_experiment_run_dir_sys(run_name):
+    experiment = load_experiment(run_name)
+    run_dir = run_name_to_run_dir(run_name)
+    print(f'Loading {run_dir}')
+    learned_system = get_best_system_from_experiment(experiment)
+    return experiment, run_dir, learned_system
+
+def all_rollouts_of_len(horizon, target_traj, experiment, learned_system, system_name):
+    state_n = N_STATE[system_name]
+    assert target_traj.ndim == 2
+    assert target_traj.shape[1] == state_n
+
+    traj_len = target_traj.shape[0]
+    n_traj = math.floor((traj_len - horizon - 1)/STEP_SIZE)
+
+    # Get all the possible targets contained in the trajectory.
+    targets = [target_traj[i*STEP_SIZE:(i*STEP_SIZE)+horizon+1] for i in range(n_traj)]
+
+    # Get all the predictions.
+    predictions = [
+        compute_predicted_trajectory(
+            experiment, learned_system, targ, system_name
+        ) for targ in targets
+    ]
+    return predictions, targets
+
 # ============================= Compute rollouts ============================= #
 for folder in FOLDERS_TO_LOAD:
     real = True if ('viscous' not in folder and 'vortex' not in folder) \
@@ -841,22 +900,34 @@ for folder in FOLDERS_TO_LOAD:
     runs_to_load = get_runs_to_load(folder, real=real)
 
     for run_name in runs_to_load:
-        if experiment_finished(run_name):
-            if post_processing_done(run_name):
-                print(f'{run_name} already post-processed.')
-                continue
-            experiment = load_experiment(run_name)
-            run_dir = run_name_to_run_dir(run_name)
-            print(f'Loading {run_dir}')
-        else:
+        if not experiment_finished(run_name):
             print(f'Skipping unfinished {run_name}')
             continue
 
-        learned_system = get_best_system_from_experiment(experiment)
+        # Use the first test set trajectory in the stats file, and predict all
+        # possible rollouts of a fixed length within it.
+        if MODE == MODE_FIXED_HORIZON_TRAJECTORY_SWEEP:
+            if post_processing_traj_sweep_done(run_name):
+                print(f'{run_name} already post-processed twice.')
+                continue
+            experiment, run_dir, learned_system = \
+                load_experiment_run_dir_sys(run_name)
 
-        # If do experiment test set, use the first test set trajectory in the
-        # stats file, and predict with different rollout lengths.
-        if DO_EXPERIMENT_TEST_SET:
+            gt_traj, pred_120 = get_test_set_traj_target_and_prediction(
+                experiment)
+
+            rollouts, ground_truths = all_rollouts_of_len(
+                FIXED_HORIZON, gt_traj, experiment, learned_system, system)
+            pos_errors, rot_errors = compute_pos_rot_trajectory_errors(
+                ground_truths, rollouts, experiment, use_different_trajs=True)
+            save_post_processing_traj_sweep_stats(pos_errors, rot_errors, run_dir)
+
+        # Use the first test set trajectory in the stats file, and predict with
+        # different rollout lengths.
+        elif MODE == MODE_HORIZON_SWEEP:
+            experiment, run_dir, learned_system = \
+                load_experiment_run_dir_sys(run_name)
+
             gt_traj, pred_120 = get_test_set_traj_target_and_prediction(
                 experiment)
 
@@ -874,8 +945,14 @@ for folder in FOLDERS_TO_LOAD:
                 gt_traj, rollouts, experiment)
             save_post_processing_stats(pos_errors, rot_errors, run_dir)
 
-        # Otherwise, iterate over the PLL toss numbers.
-        else:
+        # Compute rollouts from original dataset trajectories.
+        elif MODE == MODE_TEST_SET:
+            if post_processing_done(run_name):
+                print(f'{run_name} already post-processed.')
+                continue
+            experiment, run_dir, learned_system = \
+                load_experiment_run_dir_sys(run_name)
+
             for pll_toss_num in PLL_TOSS_NUMS_TO_GENERATE:
                 gt_traj = load_ground_truth_toss_trajectory(
                     'elbow', pll_toss_num)
@@ -884,7 +961,7 @@ for folder in FOLDERS_TO_LOAD:
 
                 save_predicted_bag_trajectory(l_traj, run_name, pll_toss_num)
 
-pdb.set_trace()
+# pdb.set_trace()
 # ======================= Compute metrics on rollouts ======================== #
 
 
