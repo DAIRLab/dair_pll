@@ -136,7 +136,7 @@ RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
 EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'gravity_sweep': None}
 
-BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 19, 21, 23]
+BAD_RUN_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 15, 16, 17, 18, 19, 21, 22]
 
 # Prepend the below with 'gravity_sweep_' and postpend with '-#' to get the
 # folders.
