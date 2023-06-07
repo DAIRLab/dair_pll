@@ -728,13 +728,14 @@ def compute_predicted_trajectory(
     assert target_traj.ndim == 2
     assert target_traj.shape[1] == state_n
 
-    target_traj_list = [target_traj.reshape(1, -1, 15)]
+    target_traj_list = [target_traj.reshape(1, -1, state_n)]
 
     predictions, targets = experiment.trajectory_predict(target_traj_list,
         learned_system, do_detach=True)
 
-    first_state = target_traj[0].reshape(1, 15)
-    pred_traj = torch.cat((first_state, predictions[0].reshape(-1, 15)), dim=0)
+    first_state = target_traj[0].reshape(1, state_n)
+    pred_traj = torch.cat((first_state,
+                           predictions[0].reshape(-1, state_n)), dim=0)
 
     return pred_traj
 
