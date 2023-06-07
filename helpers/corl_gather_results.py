@@ -147,22 +147,22 @@ EXPERIMENT_DICT = {'system': None, 'prefix': None,
 
 BAD_RUN_NUMBERS = {
     'elbow': [i for i in range(24)] + [i for i in range(25, 30)] + \
-             [31, 35, 36, 37, 38, 39],}
-    # 'cube':  [i for i in range(24)] + [i for i in range(25, 30)],
-    # 'asymmetric_vortex': 
-    #     [i for i in range(24)] + [i for i in range(25, 30)] + \
-    #     [31, 33, 35, 37, 40],}
-    # 'elbow_vortex':
-    #     [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
-    # 'asymmetric_viscous':
-    #     [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
-    # 'elbow_viscous':
-    #     [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35]}
+             [31, 36, 37, 38, 39, 40, 41, 42], #35, 
+    'cube':  [i for i in range(24)] + [i for i in range(25, 30)],
+    'asymmetric_vortex': 
+        [i for i in range(24)] + [i for i in range(25, 32)] + \
+        [33, 35, 36, 37, 39, 40],
+    'elbow_vortex':
+        [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
+    'asymmetric_viscous':
+        [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35],
+    'elbow_viscous':
+        [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35]}
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
-EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
-               'elbow': {'system': 'elbow', 'prefix': 'se'},
-               'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},}
+EXPERIMENTS = {#'cube': {'system': 'cube', 'prefix': 'sc'},
+               'elbow': {'system': 'elbow', 'prefix': 'se'},}
+               #'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},}
                #'elbow_vortex': {'system': 'elbow', 'prefix': 've'},
                #'asymmetric_viscous': {'system': 'asymmetric', 'prefix': 'ba'},
                #'elbow_viscous': {'system': 'elbow', 'prefix': 'be'}}
