@@ -387,13 +387,12 @@ for experiment in EXPERIMENTS.keys():
                 print(f'  No post-processing statistics found.')
                 finished_runs_needing_post_statistics.append(
                     op.join(runs_path, run).split('results/')[-1])
-                continue
 
-            print(f'  Found post-processed stats, too.')
-
-            post_performance_dict = \
-                get_performance_from_stats(post_stats, 'test', post=True)
-            run_dict['post_results'] = post_performance_dict
+            else:
+                print(f'  Found post-processed stats, too.')
+                post_performance_dict = \
+                    get_performance_from_stats(post_stats, 'test', post=True)
+                run_dict['post_results'] = post_performance_dict
 
             # If structured, save learned physical parameters.
             if run_dict['structured']:
