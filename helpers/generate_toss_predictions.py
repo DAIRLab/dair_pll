@@ -759,7 +759,8 @@ def get_traj_with_rollout_of_len(
     traj, rollout_len, experiment, learned_system, system_name):
 
     state_n = N_STATE[system_name]
-    assert traj.shape == (120, state_n)
+    assert traj.ndim == 2
+    assert traj.shape[1] == state_n
 
     gt_traj_target = traj[(-rollout_len-1):].reshape(rollout_len+1, state_n)
 
