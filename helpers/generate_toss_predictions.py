@@ -632,8 +632,8 @@ EXPERIMENT_TYPE_BY_PREFIX = {'sc': 'cube_real', 'se': 'elbow_real',
                              #'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
 SYSTEM_BY_PREFIX = {'sc': 'cube', 'se': 'elbow', 'va': 'asymmetric'}
 
-BAD_REAL_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
-                       [31, 35, 36, 37, 38, 39]
+BAD_REAL_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 32)] + \
+                       [35, 36, 37, 38, 39, 40, 41, 42, 43]
 BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
                       [31, 33, 35]
 FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] #+ \
