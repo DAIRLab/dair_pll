@@ -673,15 +673,20 @@ def run_name_to_run_dir(run_name):
            f'run_name: {run_name}, experiment_type: {experiment_type}'
 
     system = experiment_type.split('_real')[0]
-    sub_number = run_name.split('-')[1]
-    subfolder = f'sweep_{system}-{sub_number}'
+    try:
+        sub_number = run_name.split('-')[1]
+        subfolder = f'sweep_{system}-{sub_number}'
 
-    assert run_name in os.listdir(op.join(RESULTS_DIR, subfolder, 'runs'))
+        assert run_name in os.listdir(op.join(RESULTS_DIR, subfolder, 'runs'))
 
-    return op.join(RESULTS_DIR, subfolder, 'runs', run_name)
+        return op.join(RESULTS_DIR, subfolder, 'runs', run_name)
+    except:
+        return None
 
 def experiment_finished(run_name):
     run_dir = run_name_to_run_dir(run_name)
+    if run_dir == None:
+        return False
     return os.path.isfile(op.join(run_dir, 'statistics.pkl'))
 
 def post_processing_done(run_name):
