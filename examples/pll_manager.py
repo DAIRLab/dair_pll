@@ -946,8 +946,8 @@ def sweep_command(sweep_name: str, number: int, system: str, structured: bool,
     W_PEN_BY_LOSS_VAR = {3: 1000, 1: 100, 0: 1.0}
     # W_RES_BY_LOSS_VAR = {3: 1000, 1: 10, 0: 1000}
     # W_RES_W_BY_LOSS_VAR = {3: 0.0001, 1: 10, 0: 1}
-    W_RES_BY_LOSS_VAR = {3: 0.001, 1: 0.001, 0: 0.1}
-    W_RES_W_BY_LOSS_VAR = {3: 0., 1: 0., 0: 0.}
+    W_RES_BY_LOSS_VAR = {3: 0.001, 1: 1, 0: 1.}
+    W_RES_W_BY_LOSS_VAR = {3: 0., 1: 0.1, 0: 0.}
 
     loss_variation = 0 if not contactnets else int(loss_variation)
     w_comp = W_COMP_BY_LOSS_VAR[loss_variation]

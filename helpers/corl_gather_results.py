@@ -146,9 +146,9 @@ EXPERIMENT_DICT = {'system': None, 'prefix': None,
                    'data_sweep': None}
 
 BAD_RUN_NUMBERS = {
-    'elbow': [i for i in range(24)] + [i for i in range(25, 30)] + \
-             [31, 35, 36, 37, 38, 39, 40, 41, 42],
-    'cube':  [i for i in range(24)] + [i for i in range(25, 30)],
+    'elbow': [i for i in range(24)] + [i for i in range(25, 32)] + \
+             [35, 36, 37, 38, 39, 40, 41, 42],
+    'cube':  [i for i in range(24)] + [i for i in range(25, 32)],
     'asymmetric_vortex': 
         [i for i in range(24)] + [i for i in range(25, 32)] + \
         [33, 35, 36, 37, 39, 40],
@@ -161,8 +161,8 @@ BAD_RUN_NUMBERS = {
 
 # Prepend the below with 'sweep_' and postpend with '-#' to get the folders.
 EXPERIMENTS = {'cube': {'system': 'cube', 'prefix': 'sc'},
-               'elbow': {'system': 'elbow', 'prefix': 'se'},}
-               #'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},}
+               'elbow': {'system': 'elbow', 'prefix': 'se'},
+               'asymmetric_vortex': {'system': 'asymmetric', 'prefix': 'va'},}
                #'elbow_vortex': {'system': 'elbow', 'prefix': 've'},
                #'asymmetric_viscous': {'system': 'asymmetric', 'prefix': 'ba'},
                #'elbow_viscous': {'system': 'elbow', 'prefix': 'be'}}
@@ -199,8 +199,6 @@ def get_geometry_metrics_from_params(geom_params):
     # First, convert the parameters to meters.
     vertices = geom_params * _NOMINAL_HALF_LENGTH
 
-    pdb.set_trace()
-
     # Extract diameters and centers.
     mins = vertices.min(axis=0).values
     maxs = vertices.max(axis=0).values
@@ -214,7 +212,7 @@ def get_geometry_metrics_from_params(geom_params):
                  'center_x': centers[0].item(),
                  'center_y': centers[1].item(),
                  'center_z': centers[2].item(),
-                 'vertices': None}
+                 'vertices': vertices.tolist()}
     return geom_dict
 
 def geometry_keys_by_sys_and_bodies(system, body_name):
