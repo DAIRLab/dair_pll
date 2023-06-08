@@ -163,14 +163,13 @@ def get_run_info_from_config(config):
         isinstance(config.learnable_config, DeepLearnableSystemConfig) else True
 
     if run_dict['structured']:
-        run_dict['contactnets'] = rue if \
+        run_dict['contactnets'] = True if \
             config.learnable_config.loss==MultibodyLosses.CONTACTNETS_LOSS \
             else False
         run_dict['loss_variation'] = config.learnable_config.loss_variation
         run_dict['residual'] = config.learnable_config.do_residual
         run_dict['g_frac'] = config.learnable_config.g_frac
         run_dict['result_set'] = 'test'
-        run_name = config.run_name
 
     else:
         # Can randomly (but evenly) assign gravity fraction to end-to-end
@@ -178,6 +177,9 @@ def get_run_info_from_config(config):
         global g_index_to_use
         run_dict['g_frac'] = GRAVITY_FRACTIONS[g_index_to_use]
         g_index_to_use = (g_index_to_use+1) % 5
+
+    run_dict['result_set'] = 'test'
+    run_name = config.run_name
 
     return run_name, run_dict
 
