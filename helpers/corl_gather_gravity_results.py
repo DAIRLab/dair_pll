@@ -199,9 +199,9 @@ def get_geometry_metrics_from_params(geom_params):
                  'diameter_z': diameters[2].item(),
                  'center_x': centers[0].item(),
                  'center_y': centers[1].item(),
-                 'center_z': centers[2].item()}
+                 'center_z': centers[2].item(),
+                 'vertices': vertices.tolist()}
     return geom_dict
-
 
 def geometry_keys_by_sys_and_bodies(system, body_name):
     if system == 'cube' or system == 'asymmetric':
