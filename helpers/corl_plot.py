@@ -84,7 +84,7 @@ METRICS = {'model_loss_mean': {
                 'label': 'Trajectory positional error [m]', 'scaling': 1.0,
                 'yformat': {'elbow': "%.2f", 'cube': "%.2f",
                             'asymmetric': "%.2f"},
-                'ylims': {'elbow': [0.0, None], 'cube': [-0.01, None],
+                'ylims': {'elbow': [-0.01, 0.4], 'cube': [-0.01, 0.4],
                           'asymmetric': [-0.01, 0.4]},
                 'legend_loc': {'elbow': 'best', 'cube': 'best',
                                'asymmetric': 'best'},
@@ -94,8 +94,8 @@ METRICS = {'model_loss_mean': {
                 'scaling': 180/np.pi,
                 'yformat': {'elbow': "%.0f", 'cube': "%.0f",
                             'asymmetric': "%.0f"},
-                'ylims': {'elbow': [0.0, None], 'cube': [0.0, None],
-                          'asymmetric': [0.0, None]},
+                'ylims': {'elbow': [0.0, 140], 'cube': [0.0, 140],
+                          'asymmetric': [0.0, 140]},
                 'legend_loc': {'elbow': 'best', 'cube': 'best',
                                'asymmetric': 'best'},
                 'log': False},
@@ -164,9 +164,9 @@ PARAMETER_ERRORS = {
                                'scaling': 1.0,
                                'yformat': {'elbow': "%.2f", 'cube': "%.2f",
                                            'asymmetric': "%.2f"},
-                               'ylims': {'elbow': [0.0, None],
-                                         'cube': [0.0, None],
-                                         'asymmetric': [0.0, None]},
+                               'ylims': {'elbow': [0.0, 0.52],
+                                         'cube': [0.0, 0.52],
+                                         'asymmetric': [0.0, 0.52]},
                                'legend_loc': {'elbow': 'best', 'cube': 'best',
                                               'asymmetric': 'best'},
                                 'log': False},
@@ -174,9 +174,9 @@ PARAMETER_ERRORS = {
                                'scaling': 1.0,
                                'yformat': {'elbow': "%.1f", 'cube': "%.2f",
                                            'asymmetric': "%.2f"},
-                               'ylims': {'elbow': [None, None],
-                                         'cube': [None, None],
-                                         'asymmetric': [None, None]},
+                               'ylims': {'elbow': [0.0, 0.85],
+                                         'cube': [0.0, 0.85],
+                                         'asymmetric': [0.0, 0.85]},
                                'legend_loc': {'elbow': 'best', 'cube': 'best',
                                               'asymmetric': 'best'},
                                 'log': False},
@@ -184,9 +184,9 @@ PARAMETER_ERRORS = {
                                'scaling': 1.0,
                                'yformat': {'elbow': "%.0f", 'cube': "%.2f",
                                            'asymmetric': "%.2f"},
-                               'ylims': {'elbow': [None, None],
-                                         'cube': [None, None],
-                                         'asymmetric': [None, None]},
+                               'ylims': {'elbow': [0.1, 300],
+                                         'cube': [0.1, 300],
+                                         'asymmetric': [0.1, 300]},
                                'legend_loc': {'elbow': 'best', 'cube': 'best',
                                               'asymmetric': 'best'},
                                'log':  True},
@@ -292,6 +292,15 @@ SYSTEM_BY_EXPERIMENT = {
     'asymmetric_viscous': 'asymmetric',
     'elbow_vortex': 'elbow',
     'elbow_viscous': 'elbow'}
+TITLE_BY_EXPERIMENT = {
+    'cube': 'Cube with Real Data',
+    'elbow': 'Articulated Object with Real Data',
+    'asymmetric_vortex': 'Asymmetric in Vortex Sim',
+    'asymmetric_viscous': 'Asymmetric in Viscous Sim',
+    'elbow_vortex': 'Articulated Object in Vortex Sim',
+    'elbow_viscous': 'Articulated Object in Vortex Sim',
+    'elbow_gravity': 'Articulated Object in Gravity Sim',
+    'cube_gravity': 'Cube in Gravity Sim'}
 
 DATASET_SIZE_DICT = {2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: []}
 GRAVITY_FRACTION_DICT = {0.: [], 0.5: [], 1.: [], 1.5: [], 2.0: []}
@@ -559,7 +568,7 @@ def get_plottable_values(exp_dict, metric, method, metric_lookup, gravity=False)
 
     for x in data_dict.keys():
         if gravity:
-            xs.append(x)
+            xs.append(x*9.81)
         else:
             xs.append(2**(x-1))
         ys.append(data_dict[x]['mean'])
@@ -609,14 +618,16 @@ def convert_parameters_to_errors(run_dict, experiment, gravity=False):
 
     return run_dict
 
-def format_plot(ax, fig, metric, metric_lookup, system, gravity=False):
+def format_plot(ax, fig, metric, metric_lookup, experiment, gravity=False):
+    system = SYSTEM_BY_EXPERIMENT[experiment.split('_gravity')[0]]
+
     if not gravity:
         ax.set_xscale('log')
         ax.set_xlim(min(XS), max(XS))
         x_markers = [round(x, 1) for x in XS]
     else:
-        ax.set_xlim(0, 2)
-        x_markers = [0, 0.5, 1, 1.5, 2]
+        ax.set_xlim(0, 2*9.81)
+        x_markers = [0, 0.5*9.81, 1*9.81, 1.5*9.81, 2*9.81]
 
     if metric_lookup[metric]['log']:
         ax.set_yscale('log')
@@ -632,7 +643,8 @@ def format_plot(ax, fig, metric, metric_lookup, system, gravity=False):
     ax.set_xticks([])
     ax.set_xticklabels([])
     ax.set_xticks(x_markers)
-    ax.set_xticklabels(x_markers)
+    if metric == "volume_error":
+        ax.set_xticklabels(x_markers)
 
     ax.tick_params(axis='x', which='minor', bottom=False, labelsize=20)
     ax.tick_params(axis='x', which='major', bottom=False, labelsize=20)
@@ -645,14 +657,20 @@ def format_plot(ax, fig, metric, metric_lookup, system, gravity=False):
     # ax.yaxis.set_minor_formatter(
     #     FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
 
-    if not gravity:
-        plt.xlabel('Training tosses')
-        ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
-    else:
-        plt.xlabel('Gravity fraction')
-        ax.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    if metric in ["volume_error", FRICTION_PARAMETER_ERROR,
+                  INERTIA_PARAMETER_ERROR]:
+        if not gravity:
+            plt.xlabel('Training tosses')
+            ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+        else:
+            plt.xlabel('Modeled Gravity Acceleration [$m/s^2$]')
+            ax.xaxis.set_major_formatter(FormatStrFormatter("%.2f"))
 
-    plt.ylabel(metric_lookup[metric]['label'])
+    if (experiment == 'elbow' and not gravity) or \
+        metric in [INERTIA_PARAMETER_ERROR, FRICTION_PARAMETER_ERROR]:
+        plt.ylabel(metric_lookup[metric]['label'])
+    else:
+        ax.set_yticklabels([])
 
     ax.yaxis.grid(True, which='both')
     ax.xaxis.grid(True, which='major')
@@ -661,9 +679,16 @@ def format_plot(ax, fig, metric, metric_lookup, system, gravity=False):
 
     handles, labels = plt.gca().get_legend_handles_labels()
 
-    # plt.legend(handles, labels)
-    # plt.legend(loc=metric_lookup[metric]['legend_loc'][system],
-    #            prop=dict(weight='bold'))
+    if metric in ['model_pos_int_traj', FRICTION_PARAMETER_ERROR,
+                  INERTIA_PARAMETER_ERROR]:
+        plt.title(TITLE_BY_EXPERIMENT[experiment], fontsize=40)
+
+    # if experiment == 'elbow_gravity' and metric == 'volume_error':
+    #     ax.plot([0], [10], label=method, linewidth=5,
+    #                 color=METHOD_RESULTS[method])
+    #     plt.legend(handles, labels)
+    #     plt.legend(loc=metric_lookup[metric]['legend_loc'][system],
+    #                prop=dict(weight='bold'))
 
     # # Shrink current axis by 20%
     # box = ax.get_position()
@@ -941,8 +966,8 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, metric, METRICS, system)
-        plt.title(experiment)
+        format_plot(ax, fig, metric, METRICS, experiment)
+    
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{metric}.png')
         fig.savefig(fig_path, dpi=100)
         plt.close()
@@ -966,8 +991,8 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, system)
-        plt.title(experiment)
+        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, experiment)
+    
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{parameter_metric}.png')
         fig.savefig(fig_path, dpi=100)
         plt.close()
@@ -991,7 +1016,7 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, fixed_horizon_metric, FIXED_HORIZON_METRICS, system)
+        format_plot(ax, fig, fixed_horizon_metric, FIXED_HORIZON_METRICS, experiment)
         plt.title(experiment)
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{fixed_horizon_metric}.png')
         fig.savefig(fig_path, dpi=100)
@@ -1056,8 +1081,8 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, metric, METRICS, system, gravity=True)
-        plt.title(experiment)
+        format_plot(ax, fig, metric, METRICS, f'{experiment}_gravity',
+                    gravity=True)
         fig_path = op.join(OUTPUT_DIR, f'gravity_{experiment}_{metric}.png')
         fig.savefig(fig_path, dpi=100)
         plt.close()
@@ -1083,9 +1108,8 @@ for experiment in results.keys():
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
                             color=METHOD_RESULTS[method])
 
-        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, system,
-                    gravity=True)
-        plt.title(experiment)
+        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS,
+                    f'{experiment}_gravity', gravity=True)
         fig_path = op.join(OUTPUT_DIR, f'gravity_{experiment}_{parameter_metric}.png')
         fig.savefig(fig_path, dpi=100)
         plt.close()
