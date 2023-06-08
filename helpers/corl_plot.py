@@ -111,10 +111,12 @@ METRICS = {'model_loss_mean': {
             }
 
 ROLLOUT_LENGTHS = [1, 2, 4, 8, 16, 32, 64, 120]
-POST_METRICS_BY_EXPERIMENT = {
+FIXED_HORIZON = 16
+FIXED_HORIZON_POS_ERROR = f'pos_error_w_horizon_{FIXED_HORIZON}'
+FIXED_HORIZON_ROT_ERROR = f'rot_error_w_horizon_{FIXED_HORIZON}'
+FIXED_HORIZON_METRICS_BY_EXPERIMENT = {
     'cube': [],
-    'elbow': [f'test_pos_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS] + \
-               [f'test_rot_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS],
+    'elbow': [FIXED_HORIZON_POS_ERROR, FIXED_HORIZON_ROT_ERROR],
     'cube_gravity': [],
     'asymmetric_vortex': [],
     'asymmetric_viscous': [],
@@ -123,19 +125,45 @@ POST_METRICS_BY_EXPERIMENT = {
     'elbow_viscous': [],
     'elbow_gravity': []
 }
+FIXED_HORIZON_METRICS = {
+    FIXED_HORIZON_POS_ERROR: METRICS['model_pos_int_traj'],
+    FIXED_HORIZON_ROT_ERROR: METRICS['model_angle_int_traj']
+}
 
 PARAMETER_VALUES = ["m", "px", "py", "pz", "I_xx", "I_yy", "I_zz", "I_xy",
                    "I_xz", "I_yz", "mu", "diameter_x", "diameter_y",
                    "diameter_z", "center_x", "center_y", "center_z"]
 
 GEOMETRY_PARAMETER_ERROR = 'geometry_parameter_error'
+VERTEX_ERROR = 'vertex_error'
+VOLUME_ERROR = 'volume_error'
 FRICTION_PARAMETER_ERROR = 'friction_error'
 INERTIA_PARAMETER_ERROR = 'inertia_error'
 PARAMETER_ERRORS = {
-    GEOMETRY_PARAMETER_ERROR: {'label': 'Average vertex location error [m]',
+    GEOMETRY_PARAMETER_ERROR: {'label': 'Geometry parameter error [m]',
                                'scaling': 1.0,
                                'yformat': {'elbow': "%.3f", 'cube': "%.3f",
                                            'asymmetric': "%.3f"},
+                               'ylims': {'elbow': [0.0, None],
+                                         'cube': [0.0, None],
+                                         'asymmetric': [0.0, None]},
+                               'legend_loc': {'elbow': 'best', 'cube': 'best',
+                                              'asymmetric': 'best'},
+                                'log': False},
+    VERTEX_ERROR: {'label': 'Average vertex location error [m]',
+                               'scaling': 1.0,
+                               'yformat': {'elbow': "%.2f", 'cube': "%.2f",
+                                           'asymmetric': "%.2f"},
+                               'ylims': {'elbow': [0.0, None],
+                                         'cube': [0.0, None],
+                                         'asymmetric': [0.0, None]},
+                               'legend_loc': {'elbow': 'best', 'cube': 'best',
+                                              'asymmetric': 'best'},
+                                'log': False},
+    VOLUME_ERROR: {'label': 'Relative volume error',
+                               'scaling': 1.0,
+                               'yformat': {'elbow': "%.2f", 'cube': "%.2f",
+                                           'asymmetric': "%.2f"},
                                'ylims': {'elbow': [0.0, None],
                                          'cube': [0.0, None],
                                          'asymmetric': [0.0, None]},
@@ -165,10 +193,10 @@ PARAMETER_ERRORS = {
 }
 
 ALL_PARAMETER_METRICS = [GEOMETRY_PARAMETER_ERROR, FRICTION_PARAMETER_ERROR,
-                         INERTIA_PARAMETER_ERROR]
+                         INERTIA_PARAMETER_ERROR, VERTEX_ERROR, VOLUME_ERROR]
 PARAMETER_METRICS_BY_EXPERIMENT = {
-    'cube': [GEOMETRY_PARAMETER_ERROR],
-    'elbow': [GEOMETRY_PARAMETER_ERROR],
+    'cube': [GEOMETRY_PARAMETER_ERROR, VERTEX_ERROR, VOLUME_ERROR],
+    'elbow': [GEOMETRY_PARAMETER_ERROR, VERTEX_ERROR, VOLUME_ERROR],
     'cube_gravity': ALL_PARAMETER_METRICS,
     'asymmetric_vortex': ALL_PARAMETER_METRICS,
     'asymmetric_viscous': ALL_PARAMETER_METRICS,
@@ -382,9 +410,6 @@ def calculate_error_vertices(vertices_learned: Tensor,
         intersection_volume = ConvexHull(
             intersection_halfspace_convex.intersections).volume
 
-    learned_volume = ConvexHull(vertices_learned.numpy()).volume
-    print(f'learned, true, intersection volumes: {learned_volume}, {true_volume}, {intersection_volume}')
-
     return Tensor([sum_volume - 2 * intersection_volume
                   ]).abs() / true_volume
 
@@ -416,6 +441,9 @@ def get_empty_experiment_dict_by_experiment(experiment):
         for param_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
             empty_dict_per_experiment[method].update(
                 {param_metric: deepcopy(DATASET_SIZE_DICT)})
+        for post_metric in FIXED_HORIZON_METRICS_BY_EXPERIMENT[experiment]:
+            empty_dict_per_experiment[method].update(
+                {post_metric: deepcopy(DATASET_SIZE_DICT)})
         for exponent in DATASET_SIZE_DICT.keys():
             empty_dict_per_experiment[method][N_RUNS][exponent] = 0
 
@@ -491,6 +519,9 @@ def fill_exp_dict_with_single_run_data(run_dict, sweep_instance, exp_dict, gravi
             exp_dict[method][new_key][sweep_instance].append(
                 run_dict['results'][result_metric])
         elif new_key in PARAMETER_METRICS_BY_EXPERIMENT[exp_key]:
+            exp_dict[method][new_key][sweep_instance].append(
+                run_dict['results'][result_metric])
+        elif new_key in FIXED_HORIZON_METRICS_BY_EXPERIMENT[exp_key]:
             exp_dict[method][new_key][sweep_instance].append(
                 run_dict['results'][result_metric])
 
@@ -570,6 +601,9 @@ def convert_parameters_to_errors(run_dict, experiment, gravity=False):
             run_dict = calculate_friction_error(run_dict, experiment)
         elif param_metric == INERTIA_PARAMETER_ERROR:
             run_dict = calculate_inertia_error(run_dict, experiment)
+        elif param_metric in [VERTEX_ERROR, VOLUME_ERROR]:
+            # These are already calculated in the geometry error function.
+            pass
         else:
             raise RuntimeError(f"Can't handle {param_metric} type.")
 
@@ -666,7 +700,8 @@ def calculate_geometry_error(run_dict, experiment):
     true_vals = np.array([])
     learned_vals = np.array([])
 
-    err = 0.
+    vertex_err = 0.
+    volume_err = 0.
 
     # Iterate over bodies in the system.
     for body in CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys():
@@ -675,29 +710,35 @@ def calculate_geometry_error(run_dict, experiment):
         ground_truth_verts = \
             CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system][body]['vertices']
         learned_verts = Tensor(body_dict['vertices'])
-        # err += calculate_error_vertices(learned_verts, ground_truth_verts).item()
-        err += calculate_vertex_position_error(ground_truth_verts, learned_verts)
 
-    #     ground_truth = get_single_body_correct_geometry_array(system, body)
+        vertex_err += calculate_error_vertices(
+            learned_verts, ground_truth_verts).item()
+        volume_err += calculate_vertex_position_error(
+            ground_truth_verts, learned_verts)
 
-    #     learned = np.array([body_dict['diameter_x'], body_dict['diameter_y'],
-    #                         body_dict['diameter_z'], body_dict['center_x'],
-    #                         body_dict['center_y'], body_dict['center_z']])
+        ground_truth = get_single_body_correct_geometry_array(system, body)
+
+        learned = np.array([body_dict['diameter_x'], body_dict['diameter_y'],
+                            body_dict['diameter_z'], body_dict['center_x'],
+                            body_dict['center_y'], body_dict['center_z']])
         
-    #     true_vals = np.concatenate((true_vals, ground_truth))
-    #     learned_vals = np.concatenate((learned_vals, learned))
+        true_vals = np.concatenate((true_vals, ground_truth))
+        learned_vals = np.concatenate((learned_vals, learned))
     
-    # # Calculate geometry error as norm of the difference between learned and
-    # # true values.
-    # geometry_error = np.linalg.norm(true_vals - learned_vals)
-
-    # geometry_error = err / len(CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys())
+    # Calculate geometry error as norm of the difference between learned and
+    # true values.
+    geometry_error = np.linalg.norm(true_vals - learned_vals)
+    
     n_bodies = len(CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys())
     n_verts = len(CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system][body]['vertices'])
-    geometry_error = err / (n_bodies * n_verts)
+
+    vertex_error = vertex_err / (n_bodies * n_verts)
+    volume_error = volume_err / n_bodies
 
     # Insert this error into the results dictionary.
     run_dict['results'].update({GEOMETRY_PARAMETER_ERROR: geometry_error})
+    run_dict['results'].update({VERTEX_ERROR: vertex_error})
+    run_dict['results'].update({VOLUME_ERROR: volume_error})
     return run_dict
 
 def calculate_inertia_error(run_dict, experiment):
@@ -765,6 +806,16 @@ def calculate_friction_error(run_dict, experiment):
 
     # Insert this error into the results dictionary.
     run_dict['results'].update({FRICTION_PARAMETER_ERROR: friction_error})
+    return run_dict
+
+def include_fixed_horizon_post_stats(run_dict, experiment):
+    params_dict = run_dict['fixed_horizon_post_results']
+    if params_dict == None:
+        return run_dict
+
+    for post_metric in FIXED_HORIZON_METRICS_BY_EXPERIMENT[experiment]:
+        run_dict['results'].update({
+            post_metric: params_dict[f'test_{post_metric}']})
     return run_dict
 
 def do_run_num_plot(exp_dict, experiment, gravity=False):
@@ -865,6 +916,7 @@ for experiment in results.keys():
 
             run_dict = convert_parameters_to_errors(run_dict, experiment)
             if get_method_name_by_run_dict(run_dict) == 'dummy':  continue
+            run_dict = include_fixed_horizon_post_stats(run_dict, experiment)
             exp_dict = fill_exp_dict_with_single_run_data(run_dict, exponent,
                                                           exp_dict)
 
@@ -920,8 +972,30 @@ for experiment in results.keys():
         fig.savefig(fig_path, dpi=100)
         plt.close()
 
-    # Iterate over post-processing metrics to do plots of each.
-    for 
+    # Iterate over fixed horizon post-processing metrics to do plots of each.
+    for fixed_horizon_metric in FIXED_HORIZON_METRICS_BY_EXPERIMENT[experiment]:
+        # Start a plot.
+        fig = plt.figure()
+        ax = plt.gca()
+
+        for method in METHOD_RESULTS.keys():
+            xs, ys, lowers, uppers = get_plottable_values(
+                exp_dict, fixed_horizon_metric, method, FIXED_HORIZON_METRICS)
+
+            # Plot the method unless there are any None objects.
+            if None in ys or None in lowers or None in lowers:
+                continue
+
+            ax.plot(xs, ys, label=method, linewidth=5,
+                    color=METHOD_RESULTS[method])
+            ax.fill_between(xs, lowers, uppers, alpha=0.3,
+                            color=METHOD_RESULTS[method])
+
+        format_plot(ax, fig, fixed_horizon_metric, FIXED_HORIZON_METRICS, system)
+        plt.title(experiment)
+        fig_path = op.join(OUTPUT_DIR, f'{experiment}_{fixed_horizon_metric}.png')
+        fig.savefig(fig_path, dpi=100)
+        plt.close()
 
     # Add in a test plot of the number of experiments.
     do_run_num_plot(exp_dict, experiment)
