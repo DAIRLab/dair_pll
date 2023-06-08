@@ -279,8 +279,8 @@ def get_physical_parameters(system, body_names, best_system_state):
 # Extract the desired statistics from the larger stats file.  Will convert
 # numpy arrays into averages.
 def get_performance_from_stats(stats, set_name, kind=ORIGINAL_KIND):
-    metrics = PERFORMANCE_METRICS if kind==POST_KIND else \
-              POST_PERFORMANCE_METRICS if kind==ORIGINAL_KIND else \
+    metrics = PERFORMANCE_METRICS if kind==ORIGINAL_KIND else \
+              POST_PERFORMANCE_METRICS if kind==POST_KIND else \
               FIXED_HORIZON_METRICS
 
     performance_dict = {}
