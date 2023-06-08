@@ -34,6 +34,11 @@ The json file has the following format:
                         post_metric_2:  float
                         ...
                     }
+                    fixed_horizon_post_results: {
+                        fixed_horizon_metric_1:  float
+                        fixed_horizon_metric_2:  float
+                        ...
+                    }
                     target_trajs: []      <-- excluded from json due to datatype
                     prediction_trajs: []  <-- excluded from json due to datatype
                 }
@@ -129,6 +134,9 @@ PERFORMANCE_METRICS = ['delta_v_squared_mean',    'v_plus_squared_mean',
 POST_PERFORMANCE_METRICS = \
     [f'pos_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS] + \
     [f'rot_error_w_horizon_{i}' for i in ROLLOUT_LENGTHS]
+FIXED_HORIZON = 16
+FIXED_HORIZON_METRICS = [f'pos_error_w_horizon_{FIXED_HORIZON}',
+                         f'rot_error_w_horizon_{FIXED_HORIZON}']
 
 DATASET_EXPONENTS = [2, 3, 4, 5, 6, 7, 8, 9]
 SYSTEMS = ['cube', 'elbow', 'asymmetric']
@@ -137,13 +145,17 @@ ORDERED_INERTIA_PARAMS = ['m', 'px', 'py', 'pz', 'I_xx', 'I_yy', 'I_zz',
 TARGET_SAMPLE_KEY = 'model_target_sample'
 PREDICTION_SAMPLE_KEY = 'model_prediction_sample'
 
+ORIGINAL_KIND = 'original'
+POST_KIND = 'post'
+FIXED_HORIZON_KIND = 'fixed_horizon'
+KINDS = [ORIGINAL_KIND, POST_KIND, FIXED_HORIZON_KIND]
 
 # Template dictionaries, from low- to high-level.
 RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
             'residual': None, 'result_set': None, 'results': None,
-            'learned_params': None, 'post_results': None}
-EXPERIMENT_DICT = {'system': None, 'prefix': None,
-                   'data_sweep': None}
+            'learned_params': None, 'post_results': None,
+            'fixed_horizon_post_results': None}
+EXPERIMENT_DICT = {'system': None, 'prefix': None, 'data_sweep': None}
 
 BAD_RUN_NUMBERS = {
     'elbow': [i for i in range(24)] + [i for i in range(25, 32)] + \
@@ -266,8 +278,10 @@ def get_physical_parameters(system, body_names, best_system_state):
 
 # Extract the desired statistics from the larger stats file.  Will convert
 # numpy arrays into averages.
-def get_performance_from_stats(stats, set_name, post=False):
-    metrics = PERFORMANCE_METRICS if not post else POST_PERFORMANCE_METRICS
+def get_performance_from_stats(stats, set_name, kind=ORIGINAL_KIND):
+    metrics = PERFORMANCE_METRICS if kind==POST_KIND else \
+              POST_PERFORMANCE_METRICS if kind==ORIGINAL_KIND else \
+              FIXED_HORIZON_METRICS
 
     performance_dict = {}
     for metric in metrics:
@@ -331,6 +345,14 @@ def get_post_processed_stats_file(runs_path, run):
             stats = pickle.load(file)
     return stats
 
+def get_post_processed_fixed_horizon_stats_file(runs_path, run):
+    stats = None
+    stats_file = op.join(runs_path, run, 'traj_sweep_statistics.pkl')
+    if op.exists(stats_file):
+        with open(stats_file, 'rb') as file:
+            stats = pickle.load(file)
+    return stats
+
 # =============================== Gather data ================================ #
 # Loop over dataset categories, then dataset size, then individual runs.
 runs_needing_statistics = []
@@ -387,15 +409,26 @@ for experiment in EXPERIMENTS.keys():
             # Check for post-processed statistics.
             post_stats = get_post_processed_stats_file(runs_path, run)
             if post_stats == None:
-                print(f'  No post-processing statistics found.')
+                print(f'  No post-processed statistics found.', end='')
                 finished_runs_needing_post_statistics.append(
                     op.join(runs_path, run).split('results/')[-1])
 
             else:
-                print(f'  Found post-processed stats, too.')
-                post_performance_dict = \
-                    get_performance_from_stats(post_stats, 'test', post=True)
+                print(f'  Found post-processed stats, too.', end='')
+                post_performance_dict = get_performance_from_stats(
+                    post_stats, 'test', kind=POST_KIND)
                 run_dict['post_results'] = post_performance_dict
+
+            # Check for post-processed fixed horizon statistics.
+            fixed_horizon_stats = get_post_processed_fixed_horizon_stats_file(
+                runs_path, run)
+            if fixed_horizon_stats == None:
+                print(f'  No fixed horizon stats.')
+            else:
+                print(f'  Also fixed horizon stats!')
+                fixed_horizon_dict = get_performance_from_stats(
+                    fixed_horizon_stats, 'test', kind=FIXED_HORIZON_KIND)
+                run_dict['fixed_horizon_post_results'] = fixed_horizon_dict
 
             # If structured, save learned physical parameters.
             if run_dict['structured']:
