@@ -22,6 +22,14 @@ The json file has the following format:
                         metric_2:  float
                         ...
                     }
+                    initial_params: {
+                        body_1: {
+                            param_1:  float
+                            param_2:  float
+                            ...
+                        }
+                        body_2: {...}
+                    }
                     learned_params: {
                         body_1: {
                             param_1:  float
@@ -66,6 +74,7 @@ import os.path as op
 import pdb
 import pickle
 import torch
+import wandb
 from copy import deepcopy
 
 import numpy as np
@@ -94,8 +103,11 @@ JSON_OUTPUT_FILE = op.join(op.dirname(__file__), 'results.json')
 
 ROLLOUT_LENGTHS = [1, 2, 4, 8, 16, 32, 64, 120]
 
+WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
+
 BODY_NAMES_BY_SYSTEM = {'cube': ['body'], 'elbow': ['elbow_1', 'elbow_2'],
                         'asymmetric': ['body']}
+VERTEX_NUMBERS_PER_BODY_BY_SYSTEM = {'cube': 8, 'elbow': 8, 'asymmetric': 6}
 BODY_PARAMETERS = {
     'm': 'Mass',
     'com_x': 'CoM x',
@@ -143,6 +155,8 @@ DATASET_EXPONENTS = [2, 3, 4, 5, 6, 7, 8, 9]
 SYSTEMS = ['cube', 'elbow', 'asymmetric']
 ORDERED_INERTIA_PARAMS = ['m', 'px', 'py', 'pz', 'I_xx', 'I_yy', 'I_zz',
                           'I_xy', 'I_xz', 'I_yz']
+WANDB_INERTIA_PARAM_KEYS = ['m', 'com_x', 'com_y', 'com_z', 'I_xx', 'I_yy',
+                            'I_zz', 'I_xy', 'I_xz', 'I_yz']
 TARGET_SAMPLE_KEY = 'model_target_sample'
 PREDICTION_SAMPLE_KEY = 'model_prediction_sample'
 
@@ -154,8 +168,8 @@ KINDS = [ORIGINAL_KIND, POST_KIND, FIXED_HORIZON_KIND]
 # Template dictionaries, from low- to high-level.
 RUN_DICT = {'structured': None, 'contactnets': None, 'loss_variation': None,
             'residual': None, 'result_set': None, 'results': None,
-            'learned_params': None, 'post_results': None,
-            'fixed_horizon_post_results': None}
+            'initial_params': None, 'learned_params': None,
+            'post_results': None, 'fixed_horizon_post_results': None}
 EXPERIMENT_DICT = {'system': None, 'prefix': None, 'data_sweep': None}
 
 BAD_RUN_NUMBERS = {
@@ -277,6 +291,53 @@ def get_physical_parameters(system, body_names, best_system_state):
 
     return physical_params_dict
 
+
+# Get the initial physical parameters.
+def get_init_physical_parameters(system, body_names, checkpoint, wandb_api):
+    physical_params_dict = {}
+
+    # Get the W&B stored initial parameters.
+    wandb_run_id = checkpoint['wandb_run_id']
+    wandb_run_key = f'ebianchi/{WANDB_PROJECT_CLUSTER}/{wandb_run_id}'
+    wandb_run = wandb_api.run(wandb_run_key)
+    init_params = wandb_run.history(pandas=False)[0]
+
+    # Iterate over each body in the system.
+    for body in body_names:
+        # prefix = f'{system}_{body}'
+        body_params = {}
+
+        # First, get the inertial parameters.
+        for i in range(len(WANDB_INERTIA_PARAM_KEYS)):
+            param_key = WANDB_INERTIA_PARAM_KEYS[i]
+            inertia_param = init_params[f'{system}_{body}_{param_key}']
+            body_params.update({ORDERED_INERTIA_PARAMS[i]: inertia_param})
+
+        # Second, get the friction parameters.
+        init_mu = init_params[f'{system}_{body}_mu']
+        body_params.update({'mu': init_mu})
+
+        # Third, get the geometry parameters.
+        for geom_key in POLYGON_GEOMETRY_PARAMETERS:
+            geom_value = init_params[f'{system}_{body}_{geom_key}']
+            body_params.update({geom_key: geom_value})
+
+        # Fourth, get the individual vertex locations.
+        n_expected_vertices = VERTEX_NUMBERS_PER_BODY_BY_SYSTEM[system]
+        vertices = [[0, 0, 0]] * n_expected_vertices
+        for vertex_i in range(n_expected_vertices):
+            pre_key = f'{system}_{body}_v{vertex_i}'
+            vertices[vertex_i][0] = init_params[f'{pre_key}_x']
+            vertices[vertex_i][1] = init_params[f'{pre_key}_y']
+            vertices[vertex_i][2] = init_params[f'{pre_key}_z']
+        body_params.update({'vertices': vertices})
+
+        # Store the results.
+        physical_params_dict.update({body: body_params})
+
+    return physical_params_dict
+
+
 # Extract the desired statistics from the larger stats file.  Will convert
 # numpy arrays into averages.
 def get_performance_from_stats(stats, set_name, kind=ORIGINAL_KIND):
@@ -362,6 +423,8 @@ results = {}
 
 sent_warning = {'elbow': False, 'cube': False}
 
+wandb_api = wandb.Api()
+
 for experiment in EXPERIMENTS.keys():
     print(f'\n\n============== Starting {experiment} ==============')
     exp_dict = deepcopy(EXPERIMENT_DICT)
@@ -431,12 +494,16 @@ for experiment in EXPERIMENTS.keys():
                     fixed_horizon_stats, 'test', kind=FIXED_HORIZON_KIND)
                 run_dict['fixed_horizon_post_results'] = fixed_horizon_dict
 
-            # If structured, save learned physical parameters.
+            # If structured, save initial and learned physical parameters.
             if run_dict['structured']:
                 best_system_state = checkpoint['best_learned_system_state']
                 params_dict = get_physical_parameters(system, body_names,
                                                       best_system_state)
                 run_dict['learned_params'] = params_dict
+                
+                init_params_dict = get_init_physical_parameters(
+                    system, body_names, checkpoint, wandb_api)
+                run_dict['initial_params'] = init_params_dict
 
             # Store everything in larger dictionary.
             exp_dict['data_sweep'][exponent].update({run_key: run_dict})
