@@ -1,7 +1,8 @@
 """Script to help generate plots for CoRL 2023 submission.
 
-First, this script compiles all results into a json file.  Then, this script can
-gather the results from the json file and generate plots from them.
+First, this script compiles all results into a json file.  Then, the
+corl_plot.py script can gather the results from the json file and generate plots
+from them.
 
 The json file has the following format:
 {

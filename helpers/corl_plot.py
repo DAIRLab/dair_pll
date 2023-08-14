@@ -51,8 +51,8 @@ CN_METHODS_ONLY = [#'VimpI', 'VimpI RP',
                    'Vimp', 'Vimp RP']
 METHOD_RESULTS = {#'VimpI': '#01256e',
                   #'VimpI RP': '#398537',
-                  'CCN': '#01256e',  #'#1111ff',
-                  'CCN-R': '#398537',  #'#11ff11',
+                  'CCN (ours)': '#01256e',  #'#1111ff',
+                  'CCN-R (ours)': '#398537',  #'#11ff11',
                   'DiffSim': '#95001a',
                   'DiffSim-R': '#92668d',
                   'End-to-End': '#4a0042',}
@@ -509,9 +509,9 @@ def get_method_name_by_run_dict(run_dict):
         #     return 'VimpI'
     elif run_dict['loss_variation'] == 1:
         if run_dict['contactnets'] and run_dict['residual']:
-            return 'CCN-R'
+            return 'CCN-R (ours)'
         elif run_dict['contactnets'] and not run_dict['residual']:
-            return 'CCN'
+            return 'CCN (ours)'
 
     raise RuntimeError(f"Unknown method with run_dict: {run_dict}")
 
