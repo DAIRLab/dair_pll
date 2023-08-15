@@ -33,6 +33,7 @@ from matplotlib.ticker import FormatStrFormatter, NullFormatter
 import numpy as np
 from scipy.optimize import linprog
 from scipy.spatial import ConvexHull, HalfspaceIntersection
+from scipy.stats import pearsonr
 import torch
 from torch import Tensor
 
@@ -51,11 +52,11 @@ CN_METHODS_ONLY = [#'VimpI', 'VimpI RP',
                    'Vimp', 'Vimp RP']
 METHOD_RESULTS = {#'VimpI': '#01256e',
                   #'VimpI RP': '#398537',
-                  'CCN (ours)': '#01256e',  #'#1111ff',
-                  'CCN-R (ours)': '#398537',  #'#11ff11',
-                  'DiffSim': '#95001a',
-                  'DiffSim-R': '#92668d',
-                  'End-to-End': '#4a0042',}
+                  'CCN (ours)': {'color': '#01256e', 'marker': 'o'},  #'#1111ff',
+                  'CCN-R (ours)': {'color': '#398537', 'marker': '^'},  #'#11ff11',
+                  'DiffSim': {'color': '#95001a', 'marker': 's'},
+                  'DiffSim-R': {'color': '#92668d', 'marker': '*'},
+                  'End-to-End': {'color': '#4a0042', 'marker': 'o'}}
 METRICS = {'model_loss_mean': {
                 'label': 'Loss', 'scaling': 1.0,
                 'yformat': {'elbow': "%.0f", 'cube': "%.0f",
@@ -190,10 +191,52 @@ PARAMETER_ERRORS = {
                                'legend_loc': {'elbow': 'best', 'cube': 'best',
                                               'asymmetric': 'best'},
                                'log':  True},
+    'init_' + GEOMETRY_PARAMETER_ERROR: {
+        'label': 'Initial geometry parameter error [m]',
+        'scaling': 1.0,
+        'yformat': {'elbow': "%.3f", 'cube': "%.3f", 'asymmetric': "%.3f"},
+        'ylims': {'elbow': [0.0, None], 'cube': [0.0, None],
+                  'asymmetric': [0.0, None]},
+        'legend_loc': {'elbow': 'best', 'cube': 'best', 'asymmetric': 'best'},
+        'log': False},
+    'init_' + VERTEX_ERROR: {
+        'label': 'Initial average vertex location error [m]',
+        'scaling': 1.0,
+        'yformat': {'elbow': "%.2f", 'cube': "%.2f", 'asymmetric': "%.2f"},
+        'ylims': {'elbow': [0.0, None], 'cube': [0.0, None],
+                  'asymmetric': [0.0, None]},
+        'legend_loc': {'elbow': 'best', 'cube': 'best', 'asymmetric': 'best'},
+        'log': False},
+    'init_' + VOLUME_ERROR: {
+        'label': 'Initial relative volume error',
+        'scaling': 1.0,
+        'yformat': {'elbow': "%.2f", 'cube': "%.2f", 'asymmetric': "%.2f"},
+        'ylims': {'elbow': [0.0, None], 'cube': [0.0, None],
+                  'asymmetric': [0.0, None]},
+        'legend_loc': {'elbow': 'best', 'cube': 'best', 'asymmetric': 'best'},
+        'log': False},
+    'init_' + FRICTION_PARAMETER_ERROR: {
+        'label': 'Initial friction error',
+        'scaling': 1.0,
+        'yformat': {'elbow': "%.1f", 'cube': "%.2f", 'asymmetric': "%.2f"},
+        'ylims': {'elbow': [0.0, None], 'cube': [0.0, None],
+                  'asymmetric': [0.0, None]},
+        'legend_loc': {'elbow': 'best', 'cube': 'best', 'asymmetric': 'best'},
+        'log': False},
+    'init_' + INERTIA_PARAMETER_ERROR: {
+        'label': 'Initial inertia parameter error',
+        'scaling': 1.0,
+        'yformat': {'elbow': "%.0f", 'cube': "%.2f", 'asymmetric': "%.2f"},
+        'ylims': {'elbow': [0.1, None], 'cube': [0.1, None],
+                  'asymmetric': [0.1, None]},
+        'legend_loc': {'elbow': 'best', 'cube': 'best', 'asymmetric': 'best'},
+        'log':  True},
 }
 
 ALL_PARAMETER_METRICS = [GEOMETRY_PARAMETER_ERROR, FRICTION_PARAMETER_ERROR,
                          INERTIA_PARAMETER_ERROR, VERTEX_ERROR, VOLUME_ERROR]
+INIT_ALL_PARAMETER_METRICS = ['init_' + err for err in ALL_PARAMETER_METRICS]
+
 PARAMETER_METRICS_BY_EXPERIMENT = {
     'cube': [GEOMETRY_PARAMETER_ERROR, VERTEX_ERROR, VOLUME_ERROR],
     'elbow': [GEOMETRY_PARAMETER_ERROR, VERTEX_ERROR, VOLUME_ERROR],
@@ -204,6 +247,16 @@ PARAMETER_METRICS_BY_EXPERIMENT = {
     'elbow_vortex': ALL_PARAMETER_METRICS,
     'elbow_viscous': ALL_PARAMETER_METRICS,
     'elbow_gravity': ALL_PARAMETER_METRICS}
+INITIAL_PARAMETER_METRICS_BY_EXPERIMENT = {
+    'cube': ['init_' + err for err in PARAMETER_METRICS_BY_EXPERIMENT['cube']],
+    'elbow': ['init_' + err for err in PARAMETER_METRICS_BY_EXPERIMENT['elbow']],
+    'cube_gravity': INIT_ALL_PARAMETER_METRICS,
+    'asymmetric_vortex': INIT_ALL_PARAMETER_METRICS,
+    'asymmetric_viscous': INIT_ALL_PARAMETER_METRICS,
+    'asymmetric_gravity': INIT_ALL_PARAMETER_METRICS,
+    'elbow_vortex': INIT_ALL_PARAMETER_METRICS,
+    'elbow_viscous': INIT_ALL_PARAMETER_METRICS,
+    'elbow_gravity': INIT_ALL_PARAMETER_METRICS}
 
 ELBOW_HALF_VERTICES = Tensor([
     [-0.0500, -0.02500, 0.02500],
@@ -294,7 +347,7 @@ SYSTEM_BY_EXPERIMENT = {
     'elbow_viscous': 'elbow'}
 TITLE_BY_EXPERIMENT = {
     'cube': 'Cube with Real Data',
-    'elbow': 'Articulated Object with Real Data',
+    'elbow': 'Articulated Object, Real Data',
     'asymmetric_vortex': 'Asymmetric in Vortex Sim',
     'asymmetric_viscous': 'Asymmetric in Viscous Sim',
     'elbow_vortex': 'Articulated Object in Vortex Sim',
@@ -324,6 +377,8 @@ XS = [2**(key-1) for key in DATASET_SIZE_DICT.keys()]
 rc('legend', fontsize=30)
 plt.rc('axes', titlesize=40)    # fontsize of the axes title
 plt.rc('axes', labelsize=40)    # fontsize of the x and y labels
+
+FORCE_ALL_PLOT_LABELS = True
 
 
 # ============================= Helper functions ============================= #
@@ -374,9 +429,8 @@ def calculate_error_vertices(vertices_learned: Tensor,
                              vertices_true: Tensor) -> Tensor:
     """Relative error between two convex hulls of provided vertices.
 
-    use the identity that the area of the non-overlapping region is the
-    sum of the areas of the two polygons minus twice the area of their
-    intersection.
+    Use the identity that the area of the non-overlapping region is the sum of
+    the areas of the two polygons minus twice the area of their intersection.
 
     Args:
         vertices_learned: (N, 3) tensor of vertices of the learned geometry.
@@ -448,6 +502,9 @@ def get_empty_experiment_dict_by_experiment(experiment):
             empty_dict_per_experiment[method][metric] = \
                 deepcopy(DATASET_SIZE_DICT)
         for param_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
+            empty_dict_per_experiment[method].update(
+                {param_metric: deepcopy(DATASET_SIZE_DICT)})
+        for param_metric in INITIAL_PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
             empty_dict_per_experiment[method].update(
                 {param_metric: deepcopy(DATASET_SIZE_DICT)})
         for post_metric in FIXED_HORIZON_METRICS_BY_EXPERIMENT[experiment]:
@@ -530,6 +587,9 @@ def fill_exp_dict_with_single_run_data(run_dict, sweep_instance, exp_dict, gravi
         elif new_key in PARAMETER_METRICS_BY_EXPERIMENT[exp_key]:
             exp_dict[method][new_key][sweep_instance].append(
                 run_dict['results'][result_metric])
+        elif new_key in INITIAL_PARAMETER_METRICS_BY_EXPERIMENT[exp_key]:
+            exp_dict[method][new_key][sweep_instance].append(
+                run_dict['results'][result_metric])
         elif new_key in FIXED_HORIZON_METRICS_BY_EXPERIMENT[exp_key]:
             exp_dict[method][new_key][sweep_instance].append(
                 run_dict['results'][result_metric])
@@ -582,6 +642,26 @@ def get_plottable_values(exp_dict, metric, method, metric_lookup, gravity=False)
 
     return xs, ys, lowers, uppers
 
+def get_scatter_plottable_values(exp_dict, metric, method, metric_lookup,
+                                 gravity=False):
+    try:
+        data_dict = exp_dict[method][metric]
+        init_data_dict = exp_dict[method][f'init_{metric}']
+    except:
+        return [None], [None], [None]
+
+    xs, ys, exponents = [], [], []
+
+    scaling = metric_lookup[metric]['scaling']
+
+    for exponent in data_dict.keys():
+        exponents.append(exponent)
+
+        xs.append([x*scaling for x in init_data_dict[exponent]])
+        ys.append([y*scaling for y in data_dict[exponent]])
+
+    return xs, ys, exponents
+
 def get_plottable_run_counts(exp_dict, method, gravity=False):
     data_dict = exp_dict[method][N_RUNS]
 
@@ -597,24 +677,29 @@ def get_plottable_run_counts(exp_dict, method, gravity=False):
     return xs, ys
 
 def convert_parameters_to_errors(run_dict, experiment, gravity=False):
-    params_dict = run_dict['learned_params']
-    if params_dict == None:
-        return run_dict
+    # Compute this for both the initial and best learned parameter sets.
+    init_and_params_list = [(False, 'learned_params'), (True, 'initial_params')]
+    for init, params_dict_key in init_and_params_list:
+        pass
 
-    exp_key = f'{experiment}_gravity' if gravity else experiment
+        params_dict = run_dict[params_dict_key]
+        if params_dict == None:
+            return run_dict
 
-    for param_metric in PARAMETER_METRICS_BY_EXPERIMENT[exp_key]:
-        if param_metric == GEOMETRY_PARAMETER_ERROR:
-            run_dict = calculate_geometry_error(run_dict, experiment)
-        elif param_metric == FRICTION_PARAMETER_ERROR:
-            run_dict = calculate_friction_error(run_dict, experiment)
-        elif param_metric == INERTIA_PARAMETER_ERROR:
-            run_dict = calculate_inertia_error(run_dict, experiment)
-        elif param_metric in [VERTEX_ERROR, VOLUME_ERROR]:
-            # These are already calculated in the geometry error function.
-            pass
-        else:
-            raise RuntimeError(f"Can't handle {param_metric} type.")
+        exp_key = f'{experiment}_gravity' if gravity else experiment
+
+        for param_metric in PARAMETER_METRICS_BY_EXPERIMENT[exp_key]:
+            if param_metric == GEOMETRY_PARAMETER_ERROR:
+                run_dict = calculate_geometry_error(run_dict, experiment, init)
+            elif param_metric == FRICTION_PARAMETER_ERROR:
+                run_dict = calculate_friction_error(run_dict, experiment, init)
+            elif param_metric == INERTIA_PARAMETER_ERROR:
+                run_dict = calculate_inertia_error(run_dict, experiment, init)
+            elif param_metric in [VERTEX_ERROR, VOLUME_ERROR]:
+                # These are already calculated in the geometry error function.
+                pass
+            else:
+                raise RuntimeError(f"Can't handle {param_metric} type.")
 
     return run_dict
 
@@ -643,7 +728,7 @@ def format_plot(ax, fig, metric, metric_lookup, experiment, gravity=False):
     ax.set_xticks([])
     ax.set_xticklabels([])
     ax.set_xticks(x_markers)
-    if metric == "volume_error":
+    if FORCE_ALL_PLOT_LABELS or metric == "volume_error":
         ax.set_xticklabels(x_markers)
 
     ax.tick_params(axis='x', which='minor', bottom=False, labelsize=20)
@@ -657,8 +742,9 @@ def format_plot(ax, fig, metric, metric_lookup, experiment, gravity=False):
     # ax.yaxis.set_minor_formatter(
     #     FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
 
-    if metric in ["volume_error", FRICTION_PARAMETER_ERROR,
-                  INERTIA_PARAMETER_ERROR]:
+    if FORCE_ALL_PLOT_LABELS or metric in \
+        ["volume_error", FRICTION_PARAMETER_ERROR, INERTIA_PARAMETER_ERROR]:
+        
         if not gravity:
             plt.xlabel('Training tosses')
             ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
@@ -666,7 +752,7 @@ def format_plot(ax, fig, metric, metric_lookup, experiment, gravity=False):
             plt.xlabel('Modeled Gravity Acceleration [$m/s^2$]')
             ax.xaxis.set_major_formatter(FormatStrFormatter("%.2f"))
 
-    if (experiment == 'elbow' and not gravity) or \
+    if FORCE_ALL_PLOT_LABELS or (experiment == 'elbow' and not gravity) or \
         metric in [INERTIA_PARAMETER_ERROR, FRICTION_PARAMETER_ERROR]:
         plt.ylabel(metric_lookup[metric]['label'])
     else:
@@ -679,13 +765,13 @@ def format_plot(ax, fig, metric, metric_lookup, experiment, gravity=False):
 
     handles, labels = plt.gca().get_legend_handles_labels()
 
-    if metric in ['model_pos_int_traj', FRICTION_PARAMETER_ERROR,
-                  INERTIA_PARAMETER_ERROR]:
+    if FORCE_ALL_PLOT_LABELS or metric in \
+        ['model_pos_int_traj', FRICTION_PARAMETER_ERROR, INERTIA_PARAMETER_ERROR]:
         plt.title(TITLE_BY_EXPERIMENT[experiment], fontsize=40)
 
     # if experiment == 'elbow_gravity' and metric == 'volume_error':
     #     ax.plot([0], [10], label=method, linewidth=5,
-    #                 color=METHOD_RESULTS[method])
+    #                 color=METHOD_RESULTS[method]['color''])
     #     plt.legend(handles, labels)
     #     plt.legend(loc=metric_lookup[metric]['legend_loc'][system],
     #                prop=dict(weight='bold'))
@@ -698,6 +784,79 @@ def format_plot(ax, fig, metric, metric_lookup, experiment, gravity=False):
     # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
     #           prop=dict(weight='bold'))
 
+
+    fig.set_size_inches(13, 13)
+
+def format_scatter_plot(ax, fig, metric, metric_lookup, experiment, exponent=0,
+                        correlations=False):
+    system = SYSTEM_BY_EXPERIMENT[experiment.split('_gravity')[0]]
+
+    if metric_lookup[metric]['log'] and not correlations:
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+    elif correlations:
+        ax.set_yscale('log')
+
+    min_val = min(ax.get_xlim()[0], ax.get_ylim()[0])
+    max_val = max(ax.get_xlim()[1], ax.get_ylim()[1])
+
+    # ax.set_xlim(left=min_val, right=max_val)
+    # ax.set_ylim(bottom=min_val, top=max_val)
+
+    ax.xaxis.set_major_formatter(NullFormatter())
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.yaxis.set_major_formatter(NullFormatter())
+
+    ax.tick_params(axis='x', which='minor', bottom=False, labelsize=20)
+    ax.tick_params(axis='x', which='major', bottom=False, labelsize=20)
+
+    ax.tick_params(axis='y', which='minor', labelsize=20)
+    ax.tick_params(axis='y', which='major', labelsize=20)
+
+    ax.yaxis.set_major_formatter(
+        FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
+    ax.xaxis.set_major_formatter(
+        FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
+
+    # Turn on for initial versus final learned parameter inertia plot.  May need
+    # to turn off for other final plots (e.g. metric versus dataset size).
+    ax.xaxis.set_minor_formatter(
+        FormatStrFormatter(metric_lookup[metric]['yformat'][system]))
+
+    num_tosses = 2**(exponent+1)
+
+    if correlations:
+        key_prefix_x = ''
+        suffix_x = ', correlation'
+        suffix_y = ', p-value'
+        title_suffix = ''
+    else:
+        key_prefix_x = 'init_'
+        suffix_x = ''
+        suffix_y = ''
+        title_suffix = f', {num_tosses} train toss'
+
+    plt.ylabel(metric_lookup[metric]['label'] + suffix_y)
+    plt.xlabel(metric_lookup[f'{key_prefix_x}{metric}']['label'] + suffix_x)
+    
+    ax.yaxis.grid(True, which='both')
+    ax.xaxis.grid(True, which='both')
+
+    if correlations:
+        ax.plot(ax.get_xlim(), [0.05, 0.05], linewidth=5, linestyle='dashed',
+                color='lightgrey', label='0.05 p-value threshold')
+    # ax.plot([min_val, max_val], [min_val, max_val], linewidth=3,
+    #         linestyle='dashed', color='lightgrey',
+    #         label='Zero Learning')
+
+    lines = ax.get_lines()
+
+    plt.title(TITLE_BY_EXPERIMENT[experiment] + title_suffix, fontsize=40)
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+    plt.legend(handles, labels)
+    plt.legend(loc='best', prop=dict(weight='bold'))
 
     fig.set_size_inches(13, 13)
 
@@ -718,8 +877,11 @@ def get_single_body_correct_inertia_array(system, body):
         params['I_xy'], params['I_xz'], params['I_yz']])
     return ground_truth
 
-def calculate_geometry_error(run_dict, experiment):
+# TODO:  hacked vertex error
+def calculate_geometry_error(run_dict, experiment, init=False):
     system = SYSTEM_BY_EXPERIMENT[experiment]
+    dict_key = 'initial_params' if init else 'learned_params'
+    prefix = 'init_' if init else ''
 
     # Start an empty numpy array to store true and learned values.
     true_vals = np.array([])
@@ -730,14 +892,14 @@ def calculate_geometry_error(run_dict, experiment):
 
     # Iterate over bodies in the system.
     for body in CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys():
-        body_dict = run_dict['learned_params'][body]
+        body_dict = run_dict[dict_key][body]
 
         ground_truth_verts = \
             CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system][body]['vertices']
         learned_verts = Tensor(body_dict['vertices'])
 
-        vertex_err += calculate_error_vertices(
-            learned_verts, ground_truth_verts).item()
+        vertex_err += 0 # calculate_error_vertices(  HACK TODO FIX BIBIT
+            #learned_verts, ground_truth_verts).item()
         volume_err += calculate_vertex_position_error(
             ground_truth_verts, learned_verts)
 
@@ -752,7 +914,7 @@ def calculate_geometry_error(run_dict, experiment):
     
     # Calculate geometry error as norm of the difference between learned and
     # true values.
-    geometry_error = np.linalg.norm(true_vals - learned_vals)
+    geom_error = np.linalg.norm(true_vals - learned_vals)
     
     n_bodies = len(CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys())
     n_verts = len(CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system][body]['vertices'])
@@ -761,13 +923,15 @@ def calculate_geometry_error(run_dict, experiment):
     volume_error = volume_err / n_bodies
 
     # Insert this error into the results dictionary.
-    run_dict['results'].update({GEOMETRY_PARAMETER_ERROR: geometry_error})
-    run_dict['results'].update({VERTEX_ERROR: vertex_error})
-    run_dict['results'].update({VOLUME_ERROR: volume_error})
+    run_dict['results'].update({prefix + GEOMETRY_PARAMETER_ERROR: geom_error})
+    run_dict['results'].update({prefix + VERTEX_ERROR: vertex_error})
+    run_dict['results'].update({prefix + VOLUME_ERROR: volume_error})
     return run_dict
 
-def calculate_inertia_error(run_dict, experiment):
+def calculate_inertia_error(run_dict, experiment, init=False):
     system = SYSTEM_BY_EXPERIMENT[experiment]
+    dict_key = 'initial_params' if init else 'learned_params'
+    prefix = 'init_' if init else ''
 
     # Start an empty numpy array to store true and learned values.
     true_vals = np.array([])
@@ -775,7 +939,7 @@ def calculate_inertia_error(run_dict, experiment):
 
     # Iterate over bodies in the system.
     for body in CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys():
-        body_dict = run_dict['learned_params'][body]
+        body_dict = run_dict[dict_key][body]
 
         ground_truth = get_single_body_correct_inertia_array(system, body)
 
@@ -804,11 +968,14 @@ def calculate_inertia_error(run_dict, experiment):
     inertia_error = np.linalg.norm(true_vals - learned_vals)
 
     # Insert this error into the results dictionary.
-    run_dict['results'].update({INERTIA_PARAMETER_ERROR: inertia_error})
+    run_dict['results'].update(
+        {prefix + INERTIA_PARAMETER_ERROR: inertia_error})
     return run_dict
 
-def calculate_friction_error(run_dict, experiment):
+def calculate_friction_error(run_dict, experiment, init=False):
     system = SYSTEM_BY_EXPERIMENT[experiment]
+    dict_key = 'initial_params' if init else 'learned_params'
+    prefix = 'init_' if init else ''
 
     # Start an empty numpy array to store true and learned values.
     true_vals = np.array([])
@@ -816,7 +983,7 @@ def calculate_friction_error(run_dict, experiment):
 
     # Iterate over bodies in the system.
     for body in CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system].keys():
-        body_dict = run_dict['learned_params'][body]
+        body_dict = run_dict[dict_key][body]
 
         ground_truth = np.array([
             CORRECT_PARAMETERS_BY_SYSTEM_AND_BODY[system][body]['mu']])
@@ -830,7 +997,8 @@ def calculate_friction_error(run_dict, experiment):
     friction_error = np.linalg.norm(true_vals - learned_vals)
 
     # Insert this error into the results dictionary.
-    run_dict['results'].update({FRICTION_PARAMETER_ERROR: friction_error})
+    run_dict['results'].update(
+        {prefix + FRICTION_PARAMETER_ERROR: friction_error})
     return run_dict
 
 def include_fixed_horizon_post_stats(run_dict, experiment):
@@ -853,7 +1021,7 @@ def do_run_num_plot(exp_dict, experiment, gravity=False):
 
         # Plot the run numbers.
         ax.plot(xs, ys, label=method, linewidth=5,
-                color=METHOD_RESULTS[method])
+                color=METHOD_RESULTS[method]['color'])
 
     if not gravity:
         ax.set_xscale('log')
@@ -945,9 +1113,84 @@ for experiment in results.keys():
             exp_dict = fill_exp_dict_with_single_run_data(run_dict, exponent,
                                                           exp_dict)
 
-        # Convert lists to dictionary with keys average, upper, and lower.
+    # Include plots of initial versus learned parameter errors.
+    for parameter_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
+        if parameter_metric in ['vertex_error', 'geometry_parameter_error']:
+            continue
+
+        for exponent in range(8):
+            # Start a plot.
+            fig = plt.figure()
+            ax = plt.gca()
+
+            for method in METHOD_RESULTS.keys():
+                if method == 'End-to-End': continue
+                xs, ys, exponents = get_scatter_plottable_values(
+                    exp_dict, parameter_metric, method, PARAMETER_ERRORS)
+
+                # Plot the method unless there are any None or empty objects.
+                if [] in ys or [] in xs:
+                    continue
+
+                ax.scatter(xs[exponent], ys[exponent], label=method, s=250,
+                           color=METHOD_RESULTS[method]['color'],
+                           marker=METHOD_RESULTS[method]['marker'])
+
+            format_scatter_plot(ax, fig, parameter_metric, PARAMETER_ERRORS,
+                                experiment, exponent=exponent)
+
+            fig_path = op.join(OUTPUT_DIR,
+                f'{experiment}_comp_{exponent}_{parameter_metric}.png')
+            fig.savefig(fig_path, dpi=100)
+            plt.close()
+
+    # Include plots of correlations between initial and learned parameters.
+    for parameter_metric in PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
+        if parameter_metric in ['vertex_error', 'geometry_parameter_error']:
+            continue
+
+        # Start a plot.
+        fig = plt.figure()
+        ax = plt.gca()
+
+        for method in METHOD_RESULTS.keys():
+            if method == 'End-to-End': continue
+
+            xs, ys, exponents = get_scatter_plottable_values(
+                exp_dict, parameter_metric, method, PARAMETER_ERRORS)
+
+            correlations, p_values = [], []
+            for exponent in range(8):
+                corr = pearsonr(xs[exponent], ys[exponent])
+                correlations.append(corr.statistic)
+                p_values.append(corr.pvalue)
+
+            ax.scatter(correlations, p_values, label=method, s=250,
+                       color=METHOD_RESULTS[method]['color'],
+                       marker=METHOD_RESULTS[method]['marker'])
+
+            all_xs = xs[0] + xs[1] + xs[2] + xs[3] + xs[4] + xs[5] + xs[6] + xs[7]
+            all_ys = ys[0] + ys[1] + ys[2] + ys[3] + ys[4] + ys[5] + ys[6] + ys[7]
+
+            corr = pearsonr(all_xs, all_ys)
+            print(f'{experiment}, {parameter_metric}, {method}, correlation: {corr.statistic:.4f}, {corr.pvalue:.4f}')
+
+        format_scatter_plot(ax, fig, parameter_metric, PARAMETER_ERRORS,
+                            experiment, correlations=True)
+
+        fig_path = op.join(OUTPUT_DIR,
+            f'{experiment}_corr_{parameter_metric}.png')
+        fig.savefig(fig_path, dpi=100)
+        plt.close()
+
+    pdb.set_trace()
+
+    # Convert lists to dictionary with keys average, upper, and lower.
+    for exponent in range(2, 10):
         exp_dict = convert_lists_to_t_conf_dict(exp_dict, exponent)
 
+    '''
+    pdb.set_trace()
     # Iterate over the metrics to do plots of each.
     for metric in METRICS.keys():
         # Start a plot.
@@ -962,9 +1205,9 @@ for experiment in results.keys():
                 continue
 
             ax.plot(xs, ys, label=method, linewidth=5,
-                    color=METHOD_RESULTS[method])
+                    color=METHOD_RESULTS[method]['color'])
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
-                            color=METHOD_RESULTS[method])
+                            color=METHOD_RESULTS[method]['color'])
 
         format_plot(ax, fig, metric, METRICS, experiment)
     
@@ -987,9 +1230,34 @@ for experiment in results.keys():
                 continue
 
             ax.plot(xs, ys, label=method, linewidth=5,
-                    color=METHOD_RESULTS[method])
+                    color=METHOD_RESULTS[method]['color'])
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
-                            color=METHOD_RESULTS[method])
+                            color=METHOD_RESULTS[method]['color'])
+
+        format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, experiment)
+    
+        fig_path = op.join(OUTPUT_DIR, f'{experiment}_{parameter_metric}.png')
+        fig.savefig(fig_path, dpi=100)
+        plt.close()
+
+    # Iterate over initial parameter metrics to do plots of each.
+    for parameter_metric in INITIAL_PARAMETER_METRICS_BY_EXPERIMENT[experiment]:
+        # Start a plot.
+        fig = plt.figure()
+        ax = plt.gca()
+
+        for method in METHOD_RESULTS.keys():
+            xs, ys, lowers, uppers = get_plottable_values(
+                exp_dict, parameter_metric, method, PARAMETER_ERRORS)
+
+            # Plot the method unless there are any None objects.
+            if None in ys or None in lowers or None in lowers:
+                continue
+
+            ax.plot(xs, ys, label=method, linewidth=5,
+                    color=METHOD_RESULTS[method]['color'])
+            ax.fill_between(xs, lowers, uppers, alpha=0.3,
+                            color=METHOD_RESULTS[method]['color'])
 
         format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS, experiment)
     
@@ -1012,15 +1280,16 @@ for experiment in results.keys():
                 continue
 
             ax.plot(xs, ys, label=method, linewidth=5,
-                    color=METHOD_RESULTS[method])
+                    color=METHOD_RESULTS[method]['color'])
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
-                            color=METHOD_RESULTS[method])
+                            color=METHOD_RESULTS[method]['color'])
 
         format_plot(ax, fig, fixed_horizon_metric, FIXED_HORIZON_METRICS, experiment)
         plt.title(experiment)
         fig_path = op.join(OUTPUT_DIR, f'{experiment}_{fixed_horizon_metric}.png')
         fig.savefig(fig_path, dpi=100)
         plt.close()
+    '''
 
     # Add in a test plot of the number of experiments.
     do_run_num_plot(exp_dict, experiment)
@@ -1077,9 +1346,9 @@ for experiment in results.keys():
                 continue
 
             ax.plot(xs, ys, label=method, linewidth=5,
-                    color=METHOD_RESULTS[method])
+                    color=METHOD_RESULTS[method]['color'])
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
-                            color=METHOD_RESULTS[method])
+                            color=METHOD_RESULTS[method]['color'])
 
         format_plot(ax, fig, metric, METRICS, f'{experiment}_gravity',
                     gravity=True)
@@ -1104,9 +1373,9 @@ for experiment in results.keys():
                 continue
 
             ax.plot(xs, ys, label=method, linewidth=5,
-                    color=METHOD_RESULTS[method])
+                    color=METHOD_RESULTS[method]['color'])
             ax.fill_between(xs, lowers, uppers, alpha=0.3,
-                            color=METHOD_RESULTS[method])
+                            color=METHOD_RESULTS[method]['color'])
 
         format_plot(ax, fig, parameter_metric, PARAMETER_ERRORS,
                     f'{experiment}_gravity', gravity=True)
