@@ -12,8 +12,7 @@ from torch import Tensor
 from dair_pll import file_utils
 from dair_pll.dataset_generation import DataGenerationConfig, \
     ExperimentDatasetGenerator
-from dair_pll.dataset_management import DataConfig, \
-    TrajectorySliceConfig
+from dair_pll.data_config import TrajectorySliceConfig, DataConfig
 from dair_pll.drake_experiment import \
     DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, MultibodyLosses, \
