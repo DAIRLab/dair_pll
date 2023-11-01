@@ -759,7 +759,8 @@ class MultibodyTerms(Module):
     def randomize_multibody_terms(self, inertia_int) -> None:
         r"""Adds random noise to multibody terms in the following ways:
             - Geometry lengths can be between 0.5 and 1.5 times their original
-              length.
+              length (except DeepSupportConvex types, which always start as a small
+              sphere).
             - Friction can be between 0.1 and 1.9 times their original size.
             - Total mass does not change.
             - Inertia is determined via:
@@ -801,9 +802,15 @@ class MultibodyTerms(Module):
                 geometry.vertices_parameter = \
                     Parameter(scale_factory(geometry.vertices_parameter),
                               requires_grad=True)
+            elif isinstance(geometry, DeepSupportConvex):
+                # Deep support convex cannot be randomized.  However, it always
+                # starts as a small ball and thus never matches the true geometry
+                # anyway, so it's fine to skip random initialization for this type.
+                pass
             else:
                 raise NotImplementedError("Can only randomize Box and Polygon "
-                                          "geometries.")
+                    "geometries; intentionally does nothing for DeepSupportConvex; "
+                    "can't handle other geometry types.")
 
         # Third, randomize the inertia.  Only randomize the learnable params.
         if INERTIA_PARAM_OPTIONS[inertia_int] != 'none' and \

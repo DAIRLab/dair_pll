@@ -17,6 +17,7 @@ _LINEAR_SPACE = torch.linspace(-1, 1, steps=8)
 _GRID = torch.cartesian_prod(_LINEAR_SPACE, _LINEAR_SPACE, _LINEAR_SPACE)
 _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
+_SURFACE = _SURFACE.to(torch.float64)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
 
