@@ -119,7 +119,7 @@ def extract_mesh(support_function: Callable[[Tensor], Tensor]) -> MeshSummary:
     backwards = backwards.squeeze(0)
     faces[backwards] = faces[backwards].flip(-1)
 
-    return MeshSummary(vertices=support_points, faces=faces)
+    return MeshSummary(vertices=vertices, faces=faces)
 
 
 class HomogeneousICNN(Module):
