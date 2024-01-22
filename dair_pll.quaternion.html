@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.quaternion &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2fea6348"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.state_space" href="dair_pll.state_space.html" />
+    <link rel="prev" title="Physics-based learning tools from DAIR Lab" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dair_pll.quaternion</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.quaternion.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-dair_pll.quaternion">
+<span id="dair-pll-quaternion"></span><h1>dair_pll.quaternion<a class="headerlink" href="#module-dair_pll.quaternion" title="Link to this heading"></a></h1>
+<p>Quaternion-based <span class="math notranslate nohighlight">\(SO(3)\)</span> operations.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.quaternion.DataType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">DataType</span></span><a class="headerlink" href="#dair_pll.quaternion.DataType" title="Link to this definition"></a></dt>
+<dd><p>Static type for both supported types of quaternion/vector
+representations: <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a> and <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>.</p>
+<p>alias of TypeVar(‘DataType’, ~torch.Tensor, ~numpy.ndarray)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.quaternion.TensorCallable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">TensorCallable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#TensorCallable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.TensorCallable" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></p>
+<p>Static type for callable mapping from list of <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>s
+to <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.quaternion.NdarrayCallable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">NdarrayCallable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#NdarrayCallable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.NdarrayCallable" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></p>
+<p>Static type for callable mapping from list of <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>s
+to <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.operation_selector">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">operation_selector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor_operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndarray_operation</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#operation_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.operation_selector" title="Link to this definition"></a></dt>
+<dd><p>Helper function which selects between Pytorch and Numpy
+implementations of a quaternion operation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tensor_operation</strong> (<a class="reference internal" href="#dair_pll.quaternion.TensorCallable" title="dair_pll.quaternion.TensorCallable"><code class="xref py py-class docutils literal notranslate"><span class="pre">TensorCallable</span></code></a>) – <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>-backed implementation.</p></li>
+<li><p><strong>ndarray_operation</strong> (<a class="reference internal" href="#dair_pll.quaternion.NdarrayCallable" title="dair_pll.quaternion.NdarrayCallable"><code class="xref py py-class docutils literal notranslate"><span class="pre">NdarrayCallable</span></code></a>) – <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>-backed implementation.</p></li>
+<li><p><strong>*args</strong> (<a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a>) – Arguments to pass to implementation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Operation’s return value, same type as arguments.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.inverse_torch">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">inverse_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#inverse_torch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.inverse_torch" title="Link to this definition"></a></dt>
+<dd><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a> implementation of <a class="reference internal" href="#dair_pll.quaternion.inverse" title="dair_pll.quaternion.inverse"><code class="xref py py-func docutils literal notranslate"><span class="pre">inverse()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.inverse_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">inverse_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#inverse_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.inverse_np" title="Link to this definition"></a></dt>
+<dd><p><a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a> implementation of <a class="reference internal" href="#dair_pll.quaternion.inverse" title="dair_pll.quaternion.inverse"><code class="xref py py-func docutils literal notranslate"><span class="pre">inverse()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.inverse">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.inverse" title="Link to this definition"></a></dt>
+<dd><p>Quaternion inverse function.</p>
+<p>For input quaternion <span class="math notranslate nohighlight">\(q = [q_w, q_{xyz}]\)</span>, returns the inverse
+quaternion <span class="math notranslate nohighlight">\(q^{-1} = [-q_w, q_{xyz}]\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>q</strong> (<a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> quaternion batch to invert.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> inverse of <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.multiply_torch">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">multiply_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#multiply_torch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.multiply_torch" title="Link to this definition"></a></dt>
+<dd><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a> implementation of <a class="reference internal" href="#dair_pll.quaternion.multiply" title="dair_pll.quaternion.multiply"><code class="xref py py-func docutils literal notranslate"><span class="pre">multiply()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.multiply_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">multiply_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#multiply_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.multiply_np" title="Link to this definition"></a></dt>
+<dd><p><a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a> implementation of <a class="reference internal" href="#dair_pll.quaternion.multiply" title="dair_pll.quaternion.multiply"><code class="xref py py-func docutils literal notranslate"><span class="pre">multiply()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.multiply">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">multiply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#multiply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.multiply" title="Link to this definition"></a></dt>
+<dd><p>Quaternion multiplication.</p>
+<p>Given 2 quaternions <span class="math notranslate nohighlight">\(q = [q_w, q_{xyz}]\)</span> and <span class="math notranslate nohighlight">\(r = [r_w,
+r_{xyz}]\)</span>, performs the quaternion multiplication via the formula</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}q \times r = \begin{bmatrix} q_w r_w - q_{xyz} \cdot r_{xyz} \\
+    q_w r_{xyz} + r_w q_{xyz} + q_{xyz} \times r_{xyz}
+    \end{bmatrix}\end{split}\]</div>
+<p>This formula was taken from the following address:
+<a class="reference external" href="https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix">https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> left quaternion factor .</p></li>
+<li><p><strong>r</strong> (<a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> right quaternion factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> Product quaternion <code class="docutils literal notranslate"><span class="pre">q</span> <span class="pre">*</span> <span class="pre">r</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.rotate_torch">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">rotate_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#rotate_torch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.rotate_torch" title="Link to this definition"></a></dt>
+<dd><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a> implementation of <a class="reference internal" href="#dair_pll.quaternion.rotate" title="dair_pll.quaternion.rotate"><code class="xref py py-func docutils literal notranslate"><span class="pre">rotate()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.rotate_np">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">rotate_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#rotate_np"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.rotate_np" title="Link to this definition"></a></dt>
+<dd><p><a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a> implementation of <a class="reference internal" href="#dair_pll.quaternion.rotate" title="dair_pll.quaternion.rotate"><code class="xref py py-func docutils literal notranslate"><span class="pre">rotate()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.rotate">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#rotate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.rotate" title="Link to this definition"></a></dt>
+<dd><p>Quaternion rotation.</p>
+<p>Given a quaternion <span class="math notranslate nohighlight">\(q = [q_w, q_{xyz}]\)</span> and vector <span class="math notranslate nohighlight">\(p\)</span>,
+produces the <span class="math notranslate nohighlight">\(q\)</span>-rotated vector <span class="math notranslate nohighlight">\(p'\)</span> via the formula</p>
+<div class="math notranslate nohighlight">
+\[p' = (q_{xyz} \cdot p) q_{xyz} + 2 q_w (q_{xyz} \times p) +
+q_w^2 p + q_{xyz} \times (q_{xyz} \times p)\]</div>
+<p>This formula was taken from the following address:
+<a class="reference external" href="https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix">https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> quaternion batch.</p></li>
+<li><p><strong>p</strong> (<a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">3)</span></code> vector batch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#dair_pll.quaternion.DataType" title="dair_pll.quaternion.DataType"><code class="xref py py-data docutils literal notranslate"><span class="pre">~DataType</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">3)</span></code> rotated vector batch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.sinc">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">sinc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#sinc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.sinc" title="Link to this definition"></a></dt>
+<dd><p>Elementwise <span class="math notranslate nohighlight">\(\mathrm{sinc}\)</span> function.</p>
+<p>Given a tensor <span class="math notranslate nohighlight">\(x\)</span>, applies the elementwise-mapping</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}x \to \begin{cases}1 &amp; x =0 \\ \frac{\sin(x)}{x} &amp; x \neq 0\end{cases}.\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,)</span></code> <span class="math notranslate nohighlight">\(\mathrm{sinc}\)</span> input values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,)</span></code> <span class="math notranslate nohighlight">\(\mathrm{sinc}\)</span> function evaluated at <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.log">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.log" title="Link to this definition"></a></dt>
+<dd><p>Transforms quaternion into logarithmic coordinates.</p>
+<p>Given a quaternion</p>
+<div class="math notranslate nohighlight">
+\[q = [\cos(\theta/2), \hat u \sin(\theta/2)] = [q_w, q_{xyz}],\]</div>
+<p>returns the corresponding logarithmic coordinates (rotation vector)
+<span class="math notranslate nohighlight">\(r = \theta\hat u\)</span>.</p>
+<p>This computation is evaluated via the pertations</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+\theta(q) &amp;= 2\mathrm{atan2}(||q_{xyz}||_2, q_w), \\
+r &amp;= \begin{cases} \frac{\theta(q)}{\sin(\theta(q)/2)} q_{xyz} &amp; \sin(
+    \theta(q)/2) \neq 0,\\
+    0 &amp; \sin(\theta(q)/2) = 0.\end{cases}
+\end{align}\end{split}\]</div>
+<p>This function inverts <a class="reference internal" href="#dair_pll.quaternion.exp" title="dair_pll.quaternion.exp"><code class="xref py py-func docutils literal notranslate"><span class="pre">exp()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>q</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> quaternion batch.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">3)</span></code> rotation vector batch <span class="math notranslate nohighlight">\(r\)</span>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.quaternion.exp">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.quaternion.</span></span><span class="sig-name descname"><span class="pre">exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/quaternion.html#exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.quaternion.exp" title="Link to this definition"></a></dt>
+<dd><p>Transforms logarithmic coordinates into quaternion.</p>
+<p>Given logarithmic coordinates representation (rotation vector)
+<span class="math notranslate nohighlight">\(r = \theta\hat u\)</span>, returns the corresponding quaternion</p>
+<div class="math notranslate nohighlight">
+\[q = [\cos(\theta/2), \hat u \sin(\theta/2)] = [q_w, q_{xyz}].\]</div>
+<p>This computation is evaluated via the operations</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+\theta(r) &amp;= ||r||_2, \\
+q &amp;= \begin{bmatrix}\cos(\theta(r)/2) \\
+    \frac{1}{2} r \mathrm{sinc}(\theta(r)/2)
+    \end{bmatrix}.
+\end{align}\end{split}\]</div>
+<p>This function inverts <a class="reference internal" href="#dair_pll.quaternion.log" title="dair_pll.quaternion.log"><code class="xref py py-func docutils literal notranslate"><span class="pre">log()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>r</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">3)</span></code> rotation vector batch.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">4)</span></code> quaternion batch <span class="math notranslate nohighlight">\(q\)</span>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Physics-based learning tools from DAIR Lab" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.state_space.html" class="btn btn-neutral float-right" title="dair_pll.state_space" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

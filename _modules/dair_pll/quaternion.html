@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.quaternion &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.quaternion</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.quaternion</h1><div class="highlight"><pre>
+<span></span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Quaternion-based :math:`SO(3)` operations.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="c1">#:</span>
+<span class="n">DataType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;DataType&#39;</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+<span class="sa">r</span><span class="sd">&quot;&quot;&quot;Static type for both supported types of quaternion/vector </span>
+<span class="sd">representations: :class:`~torch.Tensor` and :class:`~numpy.ndarray`\ .&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="TensorCallable">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.TensorCallable">[docs]</a>
+<span class="k">class</span> <span class="nc">TensorCallable</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Static type for callable mapping from list of :class:`~torch.Tensor`\ s</span>
+<span class="sd">    to :class:`~torch.Tensor`\ .&quot;&quot;&quot;</span>
+
+    <span class="c1"># pylint: disable=too-few-public-methods</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="o">...</span></div>
+
+
+
+<div class="viewcode-block" id="NdarrayCallable">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.NdarrayCallable">[docs]</a>
+<span class="k">class</span> <span class="nc">NdarrayCallable</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Static type for callable mapping from list of :class:`~numpy.ndarray`\ s</span>
+<span class="sd">        to :class:`~numpy.ndarray`\ .&quot;&quot;&quot;</span>
+
+    <span class="c1"># pylint: disable=too-few-public-methods</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="o">...</span></div>
+
+
+
+<div class="viewcode-block" id="operation_selector">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.operation_selector">[docs]</a>
+<span class="k">def</span> <span class="nf">operation_selector</span><span class="p">(</span><span class="n">tensor_operation</span><span class="p">:</span> <span class="n">TensorCallable</span><span class="p">,</span>
+                       <span class="n">ndarray_operation</span><span class="p">:</span> <span class="n">NdarrayCallable</span><span class="p">,</span>
+                       <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">DataType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataType</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Helper function which selects between Pytorch and Numpy</span>
+<span class="sd">    implementations of a quaternion operation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        tensor_operation: :class:`~torch.Tensor`\ -backed implementation.</span>
+<span class="sd">        ndarray_operation: :class:`~numpy.ndarray`\ -backed implementation.</span>
+<span class="sd">        *args: Arguments to pass to implementation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Operation&#39;s return value, same type as arguments.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">tensor_operation</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ndarray_operation</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="inverse_torch">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.inverse_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">inverse_torch</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;:class:`~torch.Tensor` implementation of :func:`inverse`\ .&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+
+    <span class="n">q_inv</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+    <span class="n">q_inv</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="n">q_inv</span></div>
+
+
+
+<div class="viewcode-block" id="inverse_np">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.inverse_np">[docs]</a>
+<span class="k">def</span> <span class="nf">inverse_np</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;:class:`~numpy.ndarray` implementation of :func:`inverse`\ .&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+
+    <span class="n">q_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">q_inv</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="n">q_inv</span></div>
+
+
+
+<div class="viewcode-block" id="inverse">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.inverse">[docs]</a>
+<span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">DataType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataType</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Quaternion inverse function.</span>
+
+<span class="sd">    For input quaternion :math:`q = [q_w, q_{xyz}]`\ , returns the inverse</span>
+<span class="sd">    quaternion :math:`q^{-1} = [-q_w, q_{xyz}]`\ .</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        q: ``(*, 4)`` quaternion batch to invert.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(*, 4)`` inverse of ``q``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">operation_selector</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">TensorCallable</span><span class="p">,</span> <span class="n">inverse_torch</span><span class="p">),</span>
+                              <span class="n">cast</span><span class="p">(</span><span class="n">NdarrayCallable</span><span class="p">,</span> <span class="n">inverse_np</span><span class="p">),</span> <span class="n">q</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="multiply_torch">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.multiply_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">multiply_torch</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;:class:`~torch.Tensor` implementation of :func:`multiply`\ .&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+
+    <span class="n">q_w</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">q_xyz</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+
+    <span class="n">r_w</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">r_xyz</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+
+    <span class="c1"># pylint: disable=E1103</span>
+    <span class="n">qr_w</span> <span class="o">=</span> <span class="n">q_w</span> <span class="o">*</span> <span class="n">r_w</span> <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q_xyz</span> <span class="o">*</span> <span class="n">r_xyz</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">qr_xyz</span> <span class="o">=</span> <span class="n">q_w</span> <span class="o">*</span> <span class="n">r_xyz</span> <span class="o">+</span> <span class="n">r_w</span> <span class="o">*</span> <span class="n">q_xyz</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">r_xyz</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">qr_w</span><span class="p">,</span> <span class="n">qr_xyz</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="multiply_np">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.multiply_np">[docs]</a>
+<span class="k">def</span> <span class="nf">multiply_np</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;:class:`~numpy.ndarray` implementation of :func:`multiply`\ .&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+
+    <span class="n">q_w</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">q_xyz</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+
+    <span class="n">r_w</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">r_xyz</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+
+    <span class="n">qr_w</span> <span class="o">=</span> <span class="n">q_w</span> <span class="o">*</span> <span class="n">r_w</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q_xyz</span> <span class="o">*</span> <span class="n">r_xyz</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">qr_xyz</span> <span class="o">=</span> <span class="n">q_w</span> <span class="o">*</span> <span class="n">r_xyz</span> <span class="o">+</span> <span class="n">r_w</span> <span class="o">*</span> <span class="n">q_xyz</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">r_xyz</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">qr_w</span><span class="p">,</span> <span class="n">qr_xyz</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="multiply">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.multiply">[docs]</a>
+<span class="k">def</span> <span class="nf">multiply</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="n">DataType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataType</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Quaternion multiplication.</span>
+
+<span class="sd">    Given 2 quaternions :math:`q = [q_w, q_{xyz}]` and :math:`r = [r_w,</span>
+<span class="sd">    r_{xyz}]`\ , performs the quaternion multiplication via the formula</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        q \times r = \begin{bmatrix} q_w r_w - q_{xyz} \cdot r_{xyz} \\</span>
+<span class="sd">            q_w r_{xyz} + r_w q_{xyz} + q_{xyz} \times r_{xyz}</span>
+<span class="sd">            \end{bmatrix}</span>
+
+<span class="sd">    This formula was taken from the following address:</span>
+<span class="sd">    https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        q: ``(*, 4)`` left quaternion factor .</span>
+<span class="sd">        r: ``(*, 4)`` right quaternion factor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(*, 4)`` Product quaternion ``q * r``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">operation_selector</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">TensorCallable</span><span class="p">,</span> <span class="n">multiply_torch</span><span class="p">),</span>
+                              <span class="n">cast</span><span class="p">(</span><span class="n">NdarrayCallable</span><span class="p">,</span> <span class="n">multiply_np</span><span class="p">),</span> <span class="n">q</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="rotate_torch">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.rotate_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">rotate_torch</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;:class:`~torch.Tensor` implementation of :func:`rotate`\ .&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+    <span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span>
+
+    <span class="n">q_w</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">q_xyz</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+
+    <span class="c1"># pylint: disable=E1103</span>
+    <span class="n">q_xyz_cross_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">q_xyz_cross_q_xyz_cross_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">q_xyz_cross_p</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">q_xyz_dot_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q_xyz</span> <span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">q_xyz</span> <span class="o">*</span> <span class="p">(</span><span class="n">q_xyz_dot_p</span><span class="p">)</span> <span class="o">+</span> <span class="n">q_w</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">q_xyz_cross_p</span> <span class="o">+</span> <span class="n">q_w</span> <span class="o">*</span> <span class="n">p</span><span class="p">)</span> <span class="o">+</span> \
+           <span class="n">q_xyz_cross_q_xyz_cross_p</span></div>
+
+
+
+<div class="viewcode-block" id="rotate_np">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.rotate_np">[docs]</a>
+<span class="k">def</span> <span class="nf">rotate_np</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;:class:`~numpy.ndarray` implementation of :func:`rotate`\ .&quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+    <span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span>
+
+    <span class="n">q_w</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">q_xyz</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+
+    <span class="n">q_xyz_cross_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="n">q_xyz_cross_q_xyz_cross_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">q_xyz_cross_p</span><span class="p">)</span>
+    <span class="n">q_xyz_dot_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q_xyz</span> <span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">q_xyz</span> <span class="o">*</span> <span class="p">(</span><span class="n">q_xyz_dot_p</span><span class="p">)</span> <span class="o">+</span> <span class="n">q_w</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">q_xyz_cross_p</span> <span class="o">+</span> <span class="n">q_w</span> <span class="o">*</span> <span class="n">p</span><span class="p">)</span> <span class="o">+</span> \
+           <span class="n">q_xyz_cross_q_xyz_cross_p</span></div>
+
+
+
+<div class="viewcode-block" id="rotate">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.rotate">[docs]</a>
+<span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="n">DataType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataType</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Quaternion rotation.</span>
+
+<span class="sd">       Given a quaternion :math:`q = [q_w, q_{xyz}]` and vector :math:`p`\ ,</span>
+<span class="sd">       produces the :math:`q`\ -rotated vector :math:`p&#39;` via the formula</span>
+
+<span class="sd">       .. math::</span>
+
+<span class="sd">           p&#39; = (q_{xyz} \cdot p) q_{xyz} + 2 q_w (q_{xyz} \times p) +</span>
+<span class="sd">           q_w^2 p + q_{xyz} \times (q_{xyz} \times p)</span>
+
+<span class="sd">       This formula was taken from the following address:</span>
+<span class="sd">       https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix</span>
+
+<span class="sd">       Args:</span>
+<span class="sd">           q: ``(*, 4)`` quaternion batch.</span>
+<span class="sd">           p: ``(*, 3)`` vector batch.</span>
+
+<span class="sd">       Returns:</span>
+<span class="sd">           ``(*, 3)`` rotated vector batch.</span>
+<span class="sd">       &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">operation_selector</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">TensorCallable</span><span class="p">,</span> <span class="n">rotate_torch</span><span class="p">),</span>
+                              <span class="n">cast</span><span class="p">(</span><span class="n">NdarrayCallable</span><span class="p">,</span> <span class="n">rotate_np</span><span class="p">),</span> <span class="n">q</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="sinc">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.sinc">[docs]</a>
+<span class="k">def</span> <span class="nf">sinc</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Elementwise :math:`\mathrm{sinc}` function.</span>
+
+<span class="sd">    Given a tensor :math:`x`, applies the elementwise-mapping</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        x \to \begin{cases}1 &amp; x =0 \\ \frac{\sin(x)}{x} &amp; x \neq 0\end{cases}.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: ``(*,)`` :math:`\mathrm{sinc}` input values.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(*,)`` :math:`\mathrm{sinc}` function evaluated at ``x``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># pylint: disable=E1103</span>
+    <span class="n">notnull</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">null</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">notnull</span><span class="p">)</span>
+    <span class="n">sinc_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">sinc_x</span><span class="p">[</span><span class="n">null</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1.</span>
+    <span class="n">sinc_x</span><span class="p">[</span><span class="n">notnull</span><span class="p">]</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">notnull</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">notnull</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">sinc_x</span></div>
+
+
+
+<div class="viewcode-block" id="log">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.log">[docs]</a>
+<span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Transforms quaternion into logarithmic coordinates.</span>
+
+<span class="sd">    Given a quaternion</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        q = [\cos(\theta/2), \hat u \sin(\theta/2)] = [q_w, q_{xyz}],</span>
+
+<span class="sd">    returns the corresponding logarithmic coordinates (rotation vector)</span>
+<span class="sd">    :math:`r = \theta\hat u`\ .</span>
+
+<span class="sd">    This computation is evaluated via the pertations</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \begin{align}</span>
+<span class="sd">        \theta(q) &amp;= 2\mathrm{atan2}(||q_{xyz}||_2, q_w), \\</span>
+<span class="sd">        r &amp;= \begin{cases} \frac{\theta(q)}{\sin(\theta(q)/2)} q_{xyz} &amp; \sin(</span>
+<span class="sd">            \theta(q)/2) \neq 0,\\</span>
+<span class="sd">            0 &amp; \sin(\theta(q)/2) = 0.\end{cases}</span>
+<span class="sd">        \end{align}</span>
+
+<span class="sd">    This function inverts :func:`exp`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        q: ``(*, 4)`` quaternion batch.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(*, 3)`` rotation vector batch :math:`r`\ .</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span>
+    <span class="n">cos_half_theta</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">q_xyz</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="n">sin_half_theta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">q_xyz</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># pylint: disable=E1103</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">sin_half_theta</span><span class="p">,</span> <span class="n">cos_half_theta</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="n">mul</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">sin_half_theta</span><span class="p">)</span>
+    <span class="n">not_null</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sin_half_theta</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">mul</span><span class="p">[</span><span class="n">not_null</span><span class="p">]</span> <span class="o">=</span> <span class="n">theta</span><span class="p">[</span><span class="n">not_null</span><span class="p">]</span> <span class="o">/</span> <span class="n">sin_half_theta</span><span class="p">[</span><span class="n">not_null</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">q_xyz</span> <span class="o">*</span> <span class="n">mul</span></div>
+
+
+
+<div class="viewcode-block" id="exp">
+<a class="viewcode-back" href="../../dair_pll.quaternion.html#dair_pll.quaternion.exp">[docs]</a>
+<span class="k">def</span> <span class="nf">exp</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Transforms logarithmic coordinates into quaternion.</span>
+
+<span class="sd">        Given logarithmic coordinates representation (rotation vector)</span>
+<span class="sd">        :math:`r = \theta\hat u`\, returns the corresponding quaternion</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            q = [\cos(\theta/2), \hat u \sin(\theta/2)] = [q_w, q_{xyz}].</span>
+
+
+<span class="sd">        This computation is evaluated via the operations</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            \begin{align}</span>
+<span class="sd">            \theta(r) &amp;= ||r||_2, \\</span>
+<span class="sd">            q &amp;= \begin{bmatrix}\cos(\theta(r)/2) \\</span>
+<span class="sd">                \frac{1}{2} r \mathrm{sinc}(\theta(r)/2)</span>
+<span class="sd">                \end{bmatrix}.</span>
+<span class="sd">            \end{align}</span>
+
+<span class="sd">        This function inverts :func:`log`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            r: ``(*, 3)`` rotation vector batch.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, 4)`` quaternion batch :math:`q`\ .</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span>
+
+    <span class="c1"># pylint: disable=E1103</span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="n">r</span> <span class="o">*</span> <span class="n">sinc</span><span class="p">(</span><span class="n">angle</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

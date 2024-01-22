@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.multibody_terms &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2fea6348"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.urdf_utils" href="dair_pll.urdf_utils.html" />
+    <link rel="prev" title="dair_pll.drake_state_converter" href="dair_pll.drake_state_converter.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dair_pll.multibody_terms</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.multibody_terms.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-dair_pll.multibody_terms">
+<span id="dair-pll-multibody-terms"></span><h1>dair_pll.multibody_terms<a class="headerlink" href="#module-dair_pll.multibody_terms" title="Link to this heading"></a></h1>
+<p>Mathematical implementation of multibody dynamics terms calculations.</p>
+<p>This file implements the <a class="reference internal" href="#dair_pll.multibody_terms.MultibodyTerms" title="dair_pll.multibody_terms.MultibodyTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code></a> type, which interprets a
+list of urdfs as a learnable Lagrangian system with contact, taking the state
+space from the corresponding <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code> as a given, and
+interpreting the various inertial and geometric terms stored within it as
+initial conditions of learnable parameters.</p>
+<p>Multibody dynamics can be derived from four functions of state [q,v]:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>M(q), the generalized mass-matrix</p></li>
+<li><p>F(q), the non-contact/Lagrangian force terms.</p></li>
+<li><p>phi(q), the signed distance between collision candidates.</p></li>
+<li><p>J(q), the contact-frame velocity Jacobian between collision candidates.</p></li>
+</ul>
+</div></blockquote>
+<p>The first two terms depend solely on state and inertial properties,
+and parameterize the contact-free Lagrangian dynamics as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dv</span><span class="o">/</span><span class="n">dt</span> <span class="o">=</span> <span class="p">(</span><span class="n">M</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">F</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These terms are accordingly encapsulated in a <a class="reference internal" href="#dair_pll.multibody_terms.LagrangianTerms" title="dair_pll.multibody_terms.LagrangianTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">LagrangianTerms</span></code></a>
+instance.</p>
+<p>The latter two terms depend solely on the geometry of bodies coming into
+contact, and are encapsulated in a <a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms" title="dair_pll.multibody_terms.ContactTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContactTerms</span></code></a> instance.</p>
+<p>For both sets of terms, we derive their functional form either directly or in
+part through symbolic analysis of the <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant</span></code> of the
+associated <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code>. The <a class="reference internal" href="#dair_pll.multibody_terms.MultibodyTerms" title="dair_pll.multibody_terms.MultibodyTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code></a>
+object manages the symbolic calculation and has corresponding
+<a class="reference internal" href="#dair_pll.multibody_terms.LagrangianTerms" title="dair_pll.multibody_terms.LagrangianTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">LagrangianTerms</span></code></a> and <a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms" title="dair_pll.multibody_terms.ContactTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContactTerms</span></code></a> members.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.init_symbolic_plant_context_and_state">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.multibody_terms.</span></span><span class="sig-name descname"><span class="pre">init_symbolic_plant_context_and_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant_diagram</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#init_symbolic_plant_context_and_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.init_symbolic_plant_context_and_state" title="Link to this definition"></a></dt>
+<dd><p>Generates a symbolic interface for a <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code>.</p>
+<p>Generates a new Drake <code class="docutils literal notranslate"><span class="pre">Expression</span></code> data type state in
+<code class="xref py py-class docutils literal notranslate"><span class="pre">StateSpace</span></code> format, and sets this state inside a new context for
+a symbolic version of the diagram’s <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plant_diagram</strong> (<a class="reference internal" href="dair_pll.drake_utils.html#dair_pll.drake_utils.MultibodyPlantDiagram" title="dair_pll.drake_utils.MultibodyPlantDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code></a>) – Drake MultibodyPlant diagram to convert to symbolic.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_𝓣Expression𝓤</span></code>, <a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.systems.framework.html#pydrake.systems.framework.Context" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>, <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>, <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>New symbolic plant.
+New plant’s context, with symbolic states set.
+(n_q,) symbolic <code class="xref py py-class docutils literal notranslate"><span class="pre">StateSpace</span></code> configuration.
+(n_v,) symbolic <code class="xref py py-class docutils literal notranslate"><span class="pre">StateSpace</span></code> velocity.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.multibody_terms.</span></span><span class="sig-name descname"><span class="pre">LagrangianTerms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant_diagram</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#LagrangianTerms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Container class for non-contact/Lagrangian dynamics terms.</p>
+<p>Accepts batched pytorch callback functions for M(q) and F(q) and related
+contact terms in <code class="docutils literal notranslate"><span class="pre">theta</span></code> format (see <code class="docutils literal notranslate"><span class="pre">inertia.py</span></code>).</p>
+<p>Inits <a class="reference internal" href="#dair_pll.multibody_terms.LagrangianTerms" title="dair_pll.multibody_terms.LagrangianTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">LagrangianTerms</span></code></a> with prescribed parameters and
+functional forms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plant_diagram</strong> (<a class="reference internal" href="dair_pll.drake_utils.html#dair_pll.drake_utils.MultibodyPlantDiagram" title="dair_pll.drake_utils.MultibodyPlantDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code></a>) – Drake MultibodyPlant diagram to extract terms from.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms.mass_matrix">
+<span class="sig-name descname"><span class="pre">mass_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Callable</span></code></a><span class="pre">[[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">,</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">],</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">]]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms.mass_matrix" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms.lagrangian_forces">
+<span class="sig-name descname"><span class="pre">lagrangian_forces</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Callable</span></code></a><span class="pre">[[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">,</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">,</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">,</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">],</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">]]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms.lagrangian_forces" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms.inertial_parameters">
+<span class="sig-name descname"><span class="pre">inertial_parameters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html#torch.nn.parameter.Parameter" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.parameter.Parameter</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms.inertial_parameters" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms.extract_body_parameters_and_variables">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extract_body_parameters_and_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#LagrangianTerms.extract_body_parameters_and_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms.extract_body_parameters_and_variables" title="Link to this definition"></a></dt>
+<dd><p>Generates parameterization and symbolic variables for all bodies.</p>
+<p>For a multibody plant, finds all bodies that should have inertial
+properties; extracts the current values as an initial condition for
+<code class="docutils literal notranslate"><span class="pre">theta</span></code>-format learnable parameters, and sets new symbolic versions of
+these variables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plant</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_𝓣Expression𝓤</span></code>) – Symbolic plant from which to extract parameterization.</p></li>
+<li><p><strong>model_ids</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.multibody.tree.html#pydrake.multibody.tree.ModelInstanceIndex" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelInstanceIndex</span></code></a>]) – List of models in plant.</p></li>
+<li><p><strong>context</strong> (<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.systems.framework.html#pydrake.systems.framework.Context" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>) – Plant’s symbolic context.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(n_bodies, 10) <code class="docutils literal notranslate"><span class="pre">theta</span></code> parameters initial conditions.
+(n_bodies, 10) symbolic inertial variables.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms.pi_cm">
+<span class="sig-name descname"><span class="pre">pi_cm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#LagrangianTerms.pi_cm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms.pi_cm" title="Link to this definition"></a></dt>
+<dd><p>Returns inertial parameters in human-understandable <code class="docutils literal notranslate"><span class="pre">pi_cm</span></code>-
+format</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.LagrangianTerms.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#LagrangianTerms.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.LagrangianTerms.forward" title="Link to this definition"></a></dt>
+<dd><p>Evaluates Lagrangian dynamics terms at given state and input.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_q) configuration batch.</p></li>
+<li><p><strong>v</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_v) velocity batch.</p></li>
+<li><p><strong>u</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_u) input batch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, n_v, n_v) mass matrix batch M(q)
+(*, n_v) Lagrangian contact-free acceleration inv(M(q)) F(q)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.make_configuration_callback">
+<span class="sig-prename descclassname"><span class="pre">dair_pll.multibody_terms.</span></span><span class="sig-name descname"><span class="pre">make_configuration_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expression</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#make_configuration_callback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.make_configuration_callback" title="Link to this definition"></a></dt>
+<dd><p>Converts drake symbolic expression to pytorch function via
+<code class="docutils literal notranslate"><span class="pre">drake_pytorch</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>[[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>], <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.multibody_terms.</span></span><span class="sig-name descname"><span class="pre">ContactTerms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant_diagram</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#ContactTerms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Container class for contact-related dynamics terms.</p>
+<p>Derives batched pytorch callback functions for collision geometry
+position and velocity kinematics from a
+<a class="reference internal" href="dair_pll.drake_utils.html#dair_pll.drake_utils.MultibodyPlantDiagram" title="dair_pll.drake_utils.MultibodyPlantDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code></a>.</p>
+<p>Inits <a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms" title="dair_pll.multibody_terms.ContactTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContactTerms</span></code></a> with prescribed kinematics and
+geometries.</p>
+<p>phi(q) and J(q) are calculated implicitly from kinematics and <code class="docutils literal notranslate"><span class="pre">n_g</span> <span class="pre">==</span>
+<span class="pre">len(geometries)</span></code> collision geometries C.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plant_diagram</strong> (<a class="reference internal" href="dair_pll.drake_utils.html#dair_pll.drake_utils.MultibodyPlantDiagram" title="dair_pll.drake_utils.MultibodyPlantDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code></a>) – Drake MultibodyPlant diagram to extract terms from.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.geometry_local_poses">
+<span class="sig-name descname"><span class="pre">geometry_local_poses</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html#torch.nn.parameter.Parameter" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.parameter.Parameter</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.geometry_local_poses" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.geometry_rotations">
+<span class="sig-name descname"><span class="pre">geometry_rotations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Callable</span></code></a><span class="pre">[[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">],</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">]]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.geometry_rotations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.geometry_translations">
+<span class="sig-name descname"><span class="pre">geometry_translations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Callable</span></code></a><span class="pre">[[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">],</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">]]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.geometry_translations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.geometry_spatial_jacobians">
+<span class="sig-name descname"><span class="pre">geometry_spatial_jacobians</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Callable</span></code></a><span class="pre">[[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">],</span> <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a><span class="pre">]]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.geometry_spatial_jacobians" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.geometries">
+<span class="sig-name descname"><span class="pre">geometries</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.ModuleList.html#torch.nn.ModuleList" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.container.ModuleList</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.geometries" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.friction_params">
+<span class="sig-name descname"><span class="pre">friction_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html#torch.nn.parameter.Parameter" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.parameter.Parameter</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.friction_params" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.collision_candidates">
+<span class="sig-name descname"><span class="pre">collision_candidates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.collision_candidates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.get_friction_coefficients">
+<span class="sig-name descname"><span class="pre">get_friction_coefficients</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#ContactTerms.get_friction_coefficients"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.get_friction_coefficients" title="Link to this definition"></a></dt>
+<dd><p>From the stored <a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms.friction_params" title="dair_pll.multibody_terms.ContactTerms.friction_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">friction_params</span></code></a>, compute the friction
+coefficient as its absolute value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.extract_geometries_and_kinematics">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">extract_geometries_and_kinematics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inspector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#ContactTerms.extract_geometries_and_kinematics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.extract_geometries_and_kinematics" title="Link to this definition"></a></dt>
+<dd><p>Extracts modules and kinematics of list of geometries G.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plant</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlant_𝓣Expression𝓤</span></code>) – Multibody plant from which terms are extracted.</p></li>
+<li><p><strong>inspector</strong> (<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.SceneGraphInspector" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">SceneGraphInspector</span></code></a>) – Scene graph inspector associated with plant.</p></li>
+<li><p><strong>geometry_ids</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.GeometryId" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryId</span></code></a>]) – List of geometries to model.</p></li>
+<li><p><strong>context</strong> (<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.systems.framework.html#pydrake.systems.framework.Context" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>) – Plant’s context with symbolic state.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference internal" href="dair_pll.geometry.html#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://numpy.org/doc/1.21/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.21)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>]]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of <code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code> models with one-to-one
+correspondence with provided geometries.
+List[(3,3)] of corresponding rotation matrices R_WG
+List[(3,)] of corresponding geometry frame origins p_WoGo_W
+List[(6,n_v)] of geometry spatial jacobians w.r.t. drake velocity
+coordinates, J(v_drake)_V_WG_W</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.assemble_velocity_jacobian">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">assemble_velocity_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R_CW</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Jv_V_WC_W</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_CoCc_C</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#ContactTerms.assemble_velocity_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.assemble_velocity_jacobian" title="Link to this definition"></a></dt>
+<dd><p>Helper method to generate velocity jacobian from contact information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>R_CW</strong> – (*, n_c, 3, 3) Rotation of world frame w.r.t. geometry frame.</p></li>
+<li><p><strong>Jv_V_WC_W</strong> – (*, 1, 6, n_v) Geometry spatial velocity Jacobian.</p></li>
+<li><p><strong>p_CoCc_C</strong> – (*, n_c, 3) Geometry-frame contact points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(*, n_c, 3, n_v) World-frame contact point translational velocity
+Jacobian.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.relative_velocity_to_contact_jacobian">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">relative_velocity_to_contact_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Jv_v_W_BcAc_F</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#ContactTerms.relative_velocity_to_contact_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.relative_velocity_to_contact_jacobian" title="Link to this definition"></a></dt>
+<dd><p>Helper method to reorder contact Jacobian columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Jv_v_W_BcAc_F</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_collisions, 3, n_v) collection of</p></li>
+<li><p><strong>Jacobians.</strong> (<em>contact-frame relative velocity</em>) – </p></li>
+<li><p><strong>mu</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (n_collisions,) list of</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, 3 * n_collisions, n_v) contact jacobian J(q) in [J_n; mu * J_t]
+ordering.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.ContactTerms.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#ContactTerms.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.ContactTerms.forward" title="Link to this definition"></a></dt>
+<dd><p>Evaluates Lagrangian dynamics terms at given state and input.</p>
+<p>Uses <code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryCollider</span></code> and kinematics to construct signed
+distance phi(q) and the corresponding Jacobian J(q).</p>
+<p>phi(q) and J(q) are calculated implicitly from kinematics and collision
+geometries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_q) configuration batch.</p></li>
+<li><p><strong>collide.</strong> (<em>indices that can</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, n_collisions) signed distance phi(q).
+(*, 3 * n_collisions, n_v) contact Jacobian J(q).</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.multibody_terms.</span></span><span class="sig-name descname"><span class="pre">MultibodyTerms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">urdfs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#MultibodyTerms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Derives and manages computation of terms of multibody dynamics with
+contact.</p>
+<p>Primarily</p>
+<p>Inits <a class="reference internal" href="#dair_pll.multibody_terms.MultibodyTerms" title="dair_pll.multibody_terms.MultibodyTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code></a> for system described in URDFs</p>
+<p>Interpretation is performed as a thin wrapper around
+<a class="reference internal" href="#dair_pll.multibody_terms.LagrangianTerms" title="dair_pll.multibody_terms.LagrangianTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">LagrangianTerms</span></code></a> and <a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms" title="dair_pll.multibody_terms.ContactTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContactTerms</span></code></a>.</p>
+<p>As this module is also responsible for evaluating updated URDF
+representations, the associations between bodies and geometries is
+also tracked to enable URDF rendering in
+<code class="docutils literal notranslate"><span class="pre">MultibodyTerms.EvalUrdfRepresentation</span></code> and Tensorboard logging in
+<code class="docutils literal notranslate"><span class="pre">MultibodyTerms.scalars</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>urdfs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]) – Dictionary of named URDF XML file names, containing</p></li>
+<li><p><strong>system.</strong> (<em>description</em><em> of </em><em>multibody</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.scalars_and_meshes">
+<span class="sig-name descname"><span class="pre">scalars_and_meshes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#MultibodyTerms.scalars_and_meshes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.scalars_and_meshes" title="Link to this definition"></a></dt>
+<dd><p>Generates summary statistics for inertial and geometric
+quantities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="dair_pll.system.html#dair_pll.system.MeshSummary" title="dair_pll.system.MeshSummary"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeshSummary</span></code></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_terms.html#MultibodyTerms.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.forward" title="Link to this definition"></a></dt>
+<dd><p>Evaluates multibody system dynamics terms at given state and input.</p>
+<p>Calculation is performed as a thin wrapper around
+<a class="reference internal" href="#dair_pll.multibody_terms.LagrangianTerms" title="dair_pll.multibody_terms.LagrangianTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">LagrangianTerms</span></code></a> and <a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms" title="dair_pll.multibody_terms.ContactTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContactTerms</span></code></a>. For
+convenience, this function also returns the Delassus operator
+<cite>D(q) = J(q)^T inv(M(q)) J(q)</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_q) configuration batch.</p></li>
+<li><p><strong>v</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_v) velocity batch.</p></li>
+<li><p><strong>u</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, n_u) input batch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, 3 * n_collisions, 3 * n_collisions) Delassus operator D(q).
+(*, n_v, n_v) mass matrix batch M(q).
+(*, 3 * n_collisions, n_v) contact Jacobian J(q).
+(*, n_collisions) signed distance phi(q).
+(*, n_v) Contact-free acceleration inv(M(q)) * F(q).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.lagrangian_terms">
+<span class="sig-name descname"><span class="pre">lagrangian_terms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.multibody_terms.LagrangianTerms" title="dair_pll.multibody_terms.LagrangianTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.multibody_terms.LagrangianTerms</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.lagrangian_terms" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.contact_terms">
+<span class="sig-name descname"><span class="pre">contact_terms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.multibody_terms.ContactTerms" title="dair_pll.multibody_terms.ContactTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.multibody_terms.ContactTerms</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.contact_terms" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.geometry_body_assignment">
+<span class="sig-name descname"><span class="pre">geometry_body_assignment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.Dict</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">,</span> <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.List</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a><span class="pre">]]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.geometry_body_assignment" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.plant_diagram">
+<span class="sig-name descname"><span class="pre">plant_diagram</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.drake_utils.html#dair_pll.drake_utils.MultibodyPlantDiagram" title="dair_pll.drake_utils.MultibodyPlantDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.drake_utils.MultibodyPlantDiagram</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.plant_diagram" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_terms.MultibodyTerms.urdfs">
+<span class="sig-name descname"><span class="pre">urdfs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.Dict</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">,</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#dair_pll.multibody_terms.MultibodyTerms.urdfs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.drake_state_converter.html" class="btn btn-neutral float-left" title="dair_pll.drake_state_converter" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.urdf_utils.html" class="btn btn-neutral float-right" title="dair_pll.urdf_utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

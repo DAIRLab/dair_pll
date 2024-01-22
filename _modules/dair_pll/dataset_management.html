@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.dataset_management &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.dataset_management</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.dataset_management</h1><div class="highlight"><pre>
+<span></span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Classes for generating and managing datasets for experiments.</span>
+
+<span class="sd">Centers around the :class:`ExperimentDataManager` type, which transforms a</span>
+<span class="sd">set of trajectories saved to disk for various tasks encountered during an</span>
+<span class="sd">experiment.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">file_utils</span>
+<span class="kn">from</span> <span class="nn">dair_pll.data_config</span> <span class="kn">import</span> <span class="n">TrajectorySliceConfig</span><span class="p">,</span> <span class="n">DataConfig</span>
+
+
+<div class="viewcode-block" id="TrajectorySliceDataset">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.TrajectorySliceDataset">[docs]</a>
+<span class="k">class</span> <span class="nc">TrajectorySliceDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Dataset of trajectory slices for training.</span>
+
+<span class="sd">    Given a list of trajectories and a :py:class:`TrajectorySliceConfig`\ ,</span>
+<span class="sd">    generates sets of (previous states, future states) transition pairs to be</span>
+<span class="sd">    used with the training loss of an experiment.</span>
+
+<span class="sd">    Extends :py:class:`torch.utils.data.Dataset` type in order to be managed</span>
+<span class="sd">    in the training process with a :py:class:`torch.utils.data.DataLoader`\ .</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">TrajectorySliceConfig</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Slice configuration describing durations and start index.&quot;&quot;&quot;</span>
+    <span class="n">previous_states_slices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Initial conditions of duration ``self.config.t_history`` .&quot;&quot;&quot;</span>
+    <span class="n">future_states_slices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Future targets of duration ``self.config.t_prediction`` .&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">TrajectorySliceConfig</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            config: configuration object for slice dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">previous_states_slices</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: List[Tensor]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">future_states_slices</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: List[Tensor]</span>
+
+<div class="viewcode-block" id="TrajectorySliceDataset.add_slices_from_trajectory">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.TrajectorySliceDataset.add_slices_from_trajectory">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_slices_from_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trajectory</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Incorporate trajectory into dataset as a set of slices.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            trajectory: ``(T, *)`` state trajectory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trajectory_length</span> <span class="o">=</span> <span class="n">trajectory</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">first_time_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">t_skip</span>
+        <span class="n">last_time_index</span> <span class="o">=</span> <span class="n">trajectory_length</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">t_prediction</span>
+        <span class="n">previous_states_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">t_history</span>
+        <span class="n">future_states_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">t_prediction</span>
+        <span class="k">assert</span> <span class="n">first_time_index</span> <span class="o">&lt;=</span> <span class="n">last_time_index</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">first_time_index</span><span class="p">,</span> <span class="n">last_time_index</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">previous_states_slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">trajectory</span><span class="p">[(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">previous_states_length</span><span class="p">):(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="p">:])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">future_states_slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">trajectory</span><span class="p">[(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">future_states_length</span><span class="p">),</span> <span class="p">:])</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Length of dataset as number of total slice pairs.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">previous_states_slices</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve slice pair at index.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">previous_states_slices</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_states_slices</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="TrajectorySet">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.TrajectorySet">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">TrajectorySet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dataclass encapsulating the various transforms of a set of</span>
+<span class="sd">    trajectories that are used during the training and evaluation process,</span>
+<span class="sd">    including:</span>
+
+<span class="sd">        * Slices for training;</span>
+<span class="sd">        * Entire trajectories for evaluation; and</span>
+<span class="sd">        * Indices associated with on-disk location for experiment resumption.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">slices</span><span class="p">:</span> <span class="n">TrajectorySliceDataset</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trajectories rendered as a dataset of time slices.&quot;&quot;&quot;</span>
+    <span class="n">trajectories</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[])</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trajectories in their raw format.&quot;&quot;&quot;</span>
+    <span class="n">indices</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">([])</span><span class="o">.</span><span class="n">long</span><span class="p">())</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Indices associated with on-disk filenames.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate correspondence between trajectories and indices.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trajectories</span><span class="p">)</span>
+        <span class="c1"># assure all indices are unique</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TrajectorySet.add_trajectories">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.TrajectorySet.add_trajectories">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_trajectories</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trajectory_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">indices</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add new subset of trajectories to set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            trajectory_list: List of new ``(T, *)`` state trajectories.</span>
+<span class="sd">            indices: indices associated with on-disk filenames.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trajectories</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">trajectory_list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">trajectory</span> <span class="ow">in</span> <span class="n">trajectory_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">slices</span><span class="o">.</span><span class="n">add_slices_from_trajectory</span><span class="p">(</span><span class="n">trajectory</span><span class="p">)</span>
+        <span class="c1"># pylint: disable=no-member</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">,</span> <span class="n">indices</span><span class="p">])</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExperimentDataManager">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.ExperimentDataManager">[docs]</a>
+<span class="k">class</span> <span class="nc">ExperimentDataManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Management object for maintaining training, validation, and testing</span>
+<span class="sd">    data for an experiment.</span>
+
+<span class="sd">    Loads trajectories stored in standard location associated with provided</span>
+<span class="sd">    storage directory; splits into train/valid/test sets; and instantiates</span>
+<span class="sd">    transformations for each set of data as a :py:class:`TrajectorySet`\ .</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trajectory_dir</span><span class="p">:</span> <span class="nb">str</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Directory in which trajectory files are stored.&quot;&quot;&quot;</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">DataConfig</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for manipulating data.&quot;&quot;&quot;</span>
+    <span class="n">train_set</span><span class="p">:</span> <span class="n">TrajectorySet</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Training trajectory set.&quot;&quot;&quot;</span>
+    <span class="n">valid_set</span><span class="p">:</span> <span class="n">TrajectorySet</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validation trajectory set.&quot;&quot;&quot;</span>
+    <span class="n">test_set</span><span class="p">:</span> <span class="n">TrajectorySet</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test trajectory set.&quot;&quot;&quot;</span>
+    <span class="n">n_sorted</span><span class="p">:</span> <span class="nb">int</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of files on disk split into (train, valid, test) sets so far.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">DataConfig</span><span class="p">,</span>
+                 <span class="n">initial_split</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">use_ground_truth</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            storage: Storage directory to source trajectories from.</span>
+<span class="sd">            config: Configuration object.</span>
+<span class="sd">            initial_split: Optionally, lists of trajectory indices that</span>
+<span class="sd">              should be sorted into (train, valid, test) sets from the</span>
+<span class="sd">              beginning.</span>
+<span class="sd">            use_ground_truth: Whether trajectories should be sourced from</span>
+<span class="sd">              ground-truth or learning data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">use_ground_truth</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_dir</span> <span class="o">=</span> <span class="n">file_utils</span><span class="o">.</span><span class="n">ground_truth_data_dir</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_dir</span> <span class="o">=</span> <span class="n">file_utils</span><span class="o">.</span><span class="n">learning_data_dir</span><span class="p">(</span><span class="n">storage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_empty_trajectory_set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">valid_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_empty_trajectory_set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_empty_trajectory_set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_sorted</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">initial_split</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">extend_trajectory_sets</span><span class="p">(</span><span class="n">initial_split</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_trajectory_sets</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">TrajectorySet</span><span class="p">,</span> <span class="n">TrajectorySet</span><span class="p">,</span> <span class="n">TrajectorySet</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;getter for tuple of (train, valid, test) set.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid_set</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span>
+
+<div class="viewcode-block" id="ExperimentDataManager.trajectory_set_indices">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.ExperimentDataManager.trajectory_set_indices">[docs]</a>
+    <span class="k">def</span> <span class="nf">trajectory_set_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The sets of indices associated with the (train, valid,</span>
+<span class="sd">        test) trajectories.&quot;&quot;&quot;</span>
+        <span class="n">index_lists</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">trajectory_set</span><span class="o">.</span><span class="n">indices</span> <span class="k">for</span> <span class="n">trajectory_set</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sets</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">index_lists</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ExperimentDataManager.make_empty_trajectory_set">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.ExperimentDataManager.make_empty_trajectory_set">[docs]</a>
+    <span class="k">def</span> <span class="nf">make_empty_trajectory_set</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectorySet</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Instantiates an empty :py:class:`TrajectorySet` associated with</span>
+<span class="sd">        the time slice configuration contained in :py:attr:`config`\ .&quot;&quot;&quot;</span>
+        <span class="n">slice_dataset</span> <span class="o">=</span> <span class="n">TrajectorySliceDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">slice_config</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TrajectorySet</span><span class="p">(</span><span class="n">slices</span><span class="o">=</span><span class="n">slice_dataset</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExperimentDataManager.extend_trajectory_sets">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.ExperimentDataManager.extend_trajectory_sets">[docs]</a>
+    <span class="k">def</span> <span class="nf">extend_trajectory_sets</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">index_lists</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Supplement each of (train, valid, test) trajectory sets with</span>
+<span class="sd">        provided trajectories, listed by their on-disk indices.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            index_lists: Lists of trajectory indices for each set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">trajectory_set</span><span class="p">,</span> <span class="n">trajectory_indices</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sets</span><span class="p">,</span>
+                                                      <span class="n">index_lists</span><span class="p">):</span>
+            <span class="n">trajectories</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+                    <span class="n">file_utils</span><span class="o">.</span><span class="n">trajectory_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trajectory_dir</span><span class="p">,</span>
+                                               <span class="n">trajectory_index</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">trajectory_index</span> <span class="ow">in</span> <span class="n">trajectory_indices</span>
+            <span class="p">]</span>
+            <span class="n">trajectory_set</span><span class="o">.</span><span class="n">add_trajectories</span><span class="p">(</span><span class="n">trajectories</span><span class="p">,</span> <span class="n">trajectory_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_sorted</span> <span class="o">+=</span> <span class="n">trajectory_indices</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ExperimentDataManager.get_updated_trajectory_sets">
+<a class="viewcode-back" href="../../dair_pll.dataset_management.html#dair_pll.dataset_management.ExperimentDataManager.get_updated_trajectory_sets">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_updated_trajectory_sets</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">TrajectorySet</span><span class="p">,</span> <span class="n">TrajectorySet</span><span class="p">,</span> <span class="n">TrajectorySet</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an up-to-date partition of trajectories on disk.</span>
+
+<span class="sd">        Checks if some trajectories on disk have yet to be sorted,</span>
+<span class="sd">        and supplements the (train, valid, test) sets with these additional</span>
+<span class="sd">        trajectories before returning the updated sets.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Training set.</span>
+<span class="sd">            Validation set.</span>
+<span class="sd">            Test set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+        <span class="n">n_on_disk</span> <span class="o">=</span> <span class="n">file_utils</span><span class="o">.</span><span class="n">get_trajectory_count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trajectory_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_on_disk</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_sorted</span><span class="p">:</span>
+            <span class="n">n_unsorted</span> <span class="o">=</span> <span class="n">n_on_disk</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_sorted</span>
+            <span class="n">n_train</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">n_unsorted</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">train_fraction</span><span class="p">)</span>
+            <span class="n">n_valid</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">n_unsorted</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">valid_fraction</span><span class="p">)</span>
+            <span class="n">n_remaining</span> <span class="o">=</span> <span class="n">n_unsorted</span> <span class="o">-</span> <span class="n">n_valid</span> <span class="o">-</span> <span class="n">n_train</span>
+            <span class="n">n_test</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">n_remaining</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">n_unsorted</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">test_fraction</span><span class="p">))</span>
+
+            <span class="n">n_requested</span> <span class="o">=</span> <span class="n">n_train</span> <span class="o">+</span> <span class="n">n_valid</span> <span class="o">+</span> <span class="n">n_test</span>
+            <span class="k">assert</span> <span class="n">n_requested</span> <span class="o">&lt;=</span> <span class="n">n_unsorted</span>
+
+            <span class="c1"># pylint: disable=no-member</span>
+            <span class="n">trajectory_order</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">n_unsorted</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_sorted</span>
+            <span class="n">train_indices</span> <span class="o">=</span> <span class="n">trajectory_order</span><span class="p">[:</span><span class="n">n_train</span><span class="p">]</span>
+            <span class="n">trajectory_order</span> <span class="o">=</span> <span class="n">trajectory_order</span><span class="p">[</span><span class="n">n_train</span><span class="p">:]</span>
+
+            <span class="n">valid_indices</span> <span class="o">=</span> <span class="n">trajectory_order</span><span class="p">[:</span><span class="n">n_valid</span><span class="p">]</span>
+            <span class="n">trajectory_order</span> <span class="o">=</span> <span class="n">trajectory_order</span><span class="p">[</span><span class="n">n_valid</span><span class="p">:]</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">trajectory_order</span><span class="p">[:</span><span class="n">n_test</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">extend_trajectory_sets</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">train_indices</span><span class="p">,</span> <span class="n">valid_indices</span><span class="p">,</span> <span class="n">test_indices</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sets</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

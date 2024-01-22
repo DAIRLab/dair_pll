@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.state_space &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.state_space</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.state_space</h1><div class="highlight"><pre>
+<span></span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Classes and utilities for operation on Lie group/algebra state spaces.</span>
+
+<span class="sd">This module implements a :py:class:`StateSpace` abstract type which defines</span>
+<span class="sd">fundamental operations on states in spaces that are not necessarily</span>
+<span class="sd">Euclidean. In general, we assume configurations spaces are Lie groups,</span>
+<span class="sd">which together with their associated Lie algebra form a state space. We</span>
+<span class="sd">implement associated operations on these spaces.</span>
+
+<span class="sd">Of note is the :py:class:`FloatingBaseSpace`, with configurations in the</span>
+<span class="sd">Cartesian product of :math:`SE(3)` and :math:`\mathbb{R}^m`. This space receives</span>
+<span class="sd">the  particular implementation of representing the :math:`SO(3)`</span>
+<span class="sd">configuration as a quaternion and the Lie algebra velocity/tangent space as</span>
+<span class="sd">the body-axes angular velocity / rotation vector.</span>
+
+<span class="sd">This is also the place where batching dimensions are defined for states. By</span>
+<span class="sd">convention, the state element index is always the last dimension of the</span>
+<span class="sd">tensor, and when states are batched in time, time is the second-to-last index.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">quaternion</span>
+
+<span class="n">N_QUAT</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">N_ANG_VEL</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">N_COM</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="n">ComparisonCallable</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]</span>
+<span class="n">ComparisonDict</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ComparisonCallable</span><span class="p">]</span>
+<span class="c1"># pylint: disable=E1103</span>
+<span class="n">Size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span>
+
+
+<div class="viewcode-block" id="partial_sum_batch">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.partial_sum_batch">[docs]</a>
+<span class="k">def</span> <span class="nf">partial_sum_batch</span><span class="p">(</span><span class="n">summands</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">keep_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sums over a batch, possibly keeping the first batching dimension.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        summands: ``(b_1, ..., b_j, n_1, ..., n_k)`` tensor batch of tensors</span>
+<span class="sd">        keep_batch: whether to keep the first batching dimension</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        sum of x as scalar tensor, or ``(b_1,)`` tensor if</span>
+<span class="sd">        ``keep_batch == True``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">keep_batch</span><span class="p">:</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">summands</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">summands</span> <span class="o">=</span> <span class="n">summands</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">summands</span>
+    <span class="k">return</span> <span class="n">summands</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="StateSpace">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace">[docs]</a>
+<span class="k">class</span> <span class="nc">StateSpace</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Mathematical model of a state space.</span>
+
+<span class="sd">    Each state space is modeled as the Cartesian product of a connected Lie</span>
+<span class="sd">    group :math:`G` and its associated Lie algebra :math:`\mathfrak g` (</span>
+<span class="sd">    equivalently up to diffeomorphism, the tangent bundle :math:`TG`).</span>
+<span class="sd">    The Lie group element may be given non-minimal coordinates,</span>
+<span class="sd">    e.g. representing SO(3) with quaternions. As :math:`\mathfrak g`</span>
+<span class="sd">    is a vector space, :math:`G \times \mathfrak g` itself is also a Lie group.</span>
+
+<span class="sd">    The following assumptions about the group :math:`G` and algebra g are made:</span>
+
+<span class="sd">        * The Lie group exponential map :math:`\exp: \mathfrak g \to G`</span>
+<span class="sd">          is surjective/onto, such that a left inverse</span>
+<span class="sd">          :math:`\log: G \to \mathfrak g` can be defined, i.e.</span>
+<span class="sd">          :math:`\exp(\log(g)) = g`.</span>
+<span class="sd">        * The Lie group exponential map coincides with the underlying</span>
+<span class="sd">          manifold&#39;s Riemannian geometric exponential map, such that the</span>
+<span class="sd">          geodesic distance from :math:`g_1` to :math:`g_1` is</span>
+<span class="sd">          :math:`|\log(g_2 \cdot g_1^{-1})|`</span>
+
+<span class="sd">    These conditions are met if and only if :math:`G` is the Cartesian</span>
+<span class="sd">    product of a compact group and an Abelian group :cite:p:`Milnor1976` -- For</span>
+<span class="sd">    example, :math:`SO(3)\times\mathbb{R}^n`.</span>
+
+<span class="sd">    For each concrete class inheriting from :py:class:`StateState`,</span>
+<span class="sd">    a few fundamental mathematical operators associated with Lie groups must</span>
+<span class="sd">    be defined on these coordinates. :py:class:`StateState` defines several</span>
+<span class="sd">    other group operations from these units.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n_q</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">n_v</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">n_x</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">comparisons</span><span class="p">:</span> <span class="n">ComparisonDict</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_q</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_v</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            n_q: number of Lie group (configuration) coordinates</span>
+<span class="sd">              (:math:`&gt;= 0`)</span>
+<span class="sd">            n_v: number of Lie algebra (velocity) coordinates (:math:`&gt;= 0`)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">n_q</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">n_v</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span> <span class="o">=</span> <span class="n">n_q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span> <span class="o">=</span> <span class="n">n_v</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span> <span class="o">=</span> <span class="n">n_q</span> <span class="o">+</span> <span class="n">n_v</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comparisons</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="StateSpace.configuration_difference">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.configuration_difference">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">configuration_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">q_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the relative transformation between ``q_1`` and ``q_2``.</span>
+
+<span class="sd">        Specifically, as :math:`G` is a Lie group, it has a well-defined inverse</span>
+<span class="sd">        operator. This function returns :math:`dq = \log(q_2 \cdot q_1^{-1})`,</span>
+<span class="sd">        i.e. the Lie algebra element such that :math:`q_1 \exp(dq) = q_2`.</span>
+
+<span class="sd">        This method has a corresponding &quot;inverse&quot; function</span>
+<span class="sd">        :py:meth:`exponential`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q_1: ``(*, n_q)`` &quot;starting&quot; configuration, element(s) of Lie</span>
+<span class="sd">              group :math:`G`.</span>
+<span class="sd">            q_2: ``(*, n_q)`` &quot;ending&quot; configuration, element(s) of Lie group</span>
+<span class="sd">              :math:`G`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_v)`` element of Lie algebra g defining the transformation</span>
+<span class="sd">              from ``q_1`` to ``q_2``</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.exponential">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.exponential">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">exponential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dq</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evolves ``q`` along the Lie group G in the direction ``dq``.</span>
+
+<span class="sd">        This function implements the inverse of</span>
+<span class="sd">        :py:meth:`configuration_difference` by returning q * exp(dq).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` &quot;starting&quot; configuration, element(s) of Lie group G</span>
+<span class="sd">            dq: ``(*, n_v)`` perturbation, element(s) of Lie algebra g</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` group product of q and exp(dq)</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.project_configuration">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.project_configuration">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">project_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Projects a tensor of size ``(*, n_q)`` onto the Lie group G.</span>
+
+<span class="sd">        This function is used, mostly for numerical stability, to ensure a</span>
+<span class="sd">        ``(*, n_q)`` tensor corresponds to Lie group elements. While not</span>
+<span class="sd">        necessarily a Euclidean projection, this function should be:</span>
+
+<span class="sd">            * The identity on G, i.e. ``q = projection_configuration(q)``</span>
+<span class="sd">            * Continuous</span>
+<span class="sd">            * (Piecewise) differentiable near G</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` vectors to project onto G.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` projection of ``q`` onto G.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.zero_state">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.zero_state">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">zero_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Identity element of the Lie group G.</span>
+
+<span class="sd">        Entitled &quot;zero state&quot; as the group operation is typically thought of</span>
+<span class="sd">        as addition.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(n_x,)`` tensor group identity</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.q">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.q">[docs]</a>
+    <span class="k">def</span> <span class="nf">q</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Selects configuration indices from state(s) ``x``&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">n_q</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.v">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.v">[docs]</a>
+    <span class="k">def</span> <span class="nf">v</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Selects velocity indices from state(s) ``x``&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span><span class="p">:]</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.q_v">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.q_v">[docs]</a>
+    <span class="k">def</span> <span class="nf">q_v</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Separates state(s) ``x`` into configuration and velocity&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.x">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.x">[docs]</a>
+    <span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Concatenates configuration ``q`` and velocity ``v`` into a state&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.config_square_error">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.config_square_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">config_square_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                            <span class="n">q_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                            <span class="n">q_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                            <span class="n">keep_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns squared distance between two Lie group</span>
+<span class="sd">        elements/configurations.</span>
+
+<span class="sd">        Interprets an :math:`l_2`-like error between two configurations as the</span>
+<span class="sd">        square of the geodesic distance between them. This is simply equal to</span>
+<span class="sd">        :math:`|\log(q_2 \mathrm{inv}(q_1))|^2` under the assumptions about G.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q_1: ``(b_1, ..., b_k, n_q)`` &quot;starting&quot; configuration</span>
+<span class="sd">            q_2: ``(b_1, ..., b_k, n_q)`` &quot;ending&quot; configuration</span>
+<span class="sd">            keep_batch: whether to keep the outermost batch</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(b_1,)`` or scalar tensor of squared geodesic distances</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">q_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">return</span> <span class="n">partial_sum_batch</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">configuration_difference</span><span class="p">(</span><span class="n">q_1</span><span class="p">,</span> <span class="n">q_2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">keep_batch</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.velocity_square_error">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.velocity_square_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">velocity_square_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                              <span class="n">v_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                              <span class="n">v_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                              <span class="n">keep_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns squared distance between two Lie algebra</span>
+<span class="sd">        elements/velocities.</span>
+
+<span class="sd">        As the Lie algebra is a vector space, the squared error is</span>
+<span class="sd">        interpreted as the geodesic/Euclidean distance</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            v_1: ``(b_1, ..., b_k, n_v)`` &quot;starting&quot; velocity</span>
+<span class="sd">            v_2: ``(b_1, ..., b_k, n_v)`` &quot;ending&quot; velocity</span>
+<span class="sd">            keep_batch: whether to keep the outermost batch</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(b_1,)`` or scalar tensor of squared geodesic distances.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">v_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+        <span class="k">assert</span> <span class="n">v_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+        <span class="k">return</span> <span class="n">partial_sum_batch</span><span class="p">((</span><span class="n">v_2</span> <span class="o">-</span> <span class="n">v_1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">keep_batch</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.state_square_error">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.state_square_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">state_square_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                           <span class="n">x_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                           <span class="n">x_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                           <span class="n">keep_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns squared distance between two states, which are in the</span>
+<span class="sd">        cartesian product G x g.</span>
+
+<span class="sd">        As g is a vector space, it is Abelian, and thus G x g is the product</span>
+<span class="sd">        of a compact group and an Abelian group. We can then define the</span>
+<span class="sd">        geodesic distance as::</span>
+
+<span class="sd">            dist(x_1, x_2)^2 == dist(q(x_1), q(x_2))^2 + dist(v(x_1), v(x_2))^2</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_1: ``(b_1, ..., b_k, n_x)`` &quot;starting&quot; state</span>
+<span class="sd">            x_2: ``(b_1, ..., b_k, n_x)`` &quot;ending&quot; state</span>
+<span class="sd">            keep_batch: whether to keep the outermost batch</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(b_1,)`` or scalar tensor of squared geodesic distances</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">x_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="n">q_1</span><span class="p">,</span> <span class="n">v_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x_1</span><span class="p">)</span>
+        <span class="n">q_2</span><span class="p">,</span> <span class="n">v_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_square_error</span><span class="p">(</span>
+            <span class="n">q_1</span><span class="p">,</span> <span class="n">q_2</span><span class="p">,</span> <span class="n">keep_batch</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">velocity_square_error</span><span class="p">(</span>
+                <span class="n">v_1</span><span class="p">,</span> <span class="n">v_2</span><span class="p">,</span> <span class="n">keep_batch</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.auxiliary_comparisons">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.auxiliary_comparisons">[docs]</a>
+    <span class="k">def</span> <span class="nf">auxiliary_comparisons</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Any additional useful comparisons between pairs of states&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">comparisons</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.finite_difference">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.finite_difference">[docs]</a>
+    <span class="k">def</span> <span class="nf">finite_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">q_plus</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rate of change of configuration</span>
+
+<span class="sd">        Interprets the rate of change of ``q`` as an element of the Lie</span>
+<span class="sd">        algebra ``v``, such that q_plus == q * exp(v * dt).</span>
+
+<span class="sd">        :py:meth:`finite_difference` has a corresponding &quot;inverse&quot; function</span>
+<span class="sd">        :py:meth:`euler_step`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` &quot;starting&quot; configuration, element(s) of Lie group G</span>
+<span class="sd">            q_plus: ``(*, n_q)`` &quot;ending&quot; configuration, element(s) of Lie group G</span>
+<span class="sd">            dt: time difference in [s]</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_v)`` finite-difference velocity, element(s) of Lie algebra g</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">q_plus</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">configuration_difference</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">q_plus</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.euler_step">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.euler_step">[docs]</a>
+    <span class="k">def</span> <span class="nf">euler_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Integrates ``q`` forward in time given derivative ``v``.</span>
+
+<span class="sd">        Implements the inverse of :py:meth:`finite_difference` by returning</span>
+<span class="sd">        q * exp(v * dt), a geodesic forward Euler step.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` &quot;starting&quot; configuration, element(s) of Lie group G</span>
+<span class="sd">            v: ``(*, n_v)`` &quot;starting&quot; velocity, element(s) of Lie algebra g</span>
+<span class="sd">            dt: time difference in [s]</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` configuration after Euler step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">exponential</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="o">*</span> <span class="n">dt</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.state_difference">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.state_difference">[docs]</a>
+    <span class="k">def</span> <span class="nf">state_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">x_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the relative transformation between ``x_1`` and ``x_2``</span>
+
+<span class="sd">        As G x g is a Lie group, we can interpret the difference between two</span>
+<span class="sd">        states via its corresponding Lie algebra, just as in</span>
+<span class="sd">        :py:meth:`configuration_difference`, as log(x_2 / x_1).</span>
+
+<span class="sd">        :py:meth:`state_difference` has a corresponding &quot;inverse&quot; function</span>
+<span class="sd">        :py:meth:`shift_state`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_1: ``(*, n_x)`` &quot;starting&quot; state, element(s) of Lie group G x g</span>
+<span class="sd">            x_2: ``(*, n_x)`` &quot;ending&quot; state, element(s) of Lie group G x g</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_x)`` element of Lie algebra g x R^n_v defining the</span>
+<span class="sd">            transformation from ``x_1`` to ``x_2``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">x_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="n">q_1</span><span class="p">,</span> <span class="n">v_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x_1</span><span class="p">)</span>
+        <span class="n">q_2</span><span class="p">,</span> <span class="n">v_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span>
+        <span class="n">dq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">configuration_difference</span><span class="p">(</span><span class="n">q_1</span><span class="p">,</span> <span class="n">q_2</span><span class="p">)</span>
+        <span class="n">dv</span> <span class="o">=</span> <span class="n">v_2</span> <span class="o">-</span> <span class="n">v_1</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">dq</span><span class="p">,</span> <span class="n">dv</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.shift_state">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.shift_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">shift_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dx</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evolves ``x`` along the Lie group G in the direction ``dx``.</span>
+
+<span class="sd">        This function implements the inverse of :py:meth:`state_difference`</span>
+<span class="sd">        by returning q * exp(dq).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: ``(*, n_x)`` &quot;starting&quot; state, element(s) of Lie group G x g</span>
+<span class="sd">            dx: ``(*, 2 * n_v)`` perturbation, element(s) of Lie algebra g x R^n_v</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` group product of q and exp(dq).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">dx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span><span class="p">)</span>
+        <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="n">dq</span> <span class="o">=</span> <span class="n">dx</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">n_v</span><span class="p">]</span>
+        <span class="n">dv</span> <span class="o">=</span> <span class="n">dx</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span><span class="p">:]</span>
+
+        <span class="n">q_new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">exponential</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">dq</span><span class="p">)</span>
+        <span class="n">v_new</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">dv</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="n">q_new</span><span class="p">,</span> <span class="n">v_new</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.project_state">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.project_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">project_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Projects a tensor of size (\*, n_x) onto the state space G x g.</span>
+
+<span class="sd">        This function has the same basic requirements as</span>
+<span class="sd">        :py:meth:`project_configuration` translated to the lie group G x g.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: ``(*, n_x)`` vectors to project onto G x g.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_x)`` tensor, projection of ``x`` onto G x g.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_configuration</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">x</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="StateSpace.project_derivative">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpace.project_derivative">[docs]</a>
+    <span class="k">def</span> <span class="nf">project_derivative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Changes velocity sequence in ``x`` to a finite difference.</span>
+
+<span class="sd">        Extracts configurations q_t from trajectory(ies) and replaces</span>
+<span class="sd">        velocities v_i with ``finite_difference(q_{i-1}, q_i, dt)``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: ``(*, T, n_x)`` trajectories</span>
+<span class="sd">            dt: time-step</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, T, n_x)`` trajectories with finite-difference velocities.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">2</span>  <span class="c1"># must have time indexing</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span>  <span class="c1"># must have multiple time steps</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">q_pre</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="p">:]</span>
+        <span class="n">q_plus</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">v_plus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">finite_difference</span><span class="p">(</span><span class="n">q_pre</span><span class="p">,</span> <span class="n">q_plus</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="n">q_plus</span><span class="p">,</span> <span class="n">v_plus</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="FloatingBaseSpace">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace">[docs]</a>
+<span class="k">class</span> <span class="nc">FloatingBaseSpace</span><span class="p">(</span><span class="n">StateSpace</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;State space with configurations in SE(3) x R^n_joints.</span>
+
+<span class="sd">    Called :py:class:`FloatingBaseSpace` as it is the state space of an open</span>
+<span class="sd">    kinematic chain with a free-floating base body.</span>
+
+<span class="sd">    Coordinates for SO(3) are unit quaternions, with remaining states</span>
+<span class="sd">    represented as R^{3 + n_joints}.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_joints</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits `:py:class:`FloatingBaseSpace` of prescribed size.</span>
+
+<span class="sd">        The floating base has configurations in SE(3), with 4 quaternion + 3</span>
+<span class="sd">        world-axes position configuration coordinates and 3 body-axes angular</span>
+<span class="sd">        velocity + 3 world-axes linear velocity. Each joint is represented as a</span>
+<span class="sd">        single real number.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n_joints: number of joints in chain (&gt;= 0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">n_joints</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="mi">7</span> <span class="o">+</span> <span class="n">n_joints</span><span class="p">,</span> <span class="mi">6</span> <span class="o">+</span> <span class="n">n_joints</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comparisons</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;rot_err&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">quaternion_error</span><span class="p">,</span>
+            <span class="s1">&#39;pos_err&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_error</span><span class="p">,</span>
+        <span class="p">})</span>
+
+<div class="viewcode-block" id="FloatingBaseSpace.quat">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.quat">[docs]</a>
+    <span class="k">def</span> <span class="nf">quat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q_or_x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;select quaternion elements from configuration/state&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q_or_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span> <span class="ow">or</span> <span class="n">q_or_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">return</span> <span class="n">q_or_x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">N_QUAT</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.base">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.base">[docs]</a>
+    <span class="k">def</span> <span class="nf">base</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q_or_x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;select floating base position elements from configuration/state&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q_or_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span> <span class="ow">or</span> <span class="n">q_or_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">return</span> <span class="n">q_or_x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">N_QUAT</span><span class="p">:(</span><span class="n">N_QUAT</span> <span class="o">+</span> <span class="n">N_COM</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.configuration_difference">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.configuration_difference">[docs]</a>
+    <span class="k">def</span> <span class="nf">configuration_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">q_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implements configuration offset for a floating-base rigid chain.</span>
+
+<span class="sd">        exp() map of SO(3) corresponds to the space of rotation</span>
+<span class="sd">        vectors, or equivalently the matrix group so(3); therefore, the first 3</span>
+<span class="sd">        elements of the return value are body-axes rotation vectors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q_1: ``(*, n_q)`` &quot;starting&quot; configuration in SE(3) x R^n_joints</span>
+<span class="sd">            q_2: ``(*, n_q)`` &quot;ending&quot; configuration, SE(3) x R^n_joints</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_v)`` body-axes rotation vector, world-axes linear</span>
+<span class="sd">            displacement, and joint offsets.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">q_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="n">quat1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quat</span><span class="p">(</span><span class="n">q_1</span><span class="p">)</span>
+        <span class="n">quat2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quat</span><span class="p">(</span><span class="n">q_2</span><span class="p">)</span>
+        <span class="n">linear_shift</span> <span class="o">=</span> <span class="n">q_2</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">N_QUAT</span><span class="p">:]</span> <span class="o">-</span> <span class="n">q_1</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">N_QUAT</span><span class="p">:]</span>
+        <span class="n">quat_shift</span> <span class="o">=</span> <span class="n">quaternion</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">quaternion</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">quat1</span><span class="p">),</span> <span class="n">quat2</span><span class="p">)</span>
+        <span class="n">rot</span> <span class="o">=</span> <span class="n">quaternion</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">quat_shift</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">rot</span><span class="p">,</span> <span class="n">linear_shift</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.exponential">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.exponential">[docs]</a>
+    <span class="k">def</span> <span class="nf">exponential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dq</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implements exponential perturbation for a floating-base rigid chain.</span>
+
+<span class="sd">        This function implements the inverse of :py:meth:`configuration_difference`</span>
+<span class="sd">        by rotating ``quat(q)`` around the body-axis rotation vector in</span>
+<span class="sd">        ``dq``, and adding a linear offset to the remaining coordinates.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` &quot;starting&quot; configuration in SE(3) x R^n_joints</span>
+<span class="sd">            dq: ``(*, n_v)`` perturbation in se(3) x R^n_joints</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` perturbed quaternion, world-axes floating base origin</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">dq</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+        <span class="n">linear_plus</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">N_QUAT</span><span class="p">:]</span> <span class="o">+</span> <span class="n">dq</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">N_ANG_VEL</span><span class="p">:]</span>
+        <span class="n">delta_quat</span> <span class="o">=</span> <span class="n">quaternion</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">dq</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">N_ANG_VEL</span><span class="p">])</span>
+        <span class="n">quat_plus</span> <span class="o">=</span> <span class="n">quaternion</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">N_QUAT</span><span class="p">],</span> <span class="n">delta_quat</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">quat_plus</span><span class="p">,</span> <span class="n">linear_plus</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.project_configuration">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.project_configuration">[docs]</a>
+    <span class="k">def</span> <span class="nf">project_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implements projection onto the floating-base rigid chain</span>
+<span class="sd">        configuration space.</span>
+
+<span class="sd">        This function projects a ``(*, n_q)`` tensor onto SE(3) x R^n_joints by</span>
+<span class="sd">        simply normalizing the quaternion elements.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` vectors to project onto SE(3) x R^n_joints.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` tensor, projection of ``q`` onto SE(3) x R^n_joints.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="n">quats</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">N_QUAT</span><span class="p">]</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">N_QUAT</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">quats</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">N_QUAT</span><span class="p">:]),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.zero_state">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.zero_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">zero_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Identity element of SE(3) x R^n_joints.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Concatenation of identity quaternion [1, 0, 0, 0] with</span>
+<span class="sd">            ``(n_joints + 3)`` zeros.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">zero</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_x</span><span class="p">,))</span>
+        <span class="n">zero</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="k">return</span> <span class="n">zero</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.quaternion_error">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.quaternion_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">quaternion_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">x_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auxiliary comparison that returns floating base orientation geodesic</span>
+<span class="sd">        distance.</span>
+
+<span class="sd">        Returns a scalar comparison of two floating base rigid chain states</span>
+<span class="sd">        by the angle of rotation between their base orientations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_1: ``(*, n_x)`` &quot;starting&quot; state</span>
+<span class="sd">            x_2: ``(*, n_x)`` &quot;ending&quot; state</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scalar tensor, average angle of rotation in batch.</span>
+
+<span class="sd">        Todo:</span>
+<span class="sd">            Properly handle multiple batching dimensions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">x_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>  <span class="c1"># hack for now</span>
+        <span class="n">quat1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quat</span><span class="p">(</span><span class="n">x_1</span><span class="p">)</span>
+        <span class="n">quat2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quat</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span>
+        <span class="n">quat_shift</span> <span class="o">=</span> <span class="n">quaternion</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">quaternion</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">quat1</span><span class="p">),</span> <span class="n">quat2</span><span class="p">)</span>
+        <span class="n">rot</span> <span class="o">=</span> <span class="n">quaternion</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">quat_shift</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">rot</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="FloatingBaseSpace.base_error">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FloatingBaseSpace.base_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">base_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">x_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auxiliary comparison that returns floating base translation geodesic</span>
+<span class="sd">        distance.</span>
+
+<span class="sd">        Returns a scalar comparison of two floating base rigid chain states</span>
+<span class="sd">        by the Euclidean between their bases.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_1: ``(*, n_x)`` &quot;starting&quot; state</span>
+<span class="sd">            x_2: ``(*, n_x)`` &quot;ending&quot; state</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scalar tensor, average translation in batch.</span>
+
+<span class="sd">        Todo:</span>
+<span class="sd">            Properly handle multiple batching dimensions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="n">x_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="n">base1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">(</span><span class="n">x_1</span><span class="p">)</span>
+        <span class="n">base2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">(</span><span class="n">x_2</span><span class="p">)</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">base1</span> <span class="o">-</span> <span class="n">base2</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pos</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">x_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="FixedBaseSpace">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FixedBaseSpace">[docs]</a>
+<span class="k">class</span> <span class="nc">FixedBaseSpace</span><span class="p">(</span><span class="n">StateSpace</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;State space with configurations in R^n_joints.</span>
+
+<span class="sd">    Called :py:class:`FixedBaseSpace` as it is the state space of an open</span>
+<span class="sd">    kinematic chain with fixed base body.</span>
+
+<span class="sd">    As the Lie group R^n_joints is equivalent to its own algebra, the state</span>
+<span class="sd">    space is simply R^{2 * n_joints}, and the group operation coincides with</span>
+<span class="sd">    addition on this vector space. Thus::</span>
+
+<span class="sd">        n_q == n_v == n_x/2</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_joints</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits :py:class:`FixedBaseSpace` of prescribed size.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n_joints: number of joints in chain (&gt;= 0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">n_joints</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_joints</span><span class="p">,</span> <span class="n">n_joints</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FixedBaseSpace.configuration_difference">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FixedBaseSpace.configuration_difference">[docs]</a>
+    <span class="k">def</span> <span class="nf">configuration_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">q_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implements configuration offset for a fixed-base rigid chain.</span>
+
+<span class="sd">        In R^n_joints, this is simply vector subtraction.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q_1: ``(*, n_q)`` &quot;starting&quot; configuration in R^n_joints</span>
+<span class="sd">            q_2: ``(*, n_q)`` &quot;ending&quot; configuration in R^n_joints</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (\*, n_v) difference of configurations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">q_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">return</span> <span class="n">q_2</span> <span class="o">-</span> <span class="n">q_1</span></div>
+
+
+<div class="viewcode-block" id="FixedBaseSpace.exponential">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FixedBaseSpace.exponential">[docs]</a>
+    <span class="k">def</span> <span class="nf">exponential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dq</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implements exponential perturbation for a fixed-base rigid chain.</span>
+
+<span class="sd">        In R^n_joints, this is simply vector addition.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` &quot;starting&quot; configuration in R^n_joints</span>
+<span class="sd">            dq: ``(*, n_v)`` perturbation in R^n_joints</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` perturbed configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">dq</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+        <span class="k">return</span> <span class="n">q</span> <span class="o">+</span> <span class="n">dq</span></div>
+
+
+<div class="viewcode-block" id="FixedBaseSpace.project_configuration">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FixedBaseSpace.project_configuration">[docs]</a>
+    <span class="k">def</span> <span class="nf">project_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implements projection onto the fixed-base rigid chain</span>
+<span class="sd">        configuration space.</span>
+
+<span class="sd">        In R^n_joints, this is simply the identity function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            q: ``(*, n_q)`` vectors in R^n_joints.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, n_q)`` tensor, ``q``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">return</span> <span class="n">q</span></div>
+
+
+<div class="viewcode-block" id="FixedBaseSpace.zero_state">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.FixedBaseSpace.zero_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">zero_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Zero element of R^n_x&quot;&quot;&quot;</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_x</span><span class="p">,))</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ProductSpace">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace">[docs]</a>
+<span class="k">class</span> <span class="nc">ProductSpace</span><span class="p">(</span><span class="n">StateSpace</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;State space constructed as the Cartesian product of subspaces.</span>
+
+<span class="sd">    The product space conforms with the required properties of our Lie group</span>
+<span class="sd">    as long as each constituent subspace does as well.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">StateSpace</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits :py:class:`ProductSpace` from given factors.</span>
+
+<span class="sd">        The coordinates of each space in ``spaces`` are concatenated to</span>
+<span class="sd">        construct the product space&#39;s coordinates, and similar for</span>
+<span class="sd">        the velocities.&quot;&quot;&quot;</span>
+        <span class="n">n_qs</span> <span class="o">=</span> <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">n_q</span> <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">]</span>
+        <span class="n">n_vs</span> <span class="o">=</span> <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">n_v</span> <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">]</span>
+        <span class="n">n_xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">n_x</span> <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">]</span>
+        <span class="n">n_q</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">n_qs</span><span class="p">)</span>
+        <span class="n">n_v</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">n_vs</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">n_q</span><span class="p">,</span> <span class="n">n_v</span><span class="p">)</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_splits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">n_qs</span><span class="p">),</span> <span class="mi">0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">v_splits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">n_vs</span><span class="p">),</span> <span class="mi">0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_splits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">n_xs</span><span class="p">),</span> <span class="mi">0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span> <span class="o">=</span> <span class="n">spaces</span>
+
+<div class="viewcode-block" id="ProductSpace.q_split">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.q_split">[docs]</a>
+    <span class="k">def</span> <span class="nf">q_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Splits configuration into list of subspace configurations.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor_split</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_splits</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ProductSpace.v_split">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.v_split">[docs]</a>
+    <span class="k">def</span> <span class="nf">v_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Splits velocity into list of subspace velocities.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor_split</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_splits</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ProductSpace.x_split">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.x_split">[docs]</a>
+    <span class="k">def</span> <span class="nf">x_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Splits state into list of subspace states.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_x</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor_split</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_splits</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ProductSpace.configuration_difference">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.configuration_difference">[docs]</a>
+    <span class="k">def</span> <span class="nf">configuration_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q_1</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">q_2</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs configuration difference as concatenation of subspace</span>
+<span class="sd">        configuration differences.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q_1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">q_2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">space</span><span class="o">.</span><span class="n">configuration_difference</span><span class="p">(</span><span class="n">q_1i</span><span class="p">,</span> <span class="n">q_2i</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">space</span><span class="p">,</span> <span class="n">q_1i</span><span class="p">,</span> <span class="n">q_2i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_split</span><span class="p">(</span><span class="n">q_1</span><span class="p">),</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">q_split</span><span class="p">(</span><span class="n">q_2</span><span class="p">))</span>
+        <span class="p">]</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">diffs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProductSpace.exponential">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.exponential">[docs]</a>
+    <span class="k">def</span> <span class="nf">exponential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">dq</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs perturbed configuration as concatenation of perturbed</span>
+<span class="sd">        subspace configurations&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="k">assert</span> <span class="n">dq</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_v</span>
+        <span class="n">exps</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">space</span><span class="o">.</span><span class="n">exponential</span><span class="p">(</span><span class="n">qi</span><span class="p">,</span> <span class="n">dqi</span><span class="p">)</span> <span class="k">for</span> <span class="n">space</span><span class="p">,</span> <span class="n">qi</span><span class="p">,</span> <span class="n">dqi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_split</span><span class="p">(</span><span class="n">q</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_split</span><span class="p">(</span><span class="n">dq</span><span class="p">))</span>
+        <span class="p">]</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">exps</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProductSpace.project_configuration">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.project_configuration">[docs]</a>
+    <span class="k">def</span> <span class="nf">project_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Projects configuration onto Lie group by projecting each subspace&#39;s</span>
+<span class="sd">        configuration onto its respective subgroup.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_q</span>
+        <span class="n">projections</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">space</span><span class="o">.</span><span class="n">project_configuration</span><span class="p">(</span><span class="n">qi</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">space</span><span class="p">,</span> <span class="n">qi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_split</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+        <span class="p">]</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">projections</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProductSpace.zero_state">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ProductSpace.zero_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">zero_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs zero state as concatenation of subspace zeros&quot;&quot;&quot;</span>
+        <span class="n">zeros</span> <span class="o">=</span> <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">zero_state</span><span class="p">()</span> <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">]</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">zero</span><span class="p">)</span> <span class="k">for</span> <span class="n">space</span><span class="p">,</span> <span class="n">zero</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">,</span> <span class="n">zeros</span><span class="p">)],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">zero</span><span class="p">)</span> <span class="k">for</span> <span class="n">space</span><span class="p">,</span> <span class="n">zero</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spaces</span><span class="p">,</span> <span class="n">zeros</span><span class="p">)],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="centered_uniform">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.centered_uniform">[docs]</a>
+<span class="k">def</span> <span class="nf">centered_uniform</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="n">Size</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Uniform distribution on zero-centered box [-1, 1]^size&quot;&quot;&quot;</span>
+    <span class="c1"># pylint: disable=E1103</span>
+    <span class="k">return</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.</span></div>
+
+
+
+<div class="viewcode-block" id="WhiteNoiser">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.WhiteNoiser">[docs]</a>
+<span class="k">class</span> <span class="nc">WhiteNoiser</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Helper class for adding artificial noise to state batches.</span>
+
+<span class="sd">    Defines an interface for noise distortion of a batch of states. Noise is</span>
+<span class="sd">    modeled as a zero-mean distribution on the Lie algebra of the state space,</span>
+<span class="sd">    :math:`\mathbb{R}^{2 n_v}`. Note that this means that velocities receive</span>
+<span class="sd">    noise independent to the configuration, and thus may break the</span>
+<span class="sd">    finite-difference relationship in a trajectory.&quot;&quot;&quot;</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span>
+    <span class="n">ranges</span><span class="p">:</span> <span class="n">Tensor</span>
+    <span class="n">variance_factor</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">,</span>
+                 <span class="n">unit_noise</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Size</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">],</span>
+                 <span class="n">variance_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits a :py:class:`WhiteNoiser` of specified distribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space: State space upon which</span>
+<span class="sd">            unit_noise: Callback, returns coordinate-independent noise of</span>
+<span class="sd">              nominal unit size.</span>
+<span class="sd">            variance_factor: Variance of a single coordinate&#39;s unit-scale noise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">space</span> <span class="o">=</span> <span class="n">space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unit_noise</span> <span class="o">=</span> <span class="n">unit_noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variance_factor</span> <span class="o">=</span> <span class="n">variance_factor</span>
+
+<div class="viewcode-block" id="WhiteNoiser.noise">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.WhiteNoiser.noise">[docs]</a>
+    <span class="k">def</span> <span class="nf">noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+              <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+              <span class="n">ranges</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+              <span class="n">independent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds noise to a given batch of states.</span>
+
+<span class="sd">        Uses the ``unit_noise()`` to get. Optionally, adds identical</span>
+<span class="sd">        distortion to each state in the batch, or i.i.d. noise to each state.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: ``(*, space.n_x)`` batch of states to distort with noise.</span>
+<span class="sd">            ranges: ``(2 * space.n_v,)`` multiplicative scale of noise.</span>
+<span class="sd">            independent: whether to independently distort each state.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, space.n_x)`` distorted batch of states.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dx_shape</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">n_v</span><span class="p">,)</span>
+        <span class="k">if</span> <span class="n">independent</span><span class="p">:</span>
+            <span class="n">noise_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">dx_shape</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">noise_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">n_v</span><span class="p">,))</span>
+
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dx_shape</span><span class="p">)</span>
+        <span class="n">noise</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_noise</span><span class="p">(</span><span class="n">noise_shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">ranges</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">shift_state</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">noise</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WhiteNoiser.covariance">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.WhiteNoiser.covariance">[docs]</a>
+    <span class="k">def</span> <span class="nf">covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;State covariance matrix associated with noise scale.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ranges: ``(2 * space.n_v,)`` multiplicative scale of noise.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(2 * space.n_v, 2 * space.n_v)`` covariance matrix on state space</span>
+<span class="sd">            Lie algebra.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">variance_factor</span> <span class="o">*</span> <span class="p">(</span><span class="n">ranges</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="UniformWhiteNoiser">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.UniformWhiteNoiser">[docs]</a>
+<span class="k">class</span> <span class="nc">UniformWhiteNoiser</span><span class="p">(</span><span class="n">WhiteNoiser</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience :py:class:`WhiteNoiser` class for uniform noise.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">centered_uniform</span><span class="p">,</span> <span class="mf">1.</span> <span class="o">/</span> <span class="mf">3.</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GaussianWhiteNoiser">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.GaussianWhiteNoiser">[docs]</a>
+<span class="k">class</span> <span class="nc">GaussianWhiteNoiser</span><span class="p">(</span><span class="n">WhiteNoiser</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience :py:class:`WhiteNoiser` class for Gaussian noise.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="StateSpaceSampler">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpaceSampler">[docs]</a>
+<span class="k">class</span> <span class="nc">StateSpaceSampler</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract utility class for sampling on a state space.&quot;&quot;&quot;</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits :py:class:`StateSpaceSampler` on prescribed space.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space: State space of sampler.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">space</span> <span class="o">=</span> <span class="n">space</span>
+
+<div class="viewcode-block" id="StateSpaceSampler.get_sample">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpaceSampler.get_sample">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">get_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get sample from state distribution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (space.n_x,) state sample.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StateSpaceSampler.covariance">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.StateSpaceSampler.covariance">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns covariance of state space distribution.</span>
+
+<span class="sd">        Interprets the distribution in logarithmic coordinates (the Lie</span>
+<span class="sd">        algebra of the state space), and returns a covariance matrix in</span>
+<span class="sd">        :math:`\mathbb{R}^{2 n_v \times 2 n_v}`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (2 * space.n_v, 2 * space.n_v) distribution covariance.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ConstantSampler">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ConstantSampler">[docs]</a>
+<span class="k">class</span> <span class="nc">ConstantSampler</span><span class="p">(</span><span class="n">StateSpaceSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience :py:class:`StateSpaceSampler` for returning constant</span>
+<span class="sd">    state.&quot;&quot;&quot;</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span>
+    <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">,</span> <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits :py:class:`ConstantSampler` with specified constant state.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space: Sampler&#39;s state space.</span>
+<span class="sd">            x_0: ``(space.n_x,)`` singleton support of underlying probability</span>
+<span class="sd">              distribution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span> <span class="o">=</span> <span class="n">x_0</span>
+
+<div class="viewcode-block" id="ConstantSampler.get_sample">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ConstantSampler.get_sample">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns copy of constant ``x_0``.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ConstantSampler.covariance">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ConstantSampler.covariance">[docs]</a>
+    <span class="k">def</span> <span class="nf">covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns zero covariance.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">n_v</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">n_v</span><span class="p">))</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ZeroSampler">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.ZeroSampler">[docs]</a>
+<span class="k">class</span> <span class="nc">ZeroSampler</span><span class="p">(</span><span class="n">ConstantSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience :py:class:`ConstantSampler` for returning zero state.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">zero_state</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="CenteredSampler">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.CenteredSampler">[docs]</a>
+<span class="k">class</span> <span class="nc">CenteredSampler</span><span class="p">(</span><span class="n">StateSpaceSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;State space sampling distribution centered around specified state.</span>
+
+<span class="sd">    Implemented by sampling the state, and perturbing it with specified white</span>
+<span class="sd">    noise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ranges</span><span class="p">:</span> <span class="n">Tensor</span>
+    <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span>
+    <span class="n">variance_factor</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">,</span>
+                 <span class="n">ranges</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                 <span class="n">unit_noise</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Size</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">,</span>
+                 <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits :py:class:`CenteredSampler` with specified distribution</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space: Sampler&#39;s state space.</span>
+<span class="sd">            ranges: ``(2 * space.n_v,)`` multiplicative scale on noise</span>
+<span class="sd">              distribution standard deviation.</span>
+<span class="sd">            unit_noise: Callback, returns coordinate-independent noise of</span>
+<span class="sd">              nominal unit size.</span>
+<span class="sd">            x_0: ``(space.n_x,)`` center of distribution, around which Lie</span>
+<span class="sd">              algebra perturbation is applied by underlying</span>
+<span class="sd">              :py:class:`WhiteNoiser`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x_0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_0</span> <span class="o">=</span> <span class="n">space</span><span class="o">.</span><span class="n">zero_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span> <span class="o">=</span> <span class="n">space</span><span class="o">.</span><span class="n">project_state</span><span class="p">(</span><span class="n">x_0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">noiser</span> <span class="o">=</span> <span class="n">WhiteNoiser</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">unit_noise</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ranges</span> <span class="o">=</span> <span class="n">ranges</span>
+
+<div class="viewcode-block" id="CenteredSampler.get_sample">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.CenteredSampler.get_sample">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns ``x_0`` distorted by white noise.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">noiser</span><span class="o">.</span><span class="n">noise</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ranges</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CenteredSampler.covariance">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.CenteredSampler.covariance">[docs]</a>
+    <span class="k">def</span> <span class="nf">covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns covariance of underlying noiser.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">noiser</span><span class="o">.</span><span class="n">covariance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ranges</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="UniformSampler">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.UniformSampler">[docs]</a>
+<span class="k">class</span> <span class="nc">UniformSampler</span><span class="p">(</span><span class="n">CenteredSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience :py:class:`CenteredSampler` for uniform noise.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">StateSpace</span><span class="p">,</span> <span class="n">ranges</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">x_0</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">ranges</span><span class="p">,</span> <span class="n">centered_uniform</span><span class="p">,</span> <span class="n">x_0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GaussianSampler">
+<a class="viewcode-back" href="../../dair_pll.state_space.html#dair_pll.state_space.GaussianSampler">[docs]</a>
+<span class="k">class</span> <span class="nc">GaussianSampler</span><span class="p">(</span><span class="n">CenteredSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience :py:class:`CenteredSampler` for Gaussian noise.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

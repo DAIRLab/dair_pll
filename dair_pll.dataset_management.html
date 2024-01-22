@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.dataset_management &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2fea6348"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.experiment" href="dair_pll.experiment.html" />
+    <link rel="prev" title="dair_pll.multibody_learnable_system" href="dair_pll.multibody_learnable_system.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dair_pll.dataset_management</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.dataset_management.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-dair_pll.dataset_management">
+<span id="dair-pll-dataset-management"></span><h1>dair_pll.dataset_management<a class="headerlink" href="#module-dair_pll.dataset_management" title="Link to this heading"></a></h1>
+<p>Classes for generating and managing datasets for experiments.</p>
+<p>Centers around the <a class="reference internal" href="#dair_pll.dataset_management.ExperimentDataManager" title="dair_pll.dataset_management.ExperimentDataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">ExperimentDataManager</span></code></a> type, which transforms a
+set of trajectories saved to disk for various tasks encountered during an
+experiment.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySliceDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.dataset_management.</span></span><span class="sig-name descname"><span class="pre">TrajectorySliceDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#TrajectorySliceDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySliceDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
+<p>Dataset of trajectory slices for training.</p>
+<p>Given a list of trajectories and a <code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySliceConfig</span></code>,
+generates sets of (previous states, future states) transition pairs to be
+used with the training loss of an experiment.</p>
+<p>Extends <a class="reference external" href="https://pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.Dataset</span></code></a> type in order to be managed
+in the training process with a <a class="reference external" href="https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.DataLoader</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> (<a class="reference internal" href="dair_pll.data_config.html#dair_pll.data_config.TrajectorySliceConfig" title="dair_pll.data_config.TrajectorySliceConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySliceConfig</span></code></a>) – configuration object for slice dataset.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySliceDataset.config">
+<span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.data_config.html#dair_pll.data_config.TrajectorySliceConfig" title="dair_pll.data_config.TrajectorySliceConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.data_config.TrajectorySliceConfig</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySliceDataset.config" title="Link to this definition"></a></dt>
+<dd><p>Slice configuration describing durations and start index.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySliceDataset.previous_states_slices">
+<span class="sig-name descname"><span class="pre">previous_states_slices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.List</span></code></a><span class="pre">[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySliceDataset.previous_states_slices" title="Link to this definition"></a></dt>
+<dd><p>Initial conditions of duration <code class="docutils literal notranslate"><span class="pre">self.config.t_history</span></code> .</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySliceDataset.future_states_slices">
+<span class="sig-name descname"><span class="pre">future_states_slices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.List</span></code></a><span class="pre">[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySliceDataset.future_states_slices" title="Link to this definition"></a></dt>
+<dd><p>Future targets of duration <code class="docutils literal notranslate"><span class="pre">self.config.t_prediction</span></code> .</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySliceDataset.add_slices_from_trajectory">
+<span class="sig-name descname"><span class="pre">add_slices_from_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#TrajectorySliceDataset.add_slices_from_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySliceDataset.add_slices_from_trajectory" title="Link to this definition"></a></dt>
+<dd><p>Incorporate trajectory into dataset as a set of slices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trajectory</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(T,</span> <span class="pre">*)</span></code> state trajectory.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.dataset_management.</span></span><span class="sig-name descname"><span class="pre">TrajectorySet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trajectories=&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices=&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#TrajectorySet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Dataclass encapsulating the various transforms of a set of
+trajectories that are used during the training and evaluation process,
+including:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Slices for training;</p></li>
+<li><p>Entire trajectories for evaluation; and</p></li>
+<li><p>Indices associated with on-disk location for experiment resumption.</p></li>
+</ul>
+</div></blockquote>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySet.slices">
+<span class="sig-name descname"><span class="pre">slices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.dataset_management.TrajectorySliceDataset" title="dair_pll.dataset_management.TrajectorySliceDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.dataset_management.TrajectorySliceDataset</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySet.slices" title="Link to this definition"></a></dt>
+<dd><p>Trajectories rendered as a dataset of time slices.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySet.trajectories">
+<span class="sig-name descname"><span class="pre">trajectories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.List</span></code></a><span class="pre">[</span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySet.trajectories" title="Link to this definition"></a></dt>
+<dd><p>Trajectories in their raw format.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySet.indices">
+<span class="sig-name descname"><span class="pre">indices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.Tensor</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySet.indices" title="Link to this definition"></a></dt>
+<dd><p>Indices associated with on-disk filenames.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.TrajectorySet.add_trajectories">
+<span class="sig-name descname"><span class="pre">add_trajectories</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectory_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#TrajectorySet.add_trajectories"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.TrajectorySet.add_trajectories" title="Link to this definition"></a></dt>
+<dd><p>Add new subset of trajectories to set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trajectory_list</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]) – List of new <code class="docutils literal notranslate"><span class="pre">(T,</span> <span class="pre">*)</span></code> state trajectories.</p></li>
+<li><p><strong>indices</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – indices associated with on-disk filenames.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.dataset_management.</span></span><span class="sig-name descname"><span class="pre">ExperimentDataManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_split</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_ground_truth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#ExperimentDataManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Management object for maintaining training, validation, and testing
+data for an experiment.</p>
+<p>Loads trajectories stored in standard location associated with provided
+storage directory; splits into train/valid/test sets; and instantiates
+transformations for each set of data as a <a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>storage</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Storage directory to source trajectories from.</p></li>
+<li><p><strong>config</strong> (<a class="reference internal" href="dair_pll.data_config.html#dair_pll.data_config.DataConfig" title="dair_pll.data_config.DataConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataConfig</span></code></a>) – Configuration object.</p></li>
+<li><p><strong>initial_split</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]]) – Optionally, lists of trajectory indices that
+should be sorted into (train, valid, test) sets from the
+beginning.</p></li>
+<li><p><strong>use_ground_truth</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – Whether trajectories should be sourced from
+ground-truth or learning data.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.trajectory_dir">
+<span class="sig-name descname"><span class="pre">trajectory_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.trajectory_dir" title="Link to this definition"></a></dt>
+<dd><p>Directory in which trajectory files are stored.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.config">
+<span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.data_config.html#dair_pll.data_config.DataConfig" title="dair_pll.data_config.DataConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.data_config.DataConfig</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for manipulating data.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.train_set">
+<span class="sig-name descname"><span class="pre">train_set</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.dataset_management.TrajectorySet</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.train_set" title="Link to this definition"></a></dt>
+<dd><p>Training trajectory set.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.valid_set">
+<span class="sig-name descname"><span class="pre">valid_set</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.dataset_management.TrajectorySet</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.valid_set" title="Link to this definition"></a></dt>
+<dd><p>Validation trajectory set.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.test_set">
+<span class="sig-name descname"><span class="pre">test_set</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.dataset_management.TrajectorySet</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.test_set" title="Link to this definition"></a></dt>
+<dd><p>Test trajectory set.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.n_sorted">
+<span class="sig-name descname"><span class="pre">n_sorted</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.n_sorted" title="Link to this definition"></a></dt>
+<dd><p>Number of files on disk split into (train, valid, test) sets so far.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.trajectory_set_indices">
+<span class="sig-name descname"><span class="pre">trajectory_set_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#ExperimentDataManager.trajectory_set_indices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.trajectory_set_indices" title="Link to this definition"></a></dt>
+<dd><p>The sets of indices associated with the (train, valid,
+test) trajectories.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.make_empty_trajectory_set">
+<span class="sig-name descname"><span class="pre">make_empty_trajectory_set</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#ExperimentDataManager.make_empty_trajectory_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.make_empty_trajectory_set" title="Link to this definition"></a></dt>
+<dd><p>Instantiates an empty <a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a> associated with
+the time slice configuration contained in <a class="reference internal" href="#dair_pll.dataset_management.ExperimentDataManager.config" title="dair_pll.dataset_management.ExperimentDataManager.config"><code class="xref py py-attr docutils literal notranslate"><span class="pre">config</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.extend_trajectory_sets">
+<span class="sig-name descname"><span class="pre">extend_trajectory_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index_lists</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#ExperimentDataManager.extend_trajectory_sets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.extend_trajectory_sets" title="Link to this definition"></a></dt>
+<dd><p>Supplement each of (train, valid, test) trajectory sets with
+provided trajectories, listed by their on-disk indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>index_lists</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]) – Lists of trajectory indices for each set.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.dataset_management.ExperimentDataManager.get_updated_trajectory_sets">
+<span class="sig-name descname"><span class="pre">get_updated_trajectory_sets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/dataset_management.html#ExperimentDataManager.get_updated_trajectory_sets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.dataset_management.ExperimentDataManager.get_updated_trajectory_sets" title="Link to this definition"></a></dt>
+<dd><p>Returns an up-to-date partition of trajectories on disk.</p>
+<p>Checks if some trajectories on disk have yet to be sorted,
+and supplements the (train, valid, test) sets with these additional
+trajectories before returning the updated sets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a>, <a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a>, <a class="reference internal" href="#dair_pll.dataset_management.TrajectorySet" title="dair_pll.dataset_management.TrajectorySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectorySet</span></code></a>]</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Training set.
+Validation set.
+Test set.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.multibody_learnable_system.html" class="btn btn-neutral float-left" title="dair_pll.multibody_learnable_system" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.experiment.html" class="btn btn-neutral float-right" title="dair_pll.experiment" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

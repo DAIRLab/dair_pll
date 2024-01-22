@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.vis_utils &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.vis_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.vis_utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Utility functions for visualizing trajectories.</span>
+
+<span class="sd">Visualization of Drake systems can be done with Drake&#39;s VideoWriter. This allows</span>
+<span class="sd">for a relatively thin implementation of visualization for very complex</span>
+<span class="sd">geometries.</span>
+
+<span class="sd">The main contents of this file are as follows:</span>
+
+<span class="sd">    * A method to generate a dummy ``DrakeSystem`` which simultaneously</span>
+<span class="sd">      visualizes two trajectories of the same system.</span>
+<span class="sd">    * A method which takes a ``DrakeSystem`` and corresponding trajectory,</span>
+<span class="sd">      captures a visualization video, and outputs it as a numpy ndarray.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="c1"># pylint: disable-next=import-error</span>
+<span class="kn">from</span> <span class="nn">pydrake.geometry</span> <span class="kn">import</span> <span class="n">Role</span><span class="p">,</span> <span class="n">RoleAssign</span><span class="p">,</span> <span class="n">Rgba</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll.drake_system</span> <span class="kn">import</span> <span class="n">DrakeSystem</span>
+
+<span class="n">RESOLUTION</span> <span class="o">=</span> <span class="p">[</span><span class="mi">640</span><span class="p">,</span> <span class="mi">480</span><span class="p">]</span>
+<span class="n">RED</span> <span class="o">=</span> <span class="n">Rgba</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+<span class="n">BLUE</span> <span class="o">=</span> <span class="n">Rgba</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+<span class="n">BASE_SYSTEM_DEFAULT_COLOR</span> <span class="o">=</span> <span class="n">RED</span>
+<span class="n">LEARNED_SYSTEM_DEFAULT_COLOR</span> <span class="o">=</span> <span class="n">BLUE</span>
+<span class="n">PERCEPTION_COLOR_GROUP</span> <span class="o">=</span> <span class="s1">&#39;phong&#39;</span>
+<span class="n">PERCEPTION_COLOR_PROPERTY</span> <span class="o">=</span> <span class="s1">&#39;diffuse&#39;</span>
+<span class="n">LEARNED_TAG</span> <span class="o">=</span> <span class="s1">&#39;__learned__&#39;</span>
+
+
+<div class="viewcode-block" id="generate_visualization_system">
+<a class="viewcode-back" href="../../dair_pll.vis_utils.html#dair_pll.vis_utils.generate_visualization_system">[docs]</a>
+<span class="k">def</span> <span class="nf">generate_visualization_system</span><span class="p">(</span>
+    <span class="n">base_system</span><span class="p">:</span> <span class="n">DrakeSystem</span><span class="p">,</span>
+    <span class="n">visualization_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">learned_system</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DrakeSystem</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">base_system_color</span><span class="p">:</span> <span class="n">Rgba</span> <span class="o">=</span> <span class="n">BASE_SYSTEM_DEFAULT_COLOR</span><span class="p">,</span>
+    <span class="n">learned_system_color</span><span class="p">:</span> <span class="n">Rgba</span> <span class="o">=</span> <span class="n">LEARNED_SYSTEM_DEFAULT_COLOR</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DrakeSystem</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a dummy ``DrakeSystem`` for visualizing comparisons between two</span>
+<span class="sd">    trajectories of ``base_system``.</span>
+
+<span class="sd">    Does so by generating a new ``DrakeSystem`` in which every model in the</span>
+<span class="sd">    base system has a copy. Each illustration geometry element in these two</span>
+<span class="sd">    copies is uniformly colored to be visually distinguishable.</span>
+
+<span class="sd">    The copy of the base system can optionally be rendered in its learned</span>
+<span class="sd">    geometry.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base_system: System to be visualized.</span>
+<span class="sd">        visualization_file: Output GIF filename for trajectory video.</span>
+<span class="sd">        learned_system: Optionally, the learned system so the predicted</span>
+<span class="sd">          trajectory is rendered with the learned geometry.</span>
+<span class="sd">        base_system_color: Color to repaint every thing in base system.</span>
+<span class="sd">        learned_system_color: Color to repaint every thing in duplicated system.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        New ``DrakeSystem`` with doubled state and repainted elements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># pylint: disable=too-many-locals</span>
+    <span class="c1"># Start with true base system.</span>
+    <span class="n">double_urdfs</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">base_system</span><span class="o">.</span><span class="n">urdfs</span><span class="p">)</span>
+
+    <span class="c1"># Either copy the base system&#39;s geometry or optionally use the learned</span>
+    <span class="c1"># geometry.</span>
+    <span class="n">system_to_add</span> <span class="o">=</span> <span class="n">learned_system</span> <span class="k">if</span> <span class="n">learned_system</span> <span class="k">else</span> <span class="n">base_system</span>
+    <span class="n">double_urdfs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+        <span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="n">LEARNED_TAG</span><span class="p">):</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">system_to_add</span><span class="o">.</span><span class="n">urdfs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">})</span>
+
+    <span class="n">visualization_system</span> <span class="o">=</span> <span class="n">DrakeSystem</span><span class="p">(</span><span class="n">double_urdfs</span><span class="p">,</span>
+                                       <span class="n">base_system</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+                                       <span class="n">visualization_file</span><span class="o">=</span><span class="n">visualization_file</span><span class="p">)</span>
+
+    <span class="c1"># Recolors every perception geometry to default colors</span>
+    <span class="n">plant_diagram</span> <span class="o">=</span> <span class="n">visualization_system</span><span class="o">.</span><span class="n">plant_diagram</span>
+    <span class="n">plant</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">plant</span>
+    <span class="n">scene_graph</span> <span class="o">=</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">scene_graph</span>
+    <span class="n">scene_graph_context</span> <span class="o">=</span> <span class="n">scene_graph</span><span class="o">.</span><span class="n">GetMyContextFromRoot</span><span class="p">(</span>
+        <span class="n">plant_diagram</span><span class="o">.</span><span class="n">sim</span><span class="o">.</span><span class="n">get_mutable_context</span><span class="p">())</span>
+    <span class="n">inspector</span> <span class="o">=</span> <span class="n">scene_graph</span><span class="o">.</span><span class="n">model_inspector</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">model_id</span> <span class="ow">in</span> <span class="n">plant_diagram</span><span class="o">.</span><span class="n">model_ids</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">GetModelInstanceName</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">body_index</span> <span class="ow">in</span> <span class="n">plant</span><span class="o">.</span><span class="n">GetBodyIndices</span><span class="p">(</span><span class="n">model_id</span><span class="p">):</span>
+            <span class="n">body_frame</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">GetBodyFrameIdOrThrow</span><span class="p">(</span><span class="n">body_index</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">geometry_id</span> <span class="ow">in</span> <span class="n">inspector</span><span class="o">.</span><span class="n">GetGeometries</span><span class="p">(</span><span class="n">body_frame</span><span class="p">,</span>
+                                                       <span class="n">Role</span><span class="o">.</span><span class="n">kPerception</span><span class="p">):</span>
+                <span class="n">props</span> <span class="o">=</span> <span class="n">inspector</span><span class="o">.</span><span class="n">GetPerceptionProperties</span><span class="p">(</span><span class="n">geometry_id</span><span class="p">)</span>
+                <span class="c1"># phong.diffuse is the name of property controlling perception</span>
+                <span class="c1"># color.</span>
+                <span class="k">if</span> <span class="n">props</span> <span class="ow">and</span> \
+                   <span class="n">props</span><span class="o">.</span><span class="n">HasProperty</span><span class="p">(</span><span class="n">PERCEPTION_COLOR_GROUP</span><span class="p">,</span> \
+                                     <span class="n">PERCEPTION_COLOR_PROPERTY</span><span class="p">):</span>
+                    <span class="c1"># Sets color in properties.</span>
+                    <span class="n">props</span><span class="o">.</span><span class="n">UpdateProperty</span><span class="p">(</span>
+                        <span class="n">PERCEPTION_COLOR_GROUP</span><span class="p">,</span> <span class="n">PERCEPTION_COLOR_PROPERTY</span><span class="p">,</span>
+                        <span class="n">learned_system_color</span>
+                        <span class="k">if</span> <span class="n">LEARNED_TAG</span> <span class="ow">in</span> <span class="n">model_name</span> <span class="k">else</span> <span class="n">base_system_color</span><span class="p">)</span>
+                    <span class="c1"># Tells ``scene_graph`` to update the color.</span>
+                    <span class="n">plant_source_id</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">get_source_id</span><span class="p">()</span>
+                    <span class="k">assert</span> <span class="n">plant_source_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+                    <span class="n">scene_graph</span><span class="o">.</span><span class="n">RemoveRole</span><span class="p">(</span><span class="n">scene_graph_context</span><span class="p">,</span> <span class="n">plant_source_id</span><span class="p">,</span>
+                                           <span class="n">geometry_id</span><span class="p">,</span> <span class="n">Role</span><span class="o">.</span><span class="n">kPerception</span><span class="p">)</span>
+                    <span class="n">scene_graph</span><span class="o">.</span><span class="n">AssignRole</span><span class="p">(</span><span class="n">scene_graph_context</span><span class="p">,</span> <span class="n">plant_source_id</span><span class="p">,</span>
+                                           <span class="n">geometry_id</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">RoleAssign</span><span class="o">.</span><span class="n">kNew</span><span class="p">)</span>
+
+    <span class="c1"># Changing perception properties requires the ``Simulator`` to be</span>
+    <span class="c1"># re-initialized.</span>
+    <span class="n">plant_diagram</span><span class="o">.</span><span class="n">sim</span><span class="o">.</span><span class="n">Initialize</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">visualization_system</span></div>
+
+
+
+<div class="viewcode-block" id="visualize_trajectory">
+<a class="viewcode-back" href="../../dair_pll.vis_utils.html#dair_pll.vis_utils.visualize_trajectory">[docs]</a>
+<span class="k">def</span> <span class="nf">visualize_trajectory</span><span class="p">(</span><span class="n">drake_system</span><span class="p">:</span> <span class="n">DrakeSystem</span><span class="p">,</span>
+                         <span class="n">x_trajectory</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">framerate</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Visualizes trajectory of system.</span>
+
+<span class="sd">    Specifies a ``framerate`` for output video, though should be noted that</span>
+<span class="sd">    this framerate is only approximately represented by homogeneous integer</span>
+<span class="sd">    downsampling of the state trajectory. For example, ``if drake_system.dt ==</span>
+<span class="sd">    1/60`` and ``framerate == 11``, the true video framerate will be::</span>
+
+<span class="sd">        max(round(60/11), 1) == 5.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        drake_system: System associated with provided trajectory.</span>
+<span class="sd">        x_trajectory: (T, drake_system.space.n_x) state trajectory.</span>
+<span class="sd">        framerate: desired frames per second of output video.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (1, T, 3, H, W) ndarray video capture of trajectory with resolution</span>
+<span class="sd">        H x W, which are set to 480x640 in :py:mod:`dair_pll.drake_utils`.</span>
+<span class="sd">        The true framerate, rounded to an integer.</span>
+
+<span class="sd">    Todo:</span>
+<span class="sd">        Only option for implementation at the moment is to access various</span>
+<span class="sd">        protected members of :py:class:`pydrake.visualization.VideoWriter`\ .</span>
+<span class="sd">        This function should be updated as `pydrake` has this functionality</span>
+<span class="sd">        properly exposed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">drake_system</span><span class="o">.</span><span class="n">plant_diagram</span><span class="o">.</span><span class="n">visualizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="n">x_trajectory</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="c1"># pylint: disable=protected-access</span>
+
+    <span class="n">vis</span> <span class="o">=</span> <span class="n">drake_system</span><span class="o">.</span><span class="n">plant_diagram</span><span class="o">.</span><span class="n">visualizer</span>
+    <span class="n">sim</span> <span class="o">=</span> <span class="n">drake_system</span><span class="o">.</span><span class="n">plant_diagram</span><span class="o">.</span><span class="n">sim</span>
+
+    <span class="c1"># Downsample trajectory to approximate framerate.</span>
+    <span class="n">temporal_downsample</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="mi">1</span> <span class="o">/</span> <span class="n">drake_system</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span> <span class="o">/</span> <span class="n">framerate</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">actual_framerate</span> <span class="o">=</span> <span class="nb">round</span><span class="p">((</span><span class="mi">1</span> <span class="o">/</span> <span class="n">drake_system</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span> <span class="o">/</span> <span class="n">temporal_downsample</span><span class="p">)</span>
+    <span class="n">x_trajectory</span> <span class="o">=</span> <span class="n">x_trajectory</span><span class="p">[::</span><span class="n">temporal_downsample</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="c1"># Clear the images before iterating through the trajectory (by default the</span>
+    <span class="c1"># video starts with one image of the systems at the origin).</span>
+    <span class="n">vis</span><span class="o">.</span><span class="n">_pil_images</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: ignore</span>
+
+    <span class="c1"># Simulate the system according to the provided data.</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">carry</span> <span class="o">=</span> <span class="n">drake_system</span><span class="o">.</span><span class="n">sample_initial_condition</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">x_current</span> <span class="ow">in</span> <span class="n">x_trajectory</span><span class="p">:</span>
+        <span class="n">drake_system</span><span class="o">.</span><span class="n">preprocess_initial_condition</span><span class="p">(</span><span class="n">x_current</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">carry</span><span class="p">)</span>
+
+        <span class="c1"># Force publish video frame.</span>
+        <span class="n">sim_context</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_mutable_context</span><span class="p">()</span>
+        <span class="n">video_context</span> <span class="o">=</span> <span class="n">vis</span><span class="o">.</span><span class="n">GetMyContextFromRoot</span><span class="p">(</span><span class="n">sim_context</span><span class="p">)</span>
+        <span class="n">vis</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="n">video_context</span><span class="p">)</span>
+
+    <span class="c1"># Compose a video ndarray of shape (T, H, W, 4[rgba]).</span>
+    <span class="n">video</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span> <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">vis</span><span class="o">.</span><span class="n">_pil_images</span>
+                     <span class="p">])</span>  <span class="c1"># type: ignore</span>
+    <span class="n">vis</span><span class="o">.</span><span class="n">Save</span><span class="p">()</span>
+
+    <span class="c1"># Since Drake&#39;s VideoWriter defaults to not looping gifs, re-load and re-</span>
+    <span class="c1"># save the gif to ensure it loops.  This gif is only for debugging purposes,</span>
+    <span class="c1"># as the gif gets overwritten with every trajectory.  The actual output of</span>
+    <span class="c1"># this function is a numpy array.</span>
+    <span class="n">vizualization_image</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">vis</span><span class="o">.</span><span class="n">_filename</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+    <span class="n">new_name</span> <span class="o">=</span> <span class="n">vis</span><span class="o">.</span><span class="n">_filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_.gif&#39;</span>  <span class="c1"># type: ignore</span>
+    <span class="n">vizualization_image</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">new_name</span><span class="p">,</span> <span class="n">save_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">vizualization_image</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="c1"># Remove alpha channel and reorder axes to output type.</span>
+    <span class="n">video</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">video</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">video</span> <span class="o">=</span> <span class="n">video</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+    <span class="k">return</span> <span class="n">video</span><span class="p">,</span> <span class="n">actual_framerate</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

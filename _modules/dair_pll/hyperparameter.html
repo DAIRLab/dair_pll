@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.hyperparameter &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.hyperparameter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.hyperparameter</h1><div class="highlight"><pre>
+<span></span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Interface for hyperparameter declaration and optimization.</span>
+
+<span class="sd">Each experiment run (see</span>
+<span class="sd">:py:class:`~dair_pll.experiment.SupervisedLearningExperiment`\ ) can</span>
+<span class="sd">have its</span>
+<span class="sd">hyperparameters optimized via :py:mod:`optuna`\ . By design, each experiment</span>
+<span class="sd">is fully described via a</span>
+<span class="sd">:py:class:`~dair_pll.experiment.SupervisedLearningExperimentConfig` object.</span>
+<span class="sd">This file implements a :py:class:`Hyperparameter` class, which can be declared</span>
+<span class="sd">as a member variable of a</span>
+<span class="sd">:py:class:`~dair_pll.experiment.SupervisedLearningExperimentConfig`,</span>
+<span class="sd">or recursively as one of its own :py:func:`~dataclasses.dataclass` members.</span>
+
+<span class="sd">The following hyperparameters types and priors are supported:</span>
+
+<span class="sd">    * :py:class:`Scalar`, a :py:class:`Float` or :py:class:`Int` which is</span>
+<span class="sd">      either uniformly or log-uniformly distributed.</span>
+<span class="sd">    * :py:class:`Categorical`, a list of :py:class:`float`\ , :py:class:`int`\</span>
+<span class="sd">      , or :py:class:`str` types which are selected from uniformly.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span><span class="p">,</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">is_dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
+    <span class="n">Dict</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Any</span>
+
+<span class="kn">from</span> <span class="nn">optuna.trial</span> <span class="kn">import</span> <span class="n">Trial</span>
+
+<span class="n">ValueType</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+<span class="n">ValueDict</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ValueType</span><span class="p">]</span>
+
+<span class="n">ScalarT</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;ScalarT&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+<span class="sa">r</span><span class="sd">&quot;&quot;&quot;Templating type hint for :py:class:`Scalar`\ s.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="Hyperparameter">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Hyperparameter">[docs]</a>
+<span class="k">class</span> <span class="nc">Hyperparameter</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class for declaring and sampling hyperparameters.</span>
+
+<span class="sd">    Hyperparameters have both a :py:attr:`value` and a</span>
+<span class="sd">    :py:attr:`distribution` from which vales might be selected.</span>
+
+<span class="sd">    Declaration of a hyperparameter in a configuration may look like::</span>
+
+<span class="sd">        @dataclass</span>
+<span class="sd">        class XXXConfig:</span>
+<span class="sd">            int_par: Int = Int(5, (0, 10))</span>
+<span class="sd">            float_par: Float = Float(0.1, (1e-4, 1e3), log=True)</span>
+<span class="sd">            cat_par: Categorical = Categorical(&#39;val2&#39;, [&#39;val0&#39;,&#39;val1&#39;, &#39;val2&#39;])</span>
+
+<span class="sd">    In these cases, the first argument is the default :py:attr:`value` of the</span>
+<span class="sd">    hyperparameter. However, at hyperparameter optimization time,</span>
+<span class="sd">    :py:mod:`optuna` will select hyperparameters from the</span>
+<span class="sd">    :py:attr:`distribution` via the :py:meth:`suggest` function. Some</span>
+<span class="sd">    hyperparameter types have a default distribution as described in their</span>
+<span class="sd">    documentation.&quot;&quot;&quot;</span>
+
+    <span class="n">value</span><span class="p">:</span> <span class="n">ValueType</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hyperparameter&#39;s current value.&quot;&quot;&quot;</span>
+    <span class="n">distribution</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ValueType</span><span class="p">]</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parameters for distribution from which to select value.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ValueType</span><span class="p">,</span> <span class="n">distribution</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ValueType</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span> <span class="o">=</span> <span class="n">distribution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="Hyperparameter.set">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Hyperparameter.set">[docs]</a>
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ValueType</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setter for underlying hyperparameter value.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Human-readable representation of underlying hyperparameter value.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__qualname__</span><span class="si">}</span><span class="s1">(</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s1">)&#39;</span>
+
+<div class="viewcode-block" id="Hyperparameter.suggest">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Hyperparameter.suggest">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Trial</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValueType</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Suggests a value for the hyperparameter.</span>
+
+<span class="sd">        This function is abstract as to facilitate specialization for</span>
+<span class="sd">        inheriting types.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            trial: Optuna trial in which parameter is being suggested.</span>
+<span class="sd">            name: Name of hyperparameter.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Suggested hyperparameter value.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Scalar">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Scalar">[docs]</a>
+<span class="k">class</span> <span class="nc">Scalar</span><span class="p">(</span><span class="n">Hyperparameter</span><span class="p">,</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">ScalarT</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Abstract scalar hyperparameter type.</span>
+
+<span class="sd">    Defines a uniform or log-uniform distribution over a scalar type, such as</span>
+<span class="sd">    integers or real numbers.</span>
+
+<span class="sd">    The bounds of the distribution can either be specified as a tuple in the</span>
+<span class="sd">    :py:attr:`distribution` attribute, or set as a default based on the</span>
+<span class="sd">    provided :py:attr:`value` in the abstract method :py:meth:`default_range`\ .</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">ScalarT</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scalar value of hyperparameter.&quot;&quot;&quot;</span>
+    <span class="n">distribution</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ScalarT</span><span class="p">,</span> <span class="n">ScalarT</span><span class="p">]</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bounds of scalar distribution in format (lower, upper).&quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether the distribution is uniform or log-uniform.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">value</span><span class="p">:</span> <span class="n">ScalarT</span><span class="p">,</span>
+                 <span class="n">distribution</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ScalarT</span><span class="p">,</span> <span class="n">ScalarT</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">distribution</span><span class="p">:</span>
+            <span class="n">distribution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_range</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">log</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">distribution</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">distribution</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">log</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">distribution</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">distribution</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+
+<div class="viewcode-block" id="Scalar.default_range">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Scalar.default_range">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">default_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ScalarT</span><span class="p">,</span>
+                      <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ScalarT</span><span class="p">,</span> <span class="n">ScalarT</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns default range for Scalar, depending on provided value.&quot;&quot;&quot;</span></div>
+</div>
+
+
+
+<span class="n">INT_LOG_WIDTH</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">3</span>
+<span class="n">INT_ABS_WIDTH</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<div class="viewcode-block" id="Int">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Int">[docs]</a>
+<span class="k">class</span> <span class="nc">Int</span><span class="p">(</span><span class="n">Scalar</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Integer scalar hyperparameter.&quot;&quot;&quot;</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">distribution</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Int.default_range">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Int.default_range">[docs]</a>
+    <span class="k">def</span> <span class="nf">default_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Default bounds for integer hyperparameter.</span>
+
+<span class="sd">        Returns ``(max(1, value // RANGE), value * RANGE)``, where ``RANGE``</span>
+<span class="sd">        is ``8`` in the log-uniform case and ``2`` otherwise.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            value: Default value of hyperparameter.</span>
+<span class="sd">            log: Whether the distribution is uniform or log-uniform.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Default lower/upper bounds.&quot;&quot;&quot;</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">INT_LOG_WIDTH</span> <span class="k">if</span> <span class="n">log</span> <span class="k">else</span> <span class="n">INT_ABS_WIDTH</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">value</span> <span class="o">//</span> <span class="n">width</span><span class="p">),</span> <span class="n">value</span> <span class="o">*</span> <span class="n">width</span></div>
+
+
+<div class="viewcode-block" id="Int.suggest">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Int.suggest">[docs]</a>
+    <span class="k">def</span> <span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Trial</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns suggested (log)-uniform distributed integer.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="n">FLOAT_LOG_WIDTH</span> <span class="o">=</span> <span class="mf">1e2</span>
+<span class="n">FLOAT_ABS_WIDTH</span> <span class="o">=</span> <span class="mf">2.</span>
+
+
+<div class="viewcode-block" id="Float">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Float">[docs]</a>
+<span class="k">class</span> <span class="nc">Float</span><span class="p">(</span><span class="n">Scalar</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Real number (floating-point) scalar hyperparameter.&quot;&quot;&quot;</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">distribution</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Float.default_range">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Float.default_range">[docs]</a>
+    <span class="k">def</span> <span class="nf">default_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Default bounds for float hyperparameter.</span>
+
+<span class="sd">        Returns ``(value / RANGE, value * RANGE)``, where ``RANGE``</span>
+<span class="sd">        is ``100`` in the log-uniform case and ``2`` otherwise.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: Default value of hyperparameter.</span>
+<span class="sd">            log: Whether the distribution is uniform or log-uniform.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Default lower/upper bounds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">FLOAT_LOG_WIDTH</span> <span class="k">if</span> <span class="n">log</span> <span class="k">else</span> <span class="n">FLOAT_ABS_WIDTH</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">/</span> <span class="n">width</span><span class="p">,</span> <span class="n">value</span> <span class="o">*</span> <span class="n">width</span></div>
+
+
+<div class="viewcode-block" id="Float.suggest">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Float.suggest">[docs]</a>
+    <span class="k">def</span> <span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Trial</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns suggested (log)-uniform distributed float.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_loguniform</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_uniform</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># Only one new public method, but just happens to be a particularly simple</span>
+<span class="c1"># inheriting type of Hyperparameter.</span>
+<div class="viewcode-block" id="Categorical">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Categorical">[docs]</a>
+<span class="k">class</span> <span class="nc">Categorical</span><span class="p">(</span><span class="n">Hyperparameter</span><span class="p">):</span>  <span class="c1"># pylint: disable=too-few-public-methods</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Categorical hyperparameter.&quot;&quot;&quot;</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">ValueType</span>
+    <span class="n">distribution</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ValueType</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Categorical.suggest">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.Categorical.suggest">[docs]</a>
+    <span class="k">def</span> <span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Trial</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValueType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Suggests from listed values in distribution uniformly.&quot;&quot;&quot;</span>
+        <span class="n">suggestion</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_categorical</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">suggestion</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">suggestion</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="is_dataclass_instance">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.is_dataclass_instance">[docs]</a>
+<span class="k">def</span> <span class="nf">is_dataclass_instance</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Helper function to check if input object is a</span>
+<span class="sd">    :py:func:`~dataclasses.dataclass`\ .&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">is_dataclass</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="traverse_config">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.traverse_config">[docs]</a>
+<span class="k">def</span> <span class="nf">traverse_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+                    <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Hyperparameter</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+                    <span class="n">namespace</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Recursively searches through ``config`` and its member</span>
+<span class="sd">    :py:func:`~dataclasses.dataclass`\ es, for member</span>
+<span class="sd">    :py:class:`Hyperparameter` objects.</span>
+
+<span class="sd">    While traversing the tree, maintains a `namespace` constructed from a</span>
+<span class="sd">    concatenation of the attributes&#39; names.</span>
+
+<span class="sd">    When a :py:class:`Hyperparameter` &#39;h&#39; under attribute name `attr` is</span>
+<span class="sd">    encountered, this function calls :py:arg:`callback` with inputs</span>
+<span class="sd">    ``(namespace + attr, h)``\ .</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration :py:func:`~dataclasses.dataclass` \ .</span>
+<span class="sd">        callback: Callback performed on each :py:class:`Hyperparameter`\ .</span>
+<span class="sd">        namespace: (Optional/internal) prefix for naming hyperparameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">is_dataclass_instance</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">__dataclass_fields__</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_dataclass_instance</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="n">subspace</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">namespace</span><span class="si">}{</span><span class="n">field</span><span class="si">}</span><span class="s1">.&#39;</span>
+            <span class="n">traverse_config</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">subspace</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Hyperparameter</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">namespace</span> <span class="o">+</span> <span class="n">field</span>
+            <span class="n">callback</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="generate_suggestion">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.generate_suggestion">[docs]</a>
+<span class="k">def</span> <span class="nf">generate_suggestion</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Trial</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValueDict</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Suggests a value all hyperparameters in configuration (but does not</span>
+<span class="sd">    set these values).</span>
+
+<span class="sd">    Recursively searches through ``config`` and its member</span>
+<span class="sd">    :py:func:`~dataclasses.dataclass`\ es, and generates a suggestion for</span>
+<span class="sd">    each contained :py:class:`Hyperparameter`\ .</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration :py:func:`~dataclasses.dataclass` \ .</span>
+<span class="sd">        trial: Optuna trial in which parameters are being suggested.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Suggested hyperparameter value dictionary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">is_dataclass_instance</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="n">out_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hyperparameter</span><span class="p">:</span> <span class="n">Hyperparameter</span><span class="p">):</span>
+        <span class="n">out_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">hyperparameter</span><span class="o">.</span><span class="n">suggest</span><span class="p">(</span><span class="n">trial</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="n">traverse_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">out_dict</span></div>
+
+
+
+<div class="viewcode-block" id="load_suggestion">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.load_suggestion">[docs]</a>
+<span class="k">def</span> <span class="nf">load_suggestion</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">suggestion</span><span class="p">:</span> <span class="n">ValueDict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Fill all hyperparameters in configuration with suggestions.</span>
+
+<span class="sd">    Recursively searches through ``config`` and its member</span>
+<span class="sd">    :py:func:`~dataclasses.dataclass`\ es, and sets the values to the</span>
+<span class="sd">    suggestion for each contained :py:class:`Hyperparameter`\ .</span>
+
+<span class="sd">    The ``suggestion`` is assumed to be generated by running</span>
+<span class="sd">    :py:func:`generate_suggestion` on an identical type to ``config``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration :py:func:`~dataclasses.dataclass` \ .</span>
+<span class="sd">        suggestion: Suggested hyperparameter set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">is_dataclass_instance</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hyperparameter</span><span class="p">:</span> <span class="n">Hyperparameter</span><span class="p">):</span>
+        <span class="n">hyperparameter</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">suggestion</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+
+    <span class="n">traverse_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="hyperparameter_values">
+<a class="viewcode-back" href="../../dair_pll.hyperparameter.html#dair_pll.hyperparameter.hyperparameter_values">[docs]</a>
+<span class="k">def</span> <span class="nf">hyperparameter_values</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValueDict</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Lists current values for all hyperparameters in configuration.</span>
+
+<span class="sd">    Recursively searches through ``config`` and its member</span>
+<span class="sd">    :py:func:`~dataclasses.dataclass`\ es, and records value for each contained</span>
+<span class="sd">    :py:class:`Hyperparameter`\ .</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration :py:func:`~dataclasses.dataclass` \ .</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Hyperparameter value dictionary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">is_dataclass_instance</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="n">out_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hyperparameter</span><span class="p">:</span> <span class="n">Hyperparameter</span><span class="p">):</span>
+        <span class="n">out_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">hyperparameter</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="n">traverse_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">out_dict</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

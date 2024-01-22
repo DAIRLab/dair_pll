@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.deep_learnable_system &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2fea6348"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.drake_experiment" href="dair_pll.drake_experiment.html" />
+    <link rel="prev" title="dair_pll.deep_learnable_model" href="dair_pll.deep_learnable_model.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dair_pll.deep_learnable_system</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.deep_learnable_system.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-dair_pll.deep_learnable_system">
+<span id="dair-pll-deep-learnable-system"></span><h1>dair_pll.deep_learnable_system<a class="headerlink" href="#module-dair_pll.deep_learnable_system" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystemConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.deep_learnable_system.</span></span><span class="sig-name descname"><span class="pre">DeepLearnableSystemConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">integrator_type=&lt;class</span> <span class="pre">'VelocityIntegrator'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layers=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nonlinearity=&lt;class</span> <span class="pre">'ReLU'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_size=128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_constructor=&lt;class</span> <span class="pre">'DeepRecurrentModel'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/deep_learnable_system.html#DeepLearnableSystemConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystemConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dair_pll.experiment_config.html#dair_pll.experiment_config.SystemConfig" title="dair_pll.experiment_config.SystemConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">SystemConfig</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystemConfig.integrator_type">
+<span class="sig-name descname"><span class="pre">integrator_type</span></span><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystemConfig.integrator_type" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="dair_pll.integrator.html#dair_pll.integrator.VelocityIntegrator" title="dair_pll.integrator.VelocityIntegrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">VelocityIntegrator</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystemConfig.layers">
+<span class="sig-name descname"><span class="pre">layers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystemConfig.layers" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystemConfig.nonlinearity">
+<span class="sig-name descname"><span class="pre">nonlinearity</span></span><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystemConfig.nonlinearity" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.ReLU.html#torch.nn.ReLU" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReLU</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystemConfig.hidden_size">
+<span class="sig-name descname"><span class="pre">hidden_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">128</span></em><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystemConfig.hidden_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystemConfig.model_constructor">
+<span class="sig-name descname"><span class="pre">model_constructor</span></span><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystemConfig.model_constructor" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="dair_pll.deep_learnable_model.html#dair_pll.deep_learnable_model.DeepRecurrentModel" title="dair_pll.deep_learnable_model.DeepRecurrentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepRecurrentModel</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.deep_learnable_system.</span></span><span class="sig-name descname"><span class="pre">DeepLearnableSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">training_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/deep_learnable_system.html#DeepLearnableSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystem" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a></p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">System</span></code> with prescribed integration properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> – State space of underlying dynamics</p></li>
+<li><p><strong>integrator</strong> – Integrator of underlying dynamics</p></li>
+<li><p><strong>max_batch_dim</strong> – Maximum number of batch dimensions supported by</p></li>
+<li><p><strong>integrator.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystem.model">
+<span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></a></em><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystem.model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableSystem.preprocess_initial_condition">
+<span class="sig-name descname"><span class="pre">preprocess_initial_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carry_0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/deep_learnable_system.html#DeepLearnableSystem.preprocess_initial_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableSystem.preprocess_initial_condition" title="Link to this definition"></a></dt>
+<dd><p>Preload initial condition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableExperiment">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.deep_learnable_system.</span></span><span class="sig-name descname"><span class="pre">DeepLearnableExperiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/deep_learnable_system.html#DeepLearnableExperiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableExperiment" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dair_pll.experiment.html#dair_pll.experiment.SupervisedLearningExperiment" title="dair_pll.experiment.SupervisedLearningExperiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">SupervisedLearningExperiment</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.deep_learnable_system.DeepLearnableExperiment.get_learned_system">
+<span class="sig-name descname"><span class="pre">get_learned_system</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_states</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/deep_learnable_system.html#DeepLearnableExperiment.get_learned_system"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.deep_learnable_system.DeepLearnableExperiment.get_learned_system" title="Link to this definition"></a></dt>
+<dd><p>Abstract callback function to construct learnable system for
+experiment.</p>
+<p>Optionally, learned system can be initialized to depend on the
+training dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>train_states</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">space.n_x)</span></code> batch of all states in training
+set.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Experiment’s learnable system.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.deep_learnable_model.html" class="btn btn-neutral float-left" title="dair_pll.deep_learnable_model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.drake_experiment.html" class="btn btn-neutral float-right" title="dair_pll.drake_experiment" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.file_utils &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.file_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.file_utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Utility functions for managing saved files for training models.</span>
+
+<span class="sd">File system is organized around a &quot;storage&quot; directory associated with data and</span>
+<span class="sd">training runs. The functions herein can be used to return absolute paths of and</span>
+<span class="sd">summary information about the content of this directory.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">BinaryIO</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TextIO</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll.experiment_config</span> <span class="kn">import</span> <span class="n">SupervisedLearningExperimentConfig</span>
+
+<span class="n">TRAJ_EXTENSION</span> <span class="o">=</span> <span class="s1">&#39;.pt&#39;</span>  <span class="c1"># trajectory file</span>
+<span class="n">HYPERPARAMETERS_EXTENSION</span> <span class="o">=</span> <span class="s1">&#39;.json&#39;</span>  <span class="c1"># hyperparameter set file</span>
+<span class="n">STATS_EXTENSION</span> <span class="o">=</span> <span class="s1">&#39;.pkl&#39;</span>  <span class="c1"># experiment statistics</span>
+<span class="n">CONFIG_EXTENSION</span> <span class="o">=</span> <span class="s1">&#39;.pkl&#39;</span>
+<span class="n">CHECKPOINT_EXTENSION</span> <span class="o">=</span> <span class="s1">&#39;.pt&#39;</span>
+<span class="n">DATA_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;data&#39;</span>
+<span class="n">LEARNING_DATA_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;learning&#39;</span>
+<span class="n">GROUND_TRUTH_DATA_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;ground_truth&#39;</span>
+<span class="n">RUNS_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;runs&#39;</span>
+<span class="n">STUDIES_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;studies&#39;</span>
+<span class="n">URDFS_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;urdfs&#39;</span>
+<span class="n">WANDB_SUBFOLDER_NAME</span> <span class="o">=</span> <span class="s1">&#39;wandb&#39;</span>
+<span class="n">TRAJECTORY_GIF_DEFAULT_NAME</span> <span class="o">=</span> <span class="s1">&#39;trajectory.gif&#39;</span>
+<span class="n">FINAL_EVALUATION_NAME</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;statistics</span><span class="si">{</span><span class="n">STATS_EXTENSION</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="n">HYPERPARAMETERS_FILENAME</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;optimal_hyperparameters</span><span class="si">{</span><span class="n">HYPERPARAMETERS_EXTENSION</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="n">CONFIG_FILENAME</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;config</span><span class="si">{</span><span class="n">CONFIG_EXTENSION</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="n">CHECKPOINT_FILENAME</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;checkpoint</span><span class="si">{</span><span class="n">CHECKPOINT_EXTENSION</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="sd">&quot;&quot;&quot;str: extensions for saved files&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="assure_created">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.assure_created">[docs]</a>
+<span class="k">def</span> <span class="nf">assure_created</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper to put around directory paths which ensure their existence.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory: Path of directory that may not exist.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``directory``, Which is ensured to exist by recursive mkdir.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+        <span class="n">assure_created</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">directory</span><span class="p">))</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">directory</span></div>
+
+
+
+<span class="n">MAIN_DIR</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+<span class="n">ASSETS_DIR</span> <span class="o">=</span> <span class="n">assure_created</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">MAIN_DIR</span><span class="p">,</span> <span class="s1">&#39;assets&#39;</span><span class="p">))</span>
+<span class="c1"># str: locations of key static directories</span>
+
+
+<div class="viewcode-block" id="get_asset">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_asset">[docs]</a>
+<span class="k">def</span> <span class="nf">get_asset</span><span class="p">(</span><span class="n">asset_file_basename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gets</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        asset_file_basename: Basename of asset file located in ``ASSET_DIR``</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Asset&#39;s absolute path.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ASSETS_DIR</span><span class="p">,</span> <span class="n">asset_file_basename</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="assure_storage_tree_created">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.assure_storage_tree_created">[docs]</a>
+<span class="k">def</span> <span class="nf">assure_storage_tree_created</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Assure that all subdirectories of specified storage are created.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        storage_name: name of storage directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">storage_directories</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">all_runs_dir</span><span class="p">,</span>
+                           <span class="n">all_studies_dir</span><span class="p">]</span>  <span class="c1"># type: List[Callable[[str],str]]</span>
+
+    <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="n">storage_directories</span><span class="p">:</span>
+        <span class="n">assure_created</span><span class="p">(</span><span class="n">directory</span><span class="p">(</span><span class="n">storage_name</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="import_data_to_storage">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.import_data_to_storage">[docs]</a>
+<span class="k">def</span> <span class="nf">import_data_to_storage</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">import_data_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Import data in external folder into data directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        storage_name: Name of storage for data import.</span>
+<span class="sd">        import_data_dir: Directory to import data from.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># check if data is synchronized already</span>
+    <span class="n">output_directories</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ground_truth_data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span>
+        <span class="n">learning_data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">output_directory</span> <span class="ow">in</span> <span class="n">output_directories</span><span class="p">:</span>
+        <span class="n">storage_traj_count</span> <span class="o">=</span> <span class="n">get_numeric_file_count</span><span class="p">(</span><span class="n">output_directory</span><span class="p">,</span>
+                                                    <span class="n">TRAJ_EXTENSION</span><span class="p">)</span>
+        <span class="n">data_traj_count</span> <span class="o">=</span> <span class="n">get_numeric_file_count</span><span class="p">(</span><span class="n">import_data_dir</span><span class="p">,</span>
+                                                 <span class="n">TRAJ_EXTENSION</span><span class="p">)</span>
+
+        <span class="c1"># overwrite in case of any discrepancies</span>
+        <span class="k">if</span> <span class="n">storage_traj_count</span> <span class="o">!=</span> <span class="n">data_traj_count</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;rm -r </span><span class="si">{</span><span class="n">output_directory</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;cp -r </span><span class="si">{</span><span class="n">import_data_dir</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">output_directory</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="storage_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.storage_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">storage_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of storage directory&quot;&quot;&quot;</span>
+    <span class="c1"># return assure_created(os.path.join(RESULTS_DIR, storage_name))</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span><span class="n">storage_name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="data_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.data_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of data folder.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">storage_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">DATA_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="learning_data_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.learning_data_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">learning_data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of folder for data preprocessed for</span>
+<span class="sd">    training/validation.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">LEARNING_DATA_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="ground_truth_data_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.ground_truth_data_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">ground_truth_data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of folder for raw unprocessed trajectories.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">GROUND_TRUTH_DATA_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="all_runs_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.all_runs_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">all_runs_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of tensorboard storage folder&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">storage_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">RUNS_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="all_studies_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.all_studies_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">all_studies_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of tensorboard storage folder&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">storage_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">STUDIES_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="delete">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.delete">[docs]</a>
+<span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Removes file at path specified by ``file_name``&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_numeric_file_count">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_numeric_file_count">[docs]</a>
+<span class="k">def</span> <span class="nf">get_numeric_file_count</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                           <span class="n">extension</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">TRAJ_EXTENSION</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count number of whole-number-named files.</span>
+
+<span class="sd">    If folder ``/fldr`` has contents (7.pt, 11.pt, 4.pt), then::</span>
+
+<span class="sd">        get_numeric_file_count(&quot;/fldr&quot;, &quot;.pt&quot;) == 3</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory: Directory to tally file count in</span>
+<span class="sd">        extension: Extension of files to be counted</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Number of files in specified ``directory`` with specified</span>
+<span class="sd">        ``extension`` that have an integer basename.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s1">&#39;./[0-9]*&#39;</span> <span class="o">+</span> <span class="n">extension</span><span class="p">)))</span></div>
+
+
+
+<div class="viewcode-block" id="get_trajectory_count">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_trajectory_count">[docs]</a>
+<span class="k">def</span> <span class="nf">get_trajectory_count</span><span class="p">(</span><span class="n">trajectory_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count number of trajectories on disk in given directory.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">get_numeric_file_count</span><span class="p">(</span><span class="n">trajectory_dir</span><span class="p">,</span> <span class="n">TRAJ_EXTENSION</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="trajectory_file">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.trajectory_file">[docs]</a>
+<span class="k">def</span> <span class="nf">trajectory_file</span><span class="p">(</span><span class="n">trajectory_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_trajectory</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of specific trajectory in storage&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">trajectory_dir</span><span class="p">,</span>
+                     <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">num_trajectory</span><span class="si">}{</span><span class="n">TRAJ_EXTENSION</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.run_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of run-specific storage folder.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">all_runs_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">run_name</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="get_trajectory_video_filename">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_trajectory_video_filename">[docs]</a>
+<span class="k">def</span> <span class="nf">get_trajectory_video_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the filepath of the temporary rollout video gif.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">),</span>
+                     <span class="n">TRAJECTORY_GIF_DEFAULT_NAME</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_learned_urdf_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_learned_urdf_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">get_learned_urdf_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of learned model URDF storage directory.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">),</span> <span class="n">URDFS_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="wandb_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.wandb_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">wandb_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of tensorboard storage folder&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">),</span> <span class="n">WANDB_SUBFOLDER_NAME</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="get_evaluation_filename">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_evaluation_filename">[docs]</a>
+<span class="k">def</span> <span class="nf">get_evaluation_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of experiment run statistics file.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">),</span> <span class="n">FINAL_EVALUATION_NAME</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_configuration_filename">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_configuration_filename">[docs]</a>
+<span class="k">def</span> <span class="nf">get_configuration_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of experiment configuration.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">),</span> <span class="n">CONFIG_FILENAME</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_model_filename">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_model_filename">[docs]</a>
+<span class="k">def</span> <span class="nf">get_model_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of experiment configuration.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">run_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">),</span> <span class="n">CHECKPOINT_FILENAME</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="study_dir">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.study_dir">[docs]</a>
+<span class="k">def</span> <span class="nf">study_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of study-specific storage folder.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">assure_created</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">all_studies_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">),</span> <span class="n">study_name</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="hyperparameter_opt_run_name">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.hyperparameter_opt_run_name">[docs]</a>
+<span class="k">def</span> <span class="nf">hyperparameter_opt_run_name</span><span class="p">(</span><span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">trial_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Experiment run name for hyperparameter optimization trial.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">study_name</span><span class="si">}</span><span class="s1">_hyperparameter_opt_</span><span class="si">{</span><span class="n">trial_number</span><span class="si">}</span><span class="s1">&#39;</span></div>
+
+
+
+<div class="viewcode-block" id="sweep_run_name">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.sweep_run_name">[docs]</a>
+<span class="k">def</span> <span class="nf">sweep_run_name</span><span class="p">(</span><span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sweep_run</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_train</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Experiment run name for dataset size sweep study.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">study_name</span><span class="si">}</span><span class="s1">_sweep_</span><span class="si">{</span><span class="n">sweep_run</span><span class="si">}</span><span class="s1">_n_train_</span><span class="si">{</span><span class="n">n_train</span><span class="si">}</span><span class="s1">&#39;</span></div>
+
+
+
+<div class="viewcode-block" id="get_hyperparameter_filename">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.get_hyperparameter_filename">[docs]</a>
+<span class="k">def</span> <span class="nf">get_hyperparameter_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute path of optimized hyperparameters for a study&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">study_dir</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">study_name</span><span class="p">),</span>
+                     <span class="n">HYPERPARAMETERS_FILENAME</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_binary">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.load_binary">[docs]</a>
+<span class="k">def</span> <span class="nf">load_binary</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">load_callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">BinaryIO</span><span class="p">],</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load binary file&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">load_callback</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="load_string">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.load_string">[docs]</a>
+<span class="k">def</span> <span class="nf">load_string</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                <span class="n">load_callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">TextIO</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load text file&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">load_callback</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">load_callback</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="save_binary">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.save_binary">[docs]</a>
+<span class="k">def</span> <span class="nf">save_binary</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+                <span class="n">save_callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">,</span> <span class="n">BinaryIO</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save binary file.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="n">save_callback</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_string">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.save_string">[docs]</a>
+<span class="k">def</span> <span class="nf">save_string</span><span class="p">(</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">save_callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">,</span> <span class="n">TextIO</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save text file.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">save_callback</span><span class="p">:</span>
+            <span class="n">save_callback</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_configuration">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.load_configuration">[docs]</a>
+<span class="k">def</span> <span class="nf">load_configuration</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">SupervisedLearningExperimentConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load configuration file.&quot;&quot;&quot;</span>
+    <span class="n">configuration_filename</span> <span class="o">=</span> <span class="n">get_configuration_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">)</span>
+    <span class="n">configuration</span> <span class="o">=</span> <span class="n">load_binary</span><span class="p">(</span><span class="n">configuration_filename</span><span class="p">,</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">configuration</span><span class="p">,</span> <span class="n">SupervisedLearningExperimentConfig</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">configuration</span></div>
+
+
+
+<div class="viewcode-block" id="save_configuration">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.save_configuration">[docs]</a>
+<span class="k">def</span> <span class="nf">save_configuration</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                       <span class="n">config</span><span class="p">:</span> <span class="n">SupervisedLearningExperimentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save configuration file.&quot;&quot;&quot;</span>
+    <span class="n">configuration_filename</span> <span class="o">=</span> <span class="n">get_configuration_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">)</span>
+    <span class="n">save_binary</span><span class="p">(</span><span class="n">configuration_filename</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_evaluation">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.load_evaluation">[docs]</a>
+<span class="k">def</span> <span class="nf">load_evaluation</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load evaluation file.&quot;&quot;&quot;</span>
+    <span class="n">evaluation_filename</span> <span class="o">=</span> <span class="n">get_evaluation_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">load_binary</span><span class="p">(</span><span class="n">evaluation_filename</span><span class="p">,</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_evaluation">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.save_evaluation">[docs]</a>
+<span class="k">def</span> <span class="nf">save_evaluation</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">evaluation</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save evaluation file.&quot;&quot;&quot;</span>
+    <span class="n">evaluation_filename</span> <span class="o">=</span> <span class="n">get_evaluation_filename</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="n">run_name</span><span class="p">)</span>
+    <span class="n">save_binary</span><span class="p">(</span><span class="n">evaluation_filename</span><span class="p">,</span> <span class="n">evaluation</span><span class="p">,</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_hyperparameters">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.load_hyperparameters">[docs]</a>
+<span class="k">def</span> <span class="nf">load_hyperparameters</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load hyperparameter file.&quot;&quot;&quot;</span>
+    <span class="n">hyperparameter_filename</span> <span class="o">=</span> <span class="n">get_hyperparameter_filename</span><span class="p">(</span>
+        <span class="n">storage_name</span><span class="p">,</span> <span class="n">study_name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">load_string</span><span class="p">(</span><span class="n">hyperparameter_filename</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_hyperparameters">
+<a class="viewcode-back" href="../../dair_pll.file_utils.html#dair_pll.file_utils.save_hyperparameters">[docs]</a>
+<span class="k">def</span> <span class="nf">save_hyperparameters</span><span class="p">(</span><span class="n">storage_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">study_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                         <span class="n">hyperparameters</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save hyperparameter file.&quot;&quot;&quot;</span>
+    <span class="n">hyperparameter_filename</span> <span class="o">=</span> <span class="n">get_hyperparameter_filename</span><span class="p">(</span>
+        <span class="n">storage_name</span><span class="p">,</span> <span class="n">study_name</span><span class="p">)</span>
+    <span class="n">save_string</span><span class="p">(</span><span class="n">hyperparameter_filename</span><span class="p">,</span> <span class="n">hyperparameters</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

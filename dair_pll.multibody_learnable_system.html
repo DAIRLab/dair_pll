@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.multibody_learnable_system &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2fea6348"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.dataset_management" href="dair_pll.dataset_management.html" />
+    <link rel="prev" title="dair_pll.wandb_manager" href="dair_pll.wandb_manager.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dair_pll.multibody_learnable_system</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.multibody_learnable_system.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-dair_pll.multibody_learnable_system">
+<span id="dair-pll-multibody-learnable-system"></span><h1>dair_pll.multibody_learnable_system<a class="headerlink" href="#module-dair_pll.multibody_learnable_system" title="Link to this heading"></a></h1>
+<p>Construction and analysis of learnable multibody systems.</p>
+<p>Similar to Drake, multibody systems are instantiated as a child class of
+<code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code>: <a class="reference internal" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem" title="dair_pll.multibody_learnable_system.MultibodyLearnableSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyLearnableSystem</span></code></a>. This object is a thin
+wrapper for a <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code> member variable, which manages
+computation of lumped terms necessary for simulation and evaluation.</p>
+<p>Simulation is implemented via Anitescu’s [1] convex method.</p>
+<p>An interface for the ContactNets [2] loss is also defined as an alternative
+to prediction loss.</p>
+<p>A large portion of the internal implementation of <code class="xref py py-class docutils literal notranslate"><span class="pre">DrakeSystem</span></code> is
+implemented in <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyPlantDiagram</span></code>.</p>
+<p>[1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
+multibody dynamics,” Mathematical Programming, 2006,
+<a class="reference external" href="https://doi.org/10.1007/s10107-005-0590-7">https://doi.org/10.1007/s10107-005-0590-7</a>
+[2] S. Pfrommer*, M. Halm*, and M. Posa. “ContactNets: Learning Discontinuous
+Contact Dynamics with Smooth, Implicit Representations,” Conference on
+Robotic Learning, 2020, <a class="reference external" href="https://proceedings.mlr.press/v155/pfrommer21a.html">https://proceedings.mlr.press/v155/pfrommer21a.html</a></p>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.multibody_learnable_system.</span></span><span class="sig-name descname"><span class="pre">MultibodyLearnableSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_urdfs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_urdfs_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_learnable_system.html#MultibodyLearnableSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="dair_pll.system.html#dair_pll.system.System" title="dair_pll.system.System"><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code></a></p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">System</span></code> interface for dynamics associated with
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code>.</p>
+<p>Inits <a class="reference internal" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem" title="dair_pll.multibody_learnable_system.MultibodyLearnableSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyLearnableSystem</span></code></a> with provided model URDFs.</p>
+<p>Implementation is primarily based on Drake. Bodies are modeled via
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code>, which uses Drake symbolics to generate
+dynamics terms, and the system can be exported back to a
+Drake-interpretable representation as a set of URDFs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_urdfs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]) – Names and corresponding URDFs to model with
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code>.</p></li>
+<li><p><strong>dt</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – Time step of system in seconds.</p></li>
+<li><p><strong>output_urdfs_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]) – Optionally, a directory that learned URDFs can be
+written to.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.multibody_terms">
+<span class="sig-name descname"><span class="pre">multibody_terms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.multibody_terms.html#dair_pll.multibody_terms.MultibodyTerms" title="dair_pll.multibody_terms.MultibodyTerms"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.multibody_terms.MultibodyTerms</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.multibody_terms" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.init_urdfs">
+<span class="sig-name descname"><span class="pre">init_urdfs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">typing.Dict</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">,</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.init_urdfs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.output_urdfs_dir">
+<span class="sig-name descname"><span class="pre">output_urdfs_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.output_urdfs_dir" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.visualization_system">
+<span class="sig-name descname"><span class="pre">visualization_system</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">typing.Optional</span></code></a><span class="pre">[</span><a class="reference internal" href="dair_pll.drake_system.html#dair_pll.drake_system.DrakeSystem" title="dair_pll.drake_system.DrakeSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">dair_pll.drake_system.DrakeSystem</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.visualization_system" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.solver">
+<span class="sig-name descname"><span class="pre">solver</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">sappy.sap.SAPSolver</span></code></em><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.solver" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.dt">
+<span class="sig-name descname"><span class="pre">dt</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></em><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.dt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.generate_updated_urdfs">
+<span class="sig-name descname"><span class="pre">generate_updated_urdfs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_learnable_system.html#MultibodyLearnableSystem.generate_updated_urdfs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.generate_updated_urdfs" title="Link to this definition"></a></dt>
+<dd><p>Exports current parameterization as a <code class="xref py py-class docutils literal notranslate"><span class="pre">DrakeSystem</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New Drake system instantiated on new URDFs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.contactnets_loss">
+<span class="sig-name descname"><span class="pre">contactnets_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_plus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_pool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_learnable_system.html#MultibodyLearnableSystem.contactnets_loss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.contactnets_loss" title="Link to this definition"></a></dt>
+<dd><p>Calculate ContactNets [1] loss for state transition.</p>
+<p class="rubric">References</p>
+<p>[1] S. Pfrommer*, M. Halm*, and M. Posa. “ContactNets: Learning
+Discontinuous Contact Dynamics with Smooth, Implicit
+Representations,” Conference on Robotic Learning, 2020,
+<a class="reference external" href="https://proceedings.mlr.press/v155/pfrommer21a.html">https://proceedings.mlr.press/v155/pfrommer21a.html</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, space.n_x) current state batch.</p></li>
+<li><p><strong>u</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, ?) input batch.</p></li>
+<li><p><strong>x_plus</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, space.n_x) current state batch.</p></li>
+<li><p><strong>loss_pool</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pool</span></code></a>]) – optional processing pool to enable multithreaded solves.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*,) loss batch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.forward_dynamics">
+<span class="sig-name descname"><span class="pre">forward_dynamics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dynamics_pool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_learnable_system.html#MultibodyLearnableSystem.forward_dynamics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.forward_dynamics" title="Link to this definition"></a></dt>
+<dd><p>Calculates delta velocity from current state and input.</p>
+<p>Implement’s Anitescu’s [1] convex formulation in dual form, derived
+similarly to Tedrake [2] and described here.</p>
+<p>Let v_minus be the contact-free next velocity, i.e.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">+</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">non_contact_acceleration</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Let FC be the combined friction cone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FC</span> <span class="o">=</span> <span class="p">{[</span><span class="n">beta_n</span> <span class="n">beta_t</span><span class="p">]:</span> <span class="n">beta_n_i</span> <span class="o">&gt;=</span> <span class="o">||</span><span class="n">beta_t_i</span><span class="o">||</span><span class="p">}</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>The primal version of Anitescu’s formulation is as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">min_</span><span class="p">{</span><span class="n">v_plus</span><span class="p">,</span><span class="n">s</span><span class="p">}</span>  <span class="p">(</span><span class="n">v_plus</span> <span class="o">-</span> <span class="n">v_minus</span><span class="p">)</span><span class="o">^</span><span class="n">T</span> <span class="n">M</span><span class="p">(</span><span class="n">q</span><span class="p">)(</span><span class="n">v_plus</span> <span class="o">-</span> <span class="n">v_minus</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">s</span><span class="o">.</span><span class="n">t</span><span class="o">.</span>            <span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">I</span><span class="p">;</span> <span class="mi">0</span><span class="p">]</span><span class="n">phi</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="o">/</span><span class="n">dt</span> <span class="o">+</span> <span class="n">J</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="n">v_plus</span><span class="p">,</span>
+                <span class="n">s</span> \\<span class="ow">in</span> <span class="n">FC</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>The KKT conditions are the mixed cone complementarity
+problem [3, Theorem 2]:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">I</span><span class="p">;</span> <span class="mi">0</span><span class="p">]</span><span class="n">phi</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="o">/</span><span class="n">dt</span> <span class="o">+</span> <span class="n">J</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="n">v_plus</span><span class="p">,</span>
+<span class="n">M</span><span class="p">(</span><span class="n">q</span><span class="p">)(</span><span class="n">v_plus</span> <span class="o">-</span> <span class="n">v_minus</span><span class="p">)</span> <span class="o">=</span> <span class="n">J</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="o">^</span><span class="n">T</span> <span class="n">f</span><span class="p">,</span>
+<span class="n">FC</span> \\<span class="n">ni</span> <span class="n">s</span> \\<span class="n">perp</span> <span class="n">f</span> \\<span class="ow">in</span> <span class="n">FC</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>As M(q) is positive definite, we can solve for v_plus in terms of
+lambda, and thus these conditions can be simplified to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FC</span> \\<span class="n">ni</span> <span class="n">D</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="n">f</span> <span class="o">+</span> <span class="n">J</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="n">v_minus</span> <span class="o">+</span> <span class="p">[</span><span class="n">I</span><span class="p">;</span><span class="mi">0</span><span class="p">]</span><span class="n">phi</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="o">/</span><span class="n">dt</span> \\<span class="n">perp</span> <span class="n">f</span> \\<span class="ow">in</span> <span class="n">FC</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>which in turn are the KKT conditions for the dual QCQP we solve:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">min_</span><span class="p">{</span><span class="n">f</span><span class="p">}</span>     <span class="n">f</span><span class="o">^</span><span class="n">T</span> <span class="n">D</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="n">f</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="n">f</span><span class="o">^</span><span class="n">T</span><span class="p">(</span><span class="n">J</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="n">v_minus</span> <span class="o">+</span> <span class="p">[</span><span class="n">I</span><span class="p">;</span><span class="mi">0</span><span class="p">]</span><span class="n">phi</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="o">/</span><span class="n">dt</span><span class="p">)</span>
+<span class="n">s</span><span class="o">.</span><span class="n">t</span><span class="o">.</span>        <span class="n">f</span> \\<span class="ow">in</span> <span class="n">FC</span><span class="o">.</span>
+</pre></div>
+</div>
+<p class="rubric">References</p>
+<p>[1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
+multibody dynamics,” Mathematical Programming, 2006,
+<a class="reference external" href="https://doi.org/10.1007/s10107-005-0590-7">https://doi.org/10.1007/s10107-005-0590-7</a>
+[2] R. Tedrake. Underactuated Robotics: Algorithms for Walking,
+Running, Swimming, Flying, and Manipulation (Course Notes for MIT
+6.832), <a class="reference external" href="https://underactuated.mit.edu">https://underactuated.mit.edu</a>
+[3] S. Z. N’emeth, G. Zhang, “Conic optimization and
+complementarity problems,” arXiv,
+<a class="reference external" href="https://doi.org/10.48550/arXiv.1607.05161">https://doi.org/10.48550/arXiv.1607.05161</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, space.n_q) current configuration batch.</p></li>
+<li><p><strong>v</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, space.n_v) current velocity batch.</p></li>
+<li><p><strong>u</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, ?) current input batch.</p></li>
+<li><p><strong>dynamics_pool</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pool</span></code></a>]) – optional processing pool to enable multithreaded
+solves.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, space.n_v) delta velocity batch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.sim_step">
+<span class="sig-name descname"><span class="pre">sim_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_learnable_system.html#MultibodyLearnableSystem.sim_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.sim_step" title="Link to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">Integrator.partial_step</span></code> wrapper for
+<a class="reference internal" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.forward_dynamics" title="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.forward_dynamics"><code class="xref py py-meth docutils literal notranslate"><span class="pre">forward_dynamics()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.multibody_learnable_system.MultibodyLearnableSystem.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">statistics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/multibody_learnable_system.html#MultibodyLearnableSystem.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.summary" title="Link to this definition"></a></dt>
+<dd><p>Generates summary statistics for multibody system.</p>
+<p>The scalars returned are simply the scalar description of the
+system’s <code class="xref py py-class docutils literal notranslate"><span class="pre">MultibodyTerms</span></code>.</p>
+<p>Meshes are generated for learned
+<a class="reference internal" href="dair_pll.geometry.html#dair_pll.geometry.DeepSupportConvex" title="dair_pll.geometry.DeepSupportConvex"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepSupportConvex</span></code></a> es.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>statistics</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>) – Updated evaluation statistics for the model.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="dair_pll.system.html#dair_pll.system.SystemSummary" title="dair_pll.system.SystemSummary"><code class="xref py py-class docutils literal notranslate"><span class="pre">SystemSummary</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scalars and meshes packaged into a <code class="docutils literal notranslate"><span class="pre">SystemSummary</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.wandb_manager.html" class="btn btn-neutral float-left" title="dair_pll.wandb_manager" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.dataset_management.html" class="btn btn-neutral float-right" title="dair_pll.dataset_management" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

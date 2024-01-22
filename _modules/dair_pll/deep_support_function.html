@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.deep_support_function &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.deep_support_function</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.deep_support_function</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Modelling and manipulation of convex support functions.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">import</span> <span class="nn">torch.nn</span>
+<span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">ConvexHull</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">ParameterList</span><span class="p">,</span> <span class="n">Module</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll.system</span> <span class="kn">import</span> <span class="n">MeshSummary</span>
+<span class="kn">from</span> <span class="nn">dair_pll.tensor_utils</span> <span class="kn">import</span> <span class="n">pbmm</span><span class="p">,</span> <span class="n">rotation_matrix_from_one_vector</span>
+
+<span class="c1"># pylint: disable=E1103</span>
+<span class="n">_LINEAR_SPACE</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">_GRID</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cartesian_prod</span><span class="p">(</span><span class="n">_LINEAR_SPACE</span><span class="p">,</span> <span class="n">_LINEAR_SPACE</span><span class="p">,</span> <span class="n">_LINEAR_SPACE</span><span class="p">)</span>
+<span class="n">_SURFACE</span> <span class="o">=</span> <span class="n">_GRID</span><span class="p">[</span><span class="n">_GRID</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">]</span>
+<span class="n">_SURFACE</span> <span class="o">=</span> <span class="n">_SURFACE</span> <span class="o">/</span> <span class="n">_SURFACE</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">_SURFACE_ROTATIONS</span> <span class="o">=</span> <span class="n">rotation_matrix_from_one_vector</span><span class="p">(</span><span class="n">_SURFACE</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<div class="viewcode-block" id="extract_obj">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.extract_obj">[docs]</a>
+<span class="k">def</span> <span class="nf">extract_obj</span><span class="p">(</span><span class="n">support_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Given a support function, extracts a Wavefront obj representation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        support_function: Callable support function.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Wavefront .obj string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mesh_summary</span> <span class="o">=</span> <span class="n">extract_mesh</span><span class="p">(</span><span class="n">support_function</span><span class="p">)</span>
+    <span class="n">normals</span> <span class="o">=</span> <span class="n">extract_outward_normal_hyperplanes</span><span class="p">(</span>
+        <span class="n">mesh_summary</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+        <span class="n">mesh_summary</span><span class="o">.</span><span class="n">faces</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">obj_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">vertex</span> <span class="ow">in</span> <span class="n">mesh_summary</span><span class="o">.</span><span class="n">vertices</span><span class="p">:</span>
+        <span class="n">vertex_string</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">v_i</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> <span class="k">for</span> <span class="n">v_i</span> <span class="ow">in</span> <span class="n">vertex</span><span class="p">])</span>
+        <span class="n">obj_string</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;v </span><span class="si">{</span><span class="n">vertex_string</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+    <span class="n">obj_string</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span>
+
+    <span class="c1">#pdb.set_trace()</span>
+    <span class="k">for</span> <span class="n">normal</span> <span class="ow">in</span> <span class="n">normals</span><span class="p">:</span>
+        <span class="n">normal_string</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">n_i</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> <span class="k">for</span> <span class="n">n_i</span> <span class="ow">in</span> <span class="n">normal</span><span class="p">])</span>
+        <span class="n">obj_string</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;vn </span><span class="si">{</span><span class="n">normal_string</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+    <span class="n">obj_string</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span>
+
+    <span class="k">for</span> <span class="n">face_index</span><span class="p">,</span> <span class="n">face</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mesh_summary</span><span class="o">.</span><span class="n">faces</span><span class="p">):</span>
+        <span class="n">face_string</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">f_i</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">//</span><span class="si">{</span><span class="n">face_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">f_i</span> <span class="ow">in</span> <span class="n">face</span><span class="p">])</span>
+        <span class="n">obj_string</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;f </span><span class="si">{</span><span class="n">face_string</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+    <span class="k">return</span> <span class="n">obj_string</span></div>
+
+
+
+
+<div class="viewcode-block" id="extract_outward_normal_hyperplanes">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.extract_outward_normal_hyperplanes">[docs]</a>
+<span class="k">def</span> <span class="nf">extract_outward_normal_hyperplanes</span><span class="p">(</span><span class="n">vertices</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">faces</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Extract hyperplane representation of convex hull from vertex-plane</span>
+<span class="sd">    representation.</span>
+
+<span class="sd">    Constructs a set of (outward) normal vectors and intercept values.</span>
+<span class="sd">    Additionally, notes a boolean value that is ``True`` iff the face vertices</span>
+<span class="sd">    are in counter-clockwise order when viewed from the outside.</span>
+
+<span class="sd">    Mathematically for a face :math:`(v_1, v_2, v_3)`\ , in counter-clockwise</span>
+<span class="sd">    order, this function returns :math:`\hat n`\ , the unit vector in the</span>
+<span class="sd">    :math:`(v_2 - v_1) \times (v_3 - v_`1)` direction, and intercept</span>
+<span class="sd">    :math:`d = \hat n \cdot v_1`\ .</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        vertices: ``(*, N, 3)`` batch of polytope vertices.</span>
+<span class="sd">        faces: ``(*, M, 3)`` batch of polytope triangle face vertex indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(*, M, 3)`` face outward normals.</span>
+<span class="sd">        ``(*, M)`` whether each face is in counter-clockwise order.</span>
+<span class="sd">        ``(*, M)`` face hyperplane intercepts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">batch_range</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">vertices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">faces</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+    <span class="n">centroids</span> <span class="o">=</span> <span class="n">vertices</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">v_a</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[</span><span class="n">batch_range</span><span class="p">,</span> <span class="n">faces</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+    <span class="n">v_b</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[</span><span class="n">batch_range</span><span class="p">,</span> <span class="n">faces</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+    <span class="n">v_c</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[</span><span class="n">batch_range</span><span class="p">,</span> <span class="n">faces</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span>
+    <span class="n">outward_normals</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">v_b</span> <span class="o">-</span> <span class="n">v_a</span><span class="p">,</span> <span class="n">v_c</span> <span class="o">-</span> <span class="n">v_a</span><span class="p">)</span>
+    <span class="n">outward_normals</span> <span class="o">/=</span> <span class="n">outward_normals</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">backwards</span> <span class="o">=</span> <span class="p">(</span><span class="n">outward_normals</span> <span class="o">*</span> <span class="p">(</span><span class="n">v_a</span> <span class="o">-</span> <span class="n">centroids</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.</span>
+    <span class="n">outward_normals</span><span class="p">[</span><span class="n">backwards</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">extents</span> <span class="o">=</span> <span class="p">(</span><span class="n">v_a</span> <span class="o">*</span> <span class="n">outward_normals</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">outward_normals</span><span class="p">,</span> <span class="n">backwards</span><span class="p">,</span> <span class="n">extents</span></div>
+
+
+
+<div class="viewcode-block" id="extract_mesh">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.extract_mesh">[docs]</a>
+<span class="k">def</span> <span class="nf">extract_mesh</span><span class="p">(</span><span class="n">support_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">MeshSummary</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Given a support function, extracts a vertex/face mesh.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        support_function: Callable support function.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Object vertices and face indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">support_points</span> <span class="o">=</span> <span class="n">support_function</span><span class="p">(</span><span class="n">_SURFACE</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+    <span class="n">support_point_hashes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">unique_support_points</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># remove duplicate vertices</span>
+    <span class="k">for</span> <span class="n">vertex</span> <span class="ow">in</span> <span class="n">support_points</span><span class="p">:</span>
+        <span class="n">vertex_hash</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">vertex</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">vertex_hash</span> <span class="ow">in</span> <span class="n">support_point_hashes</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">support_point_hashes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">vertex_hash</span><span class="p">)</span>
+        <span class="n">unique_support_points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span>
+
+    <span class="n">vertices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">unique_support_points</span><span class="p">)</span>
+    <span class="n">hull</span> <span class="o">=</span> <span class="n">ConvexHull</span><span class="p">(</span><span class="n">vertices</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+    <span class="n">faces</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">hull</span><span class="o">.</span><span class="n">simplices</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">backwards</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">extract_outward_normal_hyperplanes</span><span class="p">(</span>
+        <span class="n">vertices</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">faces</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">backwards</span> <span class="o">=</span> <span class="n">backwards</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">faces</span><span class="p">[</span><span class="n">backwards</span><span class="p">]</span> <span class="o">=</span> <span class="n">faces</span><span class="p">[</span><span class="n">backwards</span><span class="p">]</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">MeshSummary</span><span class="p">(</span><span class="n">vertices</span><span class="o">=</span><span class="n">vertices</span><span class="p">,</span> <span class="n">faces</span><span class="o">=</span><span class="n">faces</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="HomogeneousICNN">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN">[docs]</a>
+<span class="k">class</span> <span class="nc">HomogeneousICNN</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; Homogeneous Input-convex Neural Networks.</span>
+
+<span class="sd">    Implements a positively-homogenous version of an ICNN :cite:p:`AmosICNN2017`\ .</span>
+
+<span class="sd">    These networks have the structure :math:`f(d)` where</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \begin{align}</span>
+<span class="sd">            h_0 &amp;= \sigma(W_{d,0} d),\\</span>
+<span class="sd">            h_i &amp;= \sigma(W_{d,i} d + W_{h,i} h_{i-1}),\\</span>
+<span class="sd">            f(d) &amp;= W_{h,D} h_D,</span>
+<span class="sd">        \end{align}</span>
+
+<span class="sd">    where each :math:`W_{h,i} \geq 0` and :math:`\sigma` is a convex and</span>
+<span class="sd">    monotonic :py:class:`~torch.nn.LeakyReLU`\ .</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">activation</span><span class="p">:</span> <span class="n">Module</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Activation module (:py:class:`~torch.nn.LeakyReLU`\ ).&quot;&quot;&quot;</span>
+    <span class="n">hidden_weights</span><span class="p">:</span> <span class="n">ParameterList</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Scale of hidden weight matrices :math:`W_{h,i} \geq 0`\ .&quot;&quot;&quot;</span>
+    <span class="n">input_weights</span><span class="p">:</span> <span class="n">ParameterList</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;List of input-injection weight matrices :math:`W_{d,i}`\ .&quot;&quot;&quot;</span>
+    <span class="n">output_weight</span><span class="p">:</span> <span class="n">Parameter</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Output weight vector :math:`W_{h,D} \geq 0`\ .&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                 <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                 <span class="n">negative_slope</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+                 <span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            depth: Network depth :math:`D`\ .</span>
+<span class="sd">            width: Network width.</span>
+<span class="sd">            negative_slope: Negative slope of LeakyReLU activation.</span>
+<span class="sd">            scale: Length scale of object in meters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">negative_slope</span> <span class="o">&lt;</span> <span class="mf">1.0</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="n">hidden_weights</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">scale_hidden</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">negative_slope</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">**</span><span class="mf">0.5</span> <span class="o">/</span> <span class="n">width</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">depth</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">hidden_weight</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="n">width</span><span class="p">,</span> <span class="n">width</span><span class="p">))</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">hidden_weight</span> <span class="o">*=</span> <span class="n">scale_hidden</span>
+            <span class="n">hidden_weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Parameter</span><span class="p">(</span><span class="n">hidden_weight</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+        <span class="n">input_weights</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">depth</span><span class="p">):</span>
+            <span class="n">input_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="n">width</span><span class="p">))</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">kaiming_uniform</span><span class="p">(</span><span class="n">input_weight</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">layer</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">input_weight</span> <span class="o">*=</span> <span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">input_weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Parameter</span><span class="p">(</span><span class="n">input_weight</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+        <span class="n">scale_out</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">width</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">negative_slope</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">output_weight</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">width</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale_out</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_weights</span> <span class="o">=</span> <span class="n">ParameterList</span><span class="p">(</span><span class="n">hidden_weights</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_weights</span> <span class="o">=</span> <span class="n">ParameterList</span><span class="p">(</span><span class="n">input_weights</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_weight</span> <span class="o">=</span> <span class="n">Parameter</span><span class="p">(</span><span class="n">output_weight</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LeakyReLU</span><span class="p">(</span><span class="n">negative_slope</span><span class="o">=</span><span class="n">negative_slope</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HomogeneousICNN.abs_weights">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN.abs_weights">[docs]</a>
+    <span class="k">def</span> <span class="nf">abs_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns non-negative version of hidden weight matrices by taking</span>
+<span class="sd">        absolute value of :py:attr:`hidden_weights` and</span>
+<span class="sd">        :py:attr:`output_weight`\ .&quot;&quot;&quot;</span>
+        <span class="n">abs_hidden_wts</span> <span class="o">=</span> <span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span> <span class="k">for</span> <span class="n">weight</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_weights</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">abs_hidden_wts</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_weight</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HomogeneousICNN.activation_jacobian">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN.activation_jacobian">[docs]</a>
+    <span class="k">def</span> <span class="nf">activation_jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">activations</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns flattened diagonal Jacobian of LeakyReLU activation.</span>
+
+<span class="sd">        The jacobian is simply ``1`` at indices where the activations are</span>
+<span class="sd">        positive and :py:attr:`self.activation.negative_slope` otherwise.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            activations: `(*, width)` output of activation function for some</span>
+<span class="sd">              layer.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            `(*, width)` activation jacobian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">jacobian</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">activations</span><span class="p">)</span>
+        <span class="n">jacobian</span><span class="p">[</span><span class="n">activations</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span><span class="o">.</span><span class="n">negative_slope</span>
+        <span class="k">return</span> <span class="n">jacobian</span></div>
+
+
+<div class="viewcode-block" id="HomogeneousICNN.network_activations">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN.network_activations">[docs]</a>
+    <span class="k">def</span> <span class="nf">network_activations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                            <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward evaluation of the network activations</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directions: ``(*, 3)`` network inputs.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of ``(*, width)`` hidden layer activations.</span>
+<span class="sd">            ``(*,)`` network output</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hiddens</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">hidden_wts</span><span class="p">,</span> <span class="n">output_wt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">abs_weights</span><span class="p">()</span>
+        <span class="n">input_wts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_weights</span>
+        <span class="c1"># (*, 3) x (*, 3, W)</span>
+        <span class="n">hiddens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">activation</span><span class="p">(</span><span class="n">pbmm</span><span class="p">(</span><span class="n">directions</span><span class="p">,</span> <span class="n">input_wts</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+        <span class="c1"># print(hiddens[-1].norm(dim=-1).mean(dim=0))</span>
+        <span class="k">for</span> <span class="n">hidden_wt</span><span class="p">,</span> <span class="n">input_wt</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">hidden_wts</span><span class="p">,</span> <span class="n">input_wts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+            <span class="n">linear_hidden</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">hiddens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">hidden_wt</span><span class="p">)</span>
+            <span class="n">linear_input</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">directions</span><span class="p">,</span> <span class="n">input_wt</span><span class="p">)</span>
+            <span class="n">linear_output</span> <span class="o">=</span> <span class="n">linear_hidden</span> <span class="o">+</span> <span class="n">linear_input</span>
+            <span class="n">hiddens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">activation</span><span class="p">(</span><span class="n">linear_output</span><span class="p">))</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">hiddens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">output_wt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">hiddens</span><span class="p">,</span> <span class="n">output</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HomogeneousICNN.forward">
+<a class="viewcode-back" href="../../dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluates support function Jacobian at provided inputs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directions: ``(*, 3)`` network inputs.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(*, 3)`` network input Jacobian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hidden_wts</span><span class="p">,</span> <span class="n">output_wt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">abs_weights</span><span class="p">()</span>
+        <span class="n">hiddens</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_activations</span><span class="p">(</span><span class="n">directions</span><span class="p">)</span>
+        <span class="n">input_wts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_weights</span>
+
+        <span class="n">hidden_jacobian</span> <span class="o">=</span> <span class="p">(</span><span class="n">output_wt</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">hiddens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span>
+                           <span class="bp">self</span><span class="o">.</span><span class="n">activation_jacobian</span><span class="p">(</span><span class="n">hiddens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">jacobian</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">directions</span><span class="p">)</span>
+        <span class="n">layer_bundle</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">hiddens</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">hidden_wts</span><span class="p">),</span>
+                           <span class="nb">reversed</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">input_wts</span><span class="p">[</span><span class="mi">1</span><span class="p">:])))</span>
+
+        <span class="k">for</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">hidden_wt</span><span class="p">,</span> <span class="n">input_wt</span> <span class="ow">in</span> <span class="n">layer_bundle</span><span class="p">:</span>
+            <span class="n">jacobian</span> <span class="o">+=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">input_wt</span><span class="p">,</span> <span class="n">hidden_jacobian</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">hidden_jacobian</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">hidden_wt</span><span class="p">,</span> <span class="n">hidden_jacobian</span><span class="p">)</span> <span class="o">*</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">activation_jacobian</span><span class="p">(</span><span class="n">hidden</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">jacobian</span> <span class="o">+=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">input_wts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">hidden_jacobian</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">jacobian</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

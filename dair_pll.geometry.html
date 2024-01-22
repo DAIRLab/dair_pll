@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.geometry &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2fea6348"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dair_pll.drake_state_converter" href="dair_pll.drake_state_converter.html" />
+    <link rel="prev" title="dair_pll.deep_support_function" href="dair_pll.deep_support_function.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dair_pll.geometry</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dair_pll.geometry.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-dair_pll.geometry">
+<span id="dair-pll-geometry"></span><h1>dair_pll.geometry<a class="headerlink" href="#module-dair_pll.geometry" title="Link to this heading"></a></h1>
+<p>Collision geometry representation for multibody systems.</p>
+<p>Each type of collision geometry is modeled as a class inheriting from the
+<code class="docutils literal notranslate"><span class="pre">CollisionGeometry</span></code> abstract type. Different types of inheriting geometries
+will need to resolve collisions in unique ways, but one interface is always
+expected: a list of scalars to track during training.</p>
+<p>Many collision geometries, such as boxes and cylinders, fall into the class
+of bounded (compact) convex shapes. A general interface is defined in the
+abstract <code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code> type, which returns a set of
+witness points given support hyperplane directions. One implementation is
+the <code class="docutils literal notranslate"><span class="pre">SparseVertexConvexCollisionGeometry</span></code> type, which finds these points
+via brute force optimization over a short list of vertices.</p>
+<p>All collision geometries implemented here mirror a Drake <code class="docutils literal notranslate"><span class="pre">Shape</span></code> object. A
+general purpose converter is implemented in
+<code class="docutils literal notranslate"><span class="pre">PydrakeToCollisionGeometryFactory</span></code>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.CollisionGeometry">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">CollisionGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#CollisionGeometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.CollisionGeometry" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Abstract interface for collision geometries.</p>
+<p>Collision geometries have heterogeneous implementation depending on the
+type of shape. This class mainly enforces the implementation of
+bookkeeping interfaces.</p>
+<p>When two collision geometries are evaluated for collision with
+<code class="docutils literal notranslate"><span class="pre">GeometryCollider</span></code>, their ordering is constrained via a total order on
+collision geometry types, enforced with an overload of the <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> operator.</p>
+<p>Initializes internal Module state, shared by both nn.Module and ScriptModule.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.CollisionGeometry.scalars">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#CollisionGeometry.scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.CollisionGeometry.scalars" title="Link to this definition"></a></dt>
+<dd><p>Describes object via Tensorboard scalars.</p>
+<p>Any namespace for the object (e.g. “object_5”) is assumed to be added by
+external code before adding to Tensorboard, so the names of the
+scalars can be natural descriptions of the geometry’s parameters.</p>
+<p class="rubric">Examples</p>
+<p>A cylinder might be represented with the following output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">5.2</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">4.1</span><span class="p">}</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary of named parameters describing the geometry.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.Plane">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">Plane</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Plane"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Plane" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a></p>
+<p>Half-space/plane collision geometry.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Plane</span></code> geometries are assumed to be the plane z=0 in local (i.e.
+“body-axes” coordinates). Any tilted/raised/lowered half spaces are expected
+to be derived by placing the <code class="docutils literal notranslate"><span class="pre">z=0</span></code> plane in a rigidly-transformed
+frame.</p>
+<p>Initializes internal Module state, shared by both nn.Module and ScriptModule.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Plane.scalars">
+<span class="sig-name descname"><span class="pre">scalars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Plane.scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Plane.scalars" title="Link to this definition"></a></dt>
+<dd><p>As the plane is fixed to be z=0, there are no parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.BoundedConvexCollisionGeometry">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">BoundedConvexCollisionGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#BoundedConvexCollisionGeometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.BoundedConvexCollisionGeometry" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a></p>
+<p>Interface for compact-convex collision geometries.</p>
+<p>Such shapes have a representation via a “support function” h(d),
+which takes in a hyperplane direction and returns how far the shape S
+extends in that direction, i.e.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">h</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">=</span> <span class="n">max_</span><span class="p">{</span><span class="n">s</span> \<span class="ow">in</span> <span class="n">S</span><span class="p">}</span> <span class="n">s</span> \<span class="n">cdot</span> <span class="n">d</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>This representation can be leveraged to derive “witness points” – i.e.
+the closest point(s) between the <code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code> and
+another convex shape, such as another <code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code>
+or a <code class="docutils literal notranslate"><span class="pre">Plane</span></code>.</p>
+<p>Initializes internal Module state, shared by both nn.Module and ScriptModule.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.BoundedConvexCollisionGeometry.support_points">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">support_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#BoundedConvexCollisionGeometry.support_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.BoundedConvexCollisionGeometry.support_points" title="Link to this definition"></a></dt>
+<dd><p>Returns a set of witness points representing contact with another
+shape off in the direction(s) <code class="docutils literal notranslate"><span class="pre">directions</span></code>.</p>
+<p>This method will return a set of points <code class="docutils literal notranslate"><span class="pre">S'</span> <span class="pre">\subset</span> <span class="pre">S</span></code> such that:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">argmax_</span><span class="p">{</span><span class="n">s</span> \<span class="ow">in</span> <span class="n">S</span><span class="p">}</span> <span class="n">s</span> \<span class="n">cdot</span> <span class="n">directions</span> \<span class="n">subset</span> <span class="n">convexHull</span><span class="p">(</span><span class="n">S</span><span class="s1">&#39;).</span>
+</pre></div>
+</div>
+<p>In theory, returning exactly the argmax set would be sufficient.
+However,</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directions</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, 3) batch of unit-length directions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, N, 3) sets of corresponding witness points of cardinality N.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.SparseVertexConvexCollisionGeometry">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">SparseVertexConvexCollisionGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_query</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#SparseVertexConvexCollisionGeometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.SparseVertexConvexCollisionGeometry" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.BoundedConvexCollisionGeometry" title="dair_pll.geometry.BoundedConvexCollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code></a></p>
+<p>Partial implementation of <code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code> when
+witness points are guaranteed to be contained in a small set of vertices.</p>
+<p>An obvious subtype is any sort of Polytope, such as a <code class="docutils literal notranslate"><span class="pre">Box</span></code>. A less
+obvious subtype are shapes in which a direction-dependent set of vertices
+can be easily calculated. See <code class="docutils literal notranslate"><span class="pre">Cylinder</span></code>, for instance.</p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">SparseVertexConvexCollisionGeometry</span></code> with prescribed
+query interface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>n_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – number of vertices to return in witness point set.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.SparseVertexConvexCollisionGeometry.support_points">
+<span class="sig-name descname"><span class="pre">support_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#SparseVertexConvexCollisionGeometry.support_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.SparseVertexConvexCollisionGeometry.support_points" title="Link to this definition"></a></dt>
+<dd><p>Implements <code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry.support_points()</span></code> via
+brute force optimization over the witness vertex set.</p>
+<p>Specifically, if S_v is the vertex set, this function returns
+<code class="docutils literal notranslate"><span class="pre">n_query</span></code> elements s of S_v for which <code class="docutils literal notranslate"><span class="pre">s</span> <span class="pre">\cdot</span> <span class="pre">directions</span></code> is
+highest. This set is not guaranteed to be sorted.</p>
+<p>Given the prescribed behavior of
+<code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry.support_points()</span></code>, an implicit
+assumption of this implementation is that the convex hull of the top
+<code class="docutils literal notranslate"><span class="pre">n_query</span></code> points in S_v contains <code class="docutils literal notranslate"><span class="pre">argmax_{s</span> <span class="pre">\in</span> <span class="pre">S}</span> <span class="pre">s</span> <span class="pre">\cdot</span>
+<span class="pre">directions</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directions</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, 3) batch of directions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, n_query, 3) sets of corresponding witness points.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.SparseVertexConvexCollisionGeometry.get_vertices">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#SparseVertexConvexCollisionGeometry.get_vertices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.SparseVertexConvexCollisionGeometry.get_vertices" title="Link to this definition"></a></dt>
+<dd><p>Returns sparse witness point set as collection of vertices.</p>
+<p>Specifically, given search directions, returns a set of points
+<code class="docutils literal notranslate"><span class="pre">S_v</span></code> for which:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">argmax_</span><span class="p">{</span><span class="n">s</span> \<span class="ow">in</span> <span class="n">S</span><span class="p">}</span> <span class="n">s</span> \<span class="n">cdot</span> <span class="n">directions</span> \<span class="n">subset</span> <span class="n">convexHull</span><span class="p">(</span><span class="n">S_v</span><span class="p">)</span><span class="o">.</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directions</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, 3) batch of unit-length directions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, N, 3) witness point convex hull vertices.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.Polygon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">Polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Polygon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Polygon" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.SparseVertexConvexCollisionGeometry" title="dair_pll.geometry.SparseVertexConvexCollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">SparseVertexConvexCollisionGeometry</span></code></a></p>
+<p>Concrete implementation of a convex polytope.</p>
+<p>Implemented via <code class="docutils literal notranslate"><span class="pre">SparseVertexConvexCollisionGeometry</span></code> as a static set
+of vertices, where models the underlying shape as all convex combinations
+of the vertices.</p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">Polygon</span></code> object with initial vertex set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (N, 3) static vertex set.</p></li>
+<li><p><strong>n_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – number of vertices to return in witness point set.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.Polygon.vertices">
+<span class="sig-name descname"><span class="pre">vertices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-obj docutils literal notranslate"><span class="pre">Parameter</span></code></em><a class="headerlink" href="#dair_pll.geometry.Polygon.vertices" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Polygon.get_vertices">
+<span class="sig-name descname"><span class="pre">get_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Polygon.get_vertices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Polygon.get_vertices" title="Link to this definition"></a></dt>
+<dd><p>Return batched view of static vertex set</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Polygon.scalars">
+<span class="sig-name descname"><span class="pre">scalars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Polygon.scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Polygon.scalars" title="Link to this definition"></a></dt>
+<dd><p>Return one scalar for each vertex index.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">DeepSupportConvex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perturbation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#DeepSupportConvex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.SparseVertexConvexCollisionGeometry" title="dair_pll.geometry.SparseVertexConvexCollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">SparseVertexConvexCollisionGeometry</span></code></a></p>
+<p>Deep support function convex shape.</p>
+<p>Any convex shape <span class="math notranslate nohighlight">\(S\)</span> can be equivalently represented via its support
+function <span class="math notranslate nohighlight">\(f(d)\)</span>, which returns the extent to which the object
+extends in the <span class="math notranslate nohighlight">\(d\)</span> direction:</p>
+<div class="math notranslate nohighlight">
+\[f(d) = \max_{s \in S} s \cdot d.\]</div>
+<p>Given a direction, the set of points that form the <span class="math notranslate nohighlight">\(\arg\max\)</span> in
+<span class="math notranslate nohighlight">\(f(d)\)</span> is exactly the convex subgradient <span class="math notranslate nohighlight">\(\partial_d f(d)\)</span>.</p>
+<p>Furthermore, for every convex shape, <span class="math notranslate nohighlight">\(f(d)\)</span> is convex and
+positively homogeneous, and every convex and positively homogeneous
+<span class="math notranslate nohighlight">\(f(d)\)</span> is the support function of some convex shape.</p>
+<p>This collision geometry type implements the support function directly as
+a convex and positively homogeneous neural network (
+<a class="reference internal" href="dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN" title="dair_pll.deep_support_function.HomogeneousICNN"><code class="xref py py-class docutils literal notranslate"><span class="pre">HomogeneousICNN</span></code></a>).</p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">DeepSupportConvex</span></code> object with initial vertex set.</p>
+<p>When calculating a sparse vertex set with <a class="reference internal" href="#dair_pll.geometry.DeepSupportConvex.get_vertices" title="dair_pll.geometry.DeepSupportConvex.get_vertices"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_vertices()</span></code></a>,
+supplements the support direction with nearby directions randomly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vertices</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">3)</span></code> initial vertex set.</p></li>
+<li><p><strong>n_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of vertices to return in witness point set.</p></li>
+<li><p><strong>depth</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Depth of support function network.</p></li>
+<li><p><strong>width</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Width of support function network.</p></li>
+<li><p><strong>perturbation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>) – support direction sampling parameter.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.fcl_geometry">
+<span class="sig-name descname"><span class="pre">fcl_geometry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-obj docutils literal notranslate"><span class="pre">BVHModel</span></code></em><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.fcl_geometry" title="Link to this definition"></a></dt>
+<dd><p><code class="xref py py-mod docutils literal notranslate"><span class="pre">fcl</span></code> mesh collision geometry representation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.network">
+<span class="sig-name descname"><span class="pre">network</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dair_pll.deep_support_function.html#dair_pll.deep_support_function.HomogeneousICNN" title="dair_pll.deep_support_function.HomogeneousICNN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HomogeneousICNN</span></code></a></em><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.network" title="Link to this definition"></a></dt>
+<dd><p>Support function representation as a neural net.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.perturbations">
+<span class="sig-name descname"><span class="pre">perturbations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tensor</span></code></em><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.perturbations" title="Link to this definition"></a></dt>
+<dd><p>Perturbed support directions, which aid mesh-plane contact stability.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.get_vertices">
+<span class="sig-name descname"><span class="pre">get_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#DeepSupportConvex.get_vertices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.get_vertices" title="Link to this definition"></a></dt>
+<dd><p>Return batched view of support points of interest.</p>
+<p>Given a direction <span class="math notranslate nohighlight">\(d\)</span>, this function finds the support point of
+the object in that direction, calculated via envelope</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directions</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">3)</span></code> batch of support directions sample.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(*,</span> <span class="pre">n_query,</span> <span class="pre">3)</span></code> sampled support points.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#DeepSupportConvex.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.train" title="Link to this definition"></a></dt>
+<dd><p>Override training-mode setter from <a class="reference external" href="https://pytorch.org/docs/stable/torch.html#module-torch" title="(in PyTorch v2.1)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">torch</span></code></a>.</p>
+<p>Sets a static fcl mesh geometry for the entirety of evaluation time,
+as the underlying support function is not changing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – <code class="docutils literal notranslate"><span class="pre">True</span></code> for training, <code class="docutils literal notranslate"><span class="pre">False</span></code> for evaluation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#dair_pll.geometry.DeepSupportConvex" title="dair_pll.geometry.DeepSupportConvex"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepSupportConvex</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.get_fcl_geometry">
+<span class="sig-name descname"><span class="pre">get_fcl_geometry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#DeepSupportConvex.get_fcl_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.get_fcl_geometry" title="Link to this definition"></a></dt>
+<dd><p>Retrieves <code class="xref py py-mod docutils literal notranslate"><span class="pre">fcl</span></code> mesh collision geometry representation.</p>
+<p>If evaluation mode is set, retrieves precalculated version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">BVHModel</span></code></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-mod docutils literal notranslate"><span class="pre">fcl</span></code> bounding volume hierarchy for mesh.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.DeepSupportConvex.scalars">
+<span class="sig-name descname"><span class="pre">scalars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#DeepSupportConvex.scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.DeepSupportConvex.scalars" title="Link to this definition"></a></dt>
+<dd><p>no scalars!</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.Box">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">Box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">half_lengths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_query</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Box" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.SparseVertexConvexCollisionGeometry" title="dair_pll.geometry.SparseVertexConvexCollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">SparseVertexConvexCollisionGeometry</span></code></a></p>
+<p>Implementation of cuboid geometry as a sparse vertex convex hull.</p>
+<p>To prevent learning negative box lengths, the learned parameters are stored
+as <a class="reference internal" href="#dair_pll.geometry.Box.length_params" title="dair_pll.geometry.Box.length_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">length_params</span></code></a>, and the box’s half lengths can be computed
+as their absolute value.  The desired half lengths can be accessed via
+<a class="reference internal" href="#dair_pll.geometry.Box.get_half_lengths" title="dair_pll.geometry.Box.get_half_lengths"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_half_lengths()</span></code></a>.</p>
+<p>Inits <code class="docutils literal notranslate"><span class="pre">Box</span></code> object with initial size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>half_lengths</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (3,) half-length dimensions of box on x, y,
+and z axes.</p></li>
+<li><p><strong>n_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – number of vertices to return in witness point set.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.Box.length_params">
+<span class="sig-name descname"><span class="pre">length_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-obj docutils literal notranslate"><span class="pre">Parameter</span></code></em><a class="headerlink" href="#dair_pll.geometry.Box.length_params" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.Box.unit_vertices">
+<span class="sig-name descname"><span class="pre">unit_vertices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tensor</span></code></em><a class="headerlink" href="#dair_pll.geometry.Box.unit_vertices" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Box.get_half_lengths">
+<span class="sig-name descname"><span class="pre">get_half_lengths</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Box.get_half_lengths"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Box.get_half_lengths" title="Link to this definition"></a></dt>
+<dd><p>From the stored <a class="reference internal" href="#dair_pll.geometry.Box.length_params" title="dair_pll.geometry.Box.length_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">length_params</span></code></a>, compute the half lengths of
+the box as its absolute value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Box.get_vertices">
+<span class="sig-name descname"><span class="pre">get_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Box.get_vertices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Box.get_vertices" title="Link to this definition"></a></dt>
+<dd><p>Returns view of cuboid’s static vertex set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Box.scalars">
+<span class="sig-name descname"><span class="pre">scalars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Box.scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Box.scalars" title="Link to this definition"></a></dt>
+<dd><p>Returns each axis’s full length as a scalar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.Sphere">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">Sphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Sphere"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Sphere" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dair_pll.geometry.BoundedConvexCollisionGeometry" title="dair_pll.geometry.BoundedConvexCollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code></a></p>
+<p>Implements sphere geometry via its support function.</p>
+<p>It is trivial to calculate the witness point for a sphere contact as
+simply the product of the sphere’s radius and the support direction.</p>
+<p>To prevent learning a negative radius, the learned parameter is stored as
+<a class="reference internal" href="#dair_pll.geometry.Sphere.length_param" title="dair_pll.geometry.Sphere.length_param"><code class="xref py py-attr docutils literal notranslate"><span class="pre">length_param</span></code></a>, and the sphere’s radius can be computed as its
+absolute value.  The desired radius can be accessed via
+<a class="reference internal" href="#dair_pll.geometry.Sphere.get_radius" title="dair_pll.geometry.Sphere.get_radius"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_radius()</span></code></a>.</p>
+<p>Initializes internal Module state, shared by both nn.Module and ScriptModule.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dair_pll.geometry.Sphere.length_param">
+<span class="sig-name descname"><span class="pre">length_param</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-obj docutils literal notranslate"><span class="pre">Parameter</span></code></em><a class="headerlink" href="#dair_pll.geometry.Sphere.length_param" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Sphere.get_radius">
+<span class="sig-name descname"><span class="pre">get_radius</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Sphere.get_radius"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Sphere.get_radius" title="Link to this definition"></a></dt>
+<dd><p>From the stored <a class="reference internal" href="#dair_pll.geometry.Sphere.length_param" title="dair_pll.geometry.Sphere.length_param"><code class="xref py py-attr docutils literal notranslate"><span class="pre">length_param</span></code></a>, compute the radius of the
+sphere as its absolute value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Sphere.support_points">
+<span class="sig-name descname"><span class="pre">support_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Sphere.support_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Sphere.support_points" title="Link to this definition"></a></dt>
+<dd><p>Implements <code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry.support_points()</span></code>
+via analytic expression:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">argmax_</span><span class="p">{</span><span class="n">s</span> \<span class="ow">in</span> <span class="n">S</span><span class="p">}</span> <span class="n">s</span> \<span class="n">cdot</span> <span class="n">directions</span> <span class="o">=</span> <span class="n">directions</span> <span class="o">*</span> <span class="n">radius</span><span class="o">.</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directions</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, 3) batch of directions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, 1, 3) corresponding witness point sets of cardinality 1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.Sphere.scalars">
+<span class="sig-name descname"><span class="pre">scalars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#Sphere.scalars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.Sphere.scalars" title="Link to this definition"></a></dt>
+<dd><p>Logs radius as a scalar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.PydrakeToCollisionGeometryFactory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">PydrakeToCollisionGeometryFactory</span></span><a class="reference internal" href="_modules/dair_pll/geometry.html#PydrakeToCollisionGeometryFactory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.PydrakeToCollisionGeometryFactory" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Utility class for converting Drake <code class="docutils literal notranslate"><span class="pre">Shape</span></code> instances to
+<code class="docutils literal notranslate"><span class="pre">CollisionGeometry</span></code> instances.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">drake_shape</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#PydrakeToCollisionGeometryFactory.convert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert" title="Link to this definition"></a></dt>
+<dd><p>Converts abstract <code class="docutils literal notranslate"><span class="pre">pydrake.geometry.shape</span></code> to
+<code class="docutils literal notranslate"><span class="pre">CollisionGeometry</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>drake_shape</strong> (<a class="reference external" href="https://drake.mit.edu/pydrake/pydrake.geometry.html#pydrake.geometry.Shape" title="(in pydrake)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Shape</span></code></a>) – drake shape type to convert.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Collision geometry representation of shape.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.12)"><strong>TypeError</strong></a> – When provided object is not a supported Drake shape type.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_box">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">drake_box</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#PydrakeToCollisionGeometryFactory.convert_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_box" title="Link to this definition"></a></dt>
+<dd><p>Converts <code class="docutils literal notranslate"><span class="pre">pydrake.geometry.Box</span></code> to <code class="docutils literal notranslate"><span class="pre">Box</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#dair_pll.geometry.Box" title="dair_pll.geometry.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_plane">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_plane</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#PydrakeToCollisionGeometryFactory.convert_plane"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_plane" title="Link to this definition"></a></dt>
+<dd><p>Converts <code class="docutils literal notranslate"><span class="pre">pydrake.geometry.HalfSpace</span></code> to <code class="docutils literal notranslate"><span class="pre">Plane</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#dair_pll.geometry.Plane" title="dair_pll.geometry.Plane"><code class="xref py py-class docutils literal notranslate"><span class="pre">Plane</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_mesh">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">convert_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">drake_mesh</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#PydrakeToCollisionGeometryFactory.convert_mesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.PydrakeToCollisionGeometryFactory.convert_mesh" title="Link to this definition"></a></dt>
+<dd><p>Converts <code class="docutils literal notranslate"><span class="pre">pydrake.geometry.Mesh</span></code> to <code class="docutils literal notranslate"><span class="pre">Polygon</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#dair_pll.geometry.DeepSupportConvex" title="dair_pll.geometry.DeepSupportConvex"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepSupportConvex</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dair_pll.geometry.GeometryCollider">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dair_pll.geometry.</span></span><span class="sig-name descname"><span class="pre">GeometryCollider</span></span><a class="reference internal" href="_modules/dair_pll/geometry.html#GeometryCollider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.GeometryCollider" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Utility class for colliding two <code class="docutils literal notranslate"><span class="pre">CollisionGeometry</span></code> instances.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.GeometryCollider.collide">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">collide</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R_AB</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_AoBo_A</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#GeometryCollider.collide"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.GeometryCollider.collide" title="Link to this definition"></a></dt>
+<dd><p>Collides two collision geometries.</p>
+<p>Takes in the two geometries as well as a relative transform between
+them. This function is a thin shell for other static methods of
+<code class="docutils literal notranslate"><span class="pre">GeometryCollider</span></code> where the given geometries are guaranteed to
+have specific types.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>geometry_a</strong> (<a class="reference internal" href="#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a>) – first collision geometry</p></li>
+<li><p><strong>geometry_b</strong> (<a class="reference internal" href="#dair_pll.geometry.CollisionGeometry" title="dair_pll.geometry.CollisionGeometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">CollisionGeometry</span></code></a>) – second collision geometry, with type
+ordering <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">geometry_A</span> <span class="pre">&gt;</span> <span class="pre">geometry_B</span></code>.</p></li>
+<li><p><strong>R_AB</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*,3,3) rotation between geometry frames</p></li>
+<li><p><strong>p_AoBo_A</strong> (<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>) – (*, 3) offset of geometry frame origins</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(*, N) batch of witness point pair distances
+(*, N, 3, 3) contact frame C rotation in A, R_AC, where the z
+axis of C is contained in the normal cone of body A at contact
+point Ac and is parallel (or antiparallel) to AcBc.
+(*, N, 3) witness points Ac on A, p_AoAc_A
+(*, N, 3) witness points Bc on B, p_BoBc_B</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.GeometryCollider.collide_plane_convex">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">collide_plane_convex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R_AB</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_AoBo_A</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#GeometryCollider.collide_plane_convex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.GeometryCollider.collide_plane_convex" title="Link to this definition"></a></dt>
+<dd><p>Implementation of <code class="docutils literal notranslate"><span class="pre">GeometryCollider.collide()</span></code> when
+<code class="docutils literal notranslate"><span class="pre">geometry_a</span></code> is a <code class="docutils literal notranslate"><span class="pre">Plane</span></code> and <code class="docutils literal notranslate"><span class="pre">geometry_b</span></code> is a
+<code class="docutils literal notranslate"><span class="pre">BoundedConvexCollisionGeometry</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dair_pll.geometry.GeometryCollider.collide_mesh_mesh">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">collide_mesh_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R_AB</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_AoBo_A</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/dair_pll/geometry.html#GeometryCollider.collide_mesh_mesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dair_pll.geometry.GeometryCollider.collide_mesh_mesh" title="Link to this definition"></a></dt>
+<dd><p>Implementation of <code class="docutils literal notranslate"><span class="pre">GeometryCollider.collide()</span></code> when
+both geometries are <code class="docutils literal notranslate"><span class="pre">DeepSupportConvex</span></code>es.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>, <a class="reference external" href="https://pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dair_pll.deep_support_function.html" class="btn btn-neutral float-left" title="dair_pll.deep_support_function" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dair_pll.drake_state_converter.html" class="btn btn-neutral float-right" title="dair_pll.drake_state_converter" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

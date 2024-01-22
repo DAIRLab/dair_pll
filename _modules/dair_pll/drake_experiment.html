@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.drake_experiment &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.drake_experiment</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.drake_experiment</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Wrappers for Drake/ContactNets multibody experiments.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">field</span><span class="p">,</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">file_utils</span>
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">vis_utils</span>
+<span class="kn">from</span> <span class="nn">dair_pll.deep_learnable_system</span> <span class="kn">import</span> <span class="n">DeepLearnableExperiment</span>
+<span class="kn">from</span> <span class="nn">dair_pll.drake_system</span> <span class="kn">import</span> <span class="n">DrakeSystem</span>
+<span class="kn">from</span> <span class="nn">dair_pll.experiment</span> <span class="kn">import</span> <span class="n">SupervisedLearningExperiment</span><span class="p">,</span> \
+    <span class="n">LEARNED_SYSTEM_NAME</span><span class="p">,</span> <span class="n">PREDICTION_NAME</span><span class="p">,</span> <span class="n">TARGET_NAME</span>
+<span class="kn">from</span> <span class="nn">dair_pll.experiment_config</span> <span class="kn">import</span> <span class="n">SystemConfig</span><span class="p">,</span> \
+    <span class="n">SupervisedLearningExperimentConfig</span>
+<span class="kn">from</span> <span class="nn">dair_pll.multibody_learnable_system</span> <span class="kn">import</span> \
+    <span class="n">MultibodyLearnableSystem</span>
+<span class="kn">from</span> <span class="nn">dair_pll.system</span> <span class="kn">import</span> <span class="n">System</span><span class="p">,</span> <span class="n">SystemSummary</span>
+
+
+<div class="viewcode-block" id="DrakeSystemConfig">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeSystemConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">DrakeSystemConfig</span><span class="p">(</span><span class="n">SystemConfig</span><span class="p">):</span>
+    <span class="n">urdfs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MultibodyLosses">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.MultibodyLosses">[docs]</a>
+<span class="k">class</span> <span class="nc">MultibodyLosses</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">PREDICTION_LOSS</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">CONTACTNETS_LOSS</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="MultibodyLearnableSystemConfig">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.MultibodyLearnableSystemConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">MultibodyLearnableSystemConfig</span><span class="p">(</span><span class="n">DrakeSystemConfig</span><span class="p">):</span>
+    <span class="n">loss</span><span class="p">:</span> <span class="n">MultibodyLosses</span> <span class="o">=</span> <span class="n">MultibodyLosses</span><span class="o">.</span><span class="n">PREDICTION_LOSS</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether to use ContactNets or prediction loss.&quot;&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DrakeMultibodyLearnableExperimentConfig">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeMultibodyLearnableExperimentConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">DrakeMultibodyLearnableExperimentConfig</span><span class="p">(</span><span class="n">SupervisedLearningExperimentConfig</span>
+                                             <span class="p">):</span>
+    <span class="n">visualize_learned_geometry</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether to use learned geometry in trajectory overlay visualization.&quot;&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DrakeExperiment">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment">[docs]</a>
+<span class="k">class</span> <span class="nc">DrakeExperiment</span><span class="p">(</span><span class="n">SupervisedLearningExperiment</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="n">base_drake_system</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DrakeSystem</span><span class="p">]</span>
+    <span class="n">visualization_system</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DrakeSystem</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">SupervisedLearningExperimentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_drake_system</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="DrakeExperiment.get_drake_system">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment.get_drake_system">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_drake_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DrakeSystem</span><span class="p">:</span>
+        <span class="n">has_property</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_drake_system&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_property</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_drake_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">base_config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">DrakeSystemConfig</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">base_config</span><span class="p">)</span>
+            <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">data_config</span><span class="o">.</span><span class="n">dt</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_drake_system</span> <span class="o">=</span> <span class="n">DrakeSystem</span><span class="p">(</span><span class="n">base_config</span><span class="o">.</span><span class="n">urdfs</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_drake_system</span></div>
+
+
+<div class="viewcode-block" id="DrakeExperiment.get_base_system">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment.get_base_system">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_base_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">System</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_drake_system</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DrakeExperiment.get_learned_drake_system">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment.get_learned_drake_system">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_learned_drake_system</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">learned_system</span><span class="p">:</span> <span class="n">System</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DrakeSystem</span><span class="p">]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;If possible, constructs a :py:class:`DrakeSystem` -equivalent</span>
+<span class="sd">        model of the given learned system, such as when the learned system is a</span>
+<span class="sd">        :py:class:`MultibodyLearnableSystem`\ .</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            learned_system: System being learned in experiment.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Drake version of learned system.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="DrakeExperiment.visualizer_regeneration_is_required">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment.visualizer_regeneration_is_required">[docs]</a>
+    <span class="k">def</span> <span class="nf">visualizer_regeneration_is_required</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks if visualizer should be regenerated, e.g. if learned</span>
+<span class="sd">        geometries have been updated and need to be pushed to the visulizer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="DrakeExperiment.get_visualization_system">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment.get_visualization_system">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_visualization_system</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learned_system</span><span class="p">:</span> <span class="n">System</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DrakeSystem</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a dummy :py:class:`DrakeSystem` for visualizing comparisons</span>
+<span class="sd">        between trajectories generated by the base system and something else,</span>
+<span class="sd">        e.g. data.</span>
+
+<span class="sd">        Implemented as a thin wrapper of</span>
+<span class="sd">        ``vis_utils.generate_visualization_system()``, which generates a</span>
+<span class="sd">        drake system where each model in the base</span>
+<span class="sd">        :py:class:`DrakeSystem` has a duplicate, and visualization</span>
+<span class="sd">        elements are repainted for visual distinction.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            learned_system: Current trained learnable system.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            New :py:class:`DrakeSystem` with doubled state and repainted</span>
+<span class="sd">            elements.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Generate a new visualization system if it needs to use the updated</span>
+        <span class="c1"># geometry, or if it hasn&#39;t been created yet.</span>
+        <span class="n">regeneration_is_required</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualizer_regeneration_is_required</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">regeneration_is_required</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualization_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">visualization_file</span> <span class="o">=</span> <span class="n">file_utils</span><span class="o">.</span><span class="n">get_trajectory_video_filename</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">storage</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">run_name</span><span class="p">)</span>
+            <span class="n">base_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_drake_system</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">visualization_system</span> <span class="o">=</span> \
+                <span class="n">vis_utils</span><span class="o">.</span><span class="n">generate_visualization_system</span><span class="p">(</span>
+                    <span class="n">base_system</span><span class="p">,</span>
+                    <span class="n">visualization_file</span><span class="p">,</span>
+                    <span class="n">learned_system</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_learned_drake_system</span><span class="p">(</span><span class="n">learned_system</span><span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualization_system</span></div>
+
+
+<div class="viewcode-block" id="DrakeExperiment.base_and_learned_comparison_summary">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeExperiment.base_and_learned_comparison_summary">[docs]</a>
+    <span class="k">def</span> <span class="nf">base_and_learned_comparison_summary</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">statistics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">learned_system</span><span class="p">:</span> <span class="n">System</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SystemSummary</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares</span>
+<span class="sd">        the base system to the learned system.</span>
+
+<span class="sd">        For Drake-based experiments, this comparison is implemented as</span>
+<span class="sd">        overlaid videos of corresponding ground-truth and predicted</span>
+<span class="sd">        trajectories. The nature of this video is described further in</span>
+<span class="sd">        :py:mod:`dair_pll.vis_utils`\ .</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            statistics: Dictionary of training statistics.</span>
+<span class="sd">            learned_system: Most updated version of learned system during</span>
+<span class="sd">              training.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Summary containing overlaid video(s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">visualization_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_visualization_system</span><span class="p">(</span><span class="n">learned_system</span><span class="p">)</span>
+
+        <span class="n">space</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_drake_system</span><span class="p">()</span><span class="o">.</span><span class="n">space</span>
+        <span class="n">videos</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">traj_num</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">set_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">,</span> <span class="s1">&#39;valid&#39;</span><span class="p">]:</span>
+                <span class="n">target_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">set_name</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">LEARNED_SYSTEM_NAME</span><span class="si">}</span><span class="s1">&#39;</span> <span class="o">+</span> \
+                             <span class="sa">f</span><span class="s1">&#39;_</span><span class="si">{</span><span class="n">TARGET_NAME</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="n">prediction_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">set_name</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">LEARNED_SYSTEM_NAME</span><span class="si">}</span><span class="s1">&#39;</span> <span class="o">+</span> \
+                                 <span class="sa">f</span><span class="s1">&#39;_</span><span class="si">{</span><span class="n">PREDICTION_NAME</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">target_key</span> <span class="ow">in</span> <span class="n">statistics</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">target_trajectory</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="n">target_key</span><span class="p">][</span><span class="n">traj_num</span><span class="p">])</span>
+                <span class="n">prediction_trajectory</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span>
+                    <span class="n">statistics</span><span class="p">[</span><span class="n">prediction_key</span><span class="p">][</span><span class="n">traj_num</span><span class="p">])</span>
+                <span class="n">visualization_trajectory</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">target_trajectory</span><span class="p">),</span> <span class="n">space</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">prediction_trajectory</span><span class="p">),</span>
+                     <span class="n">space</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">target_trajectory</span><span class="p">),</span>
+                     <span class="n">space</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">prediction_trajectory</span><span class="p">)),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">video</span><span class="p">,</span> <span class="n">framerate</span> <span class="o">=</span> <span class="n">vis_utils</span><span class="o">.</span><span class="n">visualize_trajectory</span><span class="p">(</span>
+                    <span class="n">visualization_system</span><span class="p">,</span> <span class="n">visualization_trajectory</span><span class="p">)</span>
+                <span class="n">videos</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">set_name</span><span class="si">}</span><span class="s1">_trajectory_prediction_</span><span class="si">{</span><span class="n">traj_num</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="p">(</span><span class="n">video</span><span class="p">,</span> <span class="n">framerate</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SystemSummary</span><span class="p">(</span><span class="n">scalars</span><span class="o">=</span><span class="p">{},</span> <span class="n">videos</span><span class="o">=</span><span class="n">videos</span><span class="p">,</span> <span class="n">meshes</span><span class="o">=</span><span class="p">{})</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="DrakeDeepLearnableExperiment">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeDeepLearnableExperiment">[docs]</a>
+<span class="k">class</span> <span class="nc">DrakeDeepLearnableExperiment</span><span class="p">(</span><span class="n">DrakeExperiment</span><span class="p">,</span> <span class="n">DeepLearnableExperiment</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="DrakeMultibodyLearnableExperiment">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeMultibodyLearnableExperiment">[docs]</a>
+<span class="k">class</span> <span class="nc">DrakeMultibodyLearnableExperiment</span><span class="p">(</span><span class="n">DrakeExperiment</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">DrakeMultibodyLearnableExperimentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">learnable_config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">MultibodyLearnableSystemConfig</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">learnable_config</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">learnable_config</span><span class="o">.</span><span class="n">loss</span> <span class="o">==</span> <span class="n">MultibodyLosses</span><span class="o">.</span><span class="n">CONTACTNETS_LOSS</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loss_callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contactnets_loss</span>
+
+<div class="viewcode-block" id="DrakeMultibodyLearnableExperiment.get_learned_system">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeMultibodyLearnableExperiment.get_learned_system">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_learned_system</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MultibodyLearnableSystem</span><span class="p">:</span>
+        <span class="n">learnable_config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">MultibodyLearnableSystemConfig</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">learnable_config</span><span class="p">)</span>
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">file_utils</span><span class="o">.</span><span class="n">get_learned_urdf_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">storage</span><span class="p">,</span>
+                                                     <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">run_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">MultibodyLearnableSystem</span><span class="p">(</span><span class="n">learnable_config</span><span class="o">.</span><span class="n">urdfs</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">data_config</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+                                        <span class="n">output_urdfs_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DrakeMultibodyLearnableExperiment.visualizer_regeneration_is_required">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeMultibodyLearnableExperiment.visualizer_regeneration_is_required">[docs]</a>
+    <span class="k">def</span> <span class="nf">visualizer_regeneration_is_required</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">DrakeMultibodyLearnableExperimentConfig</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">visualize_learned_geometry</span></div>
+
+
+<div class="viewcode-block" id="DrakeMultibodyLearnableExperiment.get_learned_drake_system">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeMultibodyLearnableExperiment.get_learned_drake_system">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_learned_drake_system</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">learned_system</span><span class="p">:</span> <span class="n">System</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DrakeSystem</span><span class="p">]:</span>
+        <span class="n">visualize_learned_geometry</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">DrakeMultibodyLearnableExperimentConfig</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">visualize_learned_geometry</span>
+
+        <span class="k">if</span> <span class="n">visualize_learned_geometry</span><span class="p">:</span>
+            <span class="n">new_urdfs</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">MultibodyLearnableSystem</span><span class="p">,</span>
+                             <span class="n">learned_system</span><span class="p">)</span><span class="o">.</span><span class="n">generate_updated_urdfs</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">DrakeSystem</span><span class="p">(</span><span class="n">new_urdfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_drake_system</span><span class="p">()</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="DrakeMultibodyLearnableExperiment.contactnets_loss">
+<a class="viewcode-back" href="../../dair_pll.drake_experiment.html#dair_pll.drake_experiment.DrakeMultibodyLearnableExperiment.contactnets_loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">contactnets_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                         <span class="n">x_past</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">x_future</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">system</span><span class="p">:</span> <span class="n">System</span><span class="p">,</span>
+                         <span class="n">keep_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot; :py:data:`~dair_pll.experiment.LossCallbackCallable`</span>
+<span class="sd">        which applies the ContactNets [1] loss to the system.</span>
+
+<span class="sd">        References:</span>
+<span class="sd">            [1] S. Pfrommer*, M. Halm*, and M. Posa. &quot;ContactNets: Learning</span>
+<span class="sd">            Discontinuous Contact Dynamics with Smooth, Implicit</span>
+<span class="sd">            Representations,&quot; Conference on Robotic Learning, 2020,</span>
+<span class="sd">            https://proceedings.mlr.press/v155/pfrommer21a.html</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">MultibodyLearnableSystem</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x_past</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
+        <span class="n">x_plus</span> <span class="o">=</span> <span class="n">x_future</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">contactnets_loss</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">x_plus</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">keep_batch</span><span class="p">:</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">loss</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

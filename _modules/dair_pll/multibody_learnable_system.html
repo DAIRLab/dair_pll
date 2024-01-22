@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dair_pll.multibody_learnable_system &mdash; dair_pll v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            dair_pll
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Submodules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.quaternion.html">dair_pll.quaternion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.state_space.html">dair_pll.state_space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_utils.html">dair_pll.drake_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.tensor_utils.html">dair_pll.tensor_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.hyperparameter.html">dair_pll.hyperparameter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.data_config.html">dair_pll.data_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment_config.html">dair_pll.experiment_config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.file_utils.html">dair_pll.file_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.inertia.html">dair_pll.inertia</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.integrator.html">dair_pll.integrator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.system.html">dair_pll.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_support_function.html">dair_pll.deep_support_function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.geometry.html">dair_pll.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_state_converter.html">dair_pll.drake_state_converter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_terms.html">dair_pll.multibody_terms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.urdf_utils.html">dair_pll.urdf_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_system.html">dair_pll.drake_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.vis_utils.html">dair_pll.vis_utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.wandb_manager.html">dair_pll.wandb_manager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.multibody_learnable_system.html">dair_pll.multibody_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.dataset_management.html">dair_pll.dataset_management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.experiment.html">dair_pll.experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_model.html">dair_pll.deep_learnable_model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.deep_learnable_system.html">dair_pll.deep_learnable_system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dair_pll.drake_experiment.html">dair_pll.drake_experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dair_pll</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">dair_pll.multibody_learnable_system</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for dair_pll.multibody_learnable_system</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Construction and analysis of learnable multibody systems.</span>
+
+<span class="sd">Similar to Drake, multibody systems are instantiated as a child class of</span>
+<span class="sd">:py:class:`System`: :py:class:`MultibodyLearnableSystem`. This object is a thin</span>
+<span class="sd">wrapper for a :py:class:`MultibodyTerms` member variable, which manages</span>
+<span class="sd">computation of lumped terms necessary for simulation and evaluation.</span>
+
+<span class="sd">Simulation is implemented via Anitescu&#39;s [1] convex method.</span>
+
+<span class="sd">An interface for the ContactNets [2] loss is also defined as an alternative</span>
+<span class="sd">to prediction loss.</span>
+
+<span class="sd">A large portion of the internal implementation of :py:class:`DrakeSystem` is</span>
+<span class="sd">implemented in :py:class:`MultibodyPlantDiagram`.</span>
+
+<span class="sd">[1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid</span>
+<span class="sd">multibody dynamics,” Mathematical Programming, 2006,</span>
+<span class="sd">https://doi.org/10.1007/s10107-005-0590-7</span>
+<span class="sd">[2] S. Pfrommer*, M. Halm*, and M. Posa. &quot;ContactNets: Learning Discontinuous</span>
+<span class="sd">Contact Dynamics with Smooth, Implicit Representations,&quot; Conference on</span>
+<span class="sd">Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">pool</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">sappy</span> <span class="kn">import</span> <span class="n">SAPSolver</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+
+<span class="kn">from</span> <span class="nn">dair_pll</span> <span class="kn">import</span> <span class="n">urdf_utils</span><span class="p">,</span> <span class="n">tensor_utils</span><span class="p">,</span> <span class="n">file_utils</span>
+<span class="kn">from</span> <span class="nn">dair_pll.drake_system</span> <span class="kn">import</span> <span class="n">DrakeSystem</span>
+<span class="kn">from</span> <span class="nn">dair_pll.integrator</span> <span class="kn">import</span> <span class="n">VelocityIntegrator</span>
+<span class="kn">from</span> <span class="nn">dair_pll.multibody_terms</span> <span class="kn">import</span> <span class="n">MultibodyTerms</span>
+<span class="kn">from</span> <span class="nn">dair_pll.system</span> <span class="kn">import</span> <span class="n">System</span><span class="p">,</span> \
+    <span class="n">SystemSummary</span>
+<span class="kn">from</span> <span class="nn">dair_pll.tensor_utils</span> <span class="kn">import</span> <span class="n">pbmm</span><span class="p">,</span> <span class="n">broadcast_lorentz</span>
+
+
+<div class="viewcode-block" id="MultibodyLearnableSystem">
+<a class="viewcode-back" href="../../dair_pll.multibody_learnable_system.html#dair_pll.multibody_learnable_system.MultibodyLearnableSystem">[docs]</a>
+<span class="k">class</span> <span class="nc">MultibodyLearnableSystem</span><span class="p">(</span><span class="n">System</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:py:class:`System` interface for dynamics associated with</span>
+<span class="sd">    :py:class:`MultibodyTerms`.&quot;&quot;&quot;</span>
+    <span class="n">multibody_terms</span><span class="p">:</span> <span class="n">MultibodyTerms</span>
+    <span class="n">init_urdfs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="n">output_urdfs_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">visualization_system</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DrakeSystem</span><span class="p">]</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="n">SAPSolver</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">init_urdfs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+                 <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                 <span class="n">output_urdfs_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.</span>
+
+<span class="sd">        Implementation is primarily based on Drake. Bodies are modeled via</span>
+<span class="sd">        :py:class:`MultibodyTerms`, which uses Drake symbolics to generate</span>
+<span class="sd">        dynamics terms, and the system can be exported back to a</span>
+<span class="sd">        Drake-interpretable representation as a set of URDFs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            init_urdfs: Names and corresponding URDFs to model with</span>
+<span class="sd">              :py:class:`MultibodyTerms`.</span>
+<span class="sd">            dt: Time step of system in seconds.</span>
+<span class="sd">            output_urdfs_dir: Optionally, a directory that learned URDFs can be</span>
+<span class="sd">              written to.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">multibody_terms</span> <span class="o">=</span> <span class="n">MultibodyTerms</span><span class="p">(</span><span class="n">init_urdfs</span><span class="p">)</span>
+        <span class="n">space</span> <span class="o">=</span> <span class="n">multibody_terms</span><span class="o">.</span><span class="n">plant_diagram</span><span class="o">.</span><span class="n">space</span>
+        <span class="n">integrator</span> <span class="o">=</span> <span class="n">VelocityIntegrator</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_step</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">integrator</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multibody_terms</span> <span class="o">=</span> <span class="n">multibody_terms</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_urdfs</span> <span class="o">=</span> <span class="n">init_urdfs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_urdfs_dir</span> <span class="o">=</span> <span class="n">output_urdfs_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visualization_system</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="n">SAPSolver</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_carry_sampler</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">([</span><span class="kc">False</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_dim</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="MultibodyLearnableSystem.generate_updated_urdfs">
+<a class="viewcode-back" href="../../dair_pll.multibody_learnable_system.html#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.generate_updated_urdfs">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_updated_urdfs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Exports current parameterization as a :py:class:`DrakeSystem`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            New Drake system instantiated on new URDFs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_urdfs_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">old_urdfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_urdfs</span>
+        <span class="n">new_urdf_strings</span> <span class="o">=</span> <span class="n">urdf_utils</span><span class="o">.</span><span class="n">represent_multibody_terms_as_urdfs</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">multibody_terms</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_urdfs_dir</span><span class="p">)</span>
+        <span class="n">new_urdfs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># saves new urdfs with identical file basenames to original ones,</span>
+        <span class="c1"># but in new folder.</span>
+        <span class="k">for</span> <span class="n">urdf_name</span><span class="p">,</span> <span class="n">new_urdf_string</span> <span class="ow">in</span> <span class="n">new_urdf_strings</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">old_urdf_filename</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">old_urdfs</span><span class="p">[</span><span class="n">urdf_name</span><span class="p">])</span>
+            <span class="n">new_urdf_path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_urdfs_dir</span><span class="p">,</span> <span class="n">old_urdf_filename</span><span class="p">)</span>
+            <span class="n">file_utils</span><span class="o">.</span><span class="n">save_string</span><span class="p">(</span><span class="n">new_urdf_path</span><span class="p">,</span> <span class="n">new_urdf_string</span><span class="p">)</span>
+            <span class="n">new_urdfs</span><span class="p">[</span><span class="n">urdf_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_urdf_path</span>
+
+        <span class="k">return</span> <span class="n">new_urdfs</span></div>
+
+
+<div class="viewcode-block" id="MultibodyLearnableSystem.contactnets_loss">
+<a class="viewcode-back" href="../../dair_pll.multibody_learnable_system.html#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.contactnets_loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">contactnets_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                         <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">u</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">x_plus</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">loss_pool</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pool</span><span class="o">.</span><span class="n">Pool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculate ContactNets [1] loss for state transition.</span>
+
+<span class="sd">        References:</span>
+<span class="sd">            [1] S. Pfrommer*, M. Halm*, and M. Posa. &quot;ContactNets: Learning</span>
+<span class="sd">            Discontinuous Contact Dynamics with Smooth, Implicit</span>
+<span class="sd">            Representations,&quot; Conference on Robotic Learning, 2020,</span>
+<span class="sd">            https://proceedings.mlr.press/v155/pfrommer21a.html</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: (\*, space.n_x) current state batch.</span>
+<span class="sd">            u: (\*, ?) input batch.</span>
+<span class="sd">            x_plus: (\*, space.n_x) current state batch.</span>
+<span class="sd">            loss_pool: optional processing pool to enable multithreaded solves.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (\*,) loss batch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># pylint: disable-msg=too-many-locals</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">q_plus</span><span class="p">,</span> <span class="n">v_plus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x_plus</span><span class="p">)</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-3</span>
+
+        <span class="n">delassus</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">J</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">non_contact_acceleration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">multibody_terms</span><span class="p">(</span>
+            <span class="n">q_plus</span><span class="p">,</span> <span class="n">v_plus</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+
+        <span class="n">n_contacts</span> <span class="o">=</span> <span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">reorder_mat</span> <span class="o">=</span> <span class="n">tensor_utils</span><span class="o">.</span><span class="n">sappy_reorder_mat</span><span class="p">(</span><span class="n">n_contacts</span><span class="p">)</span>
+        <span class="n">reorder_mat</span> <span class="o">=</span> <span class="n">reorder_mat</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="p">(</span><span class="n">delassus</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span>
+                                          <span class="n">reorder_mat</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span>
+                                              <span class="n">delassus</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">J_t</span> <span class="o">=</span> <span class="n">J</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">n_contacts</span><span class="p">:,</span> <span class="p">:]</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">double_zero_vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n_contacts</span><span class="p">,))</span>
+        <span class="n">phi_then_zero</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">phi</span><span class="p">,</span> <span class="n">double_zero_vector</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">sliding_velocities</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">J_t</span><span class="p">,</span> <span class="n">v_plus</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">sliding_speeds</span> <span class="o">=</span> <span class="n">sliding_velocities</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span>
+                                                    <span class="p">(</span><span class="n">n_contacts</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+                                                        <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">Q</span> <span class="o">=</span> <span class="n">delassus</span> <span class="o">+</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">n_contacts</span><span class="p">)</span>
+        <span class="n">J_M</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">reorder_mat</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span>
+                   <span class="n">pbmm</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">((</span><span class="n">M</span><span class="p">)))))</span>
+
+        <span class="n">dv</span> <span class="o">=</span> <span class="p">(</span><span class="n">v_plus</span> <span class="o">-</span> <span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="n">non_contact_acceleration</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">q_pred</span> <span class="o">=</span> <span class="o">-</span><span class="n">pbmm</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">dv</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">q_comp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">phi_then_zero</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">q_diss</span> <span class="o">=</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">sliding_speeds</span><span class="p">,</span> <span class="n">sliding_velocities</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">q_pred</span> <span class="o">+</span> <span class="n">q_comp</span> <span class="o">+</span> <span class="n">q_diss</span>
+
+        <span class="n">penetration_penalty</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+            <span class="o">-</span><span class="n">phi</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">phi</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">penetration_penalty</span> <span class="o">=</span> <span class="n">penetration_penalty</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">penetration_penalty</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">constant</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">dv</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+            <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)))</span> <span class="o">+</span> <span class="n">penetration_penalty</span>
+
+        <span class="c1"># Envelope theorem guarantees that gradient of loss w.r.t. parameters</span>
+        <span class="c1"># can ignore the gradient of the force w.r.t. the QCQP parameters.</span>
+        <span class="c1"># Therefore, we can detach ``force`` from pytorch&#39;s computation graph</span>
+        <span class="c1"># without causing error in the overall loss gradient.</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="c1">#force = self.solver.apply(Q, q, torch.rand(q.shape), 1e-7, 1000, 1e-7,</span>
+        <span class="c1">#                          loss_pool).detach()</span>
+        <span class="n">force</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span>
+            <span class="n">reorder_mat</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                <span class="n">J_M</span><span class="p">,</span>
+                <span class="n">pbmm</span><span class="p">(</span><span class="n">reorder_mat</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">q</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">eps</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="c1"># Hack: remove elements of ``force`` where solver likely failed.</span>
+        <span class="n">invalid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">any</span><span class="p">((</span><span class="n">force</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">1e3</span><span class="p">)</span> <span class="o">|</span> <span class="n">force</span><span class="o">.</span><span class="n">isnan</span><span class="p">()</span> <span class="o">|</span> <span class="n">force</span><span class="o">.</span><span class="n">isinf</span><span class="p">(),</span>
+                            <span class="n">dim</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span>
+                            <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">constant</span><span class="p">[</span><span class="n">invalid</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.</span>
+        <span class="n">force</span><span class="p">[</span><span class="n">invalid</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">force</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.</span>
+
+        <span class="n">loss</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">force</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">force</span><span class="p">))</span> <span class="o">+</span> <span class="n">pbmm</span><span class="p">(</span>
+            <span class="n">force</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">q</span><span class="p">)</span> <span class="o">+</span> <span class="n">constant</span>
+
+        <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultibodyLearnableSystem.forward_dynamics">
+<a class="viewcode-back" href="../../dair_pll.multibody_learnable_system.html#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.forward_dynamics">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward_dynamics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                         <span class="n">q</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">v</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">u</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                         <span class="n">dynamics_pool</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pool</span><span class="o">.</span><span class="n">Pool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculates delta velocity from current state and input.</span>
+
+<span class="sd">        Implement&#39;s Anitescu&#39;s [1] convex formulation in dual form, derived</span>
+<span class="sd">        similarly to Tedrake [2] and described here.</span>
+
+<span class="sd">        Let v_minus be the contact-free next velocity, i.e.::</span>
+
+<span class="sd">            v + dt * non_contact_acceleration.</span>
+
+<span class="sd">        Let FC be the combined friction cone::</span>
+
+<span class="sd">            FC = {[beta_n beta_t]: beta_n_i &gt;= ||beta_t_i||}.</span>
+
+<span class="sd">        The primal version of Anitescu&#39;s formulation is as follows::</span>
+
+<span class="sd">            min_{v_plus,s}  (v_plus - v_minus)^T M(q)(v_plus - v_minus)/2</span>
+<span class="sd">            s.t.            s = [I; 0]phi(q)/dt + J(q)v_plus,</span>
+<span class="sd">                            s \\in FC.</span>
+
+<span class="sd">        The KKT conditions are the mixed cone complementarity</span>
+<span class="sd">        problem [3, Theorem 2]::</span>
+
+<span class="sd">            s = [I; 0]phi(q)/dt + J(q)v_plus,</span>
+<span class="sd">            M(q)(v_plus - v_minus) = J(q)^T f,</span>
+<span class="sd">            FC \\ni s \\perp f \\in FC.</span>
+
+<span class="sd">        As M(q) is positive definite, we can solve for v_plus in terms of</span>
+<span class="sd">        lambda, and thus these conditions can be simplified to::</span>
+
+<span class="sd">            FC \\ni D(q)f + J(q)v_minus + [I;0]phi(q)/dt \\perp f \\in FC.</span>
+
+<span class="sd">        which in turn are the KKT conditions for the dual QCQP we solve::</span>
+
+<span class="sd">            min_{f}     f^T D(q) f/2 + f^T(J(q)v_minus + [I;0]phi(q)/dt)</span>
+<span class="sd">            s.t.        f \\in FC.</span>
+
+<span class="sd">        References:</span>
+<span class="sd">            [1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid</span>
+<span class="sd">            multibody dynamics,” Mathematical Programming, 2006,</span>
+<span class="sd">            https://doi.org/10.1007/s10107-005-0590-7</span>
+<span class="sd">            [2] R. Tedrake. Underactuated Robotics: Algorithms for Walking,</span>
+<span class="sd">            Running, Swimming, Flying, and Manipulation (Course Notes for MIT</span>
+<span class="sd">            6.832), https://underactuated.mit.edu</span>
+<span class="sd">            [3] S. Z. N&#39;emeth, G. Zhang, &quot;Conic optimization and</span>
+<span class="sd">            complementarity problems,&quot; arXiv,</span>
+<span class="sd">            https://doi.org/10.48550/arXiv.1607.05161</span>
+<span class="sd">        Args:</span>
+<span class="sd">            q: (\*, space.n_q) current configuration batch.</span>
+<span class="sd">            v: (\*, space.n_v) current velocity batch.</span>
+<span class="sd">            u: (\*, ?) current input batch.</span>
+<span class="sd">            dynamics_pool: optional processing pool to enable multithreaded</span>
+<span class="sd">              solves.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (\*, space.n_v) delta velocity batch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># pylint: disable=too-many-locals</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e6</span>
+        <span class="n">delassus</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">J</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">non_contact_acceleration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">multibody_terms</span><span class="p">(</span>
+            <span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+        <span class="n">n_contacts</span> <span class="o">=</span> <span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">contact_filter</span> <span class="o">=</span> <span class="p">(</span><span class="n">broadcast_lorentz</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">eps</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">contact_matrix_filter</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">contact_filter</span><span class="o">.</span><span class="n">int</span><span class="p">(),</span>
+                                     <span class="n">contact_filter</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+                                                              <span class="o">-</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">int</span><span class="p">())</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>
+
+        <span class="n">reorder_mat</span> <span class="o">=</span> <span class="n">tensor_utils</span><span class="o">.</span><span class="n">sappy_reorder_mat</span><span class="p">(</span><span class="n">n_contacts</span><span class="p">)</span>
+        <span class="n">reorder_mat</span> <span class="o">=</span> <span class="n">reorder_mat</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="p">(</span><span class="n">delassus</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span>
+                                          <span class="n">reorder_mat</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span>
+                                              <span class="n">delassus</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">J_M</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">reorder_mat</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span>
+                   <span class="n">pbmm</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">((</span><span class="n">M</span><span class="p">)))))</span>
+
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">double_zero_vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n_contacts</span><span class="p">,))</span>
+        <span class="n">phi_then_zero</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">phi</span><span class="p">,</span> <span class="n">double_zero_vector</span><span class="p">),</span>
+                                  <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">Q_full</span> <span class="o">=</span> <span class="n">delassus</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">n_contacts</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-4</span>
+
+        <span class="n">v_minus</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">non_contact_acceleration</span>
+        <span class="n">q_full</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">v_minus</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi_then_zero</span>
+
+        <span class="n">Q</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">Q_full</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">q_full</span><span class="p">)</span>
+        <span class="n">Q</span><span class="p">[</span><span class="n">contact_matrix_filter</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Q_full</span><span class="p">[</span><span class="n">contact_matrix_filter</span><span class="p">]</span>
+        <span class="n">q</span><span class="p">[</span><span class="n">contact_filter</span><span class="p">]</span> <span class="o">+=</span> <span class="n">q_full</span><span class="p">[</span><span class="n">contact_filter</span><span class="p">]</span>
+
+        <span class="n">impulse_full</span> <span class="o">=</span> <span class="n">pbmm</span><span class="p">(</span>
+            <span class="n">reorder_mat</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                <span class="n">J_M</span><span class="p">,</span>
+                <span class="n">pbmm</span><span class="p">(</span><span class="n">reorder_mat</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">q_full</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="mf">1e-4</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">impulse</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">impulse_full</span><span class="p">)</span>
+        <span class="n">impulse</span><span class="p">[</span><span class="n">contact_filter</span><span class="p">]</span> <span class="o">+=</span> <span class="n">impulse_full</span><span class="p">[</span><span class="n">contact_filter</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">v_minus</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">pbmm</span><span class="p">(</span><span class="n">J</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span>
+                                                    <span class="n">impulse</span><span class="p">))</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultibodyLearnableSystem.sim_step">
+<a class="viewcode-back" href="../../dair_pll.multibody_learnable_system.html#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.sim_step">[docs]</a>
+    <span class="k">def</span> <span class="nf">sim_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">carry</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``Integrator.partial_step`` wrapper for</span>
+<span class="sd">        :py:meth:`forward_dynamics`.&quot;&quot;&quot;</span>
+        <span class="n">q</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">q_v</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># pylint: disable=E1103</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
+        <span class="n">v_plus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward_dynamics</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">v_plus</span><span class="p">,</span> <span class="n">carry</span></div>
+
+
+<div class="viewcode-block" id="MultibodyLearnableSystem.summary">
+<a class="viewcode-back" href="../../dair_pll.multibody_learnable_system.html#dair_pll.multibody_learnable_system.MultibodyLearnableSystem.summary">[docs]</a>
+    <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">statistics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SystemSummary</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generates summary statistics for multibody system.</span>
+
+<span class="sd">        The scalars returned are simply the scalar description of the</span>
+<span class="sd">        system&#39;s :py:class:`MultibodyTerms`.</span>
+
+<span class="sd">        Meshes are generated for learned</span>
+<span class="sd">        :py:class:`~dair_pll.geometry.DeepSupportConvex` es.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            statistics: Updated evaluation statistics for the model.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Scalars and meshes packaged into a ``SystemSummary``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scalars</span><span class="p">,</span> <span class="n">meshes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">multibody_terms</span><span class="o">.</span><span class="n">scalars_and_meshes</span><span class="p">()</span>
+        <span class="n">videos</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span> <span class="p">{})</span>
+
+        <span class="k">return</span> <span class="n">SystemSummary</span><span class="p">(</span><span class="n">scalars</span><span class="o">=</span><span class="n">scalars</span><span class="p">,</span> <span class="n">videos</span><span class="o">=</span><span class="n">videos</span><span class="p">,</span> <span class="n">meshes</span><span class="o">=</span><span class="n">meshes</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mathew Halm &amp; DAIR Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
