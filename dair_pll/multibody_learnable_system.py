@@ -613,29 +613,20 @@ class MultibodyLearnableSystem(System):
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
         phi_then_zero = torch.cat((phi, double_zero_vector),
                                   dim=-1).unsqueeze(-1)
-        # pylint: disable=E1103
-        Q_full = delassus + torch.eye(3 * n_contacts) * 1e-4
 
         v_minus = v + dt * non_contact_acceleration
         q_full = pbmm(J, v_minus.unsqueeze(-1)) + (1 / dt) * phi_then_zero
 
-        Q = torch.zeros_like(Q_full)
-        q = torch.zeros_like(q_full)
-        Q[contact_matrix_filter] += Q_full[contact_matrix_filter]
-        q[contact_filter] += q_full[contact_filter]
-
         try:
             impulse_full = pbmm(
                 reorder_mat,
-                self.solver(  #.apply(
+                self.solver(
                     J_M,
                     pbmm(reorder_mat.transpose(-1, -2),
-                         q).squeeze(-1)).detach().unsqueeze(-1))
-                    #pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                    #solver_eps).detach().unsqueeze(-1))
+                         q_full).squeeze(-1)).detach().unsqueeze(-1))
         except:
             print(f'J_M: {J_M}')
-            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
+            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_full)}')
             pdb.set_trace()
 
 
