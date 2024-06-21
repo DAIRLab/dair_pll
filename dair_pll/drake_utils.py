@@ -208,7 +208,7 @@ def add_plant_from_urdfs(
 
     Returns:
         Named dictionary of model instances returned by
-        ``AddModelFromFile``.
+        ``AddModels``.
         New plant, which has been added to builder.
         Scene graph associated with new plant.
     """
@@ -218,8 +218,12 @@ def add_plant_from_urdfs(
     # Build [model instance index] list, starting with world model, which is
     # always added by default.
     model_ids = [world_model_instance()]
-    model_ids.extend(
-        [parser.AddModelFromFile(urdf, name) for name, urdf in urdfs.items()])
+    for name, urdf in urdfs.items():
+        new_ids = parser.AddModels(urdf)
+        if len(new_ids) < 1:
+            continue
+        model_ids.extend(new_ids)
+        plant.RenameModelInstance(new_ids[0], name)
 
     return model_ids, plant, scene_graph
 
