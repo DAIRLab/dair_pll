@@ -214,6 +214,7 @@ def add_plant_from_urdfs(
     """
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, dt)
     parser = Parser(plant)
+    parser.SetAutoRenaming(True)
 
     # Build [model instance index] list, starting with world model, which is
     # always added by default.
@@ -222,6 +223,7 @@ def add_plant_from_urdfs(
         new_ids = parser.AddModels(urdf)
         if len(new_ids) < 1:
             continue
+        assert len(new_ids) == 1, "Only one robot supported per URDF"
         model_ids.extend(new_ids)
         plant.RenameModelInstance(new_ids[0], name)
 
