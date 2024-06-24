@@ -5,7 +5,7 @@ from typing import Type, Optional
 import torch
 from torch.optim import Optimizer
 
-from dair_pll.dataset_management import DataConfig
+from dair_pll.data_config import DataConfig
 from dair_pll.hyperparameter import Float, Int
 
 

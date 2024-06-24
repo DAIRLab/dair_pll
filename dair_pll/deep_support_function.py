@@ -164,7 +164,7 @@ def extract_mesh_from_support_function(
     backwards = backwards.squeeze(0)
     faces[backwards] = faces[backwards].flip(-1)
 
-    return MeshSummary(vertices=support_points, faces=faces)
+    return MeshSummary(vertices=vertices, faces=faces)
 
 
 class HomogeneousICNN(Module):

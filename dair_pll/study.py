@@ -11,7 +11,7 @@ from torch import Tensor
 from torch.nn import Module
 
 from dair_pll import file_utils, hyperparameter
-from dair_pll.dataset_management import DataConfig
+from dair_pll.data_config import DataConfig
 from dair_pll.drake_experiment import DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, DrakeMultibodyLearnableExperiment
 from dair_pll.experiment import SupervisedLearningExperiment
