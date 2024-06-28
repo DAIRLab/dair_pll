@@ -3,7 +3,7 @@ import time
 from abc import ABC
 from dataclasses import field, dataclass
 from enum import Enum
-from typing import Optional, cast, Dict, Callable
+from typing import Any, List, Optional, cast, Dict, Callable
 import pdb
 
 import torch
@@ -26,10 +26,11 @@ from dair_pll.multibody_learnable_system import \
     LOSS_VARIATION_NUMBERS
 from dair_pll.system import System, SystemSummary
 
-
 @dataclass
 class DrakeSystemConfig(SystemConfig):
     urdfs: Dict[str, str] = field(default_factory=dict)
+    additional_system_builders: List[str] = field(default_factory=list)
+    additional_system_kwargs: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class MultibodyLosses(Enum):
@@ -77,6 +78,17 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     g_frac: float = 1.0
     """What fraction of the true gravitational constant to use."""
 
+from functools import partial
+from pydrake.all import DiagramBuilder, MultibodyPlant
+import importlib
+def system_builder_from_string(string: str, **kwargs) -> Callable[[DiagramBuilder, MultibodyPlant], None]:
+    """
+    Get a function object from a class string
+    """
+    module_name = string[:string.rfind('.')]
+    func_name = string[string.rfind('.')+1:]
+    func = getattr(importlib.import_module(module_name), func_name)
+    return partial(func, **kwargs)
 
 class DrakeExperiment(SupervisedLearningExperiment, ABC):
     base_drake_system: Optional[DrakeSystem]
@@ -93,7 +105,11 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
         if not has_property or self.base_drake_system is None:
             base_config = cast(DrakeSystemConfig, self.config.base_config)
             dt = self.config.data_config.dt
-            self.base_drake_system = DrakeSystem(base_config.urdfs, dt)
+            assert len(base_config.additional_system_builders) == len(base_config.additional_system_kwargs), f"Expected {len(base_config.additional_system_builders)} == {len(base_config.additional_system_kwargs)}"
+            self.base_drake_system = DrakeSystem(base_config.urdfs, 
+                dt, 
+                additional_system_builders=[system_builder_from_string(string, **kwargs) for string, kwargs in zip(base_config.additional_system_builders, base_config.additional_system_kwargs)]
+            )
         return self.base_drake_system
 
     def get_base_system(self) -> System:

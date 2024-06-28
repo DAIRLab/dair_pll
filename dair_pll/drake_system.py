@@ -7,7 +7,7 @@ Interfacing with Drake is done by massaging a drake system into the
 A large portion of the internal implementation of ``DrakeSystem`` is contained
 in ``MultibodyPlantDiagram`` in ``drake_utils.py``.
 """
-from typing import Tuple, Dict, Optional
+from typing import Callable, Tuple, Dict, List, Optional
 
 import torch
 from torch import Tensor
@@ -17,7 +17,8 @@ from dair_pll.drake_utils import MultibodyPlantDiagram
 from dair_pll.integrator import StateIntegrator
 from dair_pll.state_space import ProductSpace
 from dair_pll.system import System
-
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.multibody.plant import MultibodyPlant
 
 class DrakeSystem(System):
     """``System`` wrapper of a Drake simulation environment for a
@@ -35,8 +36,8 @@ class DrakeSystem(System):
     def __init__(self,
                  urdfs: Dict[str, str],
                  dt: float,
-                 visualization_file: Optional[str] = None,
-                 additional_forces: Optional[str] = None,
+                 visualization_file: Optional[str] = "meshcat",
+                 additional_system_builders: List[Callable[[DiagramBuilder, MultibodyPlant], None]] = [],
                  g_frac: Optional[float] = 1.0) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
@@ -45,11 +46,11 @@ class DrakeSystem(System):
             dt: Time step of plant in seconds.
             visualization_file: Optional output GIF filename for trajectory
               visualization.
-            additional_forces: Optional additional forces to add to plant, e.g.
-              an arbitrary force vector field.
+            additional_system_builders: Optional functions that add additional Drake
+              Systems to the plant diagram.
         """
         plant_diagram = MultibodyPlantDiagram(urdfs, dt, visualization_file,
-                                              additional_forces, g_frac=g_frac)
+                                              additional_system_builders, g_frac=g_frac)
 
         space = plant_diagram.generate_state_space()
         integrator = StateIntegrator(space, self.sim_step, dt)
@@ -142,6 +143,7 @@ class DrakeSystem(System):
         finishing_time = self.get_quantized_start_time(
             sim.get_mutable_context().get_time()) + self.dt
         sim.AdvanceTo(finishing_time)
+        input("Step...")
 
         # Retrieves post-step state as numpy ndarray
         new_plant_context = plant.GetMyMutableContextFromRoot(

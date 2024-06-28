@@ -19,10 +19,13 @@ or :py:class:`~dair_pll.state_space.FixedBaseSpace`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple, Dict, List, Optional, Union, Type, cast, \
+from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, \
     TypeAlias
 
 import pdb
+
+# TODO: put in place
+from pydrake.all import MeshcatVisualizer, StartMeshcat, DiscreteContactApproximation
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,8 +54,6 @@ from pydrake.systems.framework import DiagramBuilder, \
 from pydrake.visualization import VideoWriter  # type: ignore
 
 from dair_pll import state_space
-from dair_pll.vector_fields import VortexForceVectorField, \
-    ForceVectorFieldInjectorLeafSystem, ViscousDampingVectorField
 
 WORLD_GROUND_PLANE_NAME = "world_ground_plane"
 DRAKE_MATERIAL_GROUP = 'material'
@@ -103,7 +104,6 @@ DrakeDiagramBuilder = Union[DiagramBuilderFloat, DiagramBuilderAutoDiffXd,
                             DiagramBuilderExpression]
 #:
 UniqueBodyIdentifier = str
-
 
 def get_bodies_in_model_instance(
         plant: DrakeMultibodyPlant,
@@ -236,6 +236,32 @@ def add_plant_from_urdfs(
     return model_ids, plant, scene_graph
 
 
+# TODO: Move to separate file
+from pydrake.systems.controllers import PidController
+from pydrake.systems.primitives import ConstantVectorSource
+def pid_controller_builder(builder, plant, desired_state = np.zeros(6), model_name="robot", kp=1., kd=100.):
+    controller = PidController(kp * np.ones(3), np.zeros(3), kd * np.zeros(3))
+    model = plant.GetModelInstanceByName(model_name)
+
+    controller = builder.AddSystem(controller)
+    builder.Connect(
+        plant.get_state_output_port(model),
+        controller.get_input_port_estimated_state()
+    )
+    builder.Connect(
+        controller.get_output_port_control(),
+        plant.get_actuation_input_port(model)
+    )
+
+    # Desired State
+    constant = ConstantVectorSource(desired_state)
+    constant = builder.AddSystem(constant)
+    builder.Connect(
+        constant.get_output_port(),
+        controller.get_input_port_desired_state()
+    )
+
+
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a visualizer
     for a multibody system described in a list of URDF's.
@@ -261,7 +287,7 @@ class MultibodyPlantDiagram:
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
                  visualization_file: Optional[str] = None,
-                 additional_forces: Optional[str] = None,
+                 additional_system_builders: List[Callable[[DiagramBuilder, MultibodyPlant], None]] = [],
                  g_frac: Optional[float] = 1.0) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
@@ -274,8 +300,8 @@ class MultibodyPlantDiagram:
             dt: Time step of plant in seconds.
             visualization_file: Optional output GIF filename for trajectory
               visualization.
-            additional_forces: Optional additional forces to add to plant, e.g.
-              an arbitrary force vector field.
+            additional_system_builders: Optional functions that add additional Drake
+              Systems to the plant diagram.
         """
         builder = DiagramBuilder()
         model_ids, plant, scene_graph = add_plant_from_urdfs(builder, urdfs, dt)
@@ -284,7 +310,10 @@ class MultibodyPlantDiagram:
         # to False, in the hopes of saving computation time; may cause
         # re-initialization to produce erroneous visualizations.
         visualizer = None
-        if visualization_file:
+        if visualization_file == "meshcat":
+            self.meshcat = StartMeshcat()
+            visualizer = MeshcatVisualizer.AddToBuilder(builder, scene_graph, self.meshcat)
+        elif visualization_file:
             visualizer = VideoWriter.AddToBuilder(filename=visualization_file,
                                                   builder=builder,
                                                   sensor_pose=SENSOR_POSE,
@@ -311,67 +340,51 @@ class MultibodyPlantDiagram:
         new_gravity_vector = np.array([0., 0., -9.81*g_frac])
         plant.mutable_gravity_field().set_gravity_vector(new_gravity_vector)
 
+        # TODO: fix contact model
+        #plant.set_discrete_contact_approximation(DiscreteContactApproximation.kSap)
+        #plant.set_penetration_allowance(0.001)
+
+        # TODO: Document Weld World Frame
+        for name in urdfs.keys():
+            model = plant.GetModelInstanceByName(name)
+            if plant.HasFrameNamed("worldfixed", model):
+                plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("worldfixed", model))
+
+        # Gravcomp
+        # TODO: this is a HACK, find principled way of doing gravcomp
+        plant.set_gravity_enabled(plant.GetModelInstanceByName("robot"), False)
+
         # Finalize multibody plant.
         plant.Finalize()
 
-        # Handle augmented dynamics.  The gravity case was handled via the
-        # gravity vector edit above.
-        if not additional_forces in [None, 'gravity']:
-            # Get sizes for defining appropriately sized input and output ports
-            # for the force vector field injector ``LeafSystem``.
-            n_x = plant.get_state_output_port().size()
-            n_v = plant.get_applied_generalized_force_input_port().size()
+        # Call Additional System Builders
+        for additional_system in additional_system_builders:
+            additional_system(builder, plant)
 
-            # Define a force vector field.
-            if additional_forces == 'vortex':
-                force_vector_field = VortexForceVectorField(n_velocity=n_v)
-                print("Injecting a vortex vector field into dynamics.")
-            elif additional_forces == 'viscous':
-                force_vector_field = ViscousDampingVectorField(n_velocity=n_v,
-                    w_linear=1e-1, w_angular=3e-3, w_articulation=1e-2)
-                print("Injecting viscous damping vector field into dynamics.")
-            else:
-                raise NotImplementedError("Only additional forces implemented "
-                                          "are vortex, viscous, geometry.")
+        # Build diagram.
+        diagram = builder.Build()
+        diagram.CreateDefaultContext()
 
-            # Define a force vector field injector based on the vector field.
-            vector_field_injector = ForceVectorFieldInjectorLeafSystem(
-                n_state=n_x, n_velocity=n_v,
-                vector_field=force_vector_field
-            )
+        # Uncomment the below lines to generate diagram graph.
+        diagram.set_name("graphviz example")
+        plt.figure(figsize=(11,8.5), dpi=300)
+        plot_system_graphviz(diagram)
+        from pathlib import Path
+        plt.savefig(str(Path.home() / "Desktop" / "graphviz_example.png"))
 
-            vector_field_injector = builder.AddSystem(vector_field_injector)
-            
-            # Wire in the vector field force injector so it affects the system
-            # dynamics.
-            builder.Connect(
-                plant.get_state_output_port(),
-                vector_field_injector.GetInputPort("mbp_state")
-            )
-            builder.Connect(
-                vector_field_injector.GetOutputPort("force_vector"),
-                plant.get_applied_generalized_force_input_port()
-            )
-
-            # Initialize simulator from diagram.
-            diagram = builder.Build()
-            diagram.CreateDefaultContext()
-
-            # Uncomment the below lines to generate diagram graph.
-            # diagram.set_name("graphviz example")
-            # plt.figure(figsize=(11,8.5), dpi=300)
-            # plot_system_graphviz(diagram)
-            # plt.savefig('/home/bibit/Desktop/graphviz_example.png')
-
-        else:
-            # Build diagram.
-            diagram = builder.Build()
-            diagram.CreateDefaultContext()
 
         # Initialize simulator from diagram.
         sim = Simulator(diagram)
+        sim.set_publish_at_initialization(True)
+
+        # Need constant visualization for Meshcat
+        sim.set_publish_every_time_step(visualization_file == "meshcat")
+
         sim.Initialize()
-        sim.set_publish_every_time_step(False)
+
+        # Give use time to start Meshcat
+        if visualization_file == "meshcat":
+            input("Start Meshcat now!")
 
         self.sim = sim
         self.plant = plant

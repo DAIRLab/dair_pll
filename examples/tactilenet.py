@@ -128,7 +128,17 @@ DT = 0.0068
 
 # Generation configuration.
 CUBE_X_0 = torch.tensor(
-    [1., 0., 0., 0., 0., 0., 0.21 + .015, 0., 0., 0., 0., 0., -.075])
+    [1., 0., 0., 0., 0., 0., 0.0524 + 0.02, # Cube Q
+#     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
+     0.1, 0., 0.0195 + 0.0524, # Robot Q
+     0., 0., 0., 0., 0., 0., # Cube V
+#     0., 0., 0., 0., 0., -.075, # Robot Floating Base V
+     0., 0., 0., # Robot V
+     ])
+ROBOT_DESIRED = np.array(
+    [0., 0., 0.0195 + 0.0524, # Desired Robot Q
+     0., 0., 0., # Desired Robot V
+    ])
 ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
 ASYMMETRIC_X_0 = torch.tensor(
@@ -193,7 +203,6 @@ def main(storage_folder_name: str = "",
          w_res: float = 1e0,
          w_res_w: float = 1e0,
          do_residual: bool = False,
-         additional_forces: str = None,
          g_frac: float = 1.0):
     """Execute ContactNets basic example on a system.
 
@@ -215,10 +224,7 @@ def main(storage_folder_name: str = "",
         w_pen: Weight of penetration term in ContactNets loss.
         w_res: Weight of residual regularization term in loss.
         do_residual: Whether to add residual physics block.
-        additional_forces: Optionally provide additional forces to augment any
-          generated simulation data.  Is ignored if using real data.
-        g_frac: Fraction of gravity to use with initial model.  Is ignored
-          unless additional_forces == gravity.
+        g_frac: Fraction of gravity to use with initial model.
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
@@ -237,7 +243,6 @@ def main(storage_folder_name: str = "",
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w})' \
          + f'\n\twith residual: {do_residual}' \
          + f'\n\tand starting with provided true_sys={true_sys}' \
-         + f'\n\tinjecting into dynamics (if sim): {additional_forces}' \
          + f'\n\twith gravity fraction (if gravity): {g_frac}')
 
     simulation = source == SIM_SOURCE
@@ -270,8 +275,12 @@ def main(storage_folder_name: str = "",
     # first, select urdfs
     urdf_asset = TRUE_URDFS[system][geometry]
     urdf = file_utils.get_asset(urdf_asset)
-    urdfs = {system: urdf}
-    base_config = DrakeSystemConfig(urdfs=urdfs)
+    urdfs = {system: urdf, 'robot': file_utils.get_asset("spherebot.urdf")}
+
+    base_config = DrakeSystemConfig(urdfs=urdfs, 
+        additional_system_builders=["dair_pll.drake_utils.pid_controller_builder"], 
+        additional_system_kwargs=[{"desired_state": ROBOT_DESIRED}]
+    )
 
     # how to slice trajectories into training datapoints
     slice_config = TrajectorySliceConfig(
@@ -325,6 +334,11 @@ def main(storage_folder_name: str = "",
 
     # Prepare data.
     x_0 = X_0S[system]
+
+    # Simulate one trajectory
+    experiment.get_base_system().simulate(x_0.reshape(1, -1), experiment.get_base_system().carry_callback(), 3000)
+
+    """
     if simulation:
         # For simulation, specify the following:
         data_generation_config = DataGenerationConfig(
@@ -350,12 +364,6 @@ def main(storage_folder_name: str = "",
             # where to store trajectories
         )
 
-        if additional_forces == None:
-            data_generation_system = experiment.get_base_system()
-        else:
-            data_generation_system = experiment.get_augmented_system(
-                additional_forces)
-
         generator = ExperimentDatasetGenerator(
             data_generation_system, data_generation_config)
         print(f'Generating (or getting existing) simulation trajectories.\n')
@@ -371,6 +379,8 @@ def main(storage_folder_name: str = "",
         file_utils.import_data_to_storage(storage_name,
                                           import_data_dir=import_directory,
                                           num=dataset_size)
+    """
+
     input(f'Done!')
 
 
@@ -443,10 +453,6 @@ def main(storage_folder_name: str = "",
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
-@click.option('--additional-forces',
-              type = click.Choice(AUGMENTED_FORCE_TYPES),
-              default=None,
-              help="what kind of additional forces to augment simulation data.")
 @click.option('--g-frac',
               type=float,
               default=1e0,
@@ -457,7 +463,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
                  inertia_params: str, loss_variation: str, true_sys: bool,
                  wandb_project: str, w_pred: float, w_comp: float,
                  w_diss: float, w_pen: float, w_res: float, w_res_w: float,
-                 residual: bool, additional_forces: str, g_frac: float):
+                 residual: bool, g_frac: float):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
     assert run_name is not None
@@ -465,7 +471,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
     main(storage_folder_name, run_name, system, source, structured, contactnets,
          geometry, regenerate, dataset_size, inertia_params, loss_variation,
          true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, w_res_w,
-         residual, additional_forces, g_frac)
+         residual, g_frac)
 
 
 if __name__ == '__main__':

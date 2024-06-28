@@ -131,3 +131,46 @@ class ForceVectorFieldInjectorLeafSystem(LeafSystem):
         # Write the output vector.
         output.SetFromVector(generalized_force)
 
+
+### Builder for DrakeSystem
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.multibody.plant import MultibodyPlant
+
+def force_system_builder(builder: DiagramBuilder, plant: MultibodyPlant, field_type: str = "vortex") -> None:
+    # Get sizes for defining appropriately sized input and output ports
+    # for the force vector field injector ``LeafSystem``.
+    n_x = plant.get_state_output_port().size()
+    n_v = plant.get_applied_generalized_force_input_port().size()
+
+    field = None
+    if field_type == "vortex":
+        print("Injecting vortex force vector field into dynamics.")
+        field = VortexForceVectorField(n_velocity=n_v, rotation_scaling = 10.0)
+    elif field_type == "viscous":
+        print("Injecting viscous damping vector field into dynamics.")
+        field = ViscousDampingVectorField(
+            n_velocity=n_v,
+            w_linear=1e-1, w_angular=3e-3, w_articulation=1e-2
+        )
+
+    if not field:
+        raise ValueError(f"Invalid Vector Field Type: {field_type}")
+
+    # Define a force vector field injector based on the vector field.
+    vector_field_injector = ForceVectorFieldInjectorLeafSystem(
+        n_state=n_x, n_velocity=n_v,
+        vector_field=field
+    )
+
+    vector_field_injector = builder.AddSystem(vector_field_injector)
+    
+    # Wire in the vector field force injector so it affects the system
+    # dynamics.
+    builder.Connect(
+        plant.get_state_output_port(),
+        vector_field_injector.GetInputPort("mbp_state")
+    )
+    builder.Connect(
+        vector_field_injector.GetOutputPort("force_vector"),
+        plant.get_applied_generalized_force_input_port()
+    )

@@ -193,6 +193,7 @@ def main(storage_folder_name: str = "",
          w_res: float = 1e0,
          w_res_w: float = 1e0,
          do_residual: bool = False,
+         # TODO: move to new additional_system_builders interface
          additional_forces: str = None,
          g_frac: float = 1.0):
     """Execute ContactNets basic example on a system.
