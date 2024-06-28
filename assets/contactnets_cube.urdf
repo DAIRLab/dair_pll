@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <robot name="cube" xmlns:drake="https://drake.mit.edu/">
+    <link name="worldfixed" />
     <link name="cube_body">
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -36,4 +37,10 @@
             </drake:proximity_properties>
         </collision>
     </link>
+
+    <joint name="worldfixed_to_cube_body" type="planar">
+        <parent link="worldfixed"/>
+        <child link="cube_body"/>
+        <axis xyz="0 -1 0"/>
+    </joint>
 </robot>

@@ -25,7 +25,7 @@ from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, \
 import pdb
 
 # TODO: put in place
-from pydrake.all import MeshcatVisualizer, StartMeshcat, DiscreteContactApproximation
+from pydrake.all import MeshcatVisualizer, StartMeshcat, Meshcat, DiscreteContactApproximation
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -239,8 +239,9 @@ def add_plant_from_urdfs(
 # TODO: Move to separate file
 from pydrake.systems.controllers import PidController
 from pydrake.systems.primitives import ConstantVectorSource
-def pid_controller_builder(builder, plant, desired_state = np.zeros(6), model_name="robot", kp=1., kd=100.):
-    controller = PidController(kp * np.ones(3), np.zeros(3), kd * np.zeros(3))
+def pid_controller_builder(builder, plant, desired_state = np.zeros(2), model_name="robot", kp=1., kd=10.):
+    control_size = int(desired_state.size/2)
+    controller = PidController(kp * np.ones(control_size), np.zeros(control_size), kd * np.zeros(control_size))
     model = plant.GetModelInstanceByName(model_name)
 
     controller = builder.AddSystem(controller)
@@ -312,6 +313,15 @@ class MultibodyPlantDiagram:
         visualizer = None
         if visualization_file == "meshcat":
             self.meshcat = StartMeshcat()
+            ortho_camera = Meshcat.OrthographicCamera()
+            ortho_camera.top = 1
+            ortho_camera.bottom = -0.1
+            ortho_camera.left = -1
+            ortho_camera.right = 2
+            ortho_camera.near = -10
+            ortho_camera.far = 500
+            ortho_camera.zoom = 1
+            self.meshcat.SetCamera(ortho_camera)
             visualizer = MeshcatVisualizer.AddToBuilder(builder, scene_graph, self.meshcat)
         elif visualization_file:
             visualizer = VideoWriter.AddToBuilder(filename=visualization_file,

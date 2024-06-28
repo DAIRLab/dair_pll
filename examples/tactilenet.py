@@ -129,16 +129,18 @@ DT = 0.0068
 
 # Generation configuration.
 CUBE_X_0 = torch.tensor(
-    [1., 0., 0., 0., 0., 0., 0.0524 + 0.02, # Cube Q
+    [0.1, 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
 #     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
-     0.1, 0., 0.0195 + 0.0524, # Robot Q
-     0., 0., 0., 0., 0., 0., # Cube V
+     0.5, #0., 0.0524, # Robot finger_0 Q 1D (x)
+     -0.5, #0., 0.0524, # Robot finger_1 Q 1D (x)
+     0., 0., 0., # Cube V in 2D (dx, dz, dtheta)
 #     0., 0., 0., 0., 0., -.075, # Robot Floating Base V
-     0., 0., 0., # Robot V
+     0., #0., 0., # Robot V finger_0 1D (dx)
+     0., #0., 0., # Robot V finger_1 1D (dx)
      ])
 ROBOT_DESIRED = np.array(
-    [0., 0., 0.0195 + 0.0524, # Desired Robot Q
-     0., 0., 0., # Desired Robot V
+    [0., 0., # 0., 0.0195 + 0.0524, # Desired Robot Q (1d)
+     0., 0., # 0., 0., # Desired Robot V (1d)
     ])
 ELBOW_X_0 = torch.tensor(
     [1., 0., 0., 0., 0., 0., 0.21 + .015, np.pi, 0., 0., 0., 0., 0., -.075, 0.])
@@ -161,7 +163,7 @@ SAMPLER_RANGES = {
     ELBOW_SYSTEM: ELBOW_SAMPLER_RANGE,
     ASYMMETRIC_SYSTEM: ASYMMETRIC_SAMPLER_RANGE
 }
-TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 80, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80}
+TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 300, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80}
 
 # Training data configuration.
 T_PREDICTION = 1
@@ -280,7 +282,7 @@ def main(storage_folder_name: str = "",
 
     base_config = DrakeSystemConfig(urdfs=urdfs, 
         additional_system_builders=["dair_pll.drake_utils.pid_controller_builder"], 
-        additional_system_kwargs=[{"desired_state": ROBOT_DESIRED}]
+        additional_system_kwargs=[{"desired_state": ROBOT_DESIRED, "kp": 2.0, "kd": 100.0}]
     )
 
     # how to slice trajectories into training datapoints
@@ -375,7 +377,7 @@ def main(storage_folder_name: str = "",
         return carry
 
     from functools import partial
-    data_generation_system.set_carry_sampler(partial(carry_callback, keys=["net_actuation", "robot_state", "contact_forces.finger_0"], plant=data_generation_system.plant_diagram.plant))
+    data_generation_system.set_carry_sampler(partial(carry_callback, keys=["net_actuation", "robot_state", "contact_forces.finger_0", "contact_forces.finger_1"], plant=data_generation_system.plant_diagram.plant))
 
     generator = ExperimentDatasetGenerator(
         data_generation_system, data_generation_config)

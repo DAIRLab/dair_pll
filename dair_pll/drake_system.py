@@ -173,6 +173,6 @@ class DrakeSystem(System):
                     carry_next[key] = plant.GetOutputPort(key).Eval(new_plant_context).reshape(1, -1)
                     print(f"Writing {carry_next[key]} to {key}")
 
-        # input("Step...")
+        input("Step...")
 
         return Tensor(x_next), carry_next
