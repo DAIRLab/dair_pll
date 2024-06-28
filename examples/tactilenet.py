@@ -2,7 +2,7 @@
 # pylint: disable=E1103
 import os
 import time
-from typing import cast
+from typing import cast, List
 
 import sys
 import pdb
@@ -11,6 +11,7 @@ import click
 import numpy as np
 import torch
 from torch import Tensor
+from tensordict.tensordict import TensorDict
 import pickle
 import git
 
@@ -31,7 +32,7 @@ from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem, \
     LOSS_PLL_ORIGINAL, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, \
     LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
-from dair_pll.state_space import UniformSampler, GaussianWhiteNoiser, \
+from dair_pll.state_space import ConstantSampler, UniformSampler, GaussianWhiteNoiser, \
     FloatingBaseSpace, FixedBaseSpace, ProductSpace
 from dair_pll.system import System
 
@@ -336,50 +337,50 @@ def main(storage_folder_name: str = "",
     x_0 = X_0S[system]
 
     # Simulate one trajectory
-    experiment.get_base_system().simulate(x_0.reshape(1, -1), experiment.get_base_system().carry_callback(), 3000)
+    #experiment.get_base_system().simulate(x_0.reshape(1, -1), experiment.get_base_system().carry_callback(), 3000)
 
-    """
-    if simulation:
-        # For simulation, specify the following:
-        data_generation_config = DataGenerationConfig(
-            dt=DT,
-            # timestep
-            n_pop=dataset_size,
-            # How many trajectories to simulate
-            trajectory_length=TRAJECTORY_LENGTHS[system],
-            # trajectory length
-            x_0=x_0,
-            # A nominal initial state
-            sampler_type=UniformSampler,
-            # use uniform distribution to sample ``x_0``
-            sampler_ranges=SAMPLER_RANGES[system],
-            # How much to vary initial states around ``x_0``
-            noiser_type=GaussianWhiteNoiser,
-            # Distribution of noise in trajectory data (Gaussian).
-            static_noise=torch.zeros(x_0.nelement() - 1),
-            # constant-in-time noise standard deviations (zero in this case)
-            dynamic_noise=torch.zeros(x_0.nelement() - 1),
-            # i.i.d.-in-time noise standard deviations (zero in this case)
-            storage=storage_name
-            # where to store trajectories
-        )
+    # For simulation, specify the following:
+    data_generation_config = DataGenerationConfig(
+        dt=DT,
+        # timestep
+        n_pop=1,
+        # How many trajectories to simulate
+        trajectory_length=TRAJECTORY_LENGTHS[system],
+        # trajectory length
+        x_0=x_0,
+        # A nominal initial state
+        sampler_type=ConstantSampler,
+        # use uniform distribution to sample ``x_0``
+        sampler_kwargs={"x_0": x_0},
+        # Other arguments for the smapler
+        noiser_type=None,
+        # Distribution of noise in trajectory data (No Noise).
+        storage=storage_name
+        # where to store trajectories
+    )
 
-        generator = ExperimentDatasetGenerator(
-            data_generation_system, data_generation_config)
-        print(f'Generating (or getting existing) simulation trajectories.\n')
-        generator.generate()
+    data_generation_system = experiment.get_base_system()
 
-    else:
-        # otherwise, specify directory with [T, n_x] tensor files saved as
-        # 0.pt, 1.pt, ...
-        # See :mod:`dair_pll.state_space` for state format.
-        data_asset = REAL_DATA_ASSETS[system]
-        import_directory = file_utils.get_asset(data_asset)
-        print(f'Getting real trajectories from {import_directory}\n')
-        file_utils.import_data_to_storage(storage_name,
-                                          import_data_dir=import_directory,
-                                          num=dataset_size)
-    """
+    from pydrake.multibody.plant import MultibodyPlant
+    def carry_callback(keys: List[str], plant: MultibodyPlant) -> Tensor:
+        carry = TensorDict({}, [1])
+        for key in keys:
+            subkeys = tuple(key.split("."))
+            size = 1
+            if subkeys[0] == "contact_forces":
+                size = 3
+            else:
+                size = plant.GetOutputPort(subkeys[0]).size()
+            carry.set(tuple(key.split(".")), torch.zeros(1, size))
+        return carry
+
+    from functools import partial
+    data_generation_system.set_carry_sampler(partial(carry_callback, keys=["net_actuation", "robot_state", "contact_forces.finger_0"], plant=data_generation_system.plant_diagram.plant))
+
+    generator = ExperimentDatasetGenerator(
+        data_generation_system, data_generation_config)
+    print(f'Generating (or getting existing) simulation trajectories.\n')
+    generator.generate()
 
     input(f'Done!')
 

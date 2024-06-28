@@ -18,7 +18,7 @@
 
   <link name="worldfixed" />
 
-  <link name="end_effector_simple">
+  <link name="finger_0">
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -47,46 +47,46 @@
     </collision>
   </link>
   
-  <link name="end_effector_simple_fake_x" />
+  <link name="finger_0_fake_x" />
   
-  <link name="end_effector_simple_fake_y" />
+  <link name="finger_0_fake_y" />
   
-  <joint name="end_effector_simple_to_base_x" type="prismatic">
+  <joint name="finger_0_to_base_x" type="prismatic">
     <parent link="worldfixed"/>
-    <child link="end_effector_simple_fake_x"/>
+    <child link="finger_0_fake_x"/>
     <axis xyz="1 0 0"/>
   </joint>
-  <joint name="end_effector_simple_to_base_y" type="prismatic">
-    <parent link="end_effector_simple_fake_x"/>
-    <child link="end_effector_simple_fake_y"/>
+  <joint name="finger_0_to_base_y" type="prismatic">
+    <parent link="finger_0_fake_x"/>
+    <child link="finger_0_fake_y"/>
     <axis xyz="0 1 0"/>
   </joint>
-    <joint name="end_effector_simple_to_base_z" type="prismatic">
-    <parent link="end_effector_simple_fake_y"/>
-    <child link="end_effector_simple"/>
+    <joint name="finger_0_to_base_z" type="prismatic">
+    <parent link="finger_0_fake_y"/>
+    <child link="finger_0"/>
     <axis xyz="0 0 1"/>
   </joint>
   
-   <transmission name="end_effector_simple_to_base_trans_x" type="SimpleTransmission">
-    <actuator name="end_effector_simple_to_base_act_x"/>
-    <joint name="end_effector_simple_to_base_x"/>
+   <transmission name="finger_0_to_base_trans_x" type="SimpleTransmission">
+    <actuator name="finger_0_to_base_act_x"/>
+    <joint name="finger_0_to_base_x"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
-     <transmission name="end_effector_simple_to_base_trans_y" type="SimpleTransmission">
-    <actuator name="end_effector_simple_to_base_act_y"/>
-    <joint name="end_effector_simple_to_base_y"/>
+     <transmission name="finger_0_to_base_trans_y" type="SimpleTransmission">
+    <actuator name="finger_0_to_base_act_y"/>
+    <joint name="finger_0_to_base_y"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
-     <transmission name="end_effector_simple_to_base_trans_z" type="SimpleTransmission">
-    <actuator name="end_effector_simple_to_base_act_z"/>
-    <joint name="end_effector_simple_to_base_z"/>
+     <transmission name="finger_0_to_base_trans_z" type="SimpleTransmission">
+    <actuator name="finger_0_to_base_act_z"/>
+    <joint name="finger_0_to_base_z"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
   <drake:collision_filter_group name="finger_0_group">
-  <drake:member link="end_effector_simple"/>
+  <drake:member link="finger_0"/>
   <drake:ignored_collision_filter_group name="finger_0_group"/>
   </drake:collision_filter_group>
 </robot>

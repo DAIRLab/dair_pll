@@ -4,6 +4,7 @@ from pip._internal import main as pipmain
 install_reqs = [
     # library
     'torch',
+    'tensordict',
     'moviepy',
     'Pillow',
     'wandb',
