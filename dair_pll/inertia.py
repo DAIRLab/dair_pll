@@ -45,10 +45,10 @@ i.e. :math:`m > 0`).
       any value in :math:`\mathbb{R}^{10}` for ``theta`` can be mapped to a
       valid and non-degenerate set of inertial terms as follows::
 
-        theta == [log_m, h_x, h_y, h_z, d_1, d_2, d_3, s_12, s_13, s_23]
+        theta == [log_m, p_x, p_y, p_z, d_1, d_2, d_3, s_12, s_13, s_23]
         m == exp(log_m)
-        p_BoBcm_B == [h_x, h_y, h_z] / m
-        I_BBcm_B = trace(Sigma(theta)) * I_3 - Sigma(theta)
+        p_BoBcm_B == [p_x, p_y, p_z]
+        I_BBcm_B = (trace(Sigma(theta)) * I_3 - Sigma(theta)) * m
 
       where ``Sigma`` :math:`(\Sigma)` is constructed via log-Cholesky
       parameterization, similar to the one in  Rucker and Wensing [1]_ :
@@ -216,7 +216,7 @@ class InertialParameterConverter:
             ``(*, 10)`` ``pi_cm``-type parameterization.
         """
         mass = torch.exp(theta[..., :1])
-        h_vector = theta[..., 1:4]
+        h_vector = theta[..., 1:4] # TODO: * mass
         d_vector = theta[..., 4:7]
         s_vector = theta[..., 7:]
 
@@ -229,7 +229,7 @@ class InertialParameterConverter:
 
         sigma = pbmm(cholesky_sigma, cholesky_sigma.mT)
 
-        I_BBcm_B = trace_identity(sigma) - sigma
+        I_BBcm_B = (trace_identity(sigma) - sigma)# TODO: * mass
 
         I_BBcm_B_vec = inertia_vector_from_matrix(I_BBcm_B)
 
@@ -248,13 +248,18 @@ class InertialParameterConverter:
             ``(*, 10)`` ``theta``-type parameterization.
         """
 
+        mass = pi_cm[..., :1]
+
         log_m = torch.log(pi_cm[..., :1])
 
-        h_vector = pi_cm[..., 1:4]
+        h_vector = pi_cm[..., 1:4] # TODO: / mass
 
-        I_BBcm_B = inertia_matrix_from_vector(pi_cm[..., 4:])
+        I_BBcm_B = inertia_matrix_from_vector(pi_cm[..., 4:]) # TODO: / mass
 
         sigma = 0.5 * trace_identity(I_BBcm_B) - I_BBcm_B
+
+        import pdb
+        pdb.set_trace()
 
         cholesky_sigma = torch.linalg.cholesky(sigma)
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass
@@ -11,6 +12,10 @@ class TrajectorySliceConfig:
     r"""Number of steps in initial condition for prediction, ``>= 1``\ ."""
     t_prediction: int = 1
     r"""Number of future steps to use during training/evaluation, ``>= 1``\ ."""
+    his_state_keys: List[str] = field(default_factory=list)
+    r"""If set, interpret input as TensorDict and use these keys for history."""
+    pred_state_keys: List[str] = field(default_factory=list)
+    r"""If set, interpret input as TensorDict and use these keys for prediction."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""

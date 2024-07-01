@@ -53,10 +53,23 @@ class TrajectorySliceDataset(Dataset):
         future_states_length = self.config.t_prediction
         assert first_time_index <= last_time_index
         for index in range(first_time_index, last_time_index):
-            self.previous_states_slices.append(
-                trajectory[(index + 1 - previous_states_length):(index + 1), :])
-            self.future_states_slices.append(
-                trajectory[(index + 1):(index + 1 + future_states_length), :])
+            his_state = trajectory[(index + 1 - previous_states_length):(index + 1)]
+            if len(self.config.his_state_keys) > 0:
+                # Only keep requested state keys
+                for key in [key for key in his_state.keys()]:
+                    if key not in self.config.his_state_keys:
+                        del his_state[key]
+                # TODO: HACK Add Time Index
+                his_state["time"] = index * torch.ones([1, 1], dtype=torch.int32)
+            self.previous_states_slices.append(his_state)
+
+            pred_state = trajectory[(index + 1):(index + 1 + future_states_length)]
+            if len(self.config.pred_state_keys) > 0:
+                # Only keep requested state keys
+                for key in [key for key in pred_state.keys()]:
+                    if key not in self.config.pred_state_keys:
+                        del pred_state[key]
+            self.future_states_slices.append(pred_state)
 
     def __len__(self) -> int:
         """Length of dataset as number of total slice pairs."""

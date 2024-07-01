@@ -286,16 +286,23 @@ def main(storage_folder_name: str = "",
     )
 
     # how to slice trajectories into training datapoints
+    # Give robot_state from previous and next time steps
+    # Give actuation and contact forces simulated from previous time step
+    # NOTE: Simulation goes (calc net actuation/forces -> calc next state), so
+    # next state's net_actuation / contact_forces are from the previous time step.
     slice_config = TrajectorySliceConfig(
-        t_prediction=1 if contactnets else T_PREDICTION)
+        his_state_keys = ["robot_state"],
+        pred_state_keys = ["net_actuation", "contact_forces", "robot_state"]
+    )
+
 
     # Describes configuration of the data
     data_config = DataConfig(dt=DT,
-                             train_fraction=1.0 if dynamic else 0.5,
-                             valid_fraction=0.0 if dynamic else 0.25,
-                             test_fraction=0.0 if dynamic else 0.25,
+                             train_fraction=1.0,
+                             valid_fraction=0.0,
+                             test_fraction=0.0,
                              slice_config=slice_config,
-                             update_dynamically=dynamic)
+                             update_dynamically=False)
 
     if structured:
         loss = MultibodyLosses.CONTACTNETS_LOSS if contactnets else \
@@ -332,8 +339,7 @@ def main(storage_folder_name: str = "",
     )
 
     # Make experiment.
-    experiment = DrakeMultibodyLearnableExperiment(experiment_config) \
-        if structured else DrakeDeepLearnableExperiment(experiment_config)
+    experiment = DrakeMultibodyLearnableExperiment(experiment_config)
 
     # Prepare data.
     x_0 = X_0S[system]
@@ -383,6 +389,15 @@ def main(storage_folder_name: str = "",
         data_generation_system, data_generation_config)
     print(f'Generating (or getting existing) simulation trajectories.\n')
     generator.generate()
+
+    # Test Data Loading
+    #from dair_pll.dataset_management import ExperimentDataManager
+    #edm = ExperimentDataManager(
+    #            storage_name, data_config)
+    #train, val, test = edm.get_updated_trajectory_sets()
+
+    # Test loading learned system (TODO)
+    #experiment.get_learned_system(None)
 
     input(f'Done!')
 

@@ -252,6 +252,8 @@ class LagrangianTerms(Module):
         body_parameter_list = []
         body_variable_list = []
         for body, body_id in zip(all_bodies, all_body_ids):
+            import pdb
+            pdb.set_trace()
             mass = Variable(f'{body_id}_m', Variable.Type.CONTINUOUS)
             p_BoBcm_B = MakeVectorVariable(CENTER_OF_MASS_DOF, f'{body_id}_com',
                                            Variable.Type.CONTINUOUS)

@@ -23,6 +23,7 @@ from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, \
     TypeAlias
 
 import pdb
+import math
 
 # TODO: put in place
 from pydrake.all import MeshcatVisualizer, StartMeshcat, Meshcat, DiscreteContactApproximation
@@ -146,10 +147,12 @@ def get_all_inertial_bodies(
     plant: DrakeMultibodyPlant, model_instance_indices: List[ModelInstanceIndex]
 ) -> Tuple[List[DrakeBody], List[UniqueBodyIdentifier]]:
     """Get all bodies that should have inertial parameters in plant."""
-    return get_all_bodies(plant, [
-        model_index for model_index in model_instance_indices
-        if model_index != world_model_instance()
-    ])
+    bodies = []
+    for model_instance_index in model_instance_indices:
+        for body in get_bodies_in_model_instance(plant, model_instance_index):
+            if not math.isnan(body.default_mass()) and body.default_mass() > 0.:
+                bodies.append(body)
+    return bodies, [unique_body_identifier(plant, body) for body in bodies]
 
 
 @dataclass
@@ -351,8 +354,7 @@ class MultibodyPlantDiagram:
         plant.mutable_gravity_field().set_gravity_vector(new_gravity_vector)
 
         # TODO: fix contact model
-        #plant.set_discrete_contact_approximation(DiscreteContactApproximation.kSap)
-        #plant.set_penetration_allowance(0.001)
+        plant.set_discrete_contact_approximation(DiscreteContactApproximation.kSap)
 
         # TODO: Document Weld World Frame
         for name in urdfs.keys():
