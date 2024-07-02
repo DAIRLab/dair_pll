@@ -132,6 +132,12 @@ def unique_body_identifier(plant: DrakeMultibodyPlant,
     """Unique string identifier for given ``Body_``."""
     return f'{plant.GetModelInstanceName(body.model_instance())}_{body.name()}'
 
+def get_body_from_geometry_id(plant: DrakeMultibodyPlant, inspector: DrakeSceneGraphInspector,
+                           geometry_id: GeometryId) -> DrakeBody:
+    """Return the Drake Body from the given GeometryId"""
+    frame_id = inspector.GetFrameId(geometry_id)
+    return plant.GetBodyFromFrameId(frame_id)
+
 
 def get_all_bodies(
     plant: DrakeMultibodyPlant, model_instance_indices: List[ModelInstanceIndex]

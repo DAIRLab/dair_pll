@@ -233,7 +233,8 @@ class Polygon(SparseVertexConvexCollisionGeometry):
 
     def __init__(self,
                  vertices: Tensor,
-                 n_query: int = _POLYGON_DEFAULT_N_QUERY) -> None:
+                 n_query: int = _POLYGON_DEFAULT_N_QUERY,
+                 learnable: bool = True) -> None:
         """Inits ``Polygon`` object with initial vertex set.
 
         Args:
@@ -242,7 +243,7 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         """
         super().__init__(n_query)
         scaled_vertices = vertices.clone()/_NOMINAL_HALF_LENGTH
-        self.vertices_parameter = Parameter(scaled_vertices, requires_grad=True)
+        self.vertices_parameter = Parameter(scaled_vertices, requires_grad=learnable)
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Return batched view of static vertex set"""
@@ -299,7 +300,8 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
                  n_query: int = _DEEP_SUPPORT_DEFAULT_N_QUERY,
                  depth: int = _DEEP_SUPPORT_DEFAULT_DEPTH,
                  width: int = _DEEP_SUPPORT_DEFAULT_WIDTH,
-                 perturbation: float = 0.4) -> None:
+                 perturbation: float = 0.4,
+                 learnable: bool = True) -> None:
         r"""Inits ``DeepSupportConvex`` object with initial vertex set.
 
         When calculating a sparse vertex set with :py:meth:`get_vertices`,
@@ -316,7 +318,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         super().__init__(n_query)
         length_scale = (vertices.max(dim=0).values -
                         vertices.min(dim=0).values).norm() / 2
-        self.network = HomogeneousICNN(depth, width, scale=length_scale)
+        self.network = HomogeneousICNN(depth, width, scale=length_scale, learnable=learnable)
         self.perturbations = torch.cat((torch.zeros(
             (1, 3)), perturbation * (torch.rand((n_query - 1, 3)) - 0.5)))
 
@@ -389,7 +391,7 @@ class Box(SparseVertexConvexCollisionGeometry):
     length_params: Parameter
     unit_vertices: Tensor
 
-    def __init__(self, half_lengths: Tensor, n_query: int) -> None:
+    def __init__(self, half_lengths: Tensor, n_query: int, learnable: bool = True) -> None:
         """Inits ``Box`` object with initial size.
 
         Args:
@@ -403,7 +405,7 @@ class Box(SparseVertexConvexCollisionGeometry):
 
         scaled_half_lengths = half_lengths.clone()/_NOMINAL_HALF_LENGTH
         self.length_params = Parameter(scaled_half_lengths.view(1, -1),
-                                       requires_grad=True)
+                                       requires_grad=learnable)
         self.unit_vertices = _UNIT_BOX_VERTICES.clone()
 
     def get_half_lengths(self) -> Tensor:
@@ -440,12 +442,12 @@ class Sphere(BoundedConvexCollisionGeometry):
     """
     length_param: Parameter
 
-    def __init__(self, radius: Tensor) -> None:
+    def __init__(self, radius: Tensor, learnable: bool = True) -> None:
         super().__init__()
         assert radius.numel() == 1
 
         self.length_param = Parameter(radius.clone().view(()),
-                                      requires_grad=True)
+                                      requires_grad=learnable)
 
     def get_radius(self) -> Tensor:
         """From the stored :py:attr:`length_param`, compute the radius of the
@@ -476,7 +478,8 @@ class PydrakeToCollisionGeometryFactory:
     ``CollisionGeometry`` instances."""
 
     @staticmethod
-    def convert(drake_shape: Shape, represent_geometry_as: str
+    def convert(drake_shape: Shape, represent_geometry_as: str,
+        learnable: bool = True,
         ) -> CollisionGeometry:
         """Converts abstract ``pydrake.geometry.shape`` to
         ``CollisionGeometry`` according to the desired ``represent_geometry_as``
@@ -497,26 +500,26 @@ class PydrakeToCollisionGeometryFactory:
         """
         if isinstance(drake_shape, DrakeBox):
             return PydrakeToCollisionGeometryFactory.convert_box(
-                drake_shape, represent_geometry_as)
+                drake_shape, represent_geometry_as, learnable)
         if isinstance(drake_shape, DrakeHalfSpace):
             return PydrakeToCollisionGeometryFactory.convert_plane()
         if isinstance(drake_shape, DrakeMesh):
             return PydrakeToCollisionGeometryFactory.convert_mesh(
-                drake_shape, represent_geometry_as)
+                drake_shape, represent_geometry_as, learnable)
         if isinstance(drake_shape, DrakeSphere):
             return PydrakeToCollisionGeometryFactory.convert_sphere(
-                drake_shape, represent_geometry_as)
+                drake_shape, represent_geometry_as, learnable)
         raise TypeError(
             "Unsupported type for drake Shape() to"
             "CollisionGeometry() conversion:", type(drake_shape))
 
     @staticmethod
-    def convert_box(drake_box: DrakeBox, represent_geometry_as: str
+    def convert_box(drake_box: DrakeBox, represent_geometry_as: str, learnable: bool = True
         ) -> Union[Box, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         if represent_geometry_as == 'box':
             half_widths = 0.5 * Tensor(np.copy(drake_box.size()))
-            return Box(half_widths, 4)
+            return Box(half_widths, 4, learnable)
 
         if represent_geometry_as == 'polygon':
             pass # TODO
@@ -525,11 +528,11 @@ class PydrakeToCollisionGeometryFactory:
             f'as {represent_geometry_as} type.')
 
     @staticmethod
-    def convert_sphere(drake_sphere: DrakeSphere, represent_geometry_as: str
+    def convert_sphere(drake_sphere: DrakeSphere, represent_geometry_as: str, learnable: bool = True
         ) -> Union[Sphere, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         if represent_geometry_as == 'box':
-            return Sphere(torch.tensor([drake_sphere.radius()]))
+            return Sphere(torch.tensor([drake_sphere.radius()]), learnable)
 
         if represent_geometry_as == 'polygon':
             pass # TODO
@@ -543,7 +546,7 @@ class PydrakeToCollisionGeometryFactory:
         return Plane()
 
     @staticmethod
-    def convert_mesh(drake_mesh: DrakeMesh, represent_geometry_as: str
+    def convert_mesh(drake_mesh: DrakeMesh, represent_geometry_as: str, learnable: bool = True
         ) -> Union[DeepSupportConvex, Polygon]:
         """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
         ``DeepSupportConvex``."""
@@ -552,10 +555,10 @@ class PydrakeToCollisionGeometryFactory:
         vertices = Tensor(mesh.vertices)
 
         if represent_geometry_as == 'mesh':
-            return DeepSupportConvex(vertices)
+            return DeepSupportConvex(vertices, learnable=learnable)
 
         if represent_geometry_as == 'polygon':
-            return Polygon(vertices)
+            return Polygon(vertices, learnable)
 
         raise NotImplementedError(f'Cannot presently represent a ' + \
             f'DrakeMesh() as {represent_geometry_as} type.')
