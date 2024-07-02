@@ -26,6 +26,7 @@ import numpy as np
 import pywavefront  # type: ignore
 import torch
 from pydrake.geometry import Box as DrakeBox  # type: ignore
+from pydrake.geometry import Sphere as DrakeSphere # type: ignore
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from pydrake.geometry import Mesh as DrakeMesh  # type: ignore
 from pydrake.geometry import Shape  # type: ignore
@@ -441,7 +442,7 @@ class Sphere(BoundedConvexCollisionGeometry):
 
     def __init__(self, radius: Tensor) -> None:
         super().__init__()
-        assert radius.numel == 1
+        assert radius.numel() == 1
 
         self.length_param = Parameter(radius.clone().view(()),
                                       requires_grad=True)
@@ -502,6 +503,9 @@ class PydrakeToCollisionGeometryFactory:
         if isinstance(drake_shape, DrakeMesh):
             return PydrakeToCollisionGeometryFactory.convert_mesh(
                 drake_shape, represent_geometry_as)
+        if isinstance(drake_shape, DrakeSphere):
+            return PydrakeToCollisionGeometryFactory.convert_sphere(
+                drake_shape, represent_geometry_as)
         raise TypeError(
             "Unsupported type for drake Shape() to"
             "CollisionGeometry() conversion:", type(drake_shape))
@@ -515,7 +519,20 @@ class PydrakeToCollisionGeometryFactory:
             return Box(half_widths, 4)
 
         if represent_geometry_as == 'polygon':
-            pass
+            pass # TODO
+
+        raise NotImplementedError(f'Cannot presently represent a DrakeBox()' + \
+            f'as {represent_geometry_as} type.')
+
+    @staticmethod
+    def convert_sphere(drake_sphere: DrakeSphere, represent_geometry_as: str
+        ) -> Union[Sphere, Polygon]:
+        """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
+        if represent_geometry_as == 'box':
+            return Sphere(torch.tensor([drake_sphere.radius()]))
+
+        if represent_geometry_as == 'polygon':
+            pass # TODO
 
         raise NotImplementedError(f'Cannot presently represent a DrakeBox()' + \
             f'as {represent_geometry_as} type.')
