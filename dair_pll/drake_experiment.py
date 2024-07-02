@@ -20,6 +20,7 @@ from dair_pll.experiment import SupervisedLearningExperiment, \
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float
+from dair_pll.multibody_terms import InertiaLearn
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
     LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, \
@@ -49,8 +50,10 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss."""
-    inertia_mode: int = 4
+    inertia_mode: InertiaLearn = InertiaLearn(mass=True, com=True, inertia=True)
     """What inertial parameters to learn."""
+    constant_bodies: List[str] = field(default_factory=list)
+    """Which bodies to keep constant"""
     loss_variation: str = LOSS_POWER
     """What loss variation to use."""
     w_pred: float = 1.0
@@ -255,7 +258,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
             urdfs = oracle_system.urdfs
 
             self.true_geom_multibody_system = MultibodyLearnableSystem(
-                init_urdfs=urdfs, dt=dt, inertia_mode=0, loss_variation=0,
+                init_urdfs=urdfs, dt=dt, loss_variation=0,
                 w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
                 w_res_w=1.0, do_residual=False,
                 represent_geometry_as = \
@@ -310,8 +313,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         return MultibodyLearnableSystem(
             learnable_config.urdfs,
             self.config.data_config.dt,
-            learnable_config.inertia_mode,
             learnable_config.loss_variation,
+            inertia_mode = learnable_config.inertia_mode,
+            constant_bodies = learnable_config.constant_bodies,
             w_pred = learnable_config.w_pred,
             w_comp = learnable_config.w_comp.value,
             w_diss = learnable_config.w_diss.value,

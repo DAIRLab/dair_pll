@@ -216,7 +216,7 @@ class InertialParameterConverter:
             ``(*, 10)`` ``pi_cm``-type parameterization.
         """
         mass = torch.exp(theta[..., :1])
-        h_vector = theta[..., 1:4] # TODO: * mass
+        p_vector = torch.mul(theta[..., 1:4], mass)
         d_vector = theta[..., 4:7]
         s_vector = theta[..., 7:]
 
@@ -231,9 +231,9 @@ class InertialParameterConverter:
 
         I_BBcm_B = (trace_identity(sigma) - sigma)# TODO: * mass
 
-        I_BBcm_B_vec = inertia_vector_from_matrix(I_BBcm_B)
+        I_BBcm_B_vec = torch.mul(inertia_vector_from_matrix(I_BBcm_B), mass)
 
-        return torch.cat((mass, h_vector, I_BBcm_B_vec), dim=-1)
+        return torch.cat((mass, p_vector, I_BBcm_B_vec), dim=-1)
 
     @staticmethod
     def pi_cm_to_theta(pi_cm: Tensor) -> Tensor:
@@ -252,14 +252,11 @@ class InertialParameterConverter:
 
         log_m = torch.log(pi_cm[..., :1])
 
-        h_vector = pi_cm[..., 1:4] # TODO: / mass
+        p_vector = torch.div(pi_cm[..., 1:4], mass)
 
-        I_BBcm_B = inertia_matrix_from_vector(pi_cm[..., 4:]) # TODO: / mass
+        I_BBcm_B = torch.div(inertia_matrix_from_vector(pi_cm[..., 4:]), mass)
 
         sigma = 0.5 * trace_identity(I_BBcm_B) - I_BBcm_B
-
-        import pdb
-        pdb.set_trace()
 
         cholesky_sigma = torch.linalg.cholesky(sigma)
 
@@ -270,7 +267,7 @@ class InertialParameterConverter:
              cholesky_sigma[..., 2, 1]),
             dim=-1)
 
-        return torch.cat((log_m, h_vector, d_vector, s_vector), -1)
+        return torch.cat((log_m, p_vector, d_vector, s_vector), -1)
 
     @staticmethod
     def pi_cm_to_drake_spatial_inertia_vector(pi_cm: Tensor) -> Tensor:

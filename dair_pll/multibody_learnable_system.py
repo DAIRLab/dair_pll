@@ -37,7 +37,7 @@ import torch.nn as nn
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
-from dair_pll.multibody_terms import MultibodyTerms
+from dair_pll.multibody_terms import MultibodyTerms, InertiaLearn
 from dair_pll.quaternion import quaternion_to_rotmat_vec
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
 from dair_pll.state_space import FloatingBaseSpace
@@ -81,7 +81,6 @@ class MultibodyLearnableSystem(System):
     def __init__(self,
                  init_urdfs: Dict[str, str],
                  dt: float,
-                 inertia_mode: int,
                  loss_variation: int,
                  w_pred: float,
                  w_comp: float,
@@ -89,6 +88,8 @@ class MultibodyLearnableSystem(System):
                  w_pen: float,
                  w_res: float,
                  w_res_w: float,
+                 inertia_mode: InertiaLearn = InertiaLearn(),
+                 constant_bodies: List[str] = [],
                  do_residual: bool = False,
                  output_urdfs_dir: Optional[str] = None,
                  network_width: int = 128,
@@ -107,10 +108,10 @@ class MultibodyLearnableSystem(System):
             init_urdfs: Names and corresponding URDFs to model with
               :py:class:`MultibodyTerms`.
             dt: Time step of system in seconds.
-            inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
-              inertial parameters the model can learn.  The higher the number
-              the more inertial parameters are free to be learned, and 0
-              corresponds to learning no inertial parameters.
+            inertia_mode: An InertiaLearn() object specifying which inertial
+              parameters to learn
+            constant_bodies: list of body names whose properties should NOT
+              be learned
             loss_variation: An integer 0, 1, 2, 3, or 4 representing the loss
               variation to use. 0 indicates the original PLL loss, 1 power loss,
               2 inertia-agnostic, 3 balanced inertia-agnostic, and 4 contact
@@ -123,6 +124,7 @@ class MultibodyLearnableSystem(System):
         assert str(loss_variation) in LOSS_VARIATION_NUMBERS
 
         multibody_terms = MultibodyTerms(init_urdfs, inertia_mode,
+                                         constant_bodies,
                                          represent_geometry_as,
                                          randomize_initialization,
                                          g_frac=g_frac)

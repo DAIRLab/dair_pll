@@ -29,6 +29,7 @@ from dair_pll.experiment import default_epoch_callback
 from dair_pll.experiment_config import OptimizerConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float, Int
+from dair_pll.multibody_terms import InertiaLearn
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem, \
     LOSS_PLL_ORIGINAL, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, \
     LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
@@ -231,6 +232,13 @@ def main(storage_folder_name: str = "",
     """
     # pylint: disable=too-many-locals, too-many-arguments
 
+    # Unpack inertia bitmask
+    inertia_mode = InertiaLearn(
+        mass = bool((int(inertia_params) // 1) % 2),
+        com = bool((int(inertia_params) // 2) % 2),
+        inertia = bool((int(inertia_params) // 4) % 2),
+    )
+
     print(f'Starting test under \'{storage_folder_name}\' ' \
          + f'with name \'{run_name}\':' \
          + f'\n\tPerforming on system: {system} \n\twith source: {source}' \
@@ -238,8 +246,7 @@ def main(storage_folder_name: str = "",
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith geometry represented as: {geometry}' \
          + f'\n\tregenerate: {regenerate}' \
-         + f'\n\tinertia learning mode: {inertia_params}' \
-         + f'\n\twith description: {INERTIA_PARAM_OPTIONS[int(inertia_params)]}' \
+         + f'\n\tinertia learning mode: {inertia_params} == {inertia_mode}' \
          + f'\n\tloss variation: {loss_variation}' \
          + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
          + f'\n\tloss weights (pred, comp, diss, pen, res, res_w): ' \
@@ -309,7 +316,8 @@ def main(storage_folder_name: str = "",
                MultibodyLosses.PREDICTION_LOSS
 
         learnable_config = MultibodyLearnableSystemConfig(
-            urdfs=urdfs, loss=loss, inertia_mode=int(inertia_params),
+            urdfs=urdfs, loss=loss, inertia_mode=inertia_mode,
+            constant_bodies = ["finger_0", "finger_1"],
             loss_variation=int(loss_variation), w_pred=w_pred,
             w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_diss = Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
@@ -397,7 +405,7 @@ def main(storage_folder_name: str = "",
     #train, val, test = edm.get_updated_trajectory_sets()
 
     # Test loading learned system (TODO)
-    #experiment.get_learned_system(None)
+    experiment.get_learned_system(None)
 
     input(f'Done!')
 
@@ -430,9 +438,9 @@ def main(storage_folder_name: str = "",
               default=512,
               help="dataset size")
 @click.option('--inertia-params',
-              type=click.Choice(INERTIA_PARAM_CHOICES),
-              default='4',
-              help="what inertia parameters to learn.")
+              type=click.IntRange(0, 7),
+              default='7',
+              help="Bitmap of what inertia params to learn: inertia-com-mass (e.g. 0 == none, 1 == mass only, 7 == all)")
 @click.option('--loss-variation',
               type=click.Choice(LOSS_VARIATION_NUMBERS),
               default='0',
