@@ -197,7 +197,8 @@ class HomogeneousICNN(Module):
                  depth: int,
                  width: int,
                  negative_slope: float = 0.5,
-                 scale=1.0) -> None:
+                 scale=1.0,
+                 learnable: bool = True) -> None:
         r"""
         Args:
             depth: Network depth :math:`D`\ .
@@ -213,7 +214,7 @@ class HomogeneousICNN(Module):
         for _ in range(depth - 1):
             hidden_weight = 2 * (torch.rand((width, width)) - 0.5)
             hidden_weight *= scale_hidden
-            hidden_weights.append(Parameter(hidden_weight, requires_grad=True))
+            hidden_weights.append(Parameter(hidden_weight, requires_grad=learnable))
 
         input_weights = []
         for layer in range(depth):
@@ -221,14 +222,14 @@ class HomogeneousICNN(Module):
             torch.nn.init.kaiming_uniform(input_weight)
             if layer > 0:
                 input_weight *= 2**(-0.5)
-            input_weights.append(Parameter(input_weight, requires_grad=True))
+            input_weights.append(Parameter(input_weight, requires_grad=learnable))
 
         scale_out = scale * 2 * (2.0 / (width * (1 + negative_slope**2)))**0.5
         output_weight = 2 * (torch.rand(width) - 0.5) * scale_out
 
         self.hidden_weights = ParameterList(hidden_weights)
         self.input_weights = ParameterList(input_weights)
-        self.output_weight = Parameter(output_weight, requires_grad=True)
+        self.output_weight = Parameter(output_weight, requires_grad=learnable)
         self.activation = torch.nn.LeakyReLU(negative_slope=negative_slope)
 
     def abs_weights(self) -> Tuple[List[Tensor], Tensor]:

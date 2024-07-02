@@ -293,12 +293,13 @@ class ContactTerms(Module):
     geometry_translations: Optional[ConfigurationCallback]
     geometry_spatial_jacobians: Optional[ConfigurationCallback]
     geometries: ModuleList
-    geometry_local_poses: Parameter
-    friction_params: Parameter
+    friction_param_list: ParameterList
+    friction_params: Tensor
     collision_candidates: Tensor
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram,
-                 represent_geometry_as: str = 'box') -> None:
+                 represent_geometry_as: str = 'box',
+                 constant_bodies: List[str] = []) -> None:
         """Inits :py:class:`ContactTerms` with prescribed kinematics and
         geometries.
 
@@ -325,7 +326,7 @@ class ContactTerms(Module):
         # sweep over collision elements
         geometries, rotations, translations, drake_spatial_jacobians = \
             ContactTerms.extract_geometries_and_kinematics(
-                plant, inspector, geometry_ids, context, represent_geometry_as)
+                plant, inspector, geometry_ids, context, represent_geometry_as, constant_bodies=constant_bodies)
 
         for geometry_index, geometry_pair in enumerate(collision_candidates):
             if geometries[geometry_pair[0]] > geometries[geometry_pair[1]]:
@@ -347,10 +348,12 @@ class ContactTerms(Module):
 
         self.geometries = ModuleList(geometries)
 
-        mu_static = Tensor(
-            [friction.static_friction() for friction in coulomb_frictions])
-
-        self.friction_params = Parameter(mu_static, requires_grad=True)
+        self.friction_param_list = ParameterList()
+        for idx, friction in enumerate(coulomb_frictions):
+            body = drake_utils.get_body_from_geometry_id(plant, inspector, geometry_ids[idx])
+            learnable = (body.name() not in constant_bodies) and (body != plant.world_body())
+            self.friction_param_list.append(Parameter(Tensor([friction.static_friction()]), requires_grad=learnable))
+        self.friction_params = torch.hstack([param for param in self.friction_param_list])
 
         self.collision_candidates = Tensor(collision_candidates).t().long()
 
@@ -359,10 +362,6 @@ class ContactTerms(Module):
         coefficient as its absolute value."""
         positive_friction_params = torch.abs(self.friction_params)
 
-        # Overwrite the friction parameter associated with the ground.
-        # HACK: TODO BIBIT this hard codes the ground as [1] in self.geometries
-        positive_friction_params[1] = 1.0
-
         return positive_friction_params
 
     # noinspection PyUnresolvedReferences
@@ -370,7 +369,7 @@ class ContactTerms(Module):
     def extract_geometries_and_kinematics(
         plant: MultibodyPlant_[Expression], inspector: SceneGraphInspector,
         geometry_ids: List[GeometryId], context: Context,
-        represent_geometry_as: str
+        represent_geometry_as: str, constant_bodies: List[str] = []
     ) -> Tuple[List[CollisionGeometry], List[np.ndarray], List[np.ndarray],
                List[np.ndarray]]:
         """Extracts modules and kinematics of list of geometries G.
@@ -400,8 +399,12 @@ class ContactTerms(Module):
             geometry_pose = inspector.GetPoseInFrame(
                 geometry_id).cast[Expression]()
 
-            geometry_frame = plant.GetBodyFromFrameId(
-                inspector.GetFrameId(geometry_id)).body_frame()
+            body = plant.GetBodyFromFrameId(
+                inspector.GetFrameId(geometry_id))
+
+            learnable = (body.name() not in constant_bodies) and (body != plant.world_body())
+
+            geometry_frame = body.body_frame()
 
             geometry_transform = geometry_frame.CalcPoseInWorld(
                 context) @ geometry_pose
@@ -421,7 +424,8 @@ class ContactTerms(Module):
 
             geometries.append(
                 PydrakeToCollisionGeometryFactory.convert(
-                    inspector.GetShape(geometry_id), represent_geometry_as))
+                    inspector.GetShape(geometry_id), represent_geometry_as,
+                    learnable))
 
         return geometries, rotations, translations, drake_spatial_jacobians
 
@@ -713,7 +717,7 @@ class MultibodyTerms(Module):
 
         # setup parameterization
         self.lagrangian_terms = LagrangianTerms(plant_diagram, inertia_mode, constant_bodies)
-        self.contact_terms = ContactTerms(plant_diagram, represent_geometry_as)
+        self.contact_terms = ContactTerms(plant_diagram, represent_geometry_as, constant_bodies)
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs
