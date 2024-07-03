@@ -432,8 +432,6 @@ class MultibodyLearnableSystem(System):
             contact_dv = pbmm(dv, J.transpose(-1, -2))
             constant_pred = 0.5 * pbmm(contact_dv, contact_dv.transpose(-1, -2))
 
-        breakpoint()
-
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
         # Therefore, we can detach ``force`` from pytorch's computation graph
@@ -452,6 +450,8 @@ class MultibodyLearnableSystem(System):
             print(f'J_M: {J_M}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
             pdb.set_trace()
+
+        breakpoint()
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),

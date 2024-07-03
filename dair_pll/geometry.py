@@ -144,6 +144,14 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
             (\*, N, 3) sets of corresponding witness points of cardinality N.
         """
 
+    @abstractmethod
+    def get_fcl_geometry(self) -> fcl.CollisionGeometry:
+        """Retrieves :py:mod:`fcl` collision geometry representation.
+
+        Returns:
+            :py:mod:`fcl` bounding volume
+        """
+
 
 class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
     """Partial implementation of ``BoundedConvexCollisionGeometry`` when
@@ -356,7 +364,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             self.fcl_geometry = self.get_fcl_geometry()
         return cast(DeepSupportConvex, super().train(mode))
 
-    def get_fcl_geometry(self) -> fcl.BVHModel:
+    def get_fcl_geometry(self) -> fcl.CollisionGeometry:
         """Retrieves :py:mod:`fcl` mesh collision geometry representation.
 
         If evaluation mode is set, retrieves precalculated version.
@@ -428,6 +436,16 @@ class Box(SparseVertexConvexCollisionGeometry):
         }
         return scalars
 
+    def get_fcl_geometry(self) -> fcl.CollisionGeometry:
+        """Retrieves :py:mod:`fcl` collision geometry representation.
+
+        Returns:
+            :py:mod:`fcl` bounding volume
+        """
+        scalars = self.scalars()
+
+        return fcl.Box(scalars["len_x"], scalars["len_y"], scalars["len_z"])
+
 
 class Sphere(BoundedConvexCollisionGeometry):
     """Implements sphere geometry via its support function.
@@ -471,6 +489,16 @@ class Sphere(BoundedConvexCollisionGeometry):
     def scalars(self) -> Dict[str, float]:
         """Logs radius as a scalar."""
         return {'radius': self.get_radius().item()}
+
+    def get_fcl_geometry(self) -> fcl.CollisionGeometry:
+        """Retrieves :py:mod:`fcl` collision geometry representation.
+
+        Returns:
+            :py:mod:`fcl` bounding volume
+        """
+        scalars = self.scalars()
+
+        return fcl.Sphere(scalars["radius"])
 
 
 class PydrakeToCollisionGeometryFactory:
@@ -596,13 +624,14 @@ class GeometryCollider:
         assert not geometry_a > geometry_b
 
         # case 1: half-space to compact-convex collision
+        # TODO: make function allow planes in general, not just in 1st slot
         if isinstance(geometry_a, Plane) and isinstance(
                 geometry_b, BoundedConvexCollisionGeometry):
             return GeometryCollider.collide_plane_convex(
                 geometry_b, R_AB, p_AoBo_A)
-        if isinstance(geometry_a, DeepSupportConvex) and isinstance(
-                geometry_b, DeepSupportConvex):
-            return GeometryCollider.collide_mesh_mesh(geometry_a, geometry_b,
+        if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
+                geometry_b, BoundedConvexCollisionGeometry):
+            return GeometryCollider.collide_convex_convex(geometry_a, geometry_b,
                                                       R_AB, p_AoBo_A)
         raise TypeError(
             "No type-specific implementation for geometry "
@@ -642,12 +671,21 @@ class GeometryCollider:
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod
-    def collide_mesh_mesh(
-            geometry_a: DeepSupportConvex, geometry_b: DeepSupportConvex,
+    def collide_convex_convex(
+            geometry_a: BoundedConvexCollisionGeometry, geometry_b: BoundedConvexCollisionGeometry,
             R_AB: Tensor,
             p_AoBo_A: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Implementation of ``GeometryCollider.collide()`` when
-        both geometries are ``DeepSupportConvex``\es."""
+        both geometries are ``BoundedConvexCollisionGeometry``\es."""
+
+        # Call network directly for DeepSupportConvex objects
+        support_fn_a = geometry_a.support_points
+        support_fn_b = geometry_b.support_points
+        if isinstance(geometry_a, DeepSupportConvex):
+            support_fn_a = geometry_a.network
+        if isinstance(geometry_b, DeepSupportConvex):
+            support_fn_b = geometry_b.network
+
         # pylint: disable=too-many-locals
         p_AoBo_A = p_AoBo_A.unsqueeze(-2)
         original_batch_dims = p_AoBo_A.shape[:-2]
@@ -686,18 +724,26 @@ class GeometryCollider:
                 directions[transform_index] += Tensor(result.nearest_points[1] -
                                                       result.nearest_points[0])
         directions /= directions.norm(dim=-1, keepdim=True)
-        R_AC = rotation_matrix_from_one_vector(directions, 2)
-        p_AoAc_A = geometry_a.network(directions)
-        p_BoBc_B = geometry_b.network(
+        # Unsqueeze # of witness points dimension, default 1
+        R_AC = rotation_matrix_from_one_vector(directions, 2).unsqueeze(-3)
+        p_AoAc_A = support_fn_a(directions)
+        p_BoBc_B = support_fn_b(
             -pbmm(directions.unsqueeze(-2), R_AB).squeeze(-2))
-        p_BoBc_A = pbmm(p_BoBc_B.unsqueeze(-2), R_AB.transpose(-1,
-                                                               -2)).squeeze(-2)
-        p_AcBc_A = -p_AoAc_A + p_AoBo_A + p_BoBc_A
+        p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1,-2))
 
+        p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
+
+        # Assume same contact frame for all wintess points
+        R_AC = R_AC.expand(p_AcBc_A.shape + (3,))
         phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)
+        
+        # No longer necessary
+        # phi = phi.reshape(original_batch_dims + (1,))
+        # R_AC = R_AC.reshape(original_batch_dims + (1, 3, 3))
+        # p_AoAc_A = p_AoAc_A.reshape(original_batch_dims + (1, 3))
+        # p_BoBc_B = p_BoBc_B.reshape(original_batch_dims + (1, 3))
 
-        phi = phi.reshape(original_batch_dims + (1,))
-        R_AC = R_AC.reshape(original_batch_dims + (1, 3, 3))
-        p_AoAc_A = p_AoAc_A.reshape(original_batch_dims + (1, 3))
-        p_BoBc_B = p_BoBc_B.reshape(original_batch_dims + (1, 3))
+        # Check outputs are sane before return
+        assert (phi.shape + (3,3,)) == R_AC.shape
+        assert phi.shape[1] == p_AoAc_A.shape[1] * p_BoBc_B.shape[1]
         return phi, R_AC, p_AoAc_A, p_BoBc_B
