@@ -22,9 +22,9 @@ from dair_pll.dataset_management import DataConfig, TrajectorySliceConfig
 from dair_pll.deep_learnable_model import MLP
 from dair_pll.deep_learnable_system import DeepLearnableSystemConfig
 from dair_pll.drake_experiment import \
-    DrakeMultibodyLearnableExperiment, DrakeSystemConfig, \
+    DrakeMultibodyLearnableExperiment, DrakeMultibodyLearnableTactileExperiment, DrakeSystemConfig, \
     MultibodyLearnableSystemConfig, MultibodyLosses, \
-    DrakeDeepLearnableExperiment
+    DrakeDeepLearnableExperiment, DrakeMultibodyLearnableTactileExperimentConfig
 from dair_pll.experiment import default_epoch_callback
 from dair_pll.experiment_config import OptimizerConfig, \
     SupervisedLearningExperimentConfig
@@ -195,7 +195,7 @@ def main(storage_folder_name: str = "",
          contactnets: bool = True,
          geometry: str = BOX_TYPE,
          regenerate: bool = False,
-         dataset_size: int = 512,
+         dataset_size: int = 1,
          inertia_params: str = '4',
          loss_variation: str = '0',
          true_sys: bool = True,
@@ -277,7 +277,7 @@ def main(storage_folder_name: str = "",
                                        wd=Float(WDS[system]),
                                        patience=PATIENCE,
                                        epochs=num_epochs,
-                                       batch_size=Int(int(dataset_size/2)))
+                                       batch_size=Int(int(TRAJECTORY_LENGTHS[system])))
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
@@ -298,8 +298,9 @@ def main(storage_folder_name: str = "",
     # NOTE: Simulation goes (calc net actuation/forces -> calc next state), so
     # next state's net_actuation / contact_forces are from the previous time step.
     slice_config = TrajectorySliceConfig(
-        his_state_keys = ["robot_state"],
-        pred_state_keys = ["net_actuation", "contact_forces", "robot_state"]
+        his_state_keys = ["robot_state", "net_actuation", "contact_forces"],
+        pred_state_keys = ["robot_state"],
+        shuffle = False,
     )
 
 
@@ -312,7 +313,7 @@ def main(storage_folder_name: str = "",
                              update_dynamically=False)
 
     if structured:
-        loss = MultibodyLosses.CONTACTNETS_LOSS if contactnets else \
+        loss = MultibodyLosses.TACTILENET_LOSS if contactnets else \
                MultibodyLosses.PREDICTION_LOSS
 
         learnable_config = MultibodyLearnableSystemConfig(
@@ -333,7 +334,8 @@ def main(storage_folder_name: str = "",
             nonlinearity=torch.nn.Tanh, model_constructor=MLP)
 
     # Combines everything into config for entire experiment.
-    experiment_config = SupervisedLearningExperimentConfig(
+    experiment_config = DrakeMultibodyLearnableTactileExperimentConfig(
+        trajectory_model_name = system,
         data_config=data_config,
         base_config=base_config,
         learnable_config=learnable_config,
@@ -347,7 +349,7 @@ def main(storage_folder_name: str = "",
     )
 
     # Make experiment.
-    experiment = DrakeMultibodyLearnableExperiment(experiment_config)
+    experiment = DrakeMultibodyLearnableTactileExperiment(experiment_config)
 
     # Prepare data.
     x_0 = X_0S[system]
@@ -359,7 +361,7 @@ def main(storage_folder_name: str = "",
     data_generation_config = DataGenerationConfig(
         dt=DT,
         # timestep
-        n_pop=1,
+        n_pop=dataset_size,
         # How many trajectories to simulate
         trajectory_length=TRAJECTORY_LENGTHS[system],
         # trajectory length
@@ -404,8 +406,10 @@ def main(storage_folder_name: str = "",
     #            storage_name, data_config)
     #train, val, test = edm.get_updated_trajectory_sets()
 
-    # Test loading learned system (TODO)
-    experiment.get_learned_system(None)
+    # Trains system and saves final results.
+    print(f'\nTraining the model.')
+    learned_system, stats = experiment.generate_results(
+        regenerate_callback if regenerate else default_epoch_callback)
 
     input(f'Done!')
 
@@ -435,7 +439,7 @@ def main(storage_folder_name: str = "",
               default=False,
               help="whether to save updated URDF's each epoch or not.")
 @click.option('--dataset-size',
-              default=512,
+              default=1,
               help="dataset size")
 @click.option('--inertia-params',
               type=click.IntRange(0, 7),

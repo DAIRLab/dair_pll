@@ -8,6 +8,7 @@ import pdb
 
 import torch
 from torch import Tensor
+from tensordict.tensordict import TensorDict, LazyStackedTensorDict
 from torch.utils.data import DataLoader
 
 from dair_pll import file_utils
@@ -22,7 +23,8 @@ from dair_pll.experiment_config import SystemConfig, \
 from dair_pll.hyperparameter import Float
 from dair_pll.multibody_terms import InertiaLearn
 from dair_pll.multibody_learnable_system import \
-    MultibodyLearnableSystem, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
+    MultibodyLearnableSystem, MultibodyLearnableSystemWithTrajectory, \
+    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
     LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, \
     LOSS_VARIATION_NUMBERS
 from dair_pll.system import System, SystemSummary
@@ -37,6 +39,7 @@ class DrakeSystemConfig(SystemConfig):
 class MultibodyLosses(Enum):
     PREDICTION_LOSS = 1
     CONTACTNETS_LOSS = 2
+    TACTILENET_LOSS = 3
 
 
 @dataclass
@@ -45,12 +48,18 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
     visualize_learned_geometry: bool = True
     """Whether to use learned geometry in trajectory overlay visualization."""
 
+@dataclass
+class DrakeMultibodyLearnableTactileExperimentConfig(DrakeMultibodyLearnableExperimentConfig
+                                             ):
+    trajectory_model_name: str = ""
+    """Whether to use learned geometry in trajectory overlay visualization."""
+
 
 @dataclass
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss."""
-    inertia_mode: InertiaLearn = InertiaLearn(mass=True, com=True, inertia=True)
+    inertia_mode: InertiaLearn = field(default_factory=InertiaLearn)
     """What inertial parameters to learn."""
     constant_bodies: List[str] = field(default_factory=list)
     """Which bodies to keep constant"""
@@ -99,9 +108,9 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
     visualization_system: Optional[DrakeSystem]
 
     def __init__(self, config: SupervisedLearningExperimentConfig) -> None:
-        super().__init__(config)
         self.base_drake_system = None
         self.visualization_system = None
+        super().__init__(config)
 
     def get_drake_system(self) -> DrakeSystem:
         has_property = hasattr(self, 'base_drake_system')
@@ -289,7 +298,6 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
 
 class DrakeDeepLearnableExperiment(DrakeExperiment, DeepLearnableExperiment):
     pass
-
 
 class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
@@ -523,6 +531,98 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         u = torch.zeros(x.shape[:-1] + (0,))
         x_plus = x_future[..., 0, :]
         loss = system.contactnets_loss(x, u, x_plus)
+        if not keep_batch:
+            loss = loss.mean()
+        return loss
+
+
+class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment):
+
+    def __init__(self, config: DrakeMultibodyLearnableTactileExperimentConfig) -> None:
+        # Bypass parent class loss check
+        super(DrakeMultibodyLearnableExperiment, self).__init__(config)
+        self.trajectory_model_name = config.trajectory_model_name
+        self.learnable_config = cast(MultibodyLearnableSystemConfig,
+                                self.config.learnable_config)
+
+        self.loss_callback = self.tactilenet_loss
+
+        if self.learnable_config.loss != MultibodyLosses.TACTILENET_LOSS:
+            raise RuntimeError(f"Loss {self.learnable_config.loss} not " + \
+                               f"recognized for Drake multibody trajectory experiment.")
+
+    def get_learned_system(self, traj: Tensor) -> MultibodyLearnableSystemWithTrajectory:
+        learnable_config = cast(MultibodyLearnableSystemConfig,
+                                self.config.learnable_config)
+        output_dir = file_utils.get_learned_urdf_dir(self.config.storage,
+                                                     self.config.run_name)
+        return MultibodyLearnableSystemWithTrajectory(
+            trajectory_model = self.trajectory_model_name,
+            traj_len = traj.shape[0],
+            init_urdfs = learnable_config.urdfs,
+            dt = self.config.data_config.dt,
+            loss_variation = learnable_config.loss_variation,
+            inertia_mode = learnable_config.inertia_mode,
+            constant_bodies = learnable_config.constant_bodies,
+            w_pred = learnable_config.w_pred,
+            w_comp = learnable_config.w_comp.value,
+            w_diss = learnable_config.w_diss.value,
+            w_pen = learnable_config.w_pen.value,
+            w_res = learnable_config.w_res.value,
+            w_res_w = learnable_config.w_res_w.value,
+            output_urdfs_dir=output_dir,
+            do_residual=learnable_config.do_residual,
+            represent_geometry_as=learnable_config.represent_geometry_as,
+            randomize_initialization=learnable_config.randomize_initialization,
+            g_frac=learnable_config.g_frac)
+
+    def tactilenet_loss(self,
+                         x_past: Tensor,
+                         x_future: Tensor,
+                         system: System,
+                         keep_batch: bool = False) -> Tensor:
+        r""" :py:data:`~dair_pll.experiment.LossCallbackCallable`
+        which applies the ContactNets [1] loss to the system.
+
+        References:
+            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
+            Discontinuous Contact Dynamics with Smooth, Implicit
+            Representations," Conference on Robotic Learning, 2020,
+            https://proceedings.mlr.press/v155/pfrommer21a.html
+        """
+        assert isinstance(system, MultibodyLearnableSystemWithTrajectory)
+        assert isinstance(x_past, TensorDict) or isinstance(x_past, LazyStackedTensorDict)
+        assert isinstance(x_future, TensorDict) or isinstance(x_future, LazyStackedTensorDict)
+        # Get last time of past and first of future
+        # Remove extraneous dimensions
+        # TODO: HACK remove squeeze in case batch dim == 1
+        # TODO: Check that 2nd to last is the slice index and not the extraneous 1.
+        past = x_past[..., -1, :].squeeze()
+        plus = x_future[..., 0, :].squeeze()
+
+        # Construct State
+        model_states_past = {}
+        model_states_plus = {}
+        for model, _ in system.model_spaces.items():
+            key = model + "_state"
+            if key in past.keys():
+                model_states_past[model] = past[key]
+                if len(model_states_past[model].shape) == 1:
+                    model_states_past[model] = model_states_past[model].reshape(model_states_past.shape[0], 1)
+            if key in plus.keys():
+                model_states_plus[model] = plus[key]
+                if len(model_states_plus[model].shape) == 1:
+                    model_states_plus[model] = model_states_plus[model].reshape(model_states_plus.shape[0], 1)
+        x_past = system.construct_state_tensor(model_states_past, past["time"].reshape(past["time"].shape[0], 1))
+        x_plus = system.construct_state_tensor(model_states_plus, plus["time"].reshape(plus["time"].shape[0], 1))
+
+        # Actuation
+        control = past["net_actuation"]
+        if len(control.shape) == 1:
+            control = control.reshape(control.shape[0], 1)
+
+        # TODO: Pass contact forces
+        loss = system.contactnets_loss(x_past, control, x_plus)
         if not keep_batch:
             loss = loss.mean()
         return loss

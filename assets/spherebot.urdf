@@ -85,7 +85,7 @@
     <joint name="finger_0_to_base_x"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
-  
+  <!--
      <transmission name="finger_0_to_base_trans_y" type="SimpleTransmission">
     <actuator name="finger_0_to_base_act_y"/>
     <joint name="finger_0_to_base_y"/>
@@ -97,6 +97,7 @@
     <joint name="finger_0_to_base_z"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
+-->
   
   <drake:collision_filter_group name="finger_0_group">
   <drake:member link="finger_0"/>
@@ -168,6 +169,7 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
+  <!--
      <transmission name="finger_1_to_base_trans_y" type="SimpleTransmission">
     <actuator name="finger_1_to_base_act_y"/>
     <joint name="finger_1_to_base_y"/>
@@ -179,6 +181,7 @@
     <joint name="finger_1_to_base_z"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
+-->
   
   <drake:collision_filter_group name="finger_1_group">
   <drake:member link="finger_1"/>

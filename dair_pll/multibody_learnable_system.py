@@ -31,7 +31,7 @@ import pdb
 import time
 # from sappy import SAPSolver  # type: ignore
 from torch import Tensor
-from torch.nn import Module
+from torch.nn import Module, ParameterList, Parameter
 import torch.nn as nn
 
 from dair_pll import urdf_utils, tensor_utils, file_utils
@@ -40,7 +40,7 @@ from dair_pll.integrator import VelocityIntegrator
 from dair_pll.multibody_terms import MultibodyTerms, InertiaLearn
 from dair_pll.quaternion import quaternion_to_rotmat_vec
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
-from dair_pll.state_space import FloatingBaseSpace
+from dair_pll.state_space import FloatingBaseSpace, StateSpace
 from dair_pll.system import System, SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
     one_vector_block_diagonal, project_lorentz, reflect_lorentz
@@ -432,6 +432,8 @@ class MultibodyLearnableSystem(System):
             contact_dv = pbmm(dv, J.transpose(-1, -2))
             constant_pred = 0.5 * pbmm(contact_dv, contact_dv.transpose(-1, -2))
 
+        breakpoint()
+
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
         # Therefore, we can detach ``force`` from pytorch's computation graph
@@ -667,6 +669,79 @@ class MultibodyLearnableSystem(System):
 
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)
 
+
+class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
+    """:py:class:`MultibodyLearnableSystem` where a model can have 
+        learnable trajectories."""
+    model_spaces: Dict[str, StateSpace]
+    r"""Map of model name to state space, ignoring spaces where n_x == 0"""
+    trajectory_model: str
+    r"""Name of the model corresponding to the trajectory"""
+    trajectory: ParameterList
+    r"""List of parameters length == length of trajectory, each param shape == (1, n_x)"""
+
+    # TODO: Allow multi models to have learnable trajectories
+
+
+    def __init__(self,
+                 trajectory_model: str,
+                 traj_len: int,
+                 **kwargs) -> None:
+        ## Construct Super System
+        super().__init__(**kwargs)
+        self.trajectory_model = trajectory_model
+
+        ## Populate Model Spaces
+        self.model_spaces = {}
+        plant_diagram = self.multibody_terms.plant_diagram
+        for model_id, space in zip(plant_diagram.model_ids, plant_diagram.space.spaces):
+            self.model_spaces[plant_diagram.plant.GetModelInstanceName(model_id)] = space
+
+        ## Create Trajectory Parameters
+        model_n_x = self.model_spaces[trajectory_model].n_x
+        self.trajectory = ParameterList([Parameter(torch.zeros(model_n_x), requires_grad=True) for _ in range(traj_len)])
+
+
+    def construct_state_tensor(self,
+            model_states: Dict[str, Tensor],
+            times: Tensor) -> Tensor:
+        """ Input:
+            model_states: map of model name to batch of state tensors shape [batch, n_x]
+            times: timestep corresponding to the state shape [batch, 1]
+
+            Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
+        """
+
+        # Input Sanitation
+        assert len(times.shape) == 2
+        assert times.shape[1] == 1
+        for model, state in model_states.items():
+            assert len(state.shape) == 2
+            assert state.shape[0] == times.shape[0]
+            assert state.shape[1] == self.model_spaces[model].n_x
+        
+        # Get trajectory parameters
+        traj_x = torch.vstack([self.trajectory[int(i)] for i in times.flatten()]) # [batch x traj_n_x]
+
+        # Loop through models and construct state
+        ret_q = torch.Tensor([])
+        ret_v = torch.Tensor([])
+        for model, space in self.model_spaces.items():
+            # Ignore world and other degenerate spaces
+            if space.n_x == 0:
+                continue
+
+            # Select model state or trajectory state
+            model_x = traj_x
+            if model != self.trajectory_model:
+                model_x = model_states[model]
+
+            # Append to return value
+            ret_q = torch.hstack((ret_q, model_x[:, :space.n_q]))
+            ret_v = torch.hstack((ret_v, model_x[:, space.n_q:]))
+
+        # Return full state batch
+        return torch.hstack((ret_q, ret_v))
 
 
 class DeepStateAugment3D(Module):

@@ -16,6 +16,8 @@ class TrajectorySliceConfig:
     r"""If set, interpret input as TensorDict and use these keys for history."""
     pred_state_keys: List[str] = field(default_factory=list)
     r"""If set, interpret input as TensorDict and use these keys for prediction."""
+    shuffle: bool = True
+    r"""Whether to shuffle data during training."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""

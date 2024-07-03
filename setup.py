@@ -1,5 +1,5 @@
 from setuptools import setup
-from pip._internal import main as pipmain
+#from pip._internal import main as pipmain
 
 install_reqs = [
     # library
@@ -40,10 +40,10 @@ install_reqs = [
 
 try:
     # Note: pydrake needs numpy, install numpy manually first
-    try:
-        import numpy
-    except ModuleNotFoundError as e:
-        pipmain(['install', 'numpy'])
+#    try:
+#        import numpy
+#    except ModuleNotFoundError as e:
+#        pipmain(['install', 'numpy'])
     import pydrake
     print('USING FOUND DRAKE VERSION')
 except ModuleNotFoundError as e:

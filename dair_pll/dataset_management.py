@@ -69,6 +69,8 @@ class TrajectorySliceDataset(Dataset):
                 for key in [key for key in pred_state.keys()]:
                     if key not in self.config.pred_state_keys:
                         del pred_state[key]
+                # TODO: HACK Add Time Index
+                pred_state["time"] = (index+1) * torch.ones([1, 1], dtype=torch.int32)
             self.future_states_slices.append(pred_state)
 
     def __len__(self) -> int:

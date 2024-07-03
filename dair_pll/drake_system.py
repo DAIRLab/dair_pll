@@ -96,6 +96,8 @@ class DrakeSystem(System):
                                              self.space)
         sim.Initialize()
 
+        carry_0 = self.populate_carry(carry_0)
+
         return x_0, carry_0
 
     def get_quantized_start_time(self, start_time: float) -> float:
@@ -121,6 +123,35 @@ class DrakeSystem(System):
         cur_time_quantized = start_time + offset + eps
 
         return cur_time_quantized
+
+    def populate_carry(self, carry: Tensor) -> Tensor:
+        sim = self.plant_diagram.sim
+        plant = self.plant_diagram.plant
+        new_plant_context = plant.GetMyMutableContextFromRoot(
+            sim.get_mutable_context())
+        carry_next = torch.clone(carry.detach())
+        if type(carry) == TensorDict:
+            for key in carry.keys():
+                if key == "contact_forces":
+                    for body_name in carry[key].keys():
+                        carry_next[key][body_name] = torch.zeros(3).reshape(1, -1)
+                    contact_results = plant.get_contact_results_output_port().Eval(new_plant_context)
+                    for idx in range(contact_results.num_point_pair_contacts()):
+                        contact = contact_results.point_pair_contact_info(idx)
+                        bodyA_name = plant.get_body(contact.bodyA_index()).name()
+                        bodyB_name = plant.get_body(contact.bodyB_index()).name()
+                        if bodyA_name in carry[key].keys():
+                            carry_next[key][bodyA_name] -= Tensor(contact.contact_force()).reshape(1, -1)
+                            print(f"Subtracting {contact.contact_force()} from {key}.{bodyA_name}")
+                        elif bodyB_name in carry[key].keys():
+                            carry_next[key][bodyB_name] += Tensor(contact.contact_force()).reshape(1, -1)
+                            print(f"Adding {contact.contact_force()} to {key}.{bodyB_name}")
+                        
+
+                if plant.HasOutputPort(key):
+                    carry_next[key] = plant.GetOutputPort(key).Eval(new_plant_context).reshape(1, -1)
+                    print(f"Writing {carry_next[key]} to {key}")
+        return carry_next
 
     def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         """Simulate forward in time one step.
@@ -150,29 +181,7 @@ class DrakeSystem(System):
         x_next = DrakeStateConverter.context_to_state(
             plant, new_plant_context, self.plant_diagram.model_ids, self.space)
 
-        carry_next = torch.clone(carry.detach())
-        if type(carry) == TensorDict:
-            for key in carry.keys():
-                if key == "contact_forces":
-                    for body_name in carry[key].keys():
-                        carry_next[key][body_name] = torch.zeros(3).reshape(1, -1)
-                    contact_results = plant.get_contact_results_output_port().Eval(new_plant_context)
-                    for idx in range(contact_results.num_point_pair_contacts()):
-                        contact = contact_results.point_pair_contact_info(idx)
-                        bodyA_name = plant.get_body(contact.bodyA_index()).name()
-                        bodyB_name = plant.get_body(contact.bodyB_index()).name()
-                        if bodyA_name in carry[key].keys():
-                            carry_next[key][bodyA_name] -= Tensor(contact.contact_force()).reshape(1, -1)
-                            print(f"Subtracting {contact.contact_force()} from {key}.{bodyA_name}")
-                        elif bodyB_name in carry[key].keys():
-                            carry_next[key][bodyB_name] += Tensor(contact.contact_force()).reshape(1, -1)
-                            print(f"Adding {contact.contact_force()} to {key}.{bodyB_name}")
-                        
-
-                if plant.HasOutputPort(key):
-                    carry_next[key] = plant.GetOutputPort(key).Eval(new_plant_context).reshape(1, -1)
-                    print(f"Writing {carry_next[key]} to {key}")
-
+        carry_next = self.populate_carry(carry)
         input("Step...")
 
         return Tensor(x_next), carry_next

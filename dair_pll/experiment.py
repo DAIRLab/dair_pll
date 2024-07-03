@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 import pdb
-from typing import List, Tuple, Callable, Optional, Dict, cast, Union
+from typing import Any, List, Tuple, Callable, Optional, Dict, cast, Union
 
 import numpy as np
 import torch
@@ -30,6 +30,19 @@ from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import StateSpace, FloatingBaseSpace
 from dair_pll.system import System, SystemSummary
 from dair_pll.wandb_manager import WeightsAndBiasesManager
+
+# Enable default_collate for TensorDict
+from tensordict.tensordict import TensorDict
+def collate_tensordict_fn(batch, *, collate_fn_map: Optional[Any] = None):
+    out = None
+    if torch.utils.data.get_worker_info() is not None:
+        # If we're in a background process, concatenate directly into a
+        # shared memory tensor to avoid an extra copy
+        numel = sum(x.numel() for x in batch)
+        storage = elem._typed_storage()._new_shared(numel, device=elem.device)
+        out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+    return torch.stack(batch, 0, out=out)
+torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = collate_tensordict_fn
 
 
 @dataclass
@@ -635,7 +648,7 @@ class SupervisedLearningExperiment(ABC):
         train_dataloader = DataLoader(
             train_set.slices,
             batch_size=self.config.optimizer_config.batch_size.value,
-            shuffle=True)
+            shuffle=self.config.data_config.slice_config.shuffle)
 
         # Calculate the training loss before any parameter updates.  Calls
         # ``train_epoch`` without providing an optimizer, so no gradient steps
@@ -673,7 +686,7 @@ class SupervisedLearningExperiment(ABC):
                         train_set.slices,
                         batch_size=self.config.optimizer_config.batch_size.
                         value,
-                        shuffle=True)
+                        shuffle=self.config.data_config.slice_config.shuffle)
 
                     training_state.trajectory_set_split_indices = \
                         self.learning_data_manager.trajectory_set_indices()

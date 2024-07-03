@@ -5,6 +5,7 @@ examples/results/*
 examples/wandb/*
 logs/*
 plots/*
+wandb/
 
 # MacOS
 *DS_Store*
