@@ -125,7 +125,7 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
     """
 
     @abstractmethod
-    def support_points(self, directions: Tensor) -> Tensor:
+    def support_points(self, directions: Tensor, hint: Optional[Tensor] = None) -> Tensor:
         """Returns a set of witness points representing contact with another
         shape off in the direction(s) ``directions``.
 
@@ -139,9 +139,11 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
 
         Args:
             directions: (\*, 3) batch of unit-length directions.
+            hint: (\*, 3) batch of expected contact point
 
         Returns:
             (\*, N, 3) sets of corresponding witness points of cardinality N.
+            If hint is defined, then N == 1.
         """
 
     @abstractmethod
@@ -172,7 +174,7 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         super().__init__()
         self.n_query = n_query
 
-    def support_points(self, directions: Tensor) -> Tensor:
+    def support_points(self, directions: Tensor, hint: Optional[Tensor] = None) -> Tensor:
         """Implements ``BoundedConvexCollisionGeometry.support_points()`` via
         brute force optimization over the witness vertex set.
 
@@ -187,7 +189,9 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         directions``.
 
         Args:
-            directions: (\*, 3) batch of directions.
+            directions: (\*, 3) batch of directions
+            hint: (\*, 3) expected contact point, should be on convex set
+            of the witness points. Used if n_query > 1
 
         Returns:
             (\*, n_query, 3) sets of corresponding witness points.
@@ -212,7 +216,15 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         top_vertices = torch.stack(
             [vertices[batch_range, selection] for selection in selections], -2)
         # reshape to (*, n_query, 3)
-        return top_vertices.view(original_shape[:-1] + (self.n_query, 3))
+        queries = top_vertices.view(original_shape[:-1] + (self.n_query, 3))
+        if self.n_query > 1 and (hint is not None) and hint.shape == directions.shape:
+            # Find linear combination of queries 
+            # Lst Sq: queries (*, 3, n_query) * ? (*, n_query, 1) == hint (*, 1, 3)
+            # TODO: HACK, does this differentiate correctly? Should I attach queries?
+            sol = torch.linalg.lstsq(queries.detach().transpose(-1, -2), hint.unsqueeze(-1)).solution
+            return pbmm(queries.transpose(-1, -2), sol).transpose(-1, -2)
+
+        return queries
 
     @abstractmethod
     def get_vertices(self, directions: Tensor) -> Tensor:
@@ -472,7 +484,7 @@ class Sphere(BoundedConvexCollisionGeometry):
         sphere as its absolute value."""
         return torch.abs(self.length_param)
 
-    def support_points(self, directions: Tensor) -> Tensor:
+    def support_points(self, directions: Tensor, _: Optional[Tensor] = None) -> Tensor:
         """Implements ``BoundedConvexCollisionGeometry.support_points()``
         via analytic expression::
 
@@ -699,6 +711,11 @@ class GeometryCollider:
         # pylint: disable=E1103
         directions = torch.zeros_like(p_AoBo_A)
 
+        # Used if there are multiple coplanar witness points
+        # To determine the actual contact point in a differentiable manner
+        hints_a = torch.zeros_like(p_AoBo_A)
+        hints_b = torch.zeros_like(p_AoBo_A)
+
         # setup fcl=
         a_obj = fcl.CollisionObject(geometry_a.get_fcl_geometry(),
                                     fcl.Transform())
@@ -718,24 +735,41 @@ class GeometryCollider:
                 # Collision detected.
                 # Assume only 1 contact point.
                 directions[transform_index] += result.contacts[0].normal
+                nearest_points = [result.contacts[0].pos + result.contacts[0].penetration_depth/2.0 * result.contacts[0].normal,
+                    result.contacts[0].pos - result.contacts[0].penetration_depth/2.0 * result.contacts[0].normal]
             else:
                 result = fcl.DistanceResult()
                 fcl.distance(a_obj, b_obj, distance_request, result)
                 directions[transform_index] += Tensor(result.nearest_points[1] -
                                                       result.nearest_points[0])
-        directions /= directions.norm(dim=-1, keepdim=True)
-        # Unsqueeze # of witness points dimension, default 1
-        R_AC = rotation_matrix_from_one_vector(directions, 2).unsqueeze(-3)
-        p_AoAc_A = support_fn_a(directions)
-        p_BoBc_B = support_fn_b(
-            -pbmm(directions.unsqueeze(-2), R_AB).squeeze(-2))
+
+                nearest_points = result.nearest_points
+
+            # Record Hints == expected contact point in each object's frame
+            hints_a[transform_index] = Tensor(nearest_points[0])
+            hints_b[transform_index] = pbmm(
+                Tensor(nearest_points[1]) - p_AoBo_A[transform_index].detach(), 
+                R_AB[transform_index])
+
+        # Get normal directions in each object frame
+        directions_A = directions / directions.norm(dim=-1, keepdim=True)
+        directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB).squeeze(-2)
+
+        p_AoAc_A = support_fn_a(directions_A, hints_a)
+        p_BoBc_B = support_fn_b(directions_B, hints_b)
         p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1,-2))
+        # Check Sanity of autodiff-calculated points relative to FCL
+        assert np.isclose(p_AoAc_A.detach().numpy(), hints_a.unsqueeze(-2).detach().numpy()).all()
+        assert np.isclose(p_BoBc_B.detach().numpy(), hints_b.unsqueeze(-2).detach().numpy()).all()
 
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 
-        # Assume same contact frame for all wintess points
+        # Unsqueeze # of witness points dimension, default 1
+        R_AC = rotation_matrix_from_one_vector(directions_A, 2).unsqueeze(-3)
+        # Assume same contact frame for all witness points
         R_AC = R_AC.expand(p_AcBc_A.shape + (3,))
-        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)
+        # Get length of witness point distance projected onto contact normal
+        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)       
         
         # No longer necessary
         # phi = phi.reshape(original_batch_dims + (1,))
@@ -745,5 +779,7 @@ class GeometryCollider:
 
         # Check outputs are sane before return
         assert (phi.shape + (3,3,)) == R_AC.shape
-        assert phi.shape[1] == p_AoAc_A.shape[1] * p_BoBc_B.shape[1]
+        assert phi.shape[1] == 1 # TODO: HACK Only supporting 1 contact witness point
+        assert phi.shape[1] == p_AoAc_A.shape[1]
+        assert phi.shape[1] == p_BoBc_B.shape[1]
         return phi, R_AC, p_AoAc_A, p_BoBc_B
