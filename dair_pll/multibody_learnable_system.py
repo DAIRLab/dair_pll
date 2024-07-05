@@ -425,8 +425,6 @@ class MultibodyLearnableSystem(System):
                 lambda_m = -pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1))
                 q_dev[..., idx, :] = lambda_m[..., 2, :]
                 q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = lambda_m[..., :2, :]
-                if torch.norm(lambda_m) > 0.1 and ('finger_1' in key):
-                    breakpoint()
 
         q = q_pred + (self.w_comp/self.w_pred)*q_comp + \
                      (self.w_diss/self.w_pred)*q_diss + \
@@ -718,7 +716,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
-        self.trajectory = ParameterList([Parameter(torch.zeros(model_n_x), requires_grad=True) for _ in range(traj_len)])
+        # TODO: HACK set this to all zeros instead of hard-coding
+        self.trajectory = ParameterList([Parameter(torch.Tensor([0.0, 0.0524, 0., 0., 0., 0.]), requires_grad=True) for _ in range(traj_len)])
 
 
     def construct_state_tensor(self,

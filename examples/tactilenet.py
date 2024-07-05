@@ -130,7 +130,7 @@ DT = 0.0068
 
 # Generation configuration.
 CUBE_X_0 = torch.tensor(
-    [0.1, 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
+    [0.0, 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
 #     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
      0.5, #0., 0.0524, # Robot finger_0 Q 1D (x)
      -0.5, #0., 0.0524, # Robot finger_1 Q 1D (x)
@@ -182,7 +182,7 @@ WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
 EPOCHS = 200            # change this (originally 500)
-PATIENCE = 10       # change this (originally EPOCHS)
+PATIENCE = EPOCHS       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
 
@@ -277,7 +277,7 @@ def main(storage_folder_name: str = "",
                                        wd=Float(WDS[system]),
                                        patience=PATIENCE,
                                        epochs=num_epochs,
-                                       batch_size=Int(1))#Int(int(TRAJECTORY_LENGTHS[system])))
+                                       batch_size=Int(int(TRAJECTORY_LENGTHS[system])))
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake

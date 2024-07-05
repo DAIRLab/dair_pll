@@ -374,7 +374,6 @@ class SupervisedLearningExperiment(ABC):
             Scalar average training loss observed during epoch.
         """
         losses = []
-        idx = 0
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
@@ -388,9 +387,6 @@ class SupervisedLearningExperiment(ABC):
             if optimizer is not None:
                 loss.backward()
                 optimizer.step()
-
-            print(f"Index: {idx}")
-            idx += 1
 
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
@@ -524,11 +520,13 @@ class SupervisedLearningExperiment(ABC):
                 valid_set.trajectories[:n_valid_eval],
                 valid_set.indices[:n_valid_eval])
 
-            statistics = self.evaluate_systems_on_sets(
+            # TODO: Restart evaluation
+            statistics = {} 
+            """self.evaluate_systems_on_sets(
                 {LEARNED_SYSTEM_NAME: learned_system}, {
                     TRAIN_SET: train_eval_set,
                     VALID_SET: valid_eval_set
-                })
+                })"""
 
         statistics[f'{TRAIN_SET}_{LEARNED_SYSTEM_NAME}_'
                    f'{LOSS_NAME}_{AVERAGE_TAG}'] = float(train_loss.item())
@@ -659,7 +657,6 @@ class SupervisedLearningExperiment(ABC):
         # will be taken.
         learned_system.eval()
         training_loss = self.train_epoch(train_dataloader, learned_system)
-        breakpoint()
 
         # Terminate if the training state indicates training already finished.
         if training_state.finished_training:
@@ -700,7 +697,7 @@ class SupervisedLearningExperiment(ABC):
                 start_train_time = time.time()
                 training_loss = self.train_epoch(train_dataloader,
                                                  learned_system, optimizer)
-                breakpoint()
+                
                 training_duration = time.time() - start_train_time
                 learned_system.eval()
                 valid_loss = self.per_epoch_evaluation(training_state.epoch,

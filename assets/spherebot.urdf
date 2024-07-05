@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 
-<robot name="spherebot">
+<robot name="spherebot" xmlns:drake="https://drake.mit.edu/">
   <!--
     Frames are defined such that they all align with the base frame when all
     joints are at position zero.
