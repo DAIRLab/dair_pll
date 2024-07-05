@@ -68,6 +68,8 @@ class CollisionGeometry(ABC, Module):
     collision geometry types, enforced with an overload of the ``>`` operator.
     """
 
+    name: str = ""
+
     def __ge__(self, other) -> bool:
         """Evaluate total ordering of two geometries based on their types."""
         return _total_ordering.index(
@@ -519,7 +521,7 @@ class PydrakeToCollisionGeometryFactory:
 
     @staticmethod
     def convert(drake_shape: Shape, represent_geometry_as: str,
-        learnable: bool = True,
+        learnable: bool = True, name: str = ""
         ) -> CollisionGeometry:
         """Converts abstract ``pydrake.geometry.shape`` to
         ``CollisionGeometry`` according to the desired ``represent_geometry_as``
@@ -539,19 +541,23 @@ class PydrakeToCollisionGeometryFactory:
             TypeError: When provided object is not a supported Drake shape type.
         """
         if isinstance(drake_shape, DrakeBox):
-            return PydrakeToCollisionGeometryFactory.convert_box(
+            geometry = PydrakeToCollisionGeometryFactory.convert_box(
                 drake_shape, represent_geometry_as, learnable)
-        if isinstance(drake_shape, DrakeHalfSpace):
-            return PydrakeToCollisionGeometryFactory.convert_plane()
-        if isinstance(drake_shape, DrakeMesh):
-            return PydrakeToCollisionGeometryFactory.convert_mesh(
+        elif isinstance(drake_shape, DrakeHalfSpace):
+            geometry = PydrakeToCollisionGeometryFactory.convert_plane()
+        elif isinstance(drake_shape, DrakeMesh):
+            geometry = PydrakeToCollisionGeometryFactory.convert_mesh(
                 drake_shape, represent_geometry_as, learnable)
-        if isinstance(drake_shape, DrakeSphere):
-            return PydrakeToCollisionGeometryFactory.convert_sphere(
+        elif isinstance(drake_shape, DrakeSphere):
+            geometry = PydrakeToCollisionGeometryFactory.convert_sphere(
                 drake_shape, represent_geometry_as, learnable)
-        raise TypeError(
-            "Unsupported type for drake Shape() to"
-            "CollisionGeometry() conversion:", type(drake_shape))
+        else:
+            raise TypeError(
+                "Unsupported type for drake Shape() to"
+                "CollisionGeometry() conversion:", type(drake_shape))
+
+        geometry.name = name
+        return geometry
 
     @staticmethod
     def convert_box(drake_box: DrakeBox, represent_geometry_as: str, learnable: bool = True

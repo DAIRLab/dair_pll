@@ -372,18 +372,18 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             shuffle=True)
 
         # Calculate the average loss components.
-        losses_pred, losses_comp, losses_pen, losses_diss = [], [], [], []
+        losses_pred, losses_comp, losses_pen, losses_diss, losses_dev = [], [], [], [], []
         residual_norm, residual_weight, inertia_cond_num = [], [], []
         for xy_i in train_dataloader:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
+            loss_pred, loss_comp, loss_pen, loss_diss, loss_dev = \
+                learned_system.calculate_contactnets_loss_terms(**self.get_loss_args(x_i, y_i, learned_system))
+
             x = x_i[..., -1, :]
             x_plus = y_i[..., 0, :]
             u = torch.zeros(x.shape[:-1] + (0,))
-
-            loss_pred, loss_comp, loss_pen, loss_diss = \
-                learned_system.calculate_contactnets_loss_terms(x, u, x_plus)
             regularizers = \
                 learned_system.get_regularization_terms(x, u, x_plus)
 
@@ -391,6 +391,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_comp.append(loss_comp.clone().detach())
             losses_pen.append(loss_pen.clone().detach())
             losses_diss.append(loss_diss.clone().detach())
+            losses_dev.append(loss_dev.clone().detach())
             residual_norm.append(regularizers[0].clone().detach())
             residual_weight.append(regularizers[1].clone().detach())
             inertia_cond_num.append(regularizers[2].clone().detach())
@@ -412,6 +413,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         losses_comp = really_weird_fix_for_cluster_only(losses_comp)
         losses_pen = really_weird_fix_for_cluster_only(losses_pen)
         losses_diss = really_weird_fix_for_cluster_only(losses_diss)
+        losses_dev = really_weird_fix_for_cluster_only(losses_dev)
         residual_norm = really_weird_fix_for_cluster_only(residual_norm)
         residual_weight = really_weird_fix_for_cluster_only(residual_weight)
         inertia_cond_num = really_weird_fix_for_cluster_only(inertia_cond_num)
@@ -423,6 +425,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         w_pen = self.learnable_config.w_pen.value
         w_res = self.learnable_config.w_res.value
         w_res_w = self.learnable_config.w_res_w.value
+        w_dev = learned_system.w_dev # TODO: HACK add to config
 
         avg_loss_pred = w_pred*cast(Tensor, sum(losses_pred) \
                             / len(losses_pred)).mean()
@@ -432,6 +435,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                             / len(losses_pen)).mean()
         avg_loss_diss = w_diss*cast(Tensor, sum(losses_diss) \
                             / len(losses_diss)).mean()
+        avg_loss_dev = w_dev*cast(Tensor, sum(losses_dev) \
+                            / len(losses_dev)).mean()
         avg_residual_norm = w_res*cast(Tensor, sum(residual_norm) \
                             / len(residual_norm)).mean()
         avg_residual_weight = w_res*cast(Tensor, sum(residual_weight) \
@@ -449,6 +454,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                           'loss_comp': avg_loss_comp,
                           'loss_pen': avg_loss_pen,
                           'loss_diss': avg_loss_diss,
+                          'loss_dev': avg_loss_dev,
                           'loss_res_norm': avg_residual_norm,
                           'loss_res_weight': avg_residual_weight,
                           'loss_inertia_cond': avg_inertia_cond_num}
@@ -511,6 +517,15 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         return prediction_loss + reg_term
 
+    def get_loss_args(self,
+        x_past: Tensor,
+        x_future: Tensor,
+        system: System) -> Dict[str, Any]:
+
+        return {"x": x_past[..., -1, :],
+            "u": torch.zeros(x.shape[:-1] + (0,)),
+            "x_plus": x_future[..., 0, :]}
+
     def contactnets_loss(self,
                          x_past: Tensor,
                          x_future: Tensor,
@@ -526,11 +541,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             https://proceedings.mlr.press/v155/pfrommer21a.html
         """
         assert isinstance(system, MultibodyLearnableSystem)
-        x = x_past[..., -1, :]
-        # pylint: disable=E1103
-        u = torch.zeros(x.shape[:-1] + (0,))
-        x_plus = x_future[..., 0, :]
-        loss = system.contactnets_loss(x, u, x_plus)
+        loss = system.contactnets_loss(**self.get_loss_args(x_past, x_future, system))
         if not keep_batch:
             loss = loss.mean()
         return loss
@@ -576,23 +587,12 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             randomize_initialization=learnable_config.randomize_initialization,
             g_frac=learnable_config.g_frac)
 
-    def tactilenet_loss(self,
-                         x_past: Tensor,
-                         x_future: Tensor,
-                         system: System,
-                         keep_batch: bool = False) -> Tensor:
-        r""" :py:data:`~dair_pll.experiment.LossCallbackCallable`
-        which applies the ContactNets [1] loss to the system.
 
-        References:
-            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
-            Discontinuous Contact Dynamics with Smooth, Implicit
-            Representations," Conference on Robotic Learning, 2020,
-            https://proceedings.mlr.press/v155/pfrommer21a.html
-        """
-        assert isinstance(system, MultibodyLearnableSystemWithTrajectory)
-        assert isinstance(x_past, TensorDict) or isinstance(x_past, LazyStackedTensorDict)
-        assert isinstance(x_future, TensorDict) or isinstance(x_future, LazyStackedTensorDict)
+    def get_loss_args(self,
+        x_past: Tensor,
+        x_future: Tensor,
+        system: System) -> Dict[str, Any]:
+
         # Get last time of past and first of future
         # Remove extraneous dimensions
         # TODO: HACK remove squeeze in case batch dim == 1
@@ -621,8 +621,40 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
         if len(control.shape) == 1:
             control = control.reshape(control.shape[0], 1)
 
+        # Construct measured contact forces on obj_b from obj_a
+        # Defined as Dict: {(str(obj_a_name), str(obj_b_name)) -> R^3 force on obj_b in World Frame}
+        # TODO: specify in reference frame
+        # TODO: HACK, hard-coding "cube_body" as obj_a for all robot fingers
+        contact_forces = {}
+        if "contact_forces" in past.keys():
+            for key in past["contact_forces"].keys():
+                contact_forces[("cube_body", key)] = past["contact_forces"][key]
+
+        return {"x": x_past,
+            "u": control,
+            "x_plus": x_plus,
+            "contact_forces": contact_forces}
+
+    def tactilenet_loss(self,
+                         x_past: Tensor,
+                         x_future: Tensor,
+                         system: System,
+                         keep_batch: bool = False) -> Tensor:
+        r""" :py:data:`~dair_pll.experiment.LossCallbackCallable`
+        which applies the ContactNets [1] loss to the system.
+
+        References:
+            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
+            Discontinuous Contact Dynamics with Smooth, Implicit
+            Representations," Conference on Robotic Learning, 2020,
+            https://proceedings.mlr.press/v155/pfrommer21a.html
+        """
+        assert isinstance(system, MultibodyLearnableSystemWithTrajectory)
+        assert isinstance(x_past, TensorDict) or isinstance(x_past, LazyStackedTensorDict)
+        assert isinstance(x_future, TensorDict) or isinstance(x_future, LazyStackedTensorDict)
+
         # TODO: Pass contact forces
-        loss = system.contactnets_loss(x_past, control, x_plus)
+        loss = system.contactnets_loss(**self.get_loss_args(x_past, x_future, system))
         if not keep_batch:
             loss = loss.mean()
         return loss

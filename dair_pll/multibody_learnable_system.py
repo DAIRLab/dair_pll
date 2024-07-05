@@ -88,6 +88,8 @@ class MultibodyLearnableSystem(System):
                  w_pen: float,
                  w_res: float,
                  w_res_w: float,
+                 # TODO: Pass In
+                 w_dev: float = 1.0,
                  inertia_mode: InertiaLearn = InertiaLearn(),
                  constant_bodies: List[str] = [],
                  do_residual: bool = False,
@@ -153,6 +155,7 @@ class MultibodyLearnableSystem(System):
         self.w_pred = w_pred
         self.w_comp = w_comp
         self.w_diss = w_diss
+        self.w_dev = w_dev
         self.w_pen = w_pen
         self.w_res = w_res
         self.w_res_w = w_res_w
@@ -201,6 +204,7 @@ class MultibodyLearnableSystem(System):
                          x: Tensor,
                          u: Tensor,
                          x_plus: Tensor,
+                         contact_forces: Dict[Tuple[str, str], Tensor] = {},
                          loss_pool: Optional[pool.Pool] = None) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
@@ -217,13 +221,14 @@ class MultibodyLearnableSystem(System):
             x: (\*, space.n_x) current state batch.
             u: (\*, ?) input batch.
             x_plus: (\*, space.n_x) current state batch.
+            contact_forces: mapping (obj_a_name, obj_b_name) to force on obj_b in World Frame
             loss_pool: optional processing pool to enable multithreaded solves.
 
         Returns:
             (\*,) loss batch.
         """
-        loss_pred, loss_comp, loss_pen, loss_diss = \
-            self.calculate_contactnets_loss_terms(x, u, x_plus)
+        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev = \
+            self.calculate_contactnets_loss_terms(x, u, x_plus, contact_forces)
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
 
@@ -237,6 +242,7 @@ class MultibodyLearnableSystem(System):
         loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
                (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
+               (self.w_dev * loss_dev) + \
                (1e-5 * regularizers[2])
 
         return loss
@@ -271,7 +277,7 @@ class MultibodyLearnableSystem(System):
 
         # Penalize the condition number of the mass matrix.
         q_plus, v_plus = self.space.q_v(x_plus)
-        _, M, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
+        _, M, _, _, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
         I_BBcm_B = M[..., :3, :3]
         regularizers.append(torch.linalg.cond(I_BBcm_B))
 
@@ -286,7 +292,8 @@ class MultibodyLearnableSystem(System):
     def calculate_contactnets_loss_terms(self,
                          x: Tensor,
                          u: Tensor,
-                         x_plus: Tensor) -> \
+                         x_plus: Tensor,
+                         contact_forces: Dict[Tuple[str, str], Tensor] = {}) -> \
                          Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
         :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
@@ -307,7 +314,7 @@ class MultibodyLearnableSystem(System):
             (*,) complementarity violation loss.
             (*,) penetration loss.
             (*,) dissipation violation loss.
-            (*,) residual regularizer (0 if no residual).
+            (*,) deviation from measurement loss
         """
         # pylint: disable-msg=too-many-locals
         v = self.space.v(x)
@@ -317,7 +324,7 @@ class MultibodyLearnableSystem(System):
         solver_eps = 1e-4
 
         # Begin loss calculation.
-        delassus, M, J, phi, non_contact_acceleration = \
+        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list = \
             self.get_multibody_terms(q_plus, v_plus, u)
 
         try:
@@ -410,8 +417,20 @@ class MultibodyLearnableSystem(System):
             q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
                           dim=-2))
 
+        # Penalize Deviation from measured contact forces
+        q_dev = torch.zeros_like(q_pred)
+        for key in contact_forces.keys():
+            if key in obj_pair_list:
+                idx = obj_pair_list.index(key)
+                lambda_m = -pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1))
+                q_dev[..., idx, :] = lambda_m[..., 2, :]
+                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = lambda_m[..., :2, :]
+                if torch.norm(lambda_m) > 0.1 and ('finger_1' in key):
+                    breakpoint()
+
         q = q_pred + (self.w_comp/self.w_pred)*q_comp + \
-                     (self.w_diss/self.w_pred)*q_diss
+                     (self.w_diss/self.w_pred)*q_diss + \
+                     (self.w_dev/self.w_pred)*q_dev
 
         constant_pen = (torch.maximum(
                             -phi, torch.zeros_like(phi))**2).sum(dim=-1)
@@ -451,8 +470,6 @@ class MultibodyLearnableSystem(System):
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
             pdb.set_trace()
 
-        breakpoint()
-
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
                             dim=-2,
@@ -467,17 +484,19 @@ class MultibodyLearnableSystem(System):
         loss_comp = pbmm(force.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
         loss_diss = pbmm(force.transpose(-1, -2), q_diss)
+        loss_dev = pbmm(force.transpose(-1, -2), q_dev)
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
-               loss_pen.reshape(-1), loss_diss.reshape(-1)
+               loss_pen.reshape(-1), loss_diss.reshape(-1), \
+               loss_dev.reshape(-1)
 
     def get_multibody_terms(self, q: Tensor, v: Tensor,
-        u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List]:
         """Get multibody terms of the system.  Without a residual, this is a
         straightfoward pass-through to the system's :py:class:`MultibodyTerms`.
         With a residual, the residual augments the continuous dynamics."""
 
-        delassus, M, J, phi, non_contact_acceleration = self.multibody_terms(
+        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list = self.multibody_terms(
             q, v, u)
 
         if self.residual_net != None:
@@ -489,7 +508,7 @@ class MultibodyLearnableSystem(System):
         else:
             amended_acceleration = non_contact_acceleration
 
-        return delassus, M, J, phi, amended_acceleration
+        return delassus, M, J, phi, amended_acceleration, obj_pair_list, R_FW_list
 
     def init_residual_network(self, network_width: int, network_depth: int
         ) -> None:
@@ -586,7 +605,7 @@ class MultibodyLearnableSystem(System):
         dt = self.dt
         eps = 1e6
         solver_eps = 1e-4
-        delassus, M, J, phi, non_contact_acceleration = \
+        delassus, M, J, phi, non_contact_acceleration, _, _ = \
             self.get_multibody_terms(q, v, u)
         n_contacts = phi.shape[-1]
         contact_filter = (broadcast_lorentz(phi) <= eps).unsqueeze(-1)

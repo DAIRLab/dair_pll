@@ -374,6 +374,7 @@ class SupervisedLearningExperiment(ABC):
             Scalar average training loss observed during epoch.
         """
         losses = []
+        idx = 0
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
@@ -387,6 +388,9 @@ class SupervisedLearningExperiment(ABC):
             if optimizer is not None:
                 loss.backward()
                 optimizer.step()
+
+            print(f"Index: {idx}")
+            idx += 1
 
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
@@ -655,6 +659,7 @@ class SupervisedLearningExperiment(ABC):
         # will be taken.
         learned_system.eval()
         training_loss = self.train_epoch(train_dataloader, learned_system)
+        breakpoint()
 
         # Terminate if the training state indicates training already finished.
         if training_state.finished_training:
@@ -695,6 +700,7 @@ class SupervisedLearningExperiment(ABC):
                 start_train_time = time.time()
                 training_loss = self.train_epoch(train_dataloader,
                                                  learned_system, optimizer)
+                breakpoint()
                 training_duration = time.time() - start_train_time
                 learned_system.eval()
                 valid_loss = self.per_epoch_evaluation(training_state.epoch,

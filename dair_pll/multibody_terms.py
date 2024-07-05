@@ -425,7 +425,7 @@ class ContactTerms(Module):
             geometries.append(
                 PydrakeToCollisionGeometryFactory.convert(
                     inspector.GetShape(geometry_id), represent_geometry_as,
-                    learnable))
+                    learnable, body.name()))
 
         return geometries, rotations, translations, drake_spatial_jacobians
 
@@ -531,6 +531,8 @@ class ContactTerms(Module):
 
         Jv_v_W_BcAc_F = []
         phi_list = []
+        obj_pair_list = []
+        R_FW_list = []
 
         # bundle all modules and kinematics into a tuple iterator
         a_b = zip(geometries_a, geometries_b, R_AW, R_BW, p_AoBo_A, Jv_V_WA_W,
@@ -545,6 +547,7 @@ class ContactTerms(Module):
             # Tuple[(*, n_c), (*, n_c, 3, 3), (*, n_c, 3), (*, n_c, 3)]
             phi_i, R_AiF, p_AiAc_A, p_BiBc_B = GeometryCollider.collide(
                 geo_a, geo_b, R_AiBi, p_AiBi_A)
+            n_c = phi_i.shape[1]
 
             # contact frame rotation, (*, n_c, 3, 3)
             R_FW = pbmm(R_AiF.transpose(-1, -2), R_AiW.unsqueeze(-3))
@@ -558,6 +561,8 @@ class ContactTerms(Module):
             # contact relative velocity, (*, n_c, 3, 3)
             Jv_v_W_BcAc_F.append(pbmm(R_FW, Jv_v_WBc_W - Jv_v_WAc_W))
             phi_list.append(phi_i)
+            obj_pair_list.extend(n_c * [(geo_a.name, geo_b.name)])
+            R_FW_list.extend([R_FW[..., i, :, :] for i in range(n_c)])
 
         # pylint: disable=E1103
         mu_repeated = torch.cat(
@@ -566,7 +571,7 @@ class ContactTerms(Module):
         J = ContactTerms.relative_velocity_to_contact_jacobian(
             torch.cat(Jv_v_W_BcAc_F, dim=-3), mu_repeated)
 
-        return phi, J
+        return phi, J, obj_pair_list, R_FW_list
 
 
 class MultibodyTerms(Module):
@@ -662,10 +667,10 @@ class MultibodyTerms(Module):
             (\*, n_v) Contact-free acceleration inv(M(q)) * F(q).
         """
         M, non_contact_acceleration = self.lagrangian_terms(q, v, u)
-        phi, J = self.contact_terms(q)
+        phi, J, obj_pair_list, R_FW_list = self.contact_terms(q)
 
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
-        return delassus, M, J, phi, non_contact_acceleration
+        return delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list
 
     def __init__(self, urdfs: Dict[str, str], inertia_mode: InertiaLearn = InertiaLearn(),
                  constant_bodies: List[str] = [],

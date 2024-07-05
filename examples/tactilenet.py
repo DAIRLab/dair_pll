@@ -277,7 +277,7 @@ def main(storage_folder_name: str = "",
                                        wd=Float(WDS[system]),
                                        patience=PATIENCE,
                                        epochs=num_epochs,
-                                       batch_size=Int(int(TRAJECTORY_LENGTHS[system])))
+                                       batch_size=Int(1))#Int(int(TRAJECTORY_LENGTHS[system])))
 
     # Describes the ground truth system; infers everything from the URDF.
     # This is a configuration for a DrakeSystem, which wraps a Drake
