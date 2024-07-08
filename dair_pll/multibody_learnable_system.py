@@ -359,7 +359,6 @@ class MultibodyLearnableSystem(System):
                 q_dev[..., idx, :] = lambda_m[..., 2, :]
                 q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = lambda_m[..., :2, :]
                 Q_dev[..., idx, idx] = 1.0
-                breakpoint()
         Q_final = Q_delassus + Q_dev
 
         q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
