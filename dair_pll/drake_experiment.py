@@ -23,10 +23,7 @@ from dair_pll.experiment_config import SystemConfig, \
 from dair_pll.hyperparameter import Float
 from dair_pll.multibody_terms import InertiaLearn
 from dair_pll.multibody_learnable_system import \
-    MultibodyLearnableSystem, MultibodyLearnableSystemWithTrajectory, \
-    LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, \
-    LOSS_POWER, LOSS_PLL_ORIGINAL, LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, \
-    LOSS_VARIATION_NUMBERS
+    MultibodyLearnableSystem, MultibodyLearnableSystemWithTrajectory
 from dair_pll.system import System, SystemSummary
 
 @dataclass
@@ -63,8 +60,6 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """What inertial parameters to learn."""
     constant_bodies: List[str] = field(default_factory=list)
     """Which bodies to keep constant"""
-    loss_variation: str = LOSS_POWER
-    """What loss variation to use."""
     w_pred: float = 1.0
     """Weight of prediction term in ContactNets loss (suggested keep at 1.0)."""
     w_comp: Float = Float(1e0, log=True)  #1e-1
@@ -267,7 +262,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
             urdfs = oracle_system.urdfs
 
             self.true_geom_multibody_system = MultibodyLearnableSystem(
-                init_urdfs=urdfs, dt=dt, loss_variation=0,
+                init_urdfs=urdfs, dt=dt,
                 w_pred=1.0, w_comp=1.0, w_diss=1.0, w_pen=1.0, w_res=1.0,
                 w_res_w=1.0, do_residual=False,
                 represent_geometry_as = \
@@ -321,7 +316,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         return MultibodyLearnableSystem(
             learnable_config.urdfs,
             self.config.data_config.dt,
-            learnable_config.loss_variation,
             inertia_mode = learnable_config.inertia_mode,
             constant_bodies = learnable_config.constant_bodies,
             w_pred = learnable_config.w_pred,
@@ -572,7 +566,6 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             traj_len = traj.shape[0],
             init_urdfs = learnable_config.urdfs,
             dt = self.config.data_config.dt,
-            loss_variation = learnable_config.loss_variation,
             inertia_mode = learnable_config.inertia_mode,
             constant_bodies = learnable_config.constant_bodies,
             w_pred = learnable_config.w_pred,

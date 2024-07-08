@@ -45,18 +45,6 @@ from dair_pll.system import System, SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
     one_vector_block_diagonal, project_lorentz, reflect_lorentz
 
-
-# Loss variations options
-LOSS_PLL_ORIGINAL = 'loss_pll_original'
-LOSS_POWER = 'loss_power'
-LOSS_INERTIA_AGNOSTIC = 'loss_inertia_agnostic'
-LOSS_BALANCED = 'loss_balanced'
-LOSS_CONTACT_VELOCITY = 'loss_contact_velocity'
-LOSS_VARIATIONS = [LOSS_PLL_ORIGINAL, LOSS_POWER, LOSS_INERTIA_AGNOSTIC,
-                   LOSS_BALANCED, LOSS_CONTACT_VELOCITY]
-LOSS_VARIATION_NUMBERS = [str(LOSS_VARIATIONS.index(loss_variation)) \
-                          for loss_variation in LOSS_VARIATIONS]
-
 # Scaling factors to equalize translation and rotation errors.
 # For rotation versus linear scaling:  penalize 0.1 meters same as 90 degrees.
 ROTATION_SCALING = 0.2/torch.pi
@@ -76,12 +64,10 @@ class MultibodyLearnableSystem(System):
     visualization_system: Optional[DrakeSystem]
     solver: DynamicCvxpyLCQPLayer
     dt: float
-    loss_variation_txt: str
 
     def __init__(self,
                  init_urdfs: Dict[str, str],
                  dt: float,
-                 loss_variation: int,
                  w_pred: float,
                  w_comp: float,
                  w_diss: float,
@@ -114,16 +100,11 @@ class MultibodyLearnableSystem(System):
               parameters to learn
             constant_bodies: list of body names whose properties should NOT
               be learned
-            loss_variation: An integer 0, 1, 2, 3, or 4 representing the loss
-              variation to use. 0 indicates the original PLL loss, 1 power loss,
-              2 inertia-agnostic, 3 balanced inertia-agnostic, and 4 contact
-              velocity inertia-agnostic.
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
             randomize_initialization: Whether to randomize and export the
               initialization or not.
         """
-        assert str(loss_variation) in LOSS_VARIATION_NUMBERS
 
         multibody_terms = MultibodyTerms(init_urdfs, inertia_mode,
                                          constant_bodies,
@@ -146,9 +127,8 @@ class MultibodyLearnableSystem(System):
             self.multibody_terms = multibody_terms
             self.generate_updated_urdfs('init')
 
-        self.loss_variation_txt = LOSS_VARIATIONS[loss_variation]
         self.visualization_system = None
-        self.solver = DynamicCvxpyLCQPLayer(self.space.n_v)
+        self.solver = DynamicCvxpyLCQPLayer()
         self.dt = dt
         self.set_carry_sampler(lambda: Tensor([False]))
         self.max_batch_dim = 1
@@ -320,18 +300,11 @@ class MultibodyLearnableSystem(System):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
-        eps = 0  #1e-4
-        solver_eps = 1e-4
+        eps = 1e-8 # TODO: HACK, make a hyperparameter
 
         # Begin loss calculation.
         delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list = \
             self.get_multibody_terms(q_plus, v_plus, u)
-
-        try:
-            M_inv = torch.inverse((M))
-        except:
-            print(f'M: {M}')
-            pdb.set_trace()
 
         # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
         n_contacts = phi.shape[-1]
@@ -368,65 +341,28 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
-        # Calculate "half delassus" based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
-            L = torch.linalg.cholesky(M_inv)
-            half_delassus = pbmm(J, L)
-        elif self.loss_variation_txt == LOSS_POWER:
-            L = torch.linalg.cholesky(M_inv)
-            half_delassus = pbmm(J, L)
-        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
-            half_delassus = pbmm(J, M_inv)
-        elif self.loss_variation_txt == LOSS_BALANCED:
-            half_delassus = pbmm(pbmm(J, M_inv), P)
-        elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
-            half_delassus = delassus
-
-        Q = pbmm(half_delassus, half_delassus.transpose(-1, -2)) + \
-            eps * torch.eye(3 * n_contacts)
-
-        J_M = pbmm(reorder_mat.transpose(-1,-2), half_delassus)
+        Q_delassus = delassus + eps * torch.eye(3 * n_contacts) # Force PD
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         # Calculate q vectors based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
-            q_pred = -pbmm(J, dv.transpose(-1, -2))
-            q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
-            q_diss = dt*torch.cat((sliding_speeds, sliding_velocities), dim=-2)
-        elif self.loss_variation_txt == LOSS_POWER:
-            q_pred = -pbmm(J, dv.transpose(-1, -2))
-            q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
-            q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
-        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
-            q_pred = -pbmm(J, pbmm(M_inv, dv.transpose(-1, -2)))
-            # q_comp = (1/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
-            # q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
-            q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
-            q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
-                          dim=-2))
-        elif self.loss_variation_txt == LOSS_BALANCED:
-            q_pred = -pbmm(J, pbmm(M_inv, pbmm(pbmm(P, P), 
-                                               dv.transpose(-1, -2))))
-            q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
-            q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
-                          dim=-2))
-        elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
-            q_pred = -pbmm(delassus, pbmm(J, dv.transpose(-1, -2)))
-            q_comp = (1/dt) * pbmm(S, torch.abs(phi_then_zero).unsqueeze(-1))
-            q_diss = pbmm(S, torch.cat((sliding_speeds, sliding_velocities),
-                          dim=-2))
-
+        q_pred = -pbmm(J, dv.transpose(-1, -2))
+        q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
+        q_diss = dt*torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         # Penalize Deviation from measured contact forces
         q_dev = torch.zeros_like(q_pred)
+        Q_dev = torch.zeros_like(Q_delassus)
         for key in contact_forces.keys():
             if key in obj_pair_list:
                 idx = obj_pair_list.index(key)
                 lambda_m = -pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1))
                 q_dev[..., idx, :] = lambda_m[..., 2, :]
                 q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = lambda_m[..., :2, :]
+                Q_dev[..., idx, idx] = 1.0
+                breakpoint()
+        Q_final = Q_delassus + Q_dev
 
-        q = q_pred + (self.w_comp/self.w_pred)*q_comp + \
+        q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
                      (self.w_diss/self.w_pred)*q_diss + \
                      (self.w_dev/self.w_pred)*q_dev
 
@@ -435,19 +371,7 @@ class MultibodyLearnableSystem(System):
         constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
 
         # Calculate the prediction constant based on loss formulation mode.
-        if self.loss_variation_txt == LOSS_PLL_ORIGINAL:
-            constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
-        elif self.loss_variation_txt == LOSS_POWER:
-            constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
-        elif self.loss_variation_txt == LOSS_INERTIA_AGNOSTIC:
-            constant_pred = 0.5 * pbmm(dv, dv.transpose(-1, -2))
-        elif self.loss_variation_txt == LOSS_BALANCED:
-            balanced_dv = pbmm(dv, P)
-            constant_pred = 0.5 * pbmm(balanced_dv,
-                                       balanced_dv.transpose(-1, -2))
-        elif self.loss_variation_txt == LOSS_CONTACT_VELOCITY:
-            contact_dv = pbmm(dv, J.transpose(-1, -2))
-            constant_pred = 0.5 * pbmm(contact_dv, contact_dv.transpose(-1, -2))
+        constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the force w.r.t. the QCQP parameters.
@@ -457,15 +381,13 @@ class MultibodyLearnableSystem(System):
         try:
             force = pbmm(
                 reorder_mat,
-                self.solver(  #.apply(
-                    J_M,
-                    pbmm(reorder_mat.transpose(-1, -2),
-                         q).squeeze(-1)).detach().unsqueeze(-1))
-                    #pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
-                    #solver_eps).detach().unsqueeze(-1))
+                self.solver(
+                    pbmm(reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)), # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1), # Linear Term
+                ).detach().unsqueeze(-1))
         except:
-            print(f'J_M: {J_M}')
-            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q)}')
+            print(f'reordered Q: {pbmm(reorder_mat.transpose(-1,-2), J_M)}')
+            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
             pdb.set_trace()
 
         # Hack: remove elements of ``force`` where solver likely failed.
@@ -477,7 +399,7 @@ class MultibodyLearnableSystem(System):
         constant_pred[invalid] *= 0.
         force[invalid.expand(force.shape)] = 0.
 
-        loss_pred = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q, force)) \
+        loss_pred = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q_final, force)) \
                     + pbmm(force.transpose(-1, -2), q_pred) + constant_pred
         loss_comp = pbmm(force.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
@@ -601,12 +523,12 @@ class MultibodyLearnableSystem(System):
         """
         # pylint: disable=too-many-locals
         dt = self.dt
-        eps = 1e6
-        solver_eps = 1e-4
+        phi_eps = 1e6
+        eps = 1e-8 # TODO: HACK make this a hyperparameter
         delassus, M, J, phi, non_contact_acceleration, _, _ = \
             self.get_multibody_terms(q, v, u)
         n_contacts = phi.shape[-1]
-        contact_filter = (broadcast_lorentz(phi) <= eps).unsqueeze(-1)
+        contact_filter = (broadcast_lorentz(phi) <= phi_eps).unsqueeze(-1)
         contact_matrix_filter = pbmm(contact_filter.int(),
                                      contact_filter.transpose(-1,
                                                               -2).int()).bool()
@@ -616,19 +538,7 @@ class MultibodyLearnableSystem(System):
                                           reorder_mat.shape).expand(
                                               delassus.shape)
 
-        try:
-            M_inv = torch.inverse((M))
-        except:
-            print(f'M: {M}')
-            pdb.set_trace()
-
-        try:
-            L = torch.linalg.cholesky(M_inv)
-        except:
-            print(f'\nCannot calculate Cholesky of M_inv (M={M})')
-            pdb.set_trace()
-
-        J_M = pbmm(reorder_mat.transpose(-1, -2), pbmm(J, L))
+        Q_delassus = delassus + eps * torch.eye(3 * n_contacts)
 
         # pylint: disable=E1103
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
@@ -642,9 +552,9 @@ class MultibodyLearnableSystem(System):
             impulse_full = pbmm(
                 reorder_mat,
                 self.solver(
-                    J_M,
-                    pbmm(reorder_mat.transpose(-1, -2),
-                         q_full).squeeze(-1)).detach().unsqueeze(-1))
+                    pbmm(reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)), # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1), # Linear Term
+                 ).detach().unsqueeze(-1))
         except:
             print(f'J_M: {J_M}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_full)}')
@@ -717,7 +627,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        self.trajectory = ParameterList([Parameter(torch.Tensor([0.0, 0.0524, 0., 0., 0., 0.]), requires_grad=True) for _ in range(traj_len)])
+        self.trajectory = ParameterList([Parameter(torch.zeros(model_n_x), requires_grad=True) for _ in range(traj_len)])
 
 
     def construct_state_tensor(self,

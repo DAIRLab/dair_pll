@@ -30,9 +30,6 @@ from dair_pll.experiment_config import OptimizerConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_terms import InertiaLearn
-from dair_pll.multibody_learnable_system import MultibodyLearnableSystem, \
-    LOSS_PLL_ORIGINAL, LOSS_INERTIA_AGNOSTIC, LOSS_BALANCED, LOSS_POWER, \
-    LOSS_CONTACT_VELOCITY, LOSS_VARIATIONS, LOSS_VARIATION_NUMBERS
 from dair_pll.state_space import ConstantSampler, UniformSampler, GaussianWhiteNoiser, \
     FloatingBaseSpace, FixedBaseSpace, ProductSpace
 from dair_pll.system import System
@@ -197,7 +194,6 @@ def main(storage_folder_name: str = "",
          regenerate: bool = False,
          dataset_size: int = 1,
          inertia_params: str = '4',
-         loss_variation: str = '0',
          true_sys: bool = True,
          wandb_project: str = WANDB_DEFAULT_PROJECT,
          w_pred: float = 1e0,
@@ -247,8 +243,6 @@ def main(storage_folder_name: str = "",
          + f'\n\twith geometry represented as: {geometry}' \
          + f'\n\tregenerate: {regenerate}' \
          + f'\n\tinertia learning mode: {inertia_params} == {inertia_mode}' \
-         + f'\n\tloss variation: {loss_variation}' \
-         + f'\n\twith description: {LOSS_VARIATIONS[int(loss_variation)]}' \
          + f'\n\tloss weights (pred, comp, diss, pen, res, res_w): ' \
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w})' \
          + f'\n\twith residual: {do_residual}' \
@@ -319,7 +313,7 @@ def main(storage_folder_name: str = "",
         learnable_config = MultibodyLearnableSystemConfig(
             urdfs=urdfs, loss=loss, inertia_mode=inertia_mode,
             constant_bodies = ["finger_0", "finger_1"],
-            loss_variation=int(loss_variation), w_pred=w_pred,
+            w_pred=w_pred,
             w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_diss = Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_pen = Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
@@ -445,10 +439,6 @@ def main(storage_folder_name: str = "",
               type=click.IntRange(0, 7),
               default='7',
               help="Bitmap of what inertia params to learn: inertia-com-mass (e.g. 0 == none, 1 == mass only, 7 == all)")
-@click.option('--loss-variation',
-              type=click.Choice(LOSS_VARIATION_NUMBERS),
-              default='0',
-              help="ContactNets loss variation")
 @click.option('--true-sys/--wrong-sys',
               default=True,
               help="whether to start with correct or poor URDF.")
@@ -490,7 +480,7 @@ def main(storage_folder_name: str = "",
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, structured: bool, contactnets: bool,
                  geometry: str, regenerate: bool, dataset_size: int,
-                 inertia_params: str, loss_variation: str, true_sys: bool,
+                 inertia_params: str, true_sys: bool,
                  wandb_project: str, w_pred: float, w_comp: float,
                  w_diss: float, w_pen: float, w_res: float, w_res_w: float,
                  residual: bool, g_frac: float):
@@ -499,7 +489,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, structured, contactnets,
-         geometry, regenerate, dataset_size, inertia_params, loss_variation,
+         geometry, regenerate, dataset_size, inertia_params,
          true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, w_res_w,
          residual, g_frac)
 

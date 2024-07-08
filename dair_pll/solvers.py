@@ -2,11 +2,13 @@
 Current supported problem/solver types:
     * Lorentz cone constrained quadratic program (LCQP) solved with CVXPY.
 """
-from typing import Dict, List, cast
+from typing import Optional, Dict, List, cast
 
 import cvxpy as cp
 from cvxpylayers.torch import CvxpyLayer
+import torch
 from torch import Tensor
+from dair_pll.tensor_utils import sqrtm
 
 _CVXPY_LCQP_EPS = 0.  #1e-7
 #_CVXPY_SOLVER_ARGS = {"solve_method": "SCS", "eps": 1e-10, "use_indirect":
@@ -14,23 +16,21 @@ _CVXPY_LCQP_EPS = 0.  #1e-7
 _CVXPY_SOLVER_ARGS = {"solve_method": "ECOS", "max_iters": 300,
                       "abstol": 1e-10, "reltol": 1e-10, "feastol": 1e-10}
 
-def construct_cvxpy_lcqp_layer(num_contacts: int,
-                               num_velocities: int) -> CvxpyLayer:
+def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
     """Constructs a CvxpyLayer for solving a Lorentz cone constrained quadratic
     program.
     Args:
         num_contacts: number of contacts to be considered in the LCQP.
-        num_velocities: number of generalized velocities.
     Returns:
         CvxpyLayer for solving a LCQP.
     """
     num_variables = 3 * num_contacts
 
     variables = cp.Variable(num_variables)
-    objective_matrix = cp.Parameter((num_variables, num_velocities))
+    objective_matrix = cp.Parameter((num_variables, num_variables))
     objective_vector = cp.Parameter(num_variables)
 
-    objective = 0.5 * cp.sum_squares(objective_matrix.T @ variables)
+    objective = 0.5 * cp.sum_squares(objective_matrix @ variables)
     objective += objective_vector.T @ variables
     if _CVXPY_LCQP_EPS > 0.:
         objective += 0.5 * _CVXPY_LCQP_EPS * cp.sum_squares(variables)
@@ -52,12 +52,7 @@ class DynamicCvxpyLCQPLayer:
     num_velocities: int
     _cvxpy_layers: Dict[int, CvxpyLayer]
 
-    def __init__(self, num_velocities: int):
-        """
-        Args:
-            num_velocities: number of generalized velocities.
-        """
-        self.num_velocities = num_velocities
+    def __init__(self):
         self._cvxpy_layers = {}
 
     def get_sized_layer(self, num_contacts: int) -> CvxpyLayer:
@@ -69,11 +64,10 @@ class DynamicCvxpyLCQPLayer:
             CvxpyLayer for solving a LCQP.
         """
         if num_contacts not in self._cvxpy_layers:
-            self._cvxpy_layers[num_contacts] = construct_cvxpy_lcqp_layer(
-                num_contacts, self.num_velocities)
+            self._cvxpy_layers[num_contacts] = construct_cvxpy_lcqp_layer(num_contacts)
         return self._cvxpy_layers[num_contacts]
 
-    def __call__(self, J: Tensor, q: Tensor) -> Tensor:
+    def __call__(self, Q: Tensor, q: Tensor) -> Tensor:
         """Solve an LCQP.
         Args:
             J: (*, 3 * num_contacts, num_velocities) Cost matrices.
@@ -81,11 +75,11 @@ class DynamicCvxpyLCQPLayer:
         Returns:
             LCQP solution impulses.
         """
-        assert J.shape[-1] == self.num_velocities
-        assert q.shape[-1] == J.shape[-2]
-        assert J.shape[-2] % 3 == 0
+        assert Q.shape[-2] % 3 == 0
+        assert Q.shape[-1] == Q.shape[-2]
+        assert q.shape[-1] == Q.shape[-2]
 
-        layer = self.get_sized_layer(J.shape[-2] // 3)
-        #pdb.set_trace()
-        return layer(J, q, solver_args=_CVXPY_SOLVER_ARGS)[0]
+        layer = self.get_sized_layer(Q.shape[-2] // 3)
+        Q_sqrt = sqrtm(Q)
+        return layer(Q_sqrt, q, solver_args=_CVXPY_SOLVER_ARGS)[0]
         

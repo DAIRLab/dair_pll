@@ -11,6 +11,30 @@ from typing import List, cast
 
 import torch
 from torch import Tensor
+from torch.autograd import Function
+import numpy as np
+import scipy.linalg
+
+####
+#### Batched Sqrt Function from: https://github.com/pytorch/pytorch/issues/25481#issuecomment-576493693
+
+def sqrtm(matrix):
+    """Compute the square root of a positive definite matrix."""
+    _, s, v = matrix.svd()
+    good = s > s.max(-1, True).values * s.size(-1) * torch.finfo(s.dtype).eps
+    components = good.sum(-1)
+    common = components.max()
+    unbalanced = common != components.min()
+    if common < s.size(-1):
+        s = s[..., :common]
+        v = v[..., :common]
+        if unbalanced:
+            good = good[..., :common]
+    if unbalanced:
+        s = s.where(good, torch.zeros((), device=s.device, dtype=s.dtype))
+    return (v * s.sqrt().unsqueeze(-2)) @ v.transpose(-2, -1)
+
+####
 
 
 def tile_dim(tiling_tensor: Tensor, copies: int, dim: int = 0) -> Tensor:

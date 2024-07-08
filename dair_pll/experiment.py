@@ -374,12 +374,15 @@ class SupervisedLearningExperiment(ABC):
             Scalar average training loss observed during epoch.
         """
         losses = []
+        idx = 0
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
             if optimizer is not None:
                 optimizer.zero_grad()
+
+            print(f"Index: {idx}")
 
             loss = self.batch_loss(x_i, y_i, system)
             losses.append(loss.clone().detach())
