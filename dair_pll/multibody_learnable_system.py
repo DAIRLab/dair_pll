@@ -341,23 +341,27 @@ class MultibodyLearnableSystem(System):
                                                     (n_contacts, 2)).norm(
                                                         dim=-1, keepdim=True)
 
+        # Units: Energy
         Q_delassus = delassus + eps * torch.eye(3 * n_contacts) # Force PD
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
-        # Calculate q vectors based on loss formulation mode.
+        # Calculate q vectors
+        # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J, dv.transpose(-1, -2))
-        q_comp = torch.abs(phi_then_zero).unsqueeze(-1)
-        q_diss = dt*torch.cat((sliding_speeds, sliding_velocities), dim=-2)
-        # Penalize Deviation from measured contact forces
+        q_comp = (1.0/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+        q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        # Penalize Deviation from measured contact impulses
+        # This is NOT in velocity, but no reasonable distance metric for conversion.
+        # Need to tune w_dev directly
         q_dev = torch.zeros_like(q_pred)
         Q_dev = torch.zeros_like(Q_delassus)
         for key in contact_forces.keys():
             if key in obj_pair_list:
                 idx = obj_pair_list.index(key)
-                lambda_m = -pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1))
-                q_dev[..., idx, :] = lambda_m[..., 2, :]
-                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = lambda_m[..., :2, :]
+                impulse_measured = -pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1)) * dt
+                q_dev[..., idx, :] = impulse_measured[..., 2, :]
+                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = impulse_measured[..., :2, :]
                 Q_dev[..., idx, idx] = 1.0
         Q_final = Q_delassus + Q_dev
 
@@ -373,12 +377,12 @@ class MultibodyLearnableSystem(System):
         constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
-        # can ignore the gradient of the force w.r.t. the QCQP parameters.
-        # Therefore, we can detach ``force`` from pytorch's computation graph
+        # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
+        # Therefore, we can detach ``impulses`` from pytorch's computation graph
         # without causing error in the overall loss gradient.
         # pylint: disable=E1103
         try:
-            force = pbmm(
+            impulses = pbmm(
                 reorder_mat,
                 self.solver(
                     pbmm(reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)), # Quadratic Term
@@ -389,21 +393,21 @@ class MultibodyLearnableSystem(System):
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
             pdb.set_trace()
 
-        # Hack: remove elements of ``force`` where solver likely failed.
-        invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),
+        # Hack: remove elements of ``impulses`` where solver likely failed.
+        invalid = torch.any((impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
                             dim=-2,
                             keepdim=True)
 
         constant_pen[invalid] *= 0.
         constant_pred[invalid] *= 0.
-        force[invalid.expand(force.shape)] = 0.
+        impulses[invalid.expand(impulses.shape)] = 0.
 
-        loss_pred = 0.5 * pbmm(force.transpose(-1, -2), pbmm(Q_final, force)) \
-                    + pbmm(force.transpose(-1, -2), q_pred) + constant_pred
-        loss_comp = pbmm(force.transpose(-1, -2), q_comp)
+        loss_pred = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_final, impulses)) \
+                    + pbmm(impulses.transpose(-1, -2), q_pred) + constant_pred
+        loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
-        loss_diss = pbmm(force.transpose(-1, -2), q_diss)
-        loss_dev = pbmm(force.transpose(-1, -2), q_dev)
+        loss_diss = pbmm(impulses.transpose(-1, -2), q_diss)
+        loss_dev = pbmm(impulses.transpose(-1, -2), q_dev)
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1), \
