@@ -96,7 +96,7 @@ class TrajectorySet:
     """Trajectories rendered as a dataset of time slices."""
     trajectories: List[Tensor] = field(default_factory=lambda: [])
     """Trajectories in their raw format."""
-    indices: Tensor = field(default_factory=lambda: Tensor([]).long())
+    indices: Tensor = field(default_factory=lambda: torch.tensor([]).long())
     """Indices associated with on-disk filenames."""
 
     def __post_init__(self):

@@ -127,7 +127,7 @@ DT = 0.0068
 
 # Generation configuration.
 CUBE_X_0 = torch.tensor(
-    [0.0, 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
+    [0.1, 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
 #     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
      0.5, #0., 0.0524, # Robot finger_0 Q 1D (x)
      -0.5, #0., 0.0524, # Robot finger_1 Q 1D (x)
@@ -178,7 +178,7 @@ ASYMMETRIC_WD = 0.0
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
-EPOCHS = 200            # change this (originally 500)
+EPOCHS = 10000            # change this (originally 500)
 PATIENCE = EPOCHS       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
@@ -193,15 +193,16 @@ def main(storage_folder_name: str = "",
          geometry: str = BOX_TYPE,
          regenerate: bool = False,
          dataset_size: int = 1,
-         inertia_params: str = '4',
+         inertia_params: int = 1,
          true_sys: bool = True,
          wandb_project: str = WANDB_DEFAULT_PROJECT,
          w_pred: float = 1e0,
          w_comp: float = 1e0,
          w_diss: float = 1e0,
-         w_pen: float = 1e0,
+         w_pen: float = 2e1,
          w_res: float = 1e0,
          w_res_w: float = 1e0,
+         w_dev: float = 2e1,
          do_residual: bool = False,
          g_frac: float = 1.0):
     """Execute ContactNets basic example on a system.
@@ -223,10 +224,12 @@ def main(storage_folder_name: str = "",
         w_diss: Weight of dissipation term in ContactNets loss.
         w_pen: Weight of penetration term in ContactNets loss.
         w_res: Weight of residual regularization term in loss.
+        w_dev: Weight of deviation from measured contact forces term in loss.
         do_residual: Whether to add residual physics block.
         g_frac: Fraction of gravity to use with initial model.
     """
     # pylint: disable=too-many-locals, too-many-arguments
+    #torch.set_default_device('cuda')
 
     # Unpack inertia bitmask
     inertia_mode = InertiaLearn(
@@ -243,8 +246,8 @@ def main(storage_folder_name: str = "",
          + f'\n\twith geometry represented as: {geometry}' \
          + f'\n\tregenerate: {regenerate}' \
          + f'\n\tinertia learning mode: {inertia_params} == {inertia_mode}' \
-         + f'\n\tloss weights (pred, comp, diss, pen, res, res_w): ' \
-         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w})' \
+         + f'\n\tloss weights (pred, comp, diss, pen, res, res_w, dev): ' \
+         + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w}, {w_dev})' \
          + f'\n\twith residual: {do_residual}' \
          + f'\n\tand starting with provided true_sys={true_sys}' \
          + f'\n\twith gravity fraction (if gravity): {g_frac}')
@@ -281,9 +284,12 @@ def main(storage_folder_name: str = "",
     urdf = file_utils.get_asset(urdf_asset)
     urdfs = {system: urdf, 'robot': file_utils.get_asset("spherebot.urdf")}
 
+    additional_system_builders = (["dair_pll.drake_utils.pid_controller_builder"], [{"desired_state": ROBOT_DESIRED, "kp": 2.0, "kd": 100.0}])
+
     base_config = DrakeSystemConfig(urdfs=urdfs, 
-        additional_system_builders=["dair_pll.drake_utils.pid_controller_builder"], 
-        additional_system_kwargs=[{"desired_state": ROBOT_DESIRED, "kp": 2.0, "kd": 100.0}]
+        additional_system_builders=additional_system_builders[0], 
+        additional_system_kwargs=additional_system_builders[1],
+        use_meshcat=True
     )
 
     # how to slice trajectories into training datapoints
@@ -319,8 +325,17 @@ def main(storage_folder_name: str = "",
             w_pen = Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_res = Float(w_res, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_res_w = Float(w_res_w, log=True, distribution=DEFAULT_WEIGHT_RANGE),
+            w_dev = Float(w_dev, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             do_residual=do_residual, represent_geometry_as=geometry,
-            randomize_initialization = not true_sys, g_frac=g_frac)
+            # TODO: Re-add
+            # randomize_initialization = not true_sys, 
+            randomize_initialization = False, 
+            g_frac=g_frac,
+            # Use the same additional system builders as the base system
+            additional_system_builders=additional_system_builders[0], 
+            additional_system_kwargs=additional_system_builders[1],
+            use_meshcat=True,
+        )
 
     else:
         learnable_config = DeepLearnableSystemConfig(
@@ -437,10 +452,10 @@ def main(storage_folder_name: str = "",
               help="dataset size")
 @click.option('--inertia-params',
               type=click.IntRange(0, 7),
-              default='7',
+              default=1,
               help="Bitmap of what inertia params to learn: inertia-com-mass (e.g. 0 == none, 1 == mass only, 7 == all)")
 @click.option('--true-sys/--wrong-sys',
-              default=True,
+              default=False,
               help="whether to start with correct or poor URDF.")
 @click.option('--wandb-project',
               type = str,
@@ -460,7 +475,7 @@ def main(storage_folder_name: str = "",
               help="weight of dissipation term in ContactNets loss")
 @click.option('--w-pen',
               type=float,
-              default=1e0,
+              default=2e1,
               help="weight of penetration term in ContactNets loss")
 @click.option('--w-res',
               type=float,
@@ -470,6 +485,10 @@ def main(storage_folder_name: str = "",
               type=float,
               default=1e0,
               help="weight of residual weight regularization term in loss")
+@click.option('--w-dev',
+              type=float,
+              default=2e1,
+              help="weight of deviation from measured contact forces in ContactNets loss")
 @click.option('--residual/--no-residual',
               default=False,
               help="whether to include residual physics or not.")
@@ -483,6 +502,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
                  inertia_params: str, true_sys: bool,
                  wandb_project: str, w_pred: float, w_comp: float,
                  w_diss: float, w_pen: float, w_res: float, w_res_w: float,
+                 w_dev: float,
                  residual: bool, g_frac: float):
     """Executes main function with argument interface."""
     assert storage_folder_name is not None
@@ -490,7 +510,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
 
     main(storage_folder_name, run_name, system, source, structured, contactnets,
          geometry, regenerate, dataset_size, inertia_params,
-         true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, w_res_w,
+         true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, w_res_w, w_dev,
          residual, g_frac)
 
 

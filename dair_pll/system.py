@@ -29,9 +29,9 @@ from dair_pll.state_space import StateSpace, StateSpaceSampler
 @dataclass
 class MeshSummary:
     r""":py:func:`dataclasses.dataclass` for mesh visualization."""
-    vertices: Tensor = Tensor()
+    vertices: Tensor = field(default_factory=lambda: torch.tensor([]))
     r"""Vertices in mesh, ``(n_vert, 3)``\ ."""
-    faces: Tensor = Tensor()
+    faces: Tensor = field(default_factory=lambda: torch.tensor([]))
     r"""3-tuple indices of vertices that form faces, ``(n_face, 3)``\ ."""
 
 
@@ -192,8 +192,22 @@ class System(ABC, Module):
         return SystemSummary()
 
     def get_regularization_terms(self, x: Tensor, u: Tensor,
-                                 x_plus: Tensor) -> List[Tensor]:
+                                 x_plus: Tensor, **kwargs) -> List[Tensor]:
         """Return a list of possible regularization terms.  This template
         returns no regularizers.
         """
         return []
+
+    def construct_state_tensor(self,
+        data_state: Tensor) -> Tensor:
+        """ Input:
+            data_state: Tensor coming from the TrajectorySet Dataloader,
+                        this class expects a TensorDict, shape [batch, ?]
+            Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
+        """
+
+        # TODO: HACK "state" is hard-coded, switch to local arg
+        if isinstance(data_state, TensorDict):
+            return data_state["state"]
+
+        return data_state

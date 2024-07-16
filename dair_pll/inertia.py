@@ -314,7 +314,7 @@ class InertialParameterConverter:
             number_to_float(I_BBcm_B[index[0], index[1]])
             for index in INERTIA_INDICES
         ]
-        pi = Tensor([mass] + mass_list + inertia_list)
+        pi = torch.tensor([mass] + mass_list + inertia_list)
         return pi
 
     @staticmethod

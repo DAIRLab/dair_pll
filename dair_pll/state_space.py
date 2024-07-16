@@ -667,9 +667,9 @@ class ProductSpace(StateSpace):
 
         super().__init__(n_q, n_v)
         # pylint: disable=E1103
-        self.q_splits = torch.cumsum(torch.tensor(n_qs), 0)[:-1]
-        self.v_splits = torch.cumsum(torch.tensor(n_vs), 0)[:-1]
-        self.x_splits = torch.cumsum(torch.tensor(n_xs), 0)[:-1]
+        self.q_splits = torch.cumsum(torch.tensor(n_qs, device='cpu'), 0)[:-1]
+        self.v_splits = torch.cumsum(torch.tensor(n_vs, device='cpu'), 0)[:-1]
+        self.x_splits = torch.cumsum(torch.tensor(n_xs, device='cpu'), 0)[:-1]
         self.spaces = spaces
 
     def q_split(self, q: Tensor) -> List[Tensor]:

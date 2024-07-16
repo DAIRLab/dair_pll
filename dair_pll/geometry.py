@@ -38,11 +38,11 @@ from dair_pll.deep_support_function import HomogeneousICNN, \
 from dair_pll.tensor_utils import pbmm, tile_dim, \
     rotation_matrix_from_one_vector
 
-_UNIT_BOX_VERTICES = Tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
+_UNIT_BOX_VERTICES = torch.tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
     0, 0, 1, 1, 0, 0, 1, 1.
 ], [0, 1, 0, 1, 0, 1, 0, 1.]]).t() * 2. - 1.
 
-_ROT_Z_45 = Tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
+_ROT_Z_45 = torch.tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
                     [0., 0., 1.]])
 
 _NOMINAL_HALF_LENGTH = 0.05   # 10cm is nominal object length
@@ -428,7 +428,7 @@ class Box(SparseVertexConvexCollisionGeometry):
         scaled_half_lengths = half_lengths.clone()/_NOMINAL_HALF_LENGTH
         self.length_params = Parameter(scaled_half_lengths.view(1, -1),
                                        requires_grad=learnable)
-        self.unit_vertices = _UNIT_BOX_VERTICES.clone()
+        self.unit_vertices = _UNIT_BOX_VERTICES.clone().to(device=self.length_params.device)
 
     def get_half_lengths(self) -> Tensor:
         """From the stored :py:attr:`length_params`, compute the half lengths of
@@ -564,7 +564,7 @@ class PydrakeToCollisionGeometryFactory:
         ) -> Union[Box, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         if represent_geometry_as == 'box':
-            half_widths = 0.5 * Tensor(np.copy(drake_box.size()))
+            half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
             return Box(half_widths, 4, learnable)
 
         if represent_geometry_as == 'polygon':
@@ -598,7 +598,7 @@ class PydrakeToCollisionGeometryFactory:
         ``DeepSupportConvex``."""
         filename = drake_mesh.filename()
         mesh = pywavefront.Wavefront(filename)
-        vertices = Tensor(mesh.vertices)
+        vertices = torch.tensor(mesh.vertices)
 
         if represent_geometry_as == 'mesh':
             return DeepSupportConvex(vertices, learnable=learnable)
@@ -733,28 +733,28 @@ class GeometryCollider:
         distance_request.enable_nearest_points = True
 
         for transform_index in range(batch_range):
-            b_t = fcl.Transform(R_AB[transform_index].detach().numpy(),
-                                p_AoBo_A[transform_index].detach().numpy())
+            b_t = fcl.Transform(R_AB[transform_index].detach().cpu().numpy(),
+                                p_AoBo_A[transform_index].detach().cpu().numpy())
             b_obj.setTransform(b_t)
             result = fcl.CollisionResult()
             if fcl.collide(a_obj, b_obj, collision_request, result) > 0:
                 # Collision detected.
                 # Assume only 1 contact point.
-                directions[transform_index] += result.contacts[0].normal
+                directions[transform_index] += torch.tensor(result.contacts[0].normal)
                 nearest_points = [result.contacts[0].pos + result.contacts[0].penetration_depth/2.0 * result.contacts[0].normal,
                     result.contacts[0].pos - result.contacts[0].penetration_depth/2.0 * result.contacts[0].normal]
             else:
                 result = fcl.DistanceResult()
                 fcl.distance(a_obj, b_obj, distance_request, result)
-                directions[transform_index] += Tensor(result.nearest_points[1] -
+                directions[transform_index] += torch.tensor(result.nearest_points[1] -
                                                       result.nearest_points[0])
 
                 nearest_points = result.nearest_points
 
             # Record Hints == expected contact point in each object's frame
-            hints_a[transform_index] = Tensor(nearest_points[0])
+            hints_a[transform_index] = torch.tensor(nearest_points[0])
             hints_b[transform_index] = pbmm(
-                Tensor(nearest_points[1]) - p_AoBo_A[transform_index].detach(), 
+                torch.tensor(nearest_points[1]) - p_AoBo_A[transform_index].detach(), 
                 R_AB[transform_index])
 
         # Get normal directions in each object frame
@@ -765,8 +765,8 @@ class GeometryCollider:
         p_BoBc_B = support_fn_b(directions_B, hints_b)
         p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1,-2))
         # Check Sanity of autodiff-calculated points relative to FCL
-        assert np.isclose(p_AoAc_A.detach().numpy(), hints_a.unsqueeze(-2).detach().numpy()).all()
-        assert np.isclose(p_BoBc_B.detach().numpy(), hints_b.unsqueeze(-2).detach().numpy()).all()
+        assert np.isclose(p_AoAc_A.detach().cpu().numpy(), hints_a.unsqueeze(-2).detach().cpu().numpy()).all()
+        assert np.isclose(p_BoBc_B.detach().cpu().numpy(), hints_b.unsqueeze(-2).detach().cpu().numpy()).all()
 
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 

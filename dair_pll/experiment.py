@@ -142,6 +142,12 @@ def default_epoch_callback(epoch: int, _learned_system: System,
     """Default :py:data:`EpochCallbackCallable` which prints epoch, training
     loss, and best validation loss so far."""
     print(epoch, train_loss, best_valid_loss)
+    _learned_system.generate_updated_urdfs(str(epoch))
+    print(f"Start: {_learned_system.trajectory[0]}")
+    print(f"Contact: {_learned_system.trajectory[35]}")
+    print(f"Contact: {_learned_system.trajectory[36]}")
+    print(f"Middle: {_learned_system.trajectory[150]}")
+    print(f"End: {_learned_system.trajectory[300]}")
 
 
 StatisticsValue = Union[List, float, np.ndarray]
@@ -435,6 +441,8 @@ class SupervisedLearningExperiment(ABC):
 
         learned_system_summary = learned_system.summary(statistics)
 
+        # TODO: Fix this
+        skip_videos = True
         if not skip_videos:
             comparison_summary = self.base_and_learned_comparison_summary(
                 statistics, learned_system)
@@ -523,13 +531,11 @@ class SupervisedLearningExperiment(ABC):
                 valid_set.trajectories[:n_valid_eval],
                 valid_set.indices[:n_valid_eval])
 
-            # TODO: Restart evaluation
-            statistics = {} 
-            """self.evaluate_systems_on_sets(
+            self.evaluate_systems_on_sets(
                 {LEARNED_SYSTEM_NAME: learned_system}, {
                     TRAIN_SET: train_eval_set,
                     VALID_SET: valid_eval_set
-                })"""
+                })
 
         statistics[f'{TRAIN_SET}_{LEARNED_SYSTEM_NAME}_'
                    f'{LOSS_NAME}_{AVERAGE_TAG}'] = float(train_loss.item())
@@ -653,13 +659,18 @@ class SupervisedLearningExperiment(ABC):
         train_dataloader = DataLoader(
             train_set.slices,
             batch_size=self.config.optimizer_config.batch_size.value,
-            shuffle=self.config.data_config.slice_config.shuffle)
+            shuffle=self.config.data_config.slice_config.shuffle,
+            generator=torch.Generator(device=torch.get_default_device()),
+        )
 
         # Calculate the training loss before any parameter updates.  Calls
         # ``train_epoch`` without providing an optimizer, so no gradient steps
         # will be taken.
+        print("Training Loss Pre-Calc")
         learned_system.eval()
         training_loss = self.train_epoch(train_dataloader, learned_system)
+
+        print(f"Training Loss: {training_loss}")
 
         # Terminate if the training state indicates training already finished.
         if training_state.finished_training:
@@ -669,6 +680,7 @@ class SupervisedLearningExperiment(ABC):
 
         # Report losses before any parameter updates.
         if training_state.epoch == 1:
+            print("Report pre-train losses")
             training_state.best_valid_loss = self.per_epoch_evaluation(
                 0, learned_system, training_loss, 0.)
             epoch_callback(0, learned_system, training_loss,
@@ -678,7 +690,9 @@ class SupervisedLearningExperiment(ABC):
 
         # Start training loop.
         try:
+            print("Starting Full Training")
             while training_state.epoch <= self.config.optimizer_config.epochs:
+                print(f"Epoch: {training_state.epoch}")
                 if self.config.data_config.update_dynamically:
                     # reload training data
 
@@ -691,7 +705,8 @@ class SupervisedLearningExperiment(ABC):
                         train_set.slices,
                         batch_size=self.config.optimizer_config.batch_size.
                         value,
-                        shuffle=self.config.data_config.slice_config.shuffle)
+                        shuffle=self.config.data_config.slice_config.shuffle,
+                        generator=torch.Generator(device=torch.get_default_device()))
 
                     training_state.trajectory_set_split_indices = \
                         self.learning_data_manager.trajectory_set_indices()
@@ -744,9 +759,9 @@ class SupervisedLearningExperiment(ABC):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Reload best parameters.
-        print("Loading best parameters...")
-        learned_system.load_state_dict(training_state.best_learned_system_state)
-        print("Done loading best parameters.")
+        #print("Loading best parameters...")
+        #learned_system.load_state_dict(training_state.best_learned_system_state)
+        #print("Done loading best parameters.")
         return training_loss, training_state.best_valid_loss, learned_system
 
     def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
@@ -763,7 +778,7 @@ class SupervisedLearningExperiment(ABC):
             * Single step and trajectory prediction losses.
             * Squared norms of velocity and delta-velocity (for normalization).
             * Sample target and prediction trajectories.
-            * Auxiliary trajectory comparisons defined in
+            * Auxiliary trajectory comparisons defined in 
               :meth:`dair_pll.state_space.StateSpace\
               .auxiliary_comparisons()`
             * Summary statistics of the above where applicable.
@@ -802,7 +817,8 @@ class SupervisedLearningExperiment(ABC):
                                        len(trajectories))
             slices_loader = DataLoader(trajectory_set.slices,
                                        batch_size=128,
-                                       shuffle=False)
+                                       shuffle=False,
+                                       generator=torch.Generator(device=torch.get_default_device()))
             slices = trajectory_set.slices[:]
             all_x = cast(List[Tensor], slices[0])
             all_y = cast(List[Tensor], slices[1])
@@ -903,7 +919,7 @@ class SupervisedLearningExperiment(ABC):
                 extra_metrics = self.extra_metrics()
                 for metric_name in extra_metrics:
                     stats[f'{set_name}_{system_name}_{metric_name}'] = to_json(
-                        Tensor([
+                        torch.tensor([
                         extra_metrics[metric_name](tp, tt)
                         for tp, tt in zip(traj_pred, traj_target)
                     ]))
@@ -978,6 +994,9 @@ class SupervisedLearningExperiment(ABC):
             Statistics dictionary.
         """
         _, _, learned_system = self.train(epoch_callback)
+
+        print("Done Training")
+        breakpoint()
 
         try:
             print("Looking for previously generated statistics...")

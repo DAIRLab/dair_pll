@@ -60,7 +60,7 @@ class DrakeSystem(System):
         self.plant_diagram = plant_diagram
         self.dt = dt
         self.urdfs = urdfs
-        self.set_carry_sampler(lambda: Tensor([False]))
+        self.set_carry_sampler(lambda: torch.tensor([False]))
 
         # Drake simulations cannot be batched
         self.max_batch_dim = 0
@@ -91,7 +91,7 @@ class DrakeSystem(System):
             sim.get_mutable_context())
 
         DrakeStateConverter.state_to_context(plant, plant_context,
-                                             x_0.detach().numpy(),
+                                             x_0.detach().cpu().numpy(),
                                              self.plant_diagram.model_ids,
                                              self.space)
         sim.Initialize()
@@ -141,10 +141,10 @@ class DrakeSystem(System):
                         bodyA_name = plant.get_body(contact.bodyA_index()).name()
                         bodyB_name = plant.get_body(contact.bodyB_index()).name()
                         if bodyA_name in carry[key].keys():
-                            carry_next[key][bodyA_name] -= Tensor(contact.contact_force()).reshape(1, -1)
+                            carry_next[key][bodyA_name] -= torch.tensor(contact.contact_force()).reshape(1, -1)
                             print(f"Subtracting {contact.contact_force()} from {key}.{bodyA_name}")
                         elif bodyB_name in carry[key].keys():
-                            carry_next[key][bodyB_name] += Tensor(contact.contact_force()).reshape(1, -1)
+                            carry_next[key][bodyB_name] += torch.tensor(contact.contact_force()).reshape(1, -1)
                             print(f"Adding {contact.contact_force()} to {key}.{bodyB_name}")
                         
 
@@ -184,4 +184,4 @@ class DrakeSystem(System):
         carry_next = self.populate_carry(carry)
         #input("Step...")
 
-        return Tensor(x_next), carry_next
+        return torch.tensor(x_next), carry_next

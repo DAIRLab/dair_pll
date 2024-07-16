@@ -98,11 +98,13 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 -->
-  
+
+<!-- Note: Group Name Collision happens between URDFs
   <drake:collision_filter_group name="finger_0_group">
   <drake:member link="finger_0"/>
   <drake:ignored_collision_filter_group name="finger_0_group"/>
   </drake:collision_filter_group>
+-->
 
   <link name="finger_1">
    <visual>
@@ -182,9 +184,11 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 -->
-  
+
+<!-- Note: Group Name Collision happens between URDFs
   <drake:collision_filter_group name="finger_1_group">
   <drake:member link="finger_1"/>
   <drake:ignored_collision_filter_group name="finger_1_group"/>
   </drake:collision_filter_group>
+-->
 </robot>

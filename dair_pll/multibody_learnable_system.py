@@ -31,6 +31,7 @@ import pdb
 import time
 # from sappy import SAPSolver  # type: ignore
 from torch import Tensor
+from tensordict.tensordict import TensorDict
 from torch.nn import Module, ParameterList, Parameter
 import torch.nn as nn
 
@@ -74,8 +75,7 @@ class MultibodyLearnableSystem(System):
                  w_pen: float,
                  w_res: float,
                  w_res_w: float,
-                 # TODO: Pass In
-                 w_dev: float = 1.0,
+                 w_dev: float,
                  inertia_mode: InertiaLearn = InertiaLearn(),
                  constant_bodies: List[str] = [],
                  do_residual: bool = False,
@@ -130,7 +130,7 @@ class MultibodyLearnableSystem(System):
         self.visualization_system = None
         self.solver = DynamicCvxpyLCQPLayer()
         self.dt = dt
-        self.set_carry_sampler(lambda: Tensor([False]))
+        self.set_carry_sampler(lambda: torch.tensor([False]))
         self.max_batch_dim = 1
         self.w_pred = w_pred
         self.w_comp = w_comp
@@ -228,7 +228,7 @@ class MultibodyLearnableSystem(System):
         return loss
 
     def get_regularization_terms(self, x: Tensor, u: Tensor,
-                                 x_plus: Tensor) -> List[Tensor]:
+                                 x_plus: Tensor, **kwargs) -> List[Tensor]:
         """Calculate some regularization terms."""
 
         regularizers = []
@@ -599,6 +599,21 @@ class MultibodyLearnableSystem(System):
 
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)
 
+    def construct_state_tensor(self,
+        data_state: Tensor) -> Tensor:
+        """ Input:
+            data_state: Tensor coming from the TrajectorySet Dataloader,
+                        this class expects a TensorDict, shape [batch, ?]
+            Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
+        """
+
+        # TODO: HACK "state" is hard-coded, switch to local arg
+
+        if isinstance(data_state, TensorDict):
+            return data_state["state"]
+
+        return data_state
+
 
 class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     """:py:class:`MultibodyLearnableSystem` where a model can have 
@@ -630,18 +645,29 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        self.trajectory = ParameterList([Parameter(torch.zeros(model_n_x), requires_grad=True) for _ in range(traj_len)])
+        model_state = torch.tensor([0.0, 0.0524, 0., 0., 0., 0.])
+        self.trajectory = ParameterList([Parameter(torch.clone(model_state), requires_grad=True) for _ in range(traj_len)])
 
 
     def construct_state_tensor(self,
-            model_states: Dict[str, Tensor],
-            times: Tensor) -> Tensor:
+        data_state: Tensor) -> Tensor:
         """ Input:
-            model_states: map of model name to batch of state tensors shape [batch, n_x]
-            times: timestep corresponding to the state shape [batch, 1]
-
+            data_state: Tensor coming from the TrajectorySet Dataloader,
+                        this class expects a TensorDict, shape [batch, ?]
             Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
         """
+
+        # Fill Partial States
+        assert isinstance(data_state, TensorDict)
+        model_states = {}
+        for model, _ in self.model_spaces.items():
+            key = model + "_state"
+            if key in data_state.keys():
+                model_states[model] = data_state[key]
+                if len(model_states[model].shape) == 1:
+                    model_states[model] = model_states[model].reshape(model_states.shape[0], 1)
+        # Get Timestep Index
+        times = data_state["time"].reshape(data_state["time"].shape[0], 1)
 
         # Input Sanitation
         assert len(times.shape) == 2
@@ -655,8 +681,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         traj_x = torch.vstack([self.trajectory[int(i)] for i in times.flatten()]) # [batch x traj_n_x]
 
         # Loop through models and construct state
-        ret_q = torch.Tensor([])
-        ret_v = torch.Tensor([])
+        ret_q = torch.tensor([])
+        ret_v = torch.tensor([])
         for model, space in self.model_spaces.items():
             # Ignore world and other degenerate spaces
             if space.n_x == 0:

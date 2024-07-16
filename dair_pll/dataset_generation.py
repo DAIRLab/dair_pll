@@ -33,7 +33,7 @@ class DataGenerationConfig:
     r"""Total number of trajectories to select from, ``>= 0``\ ."""
     trajectory_length: int = 80
     r"""Trajectory length, ``>= 1``\ ."""
-    x_0: Tensor = Tensor()
+    x_0: Tensor = field(default_factory=lambda: torch.tensor([]))
     """Nominal initial states."""
     sampler_type: Type[StateSpaceSampler] = ConstantSampler
     r"""Distribution for sampling around :attr:`x_0`\ ."""
@@ -42,9 +42,9 @@ class DataGenerationConfig:
     noiser_type: Optional[Union[Type[GaussianWhiteNoiser], Type[UniformWhiteNoiser]]] = \
         GaussianWhiteNoiser
     """Type of noise to add to data."""
-    static_noise: Tensor = Tensor()
+    static_noise: Tensor = field(default_factory=lambda: torch.tensor([]))
     """``(2 * n_v)`` sampler ranges for constant-in-time trajectory noise."""
-    dynamic_noise: Tensor = Tensor()
+    dynamic_noise: Tensor = field(default_factory=lambda: torch.tensor([]))
     """``(2 * n_v)`` sampler ranges for i.i.d.-in-time trajectory noise."""
     storage: str = './'
     """Experiment folder for data storage. Defaults to working directory."""

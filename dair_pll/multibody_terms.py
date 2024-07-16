@@ -174,7 +174,7 @@ class LagrangianTerms(Module):
 
         # pylint: disable=E1103
         self.body_parameters = ParameterList()
-        inertial_parameters = []
+        
         for body_param_tensor, body in zip(body_param_tensors, bodies):
             learn_body = (body.name() not in constant_bodies)
             body_parameter = [
@@ -183,9 +183,6 @@ class LagrangianTerms(Module):
                 Parameter(body_param_tensor[4:], requires_grad=(learn_body and inertia_learn.inertia)),
             ]
             self.body_parameters.extend(body_parameter)
-            inertial_parameters.append(torch.hstack(body_parameter))
-
-        self.inertial_parameters = torch.stack(inertial_parameters)
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -240,7 +237,15 @@ class LagrangianTerms(Module):
     def pi_cm(self) -> Tensor:
         """Returns inertial parameters in human-understandable ``pi_cm``
         -format"""
-        return InertialParameterConverter.theta_to_pi_cm(self.inertial_parameters)
+
+        inertial_parameters = []
+        for idx in range(len(self.body_parameters)//3):
+            inertial_parameters.append(torch.hstack(
+                (self.body_parameters[3*idx],
+                 self.body_parameters[3*idx+1],
+                 self.body_parameters[3*idx+2])))
+
+        return InertialParameterConverter.theta_to_pi_cm(torch.stack(inertial_parameters))
 
     def forward(self, q: Tensor, v: Tensor, u: Tensor) -> Tuple[Tensor, Tensor]:
         """Evaluates Lagrangian dynamics terms at given state and input.
@@ -262,7 +267,6 @@ class LagrangianTerms(Module):
             InertialParameterConverter.pi_cm_to_drake_spatial_inertia_vector(
             self.pi_cm())
         inertia = inertia.expand(q.shape[:-1] + inertia.shape)
-
         M = self.mass_matrix(q, inertia)
         non_contact_acceleration = torch.linalg.solve(
             M, self.lagrangian_forces(q, v, u, inertia))
@@ -294,7 +298,6 @@ class ContactTerms(Module):
     geometry_spatial_jacobians: Optional[ConfigurationCallback]
     geometries: ModuleList
     friction_param_list: ParameterList
-    friction_params: Tensor
     collision_candidates: Tensor
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram,
@@ -352,17 +355,14 @@ class ContactTerms(Module):
         for idx, friction in enumerate(coulomb_frictions):
             body = drake_utils.get_body_from_geometry_id(plant, inspector, geometry_ids[idx])
             learnable = (body.name() not in constant_bodies) and (body != plant.world_body())
-            self.friction_param_list.append(Parameter(Tensor([friction.static_friction()]), requires_grad=learnable))
-        self.friction_params = torch.hstack([param for param in self.friction_param_list])
+            self.friction_param_list.append(Parameter(torch.tensor([friction.static_friction()]), requires_grad=learnable))
 
-        self.collision_candidates = Tensor(collision_candidates).t().long()
+        self.collision_candidates = torch.tensor(collision_candidates).t().long()
 
     def get_friction_coefficients(self) -> Tensor:
-        """From the stored :py:attr:`friction_params`, compute the friction
+        """From the stored :py:attr:`friction_param_list`, compute the friction
         coefficient as its absolute value."""
-        positive_friction_params = torch.abs(self.friction_params)
-
-        return positive_friction_params
+        return torch.abs(torch.hstack([param for param in self.friction_param_list]))
 
     # noinspection PyUnresolvedReferences
     @staticmethod
@@ -812,8 +812,8 @@ class MultibodyTerms(Module):
                         Izz_pa = scaling * (rand_lens[0]**2 + rand_lens[1]**2)
 
                         # Randomly rotate the principal axes.
-                        rot_mat = Tensor(Rotation.random().as_matrix())
-                        I_mat_pa = Tensor([[Ixx_pa, 0., 0.],
+                        rot_mat = torch.tensor(Rotation.random().as_matrix())
+                        I_mat_pa = torch.tensor([[Ixx_pa, 0., 0.],
                                            [0., Iyy_pa, 0.],
                                            [0., 0., Izz_pa]])
                         I_rand = rot_mat.T @ I_mat_pa @ rot_mat
@@ -823,8 +823,8 @@ class MultibodyTerms(Module):
                         Ixx, Iyy, Izz = I_rand[0,0], I_rand[1,1], I_rand[2,2]
                         Ixy, Ixz, Iyz = I_rand[0,1], I_rand[1,2], I_rand[1,2]
 
-                        pi_cm[4:7] = Tensor([Ixx, Iyy, Izz])
-                        pi_cm[7:10] = Tensor([Ixy, Ixz, Iyz])
+                        pi_cm[4:7] = torch.tensor([Ixx, Iyy, Izz])
+                        pi_cm[7:10] = torch.tensor([Ixy, Ixz, Iyz])
 
                     self.lagrangian_terms.original_pi_cm_params[idx] = pi_cm
 

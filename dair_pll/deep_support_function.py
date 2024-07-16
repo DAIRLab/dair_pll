@@ -40,10 +40,10 @@ def get_mesh_summary_from_polygon(polygon) -> MeshSummary:
     # matter).
     arbitrary_direction = torch.ones((1,3))
     vertices = polygon.get_vertices(
-        arbitrary_direction).squeeze(0).clone().detach()
+        arbitrary_direction).squeeze(0).clone().cpu().detach()
 
     hull = ConvexHull(vertices.numpy())
-    faces = Tensor(hull.simplices).to(torch.long)  # type: ignore
+    faces = torch.tensor(hull.simplices).to(torch.long)  # type: ignore
 
     return MeshSummary(vertices=vertices, faces=faces)
 
@@ -143,7 +143,7 @@ def extract_mesh_from_support_function(
     Returns:
         Object vertices and face indices.
     """
-    support_points = support_function(_SURFACE).detach()
+    support_points = support_function(_SURFACE).detach().cpu()
     support_point_hashes = set()
     unique_support_points = []
 
@@ -157,7 +157,7 @@ def extract_mesh_from_support_function(
 
     vertices = torch.stack(unique_support_points)
     hull = ConvexHull(vertices.numpy())
-    faces = Tensor(hull.simplices).to(torch.long)  # type: ignore
+    faces = torch.tensor(hull.simplices).to(torch.long)  # type: ignore
 
     _, backwards, _ = extract_outward_normal_hyperplanes(
         vertices.unsqueeze(0), faces.unsqueeze(0))
