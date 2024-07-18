@@ -178,7 +178,7 @@ ASYMMETRIC_WD = 0.0
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
-EPOCHS = 10000            # change this (originally 500)
+EPOCHS = 200            # change this (originally 500)
 PATIENCE = EPOCHS       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
@@ -229,7 +229,7 @@ def main(storage_folder_name: str = "",
         g_frac: Fraction of gravity to use with initial model.
     """
     # pylint: disable=too-many-locals, too-many-arguments
-    #torch.set_default_device('cuda')
+    torch.set_default_device('cuda')
 
     # Unpack inertia bitmask
     inertia_mode = InertiaLearn(
@@ -289,7 +289,7 @@ def main(storage_folder_name: str = "",
     base_config = DrakeSystemConfig(urdfs=urdfs, 
         additional_system_builders=additional_system_builders[0], 
         additional_system_kwargs=additional_system_builders[1],
-        use_meshcat=True
+        use_meshcat=False
     )
 
     # how to slice trajectories into training datapoints
@@ -297,9 +297,10 @@ def main(storage_folder_name: str = "",
     # Give actuation and contact forces simulated from previous time step
     # NOTE: Simulation goes (calc net actuation/forces -> calc next state), so
     # next state's net_actuation / contact_forces are from the previous time step.
+    # TODO: HACK "time" is needed to index into predicted trajectory
     slice_config = TrajectorySliceConfig(
-        his_state_keys = ["robot_state", "net_actuation", "contact_forces"],
-        pred_state_keys = ["robot_state"],
+        his_state_keys = ["robot_state", "net_actuation", "contact_forces", "time"],
+        pred_state_keys = ["robot_state", "time"],
         shuffle = False,
     )
 
@@ -463,11 +464,11 @@ def main(storage_folder_name: str = "",
               help="what W&B project to save results under.")
 @click.option('--w-pred',
               type=float,
-              default=1e0,
+              default=2e1,
               help="weight of prediction term in ContactNets loss")
 @click.option('--w-comp',
               type=float,
-              default=1e0,
+              default=1e1,
               help="weight of complementarity term in ContactNets loss")
 @click.option('--w-diss',
               type=float,
@@ -475,7 +476,7 @@ def main(storage_folder_name: str = "",
               help="weight of dissipation term in ContactNets loss")
 @click.option('--w-pen',
               type=float,
-              default=2e1,
+              default=1e0,
               help="weight of penetration term in ContactNets loss")
 @click.option('--w-res',
               type=float,
@@ -487,7 +488,7 @@ def main(storage_folder_name: str = "",
               help="weight of residual weight regularization term in loss")
 @click.option('--w-dev',
               type=float,
-              default=2e1,
+              default=2e3,
               help="weight of deviation from measured contact forces in ContactNets loss")
 @click.option('--residual/--no-residual',
               default=False,

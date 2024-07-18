@@ -142,12 +142,6 @@ def default_epoch_callback(epoch: int, _learned_system: System,
     """Default :py:data:`EpochCallbackCallable` which prints epoch, training
     loss, and best validation loss so far."""
     print(epoch, train_loss, best_valid_loss)
-    _learned_system.generate_updated_urdfs(str(epoch))
-    print(f"Start: {_learned_system.trajectory[0]}")
-    print(f"Contact: {_learned_system.trajectory[35]}")
-    print(f"Contact: {_learned_system.trajectory[36]}")
-    print(f"Middle: {_learned_system.trajectory[150]}")
-    print(f"End: {_learned_system.trajectory[300]}")
 
 
 StatisticsValue = Union[List, float, np.ndarray]
@@ -380,15 +374,12 @@ class SupervisedLearningExperiment(ABC):
             Scalar average training loss observed during epoch.
         """
         losses = []
-        idx = 0
         for xy_i in data:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
             if optimizer is not None:
                 optimizer.zero_grad()
-
-            print(f"Index: {idx}")
 
             loss = self.batch_loss(x_i, y_i, system)
             losses.append(loss.clone().detach())
@@ -441,8 +432,6 @@ class SupervisedLearningExperiment(ABC):
 
         learned_system_summary = learned_system.summary(statistics)
 
-        # TODO: Fix this
-        skip_videos = True
         if not skip_videos:
             comparison_summary = self.base_and_learned_comparison_summary(
                 statistics, learned_system)
@@ -531,7 +520,7 @@ class SupervisedLearningExperiment(ABC):
                 valid_set.trajectories[:n_valid_eval],
                 valid_set.indices[:n_valid_eval])
 
-            self.evaluate_systems_on_sets(
+            statistics = self.evaluate_systems_on_sets(
                 {LEARNED_SYSTEM_NAME: learned_system}, {
                     TRAIN_SET: train_eval_set,
                     VALID_SET: valid_eval_set
@@ -996,7 +985,6 @@ class SupervisedLearningExperiment(ABC):
         _, _, learned_system = self.train(epoch_callback)
 
         print("Done Training")
-        breakpoint()
 
         try:
             print("Looking for previously generated statistics...")

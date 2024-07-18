@@ -70,8 +70,8 @@ FPS = 30
 
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
 # to fit the actual trajectory.
-SENSOR_RPY = np.array([-np.pi / 2, 0, np.pi / 2])
-SENSOR_POSITION = np.array([2., 0., 0.2])
+SENSOR_RPY = np.array([-np.pi / 2, 0, 0.])
+SENSOR_POSITION = np.array([0., -1., 0.2])
 SENSOR_POSE = RigidTransform(
     RollPitchYaw(SENSOR_RPY).ToQuaternion(), SENSOR_POSITION)
 
@@ -384,11 +384,12 @@ class MultibodyPlantDiagram:
         diagram.CreateDefaultContext()
 
         # Uncomment the below lines to generate diagram graph.
-        diagram.set_name("graphviz example")
-        plt.figure(figsize=(11,8.5), dpi=300)
-        plot_system_graphviz(diagram)
-        from pathlib import Path
-        plt.savefig(str(Path.home() / "Desktop" / "graphviz_example.png"))
+        #diagram.set_name("graphviz example")
+        #plt.figure(figsize=(11,8.5), dpi=300)
+        #plot_system_graphviz(diagram)
+        #from pathlib import Path
+        #plt.savefig(str(Path.home() / "Desktop" / "graphviz_example.png"))
+        #plt.close()
 
 
         # Initialize simulator from diagram.

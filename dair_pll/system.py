@@ -117,7 +117,7 @@ class System(ABC, Module):
             (x_0.dim() - 2) > self.max_batch_dim:
             
             x_carry_list = [
-                self.simulate(x0i, c0i) for x0i, c0i in zip(x_0, carry_0)
+                self.simulate(x0i, c0i, steps) for x0i, c0i in zip(x_0, carry_0)
             ]
             # pylint: disable=E1103
             x_trajectory = torch.stack([x_carry[0] for x_carry in x_carry_list])
@@ -164,7 +164,10 @@ class System(ABC, Module):
             ``(*, ?)`` processed initial hidden state.
         """
         assert len(x_0.shape) >= 2
-        assert len(carry_0.shape) >= 1
+        # We don't care about an empty carry, and if TensorDict it can be shape[0] if no batching
+        #assert len(carry_0.shape) >= 1
+        if len(carry_0.shape) == 0:
+            carry_0 = carry_0.unsqueeze(-1)
         if self.max_batch_dim is not None:
             assert len(x_0.shape) <= 2 + self.max_batch_dim
             assert len(carry_0.shape) <= 1 + self.max_batch_dim

@@ -586,21 +586,31 @@ class MultibodyTerms(Module):
     plant_diagram: MultibodyPlantDiagram
     urdfs: Dict[str, str]
     inertia_mode: InertiaLearn
+    constant_bodies: List[str]
 
     def scalars_and_meshes(
             self) -> Tuple[Dict[str, float], Dict[str, MeshSummary]]:
         """Generates summary statistics for inertial and geometric quantities."""
         scalars = {}
         meshes = {}
-        _, all_body_ids = \
+        bodies, all_body_ids = \
             drake_utils.get_all_inertial_bodies(
                 self.plant_diagram.plant,
                 self.plant_diagram.model_ids)
 
         friction_coefficients = self.contact_terms.get_friction_coefficients()
 
-        for body_pi, body_id in zip(self.lagrangian_terms.pi_cm(), all_body_ids):
+        for body_pi, body_id, body in zip(self.lagrangian_terms.pi_cm(), all_body_ids, bodies):
+            if body.name() in self.constant_bodies:
+                continue
             body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
+            if not self.inertia_mode.mass:
+                del body_scalars["m"]
+            if not self.inertia_mode.com:
+                del body_scalars["com_x"], body_scalars["com_y"], body_scalars["com_z"]
+            if not self.inertia_mode.inertia:
+                del body_scalars["I_xx"], body_scalars["I_yy"], body_scalars["I_zz"]
+                del body_scalars["I_xy"], body_scalars["I_xz"], body_scalars["I_yz"]
 
             scalars.update({
                 f'{body_id}_{scalar_name}': scalar
@@ -697,6 +707,9 @@ class MultibodyTerms(Module):
               the geometry should be represented.
         """
         super().__init__()
+
+        self.inertia_mode = inertia_mode
+        self.constant_bodies = constant_bodies
 
         plant_diagram = MultibodyPlantDiagram(urdfs, g_frac=g_frac)
         plant = plant_diagram.plant.ToSymbolic()

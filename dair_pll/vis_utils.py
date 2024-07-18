@@ -123,7 +123,6 @@ def generate_visualization_system(
     """
     # pylint: disable=too-many-locals
     # Start with true base system.
-    print("Enter generate_visualization_system")
     double_urdfs = deepcopy(base_system.urdfs)
     double_urdfs.update({
         k: file_utils.get_geometrically_accurate_urdf(v) for k, v in \
@@ -143,13 +142,11 @@ def generate_visualization_system(
             (k + LEARNED_TAG): v for k, v in learned_system.urdfs.items()
         })
 
-    print("Creating visualization system from double urdfs")
     visualization_system = DrakeSystem(double_urdfs,
                                        base_system.dt,
                                        visualization_file=visualization_file)
 
     # Recolors every perception geometry to default colors
-    print("Recolor perception geometry")
     plant_diagram = visualization_system.plant_diagram
     plant = plant_diagram.plant
     scene_graph = plant_diagram.scene_graph
@@ -184,7 +181,6 @@ def generate_visualization_system(
 
     # Changing perception properties requires the ``Simulator`` to be
     # re-initialized.
-    print("Reinitialize simulation")
     plant_diagram.sim.Initialize()
 
     return visualization_system

@@ -59,8 +59,6 @@ class TrajectorySliceDataset(Dataset):
                 for key in [key for key in his_state.keys()]:
                     if key not in self.config.his_state_keys:
                         del his_state[key]
-                # TODO: HACK Add Time Index
-                his_state["time"] = index * torch.ones([1, 1], dtype=torch.int32)
             self.previous_states_slices.append(his_state)
 
             pred_state = trajectory[(index + 1):(index + 1 + future_states_length)]
@@ -69,8 +67,6 @@ class TrajectorySliceDataset(Dataset):
                 for key in [key for key in pred_state.keys()]:
                     if key not in self.config.pred_state_keys:
                         del pred_state[key]
-                # TODO: HACK Add Time Index
-                pred_state["time"] = (index+1) * torch.ones([1, 1], dtype=torch.int32)
             self.future_states_slices.append(pred_state)
 
     def __len__(self) -> int:
@@ -113,6 +109,11 @@ class TrajectorySet:
             trajectory_list: List of new ``(T, *)`` state trajectories.
             indices: indices associated with on-disk filenames.
         """
+        # Move to default device
+        trajectory_list = [traj.to(torch.get_default_device()) for traj in trajectory_list]
+        for trajectory in trajectory_list:
+            # TODO: HACK add time manually
+            trajectory["time"] = torch.arange(trajectory.shape[0], dtype=torch.int32).reshape(trajectory.shape + (1,))
         self.trajectories.extend(trajectory_list)
         for trajectory in trajectory_list:
             self.slices.add_slices_from_trajectory(trajectory)

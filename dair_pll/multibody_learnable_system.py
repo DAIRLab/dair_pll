@@ -218,12 +218,14 @@ class MultibodyLearnableSystem(System):
         reg_norm = regularizers[0]
         reg_weight = regularizers[1]
         reg_inertia_cond = regularizers[2]
+        reg_smooth_traj = regularizers[3]
 
         loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
                (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
                (self.w_dev * loss_dev) + \
-               (1e-5 * regularizers[2])
+               (1e-5 * reg_inertia_cond) + \
+               (1e0 * reg_smooth_traj)
 
         return loss
 
@@ -267,6 +269,7 @@ class MultibodyLearnableSystem(System):
         #     # This means the CoM locations are getting learned.
         #     pass
 
+        regularizers.append(torch.zeros((x.shape[-2],)))
         return regularizers
 
     def calculate_contactnets_loss_terms(self,
@@ -352,18 +355,20 @@ class MultibodyLearnableSystem(System):
         q_comp = (1.0/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         # Penalize Deviation from measured contact impulses
-        # This is NOT in velocity, but no reasonable distance metric for conversion.
-        # Need to tune w_dev directly
+        # This is in impulse^2, but take deviation w.r.t. Delassus to
+        # add 1/mass term to bring into Energy.
         q_dev = torch.zeros_like(q_pred)
         Q_dev = torch.zeros_like(Q_delassus)
         for key in contact_forces.keys():
             if key in obj_pair_list:
                 idx = obj_pair_list.index(key)
-                impulse_measured = -pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1)) * dt
+                impulse_measured = pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1)) * dt
                 q_dev[..., idx, :] = impulse_measured[..., 2, :]
                 q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = impulse_measured[..., :2, :]
-                Q_dev[..., idx, idx] = 1.0
-        Q_final = Q_delassus + Q_dev
+                # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
+                for diag_idx in (idx, len(obj_pair_list)+2*idx, (len(obj_pair_list)+2*idx) + 1):
+                    Q_dev[..., diag_idx, diag_idx] = 1.0
+        Q_final = Q_delassus + (self.w_dev/self.w_pred)*Q_dev
 
         q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
                      (self.w_diss/self.w_pred)*q_diss + \
@@ -375,6 +380,7 @@ class MultibodyLearnableSystem(System):
 
         # Calculate the prediction constant based on loss formulation mode.
         constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        constant_dev = 0.5 * pbmm(q_dev.transpose(-1, -2), q_dev)
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
@@ -402,12 +408,13 @@ class MultibodyLearnableSystem(System):
         constant_pred[invalid] *= 0.
         impulses[invalid.expand(impulses.shape)] = 0.
 
-        loss_pred = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_final, impulses)) \
+        loss_pred = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_delassus, impulses)) \
                     + pbmm(impulses.transpose(-1, -2), q_pred) + constant_pred
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
         loss_diss = pbmm(impulses.transpose(-1, -2), q_diss)
-        loss_dev = pbmm(impulses.transpose(-1, -2), q_dev)
+        loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
+                    + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1), \
@@ -631,6 +638,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     def __init__(self,
                  trajectory_model: str,
                  traj_len: int,
+                 true_traj: Optional[Tensor] = None,
                  **kwargs) -> None:
         ## Construct Super System
         super().__init__(**kwargs)
@@ -645,9 +653,27 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        model_state = torch.tensor([0.0, 0.0524, 0., 0., 0., 0.])
-        self.trajectory = ParameterList([Parameter(torch.clone(model_state), requires_grad=True) for _ in range(traj_len)])
+        model_state = torch.vstack([torch.tensor([0.04, 0.0524, 0., 0., 0., 0.])] * traj_len)
+        if true_traj is not None:
+            model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
+        self.trajectory = ParameterList([Parameter(model_state[idx, :], requires_grad=True) for idx in range(traj_len)])
 
+    def get_regularization_terms(self, x: Tensor, u: Tensor,
+                                 x_plus: Tensor, **kwargs) -> List[Tensor]:
+        """Return a list of possible regularization terms.  This template
+        returns no regularizers.
+        """
+        # TODO: HACK re-add mass matrix condition term
+        regularizers = []
+        # Append 0 thrice for the residual norm and weights, and mass condition
+        regularizers.append(torch.zeros((x.shape[-2],)))
+        regularizers.append(torch.zeros((x.shape[-2],)))
+        regularizers.append(torch.zeros((x.shape[-2],)))
+
+        # Add smooth trajectory term
+        regularizers.append(self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus)))
+
+        return regularizers
 
     def construct_state_tensor(self,
         data_state: Tensor) -> Tensor:
@@ -666,19 +692,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 model_states[model] = data_state[key]
                 if len(model_states[model].shape) == 1:
                     model_states[model] = model_states[model].reshape(model_states.shape[0], 1)
-        # Get Timestep Index
-        times = data_state["time"].reshape(data_state["time"].shape[0], 1)
 
         # Input Sanitation
-        assert len(times.shape) == 2
-        assert times.shape[1] == 1
+        assert data_state["time"].shape == data_state.shape + (1,)
         for model, state in model_states.items():
-            assert len(state.shape) == 2
-            assert state.shape[0] == times.shape[0]
-            assert state.shape[1] == self.model_spaces[model].n_x
+            assert state.shape == data_state.shape + (self.model_spaces[model].n_x,)
         
         # Get trajectory parameters
-        traj_x = torch.vstack([self.trajectory[int(i)] for i in times.flatten()]) # [batch x traj_n_x]
+        traj_x = torch.stack([self.trajectory[int(i)] for i in data_state["time"].flatten()])
+        traj_x = traj_x.reshape(data_state.shape + (self.model_spaces[self.trajectory_model].n_x,)) # [batch x traj_n_x]
 
         # Loop through models and construct state
         ret_q = torch.tensor([])
@@ -694,11 +716,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 model_x = model_states[model]
 
             # Append to return value
-            ret_q = torch.hstack((ret_q, model_x[:, :space.n_q]))
-            ret_v = torch.hstack((ret_v, model_x[:, space.n_q:]))
+            if ret_q.numel() == 0:
+                ret_q = model_x[..., :space.n_q]
+                ret_v = model_x[..., space.n_q:]
+            else:
+                ret_q = torch.cat((ret_q, model_x[..., :space.n_q]), dim=-1)
+                ret_v = torch.cat((ret_v, model_x[..., space.n_q:]), dim=-1)
 
         # Return full state batch
-        return torch.hstack((ret_q, ret_v))
+        return torch.cat((ret_q, ret_v), dim=-1)
 
 
 class DeepStateAugment3D(Module):

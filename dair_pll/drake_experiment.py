@@ -3,8 +3,9 @@ import time
 from abc import ABC
 from dataclasses import field, dataclass
 from enum import Enum
-from typing import Any, List, Optional, cast, Dict, Callable
+from typing import Any, List, Optional, cast, Dict, Callable, Tuple, Union
 import pdb
+import numpy as np
 
 import torch
 from torch import Tensor
@@ -17,7 +18,8 @@ from dair_pll.deep_learnable_system import DeepLearnableExperiment
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.experiment import SupervisedLearningExperiment, \
     LEARNED_SYSTEM_NAME, PREDICTION_NAME, TARGET_NAME, \
-    TRAJECTORY_PENETRATION_NAME, LOGGING_DURATION
+    TRAJECTORY_PENETRATION_NAME, LOGGING_DURATION, StatisticsDict, StatisticsValue, \
+    MAX_SAVED_TRAJECTORIES, TRAJECTORY_ERROR_NAME, AVERAGE_TAG
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float
@@ -25,6 +27,7 @@ from dair_pll.multibody_terms import InertiaLearn
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, MultibodyLearnableSystemWithTrajectory
 from dair_pll.system import System, SystemSummary
+from dair_pll.dataset_management import TrajectorySet
 
 @dataclass
 class DrakeSystemConfig(SystemConfig):
@@ -347,7 +350,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         # To save space on W&B storage, only generate comparison videos at first
         # and best epoch, the latter of which is implemented in
         # :meth:`_evaluation`.
-        skip_videos = False #if epoch==0 else True
+        skip_videos = False if (epoch % 100 == 0) else True
 
         epoch_vars, learned_system_summary = \
             self.build_epoch_vars_and_system_summary(statistics, learned_system,
@@ -466,6 +469,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
     def get_learned_drake_system(
             self, learned_system: System) -> Optional[DrakeSystem]:
         if self.visualizer_regeneration_is_required():
+            base_config = cast(DrakeSystemConfig, self.config.base_config)
             new_urdfs = cast(MultibodyLearnableSystem,
                              learned_system).generate_updated_urdfs('vis')
             return DrakeSystem(new_urdfs, self.get_drake_system().dt,
@@ -564,6 +568,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             self.learned_system = MultibodyLearnableSystemWithTrajectory(
                 trajectory_model = self.trajectory_model_name,
                 traj_len = traj.shape[0],
+                true_traj = None,
                 init_urdfs = learnable_config.urdfs,
                 dt = self.config.data_config.dt,
                 inertia_mode = learnable_config.inertia_mode,
@@ -574,12 +579,64 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 w_pen = learnable_config.w_pen.value,
                 w_res = learnable_config.w_res.value,
                 w_res_w = learnable_config.w_res_w.value,
+                w_dev = learnable_config.w_dev.value,
                 output_urdfs_dir=output_dir,
                 do_residual=learnable_config.do_residual,
                 represent_geometry_as=learnable_config.represent_geometry_as,
                 randomize_initialization=learnable_config.randomize_initialization,
                 g_frac=learnable_config.g_frac)
         return self.learned_system
+
+    def trajectory_predict(
+            self,
+            x: List[Tensor],
+            system: System,
+            do_detach: bool = False) -> Tuple[List[Tensor], List[Tensor]]:
+        """Predict from full lists of trajectories.
+
+        Preloads initial conditions from the first ``t_skip + 1`` elements of
+        each trajectory.
+
+        Args:
+            x: List of ``(*, T, space.n_x)`` trajectories.
+            system: System to run prediction on.
+            do_detach: Whether to detach each prediction from the computation
+              graph; useful for memory management for large groups of
+              trajectories.
+
+        Returns:
+            List of ``(*, T - t_skip - 1, space.n_x)`` predicted trajectories.
+
+            List of ``(*, T - t_skip - 1, space.n_x)`` target trajectories.
+
+        """
+        # TODO: HACK don't hardcode "state"
+        x_tensor = [(x_i["state"] if isinstance(x_i, TensorDict) else x_i) for x_i in x]
+        t_skip = self.config.data_config.slice_config.t_skip
+        t_begin = t_skip + 1
+        x_0 = [x_i[..., :t_begin, :] for x_i in x_tensor]
+        targets = [x_i[..., t_begin:, :] for x_i in x_tensor]
+        predictions = []
+        if isinstance(system, MultibodyLearnableSystemWithTrajectory):
+            # Prediction is directly in system
+            predictions.extend([system.construct_state_tensor(x_i[..., t_begin:]) for x_i in x])
+        else:
+            # Simulate for prediction
+            assert system.carry_callback is not None
+            carry_0 = system.carry_callback()
+            prediction_horizon = [x_i.shape[-2] - t_skip - 1 for x_i in x_tensor]
+            for x_0_i, horizon_i, target_i in zip(x_0, prediction_horizon, targets):
+                target_shape = target_i.shape
+
+                x_prediction_i, carry_i = system.simulate(x_0_i, carry_0, horizon_i)
+                del carry_i
+                to_append = x_prediction_i[..., 1:, :].reshape(target_shape)
+                if do_detach:
+                    predictions.append(to_append.detach().clone())
+                    del x_prediction_i
+                else:
+                    predictions.append(to_append)
+        return predictions, targets
 
     def evaluate_systems_on_sets(
             self, systems: Dict[str, System],
@@ -611,8 +668,60 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
         # TODO: Fill in for tactile experiment
         # At minimum, fill in true target object trajectory (if it exists)
         # and predicted object trajectory from the system.
-        assert isinstance(learned_system, MultibodyLearnableSystemWithTrajectory)
-        return {}
+        stats = {}  # type: StatisticsDict
+        space = self.space
+
+        def to_json(possible_tensor: Union[float, List, Tensor]) -> \
+                StatisticsValue:
+            """Converts tensor to :class:`~np.ndarray`, which enables saving
+            stats as json."""
+            if isinstance(possible_tensor, list):
+                return [to_json(value) for value in possible_tensor]
+            if torch.is_tensor(possible_tensor):
+                tensor = cast(Tensor, possible_tensor)
+                return tensor.detach().cpu().numpy()
+
+            assert isinstance(possible_tensor, float)
+            return possible_tensor
+
+        for set_name, trajectory_set in sets.items():
+            trajectories = trajectory_set.trajectories
+            n_saved_trajectories = min(MAX_SAVED_TRAJECTORIES,
+                                       len(trajectories))
+            if n_saved_trajectories == 0:
+                continue
+
+            for system_name, system in systems.items():
+                trajectories = [t.unsqueeze(0).squeeze(-1) for t in trajectories]
+                traj_pred, traj_target = self.trajectory_predict(
+                    trajectories, system, True)
+                while len(traj_target[0].shape) > 2:
+                    traj_target = [t.squeeze(0) for t in traj_target]
+                    traj_pred = [t.squeeze(0) for t in traj_pred]
+                    if traj_target[0].shape[0] != 1:
+                        break
+                stats[f'{set_name}_{system_name}_{TARGET_NAME}'] = \
+                    to_json(traj_target[:n_saved_trajectories])
+                stats[f'{set_name}_{system_name}_{PREDICTION_NAME}'] = \
+                    to_json(traj_pred[:n_saved_trajectories])
+
+                # pylint: disable=E1103
+                trajectory_mse = torch.stack([
+                    space.state_square_error(tp, tt)
+                    for tp, tt in zip(traj_pred, traj_target)
+                ])
+                stats[f'{set_name}_{system_name}_{TRAJECTORY_ERROR_NAME}'] = \
+                    to_json(trajectory_mse)
+
+        summary_stats = {}  # type: StatisticsDict
+        for key, stat in stats.items():
+            if isinstance(stat, np.ndarray):
+                if len(stat) > 0:
+                    if isinstance(stat[0], float):
+                        summary_stats[f'{key}_{AVERAGE_TAG}'] = np.average(stat)
+
+        stats.update(summary_stats)
+        return stats
 
     def base_and_learned_comparison_summary(
             self, statistics: Dict, learned_system: System) -> SystemSummary:
@@ -659,8 +768,48 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 videos[f'{set_name}_trajectory_prediction_{traj_num}'] = \
                     (video, framerate)
 
-
         return SystemSummary(scalars={}, videos=videos, meshes={})
+
+    def write_to_wandb(self, epoch: int, learned_system: System,
+                       statistics: Dict) -> None:
+        """In addition to extracting and writing training progress summary via
+        the parent :py:meth:`Experiment.write_to_wandb` method, also make a
+        breakdown plot of loss contributions for the ContactNets loss
+        formulation.
+
+        Args:
+            epoch: Current epoch.
+            learned_system: System being trained.
+            statistics: Summary statistics for learning process.
+        """
+        super().write_to_wandb(epoch, learned_system, statistics)
+
+        # Add X and dX trajectories
+        import wandb
+        for traj_num in [0]:
+            for set_name in ['train']:
+                target_key = f'{set_name}_{LEARNED_SYSTEM_NAME}' + \
+                             f'_{TARGET_NAME}'
+                prediction_key = f'{set_name}_{LEARNED_SYSTEM_NAME}' + \
+                                 f'_{PREDICTION_NAME}'
+                if not target_key in statistics:
+                    continue
+                target_trajectory = torch.tensor(statistics[target_key][traj_num])
+                prediction_trajectory = torch.tensor(
+                    statistics[prediction_key][traj_num])
+                wandb.log({"cube_traj_x" : wandb.plot.line_series(
+                                       xs=[t for t in range(target_trajectory.shape[0])], 
+                                       ys=[target_trajectory[:, 0].detach().cpu().tolist(), prediction_trajectory[:, 0].detach().cpu().tolist()],
+                                       keys=["ground truth", "estimated"],
+                                       title="cube_traj_x",
+                                       xname="timestep")}, step=epoch)
+                wandb.log({"cube_traj_vx" : wandb.plot.line_series(
+                                       xs=[t for t in range(target_trajectory.shape[0])], 
+                                       ys=[target_trajectory[:, 5].detach().cpu().tolist(), prediction_trajectory[:, 5].detach().cpu().tolist()],
+                                       keys=["ground truth", "estimated"],
+                                       title="cube_traj_vx",
+                                       xname="timestep")}, step=epoch)
+
 
 
     def get_loss_args(self,

@@ -91,7 +91,8 @@ class WeightsAndBiasesManager:
     @staticmethod
     def update(epoch: int, scalars: Dict[str, float],
                videos: Dict[str, Tuple[np.ndarray, int]],
-               meshes: Dict[str, MeshSummary]) -> None:
+               meshes: Dict[str, MeshSummary],
+               objs: Dict[str, Any] = {}) -> None:
         """Write new epoch summary to Weights and Biases.
 
         Args:
@@ -99,8 +100,10 @@ class WeightsAndBiasesManager:
             scalars: Scalars to log.
             videos: Videos to log.
             meshes: Meshes to log.
+            objs: Other wandb objects to log.
         """
 
         _write_scalars(epoch, scalars)
         _write_videos(epoch, videos)
         _write_meshes(epoch, meshes)
+        wandb.log(objs, step=epoch)
