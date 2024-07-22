@@ -20,6 +20,7 @@ import numpy as np
 import torch
 from torch import Tensor
 from torch.nn import Module
+from tensordict.tensordict import TensorDict, TensorDictBase
 
 from dair_pll import state_space
 from dair_pll.integrator import Integrator
@@ -210,7 +211,7 @@ class System(ABC, Module):
         """
 
         # TODO: HACK "state" is hard-coded, switch to local arg
-        if isinstance(data_state, TensorDict):
+        if isinstance(data_state, TensorDictBase):
             return data_state["state"]
 
         return data_state

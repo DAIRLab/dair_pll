@@ -380,7 +380,6 @@ class SupervisedLearningExperiment(ABC):
 
             if optimizer is not None:
                 optimizer.zero_grad()
-
             loss = self.batch_loss(x_i, y_i, system)
             losses.append(loss.clone().detach())
 
@@ -655,7 +654,6 @@ class SupervisedLearningExperiment(ABC):
         # Calculate the training loss before any parameter updates.  Calls
         # ``train_epoch`` without providing an optimizer, so no gradient steps
         # will be taken.
-        print("Training Loss Pre-Calc")
         learned_system.eval()
         training_loss = self.train_epoch(train_dataloader, learned_system)
 

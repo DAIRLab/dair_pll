@@ -9,7 +9,7 @@ import numpy as np
 
 import torch
 from torch import Tensor
-from tensordict.tensordict import TensorDict, LazyStackedTensorDict
+from tensordict.tensordict import TensorDict, TensorDictBase
 from torch.utils.data import DataLoader
 
 from dair_pll import file_utils
@@ -350,7 +350,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         # To save space on W&B storage, only generate comparison videos at first
         # and best epoch, the latter of which is implemented in
         # :meth:`_evaluation`.
-        skip_videos = False if (epoch % 100 == 0) else True
+        skip_videos = False if (epoch % 20 == 0) else True
 
         epoch_vars, learned_system_summary = \
             self.build_epoch_vars_and_system_summary(statistics, learned_system,
@@ -611,7 +611,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
 
         """
         # TODO: HACK don't hardcode "state"
-        x_tensor = [(x_i["state"] if isinstance(x_i, TensorDict) else x_i) for x_i in x]
+        x_tensor = [(x_i["state"] if isinstance(x_i, TensorDictBase) else x_i) for x_i in x]
         t_skip = self.config.data_config.slice_config.t_skip
         t_begin = t_skip + 1
         x_0 = [x_i[..., :t_begin, :] for x_i in x_tensor]
@@ -862,8 +862,8 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             https://proceedings.mlr.press/v155/pfrommer21a.html
         """
         assert isinstance(system, MultibodyLearnableSystemWithTrajectory)
-        assert isinstance(x_past, TensorDict) or isinstance(x_past, LazyStackedTensorDict)
-        assert isinstance(x_future, TensorDict) or isinstance(x_future, LazyStackedTensorDict)
+        assert isinstance(x_past, TensorDictBase)
+        assert isinstance(x_future, TensorDictBase)
 
         # TODO: Pass contact forces
         loss = system.contactnets_loss(**self.get_loss_args(x_past, x_future, system))

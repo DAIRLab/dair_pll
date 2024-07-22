@@ -167,7 +167,7 @@ TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 300, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80
 T_PREDICTION = 1
 
 # Optimization configuration.
-CUBE_LR = 1e-3
+CUBE_LR = 2e-3
 ELBOW_LR = 1e-3
 ASYMMETRIC_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR,
@@ -468,7 +468,7 @@ def main(storage_folder_name: str = "",
               help="weight of prediction term in ContactNets loss")
 @click.option('--w-comp',
               type=float,
-              default=1e1,
+              default=2e1,
               help="weight of complementarity term in ContactNets loss")
 @click.option('--w-diss',
               type=float,
@@ -476,7 +476,7 @@ def main(storage_folder_name: str = "",
               help="weight of dissipation term in ContactNets loss")
 @click.option('--w-pen',
               type=float,
-              default=1e0,
+              default=2e1,
               help="weight of penetration term in ContactNets loss")
 @click.option('--w-res',
               type=float,

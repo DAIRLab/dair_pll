@@ -31,7 +31,7 @@ import pdb
 import time
 # from sappy import SAPSolver  # type: ignore
 from torch import Tensor
-from tensordict.tensordict import TensorDict
+from tensordict.tensordict import TensorDict, TensorDictBase
 from torch.nn import Module, ParameterList, Parameter
 import torch.nn as nn
 
@@ -225,7 +225,7 @@ class MultibodyLearnableSystem(System):
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
                (self.w_dev * loss_dev) + \
                (1e-5 * reg_inertia_cond) + \
-               (1e0 * reg_smooth_traj)
+               (2e0 * reg_smooth_traj)
 
         return loss
 
@@ -616,7 +616,7 @@ class MultibodyLearnableSystem(System):
 
         # TODO: HACK "state" is hard-coded, switch to local arg
 
-        if isinstance(data_state, TensorDict):
+        if isinstance(data_state, TensorDictBase):
             return data_state["state"]
 
         return data_state
@@ -684,7 +684,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
 
         # Fill Partial States
-        assert isinstance(data_state, TensorDict)
+        assert isinstance(data_state, TensorDictBase)
         model_states = {}
         for model, _ in self.model_spaces.items():
             key = model + "_state"
