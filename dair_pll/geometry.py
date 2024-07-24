@@ -656,6 +656,14 @@ class GeometryCollider:
                 geometry_a, BoundedConvexCollisionGeometry):
             return GeometryCollider.collide_plane_convex(
                 geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB))
+        if isinstance(geometry_a, Box) and isinstance(
+                geometry_b, Sphere):
+            return GeometryCollider.collide_box_sphere(
+                geometry_a, geometry_b, R_AB, p_AoBo_A)
+        if isinstance(geometry_a, Sphere) and isinstance(
+                geometry_b, Box):
+            return GeometryCollider.collide_plane_convex(
+                geometry_b, geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB))
         if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
                 geometry_b, BoundedConvexCollisionGeometry):
             return GeometryCollider.collide_convex_convex(geometry_a, geometry_b,
@@ -665,6 +673,67 @@ class GeometryCollider:
             "pair of following types:",
             type(geometry_a).__name__,
             type(geometry_b).__name__)
+
+    @staticmethod
+    def collide_box_sphere(box_a: Box, sphere_b: sphere,
+                             R_AB: Tensor, p_AoBo_A: Tensor) -> \
+            Tuple[Tensor, Tensor, Tensor, Tensor]:
+        """
+        Implementation of ``GeometryCollider.collide()`` when
+        ``geometry_a`` is a ``Box`` and ``geometry_b`` is a
+        ``Sphere``.
+
+        box_a: Box object
+        sphere_b: Sphere object
+        R_AB (batch, 3, 3): rotation from box to sphere model frames
+        p_AoBo_A (batch, 1, 3): vector from box to sphere in box frame
+
+        Returns:
+        phi (batch, n_c = 1, 1): distance between objects
+        R_AC (batch, n_c = 1, 3, 3): A model frame to contact frame [i.e. z == contact normal]
+        p_AoAc_A (batch, n_c=1, 3): A's contact in A's frame
+        p_BoBc_B (batch, n_c=1, 3): B's contact in B's frame
+        """
+        batch_dim = R_AB.shape[:-2]
+        assert R_AB.shape == batch_dim + (3, 3)
+        assert p_AoBo_A.shape == batch_dim + (1, 3)
+        assert isinstance(box_a, Box)
+        assert isinstance(sphere_b, Sphere)
+        
+        breakpoint()
+        ## Get nearest point on box
+        # Expand box lengths to batch size
+        box_lengths = box_a.get_half_lengths().expand(p_AoBo_A.size())
+        # Clamp to box
+        # NOTE: detaching witness point from position so it is piecewise constant w.r.t. location params
+        p_AoBo_A_clamp = torch.clamp(p_AoBo_A.detach(), min=-box_lengths, max=box_lengths)
+        # Project onto nearest face
+        # Construct difference vector
+        p_AoBo_A_diffs = torch.sign(p_AoBo_A_clamp)*box_lengths - p_AoBo_A_clamp
+        # Mask out all but the closest
+        mask = torch.zeros_like(p_AoBo_A_diffs)
+        mask[..., torch.arange(mask.shape[-2]), torch.argmin(torch.abs(p_AoBo_A_diffs))] = 1.0
+        p_AoBo_A_diffs = p_AoBo_A_diffs * mask
+        # Actual projection to get nearest point
+        p_AoAc_A = p_AoBo_A_clamp + p_AoBo_A_diffs
+
+        # Get contact normal == normalized(nearest point -> center of the sphere)
+        p_BoAc_A = p_AoAc_A - p_AoBo_A
+        # Calculate directions (use torch nn functional normalize)
+        directions_a = torch.nn.functional.normalize()
+
+        # get support point of sphere
+        p_BoBc_B = sphere_b.support_points(directions_b)
+
+        # Get R_AC by taking directions_a
+        # Unsqueeze witness point dimension to 1
+        R_AC = rotation_matrix_from_one_vector(directions_A, -1).unsqueeze(-3)
+
+        # Get length of witness point distance projected onto contact normal
+        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)  
+
+
+        return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod
     def collide_plane_convex(geometry_b: BoundedConvexCollisionGeometry,
