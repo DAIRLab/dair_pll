@@ -324,12 +324,20 @@ class ContactTerms(Module):
         collision_geometry_set = plant_diagram.collision_geometry_set
         geometry_ids = collision_geometry_set.ids
         coulomb_frictions = collision_geometry_set.frictions
-        collision_candidates = collision_geometry_set.collision_candidates
 
         # sweep over collision elements
         geometries, rotations, translations, drake_spatial_jacobians = \
             ContactTerms.extract_geometries_and_kinematics(
                 plant, inspector, geometry_ids, context, represent_geometry_as, constant_bodies=constant_bodies)
+
+        collision_candidates = []
+        # If Training, only consider collisions between at least one learnable object
+        if self.training:
+            for candidate in collision_geometry_set.collision_candidates:
+                if geometries[candidate[0]].learnable or geometries[candidate[1]].learnable:
+                    collision_candidates.append(candidate)
+        else:
+            collision_candidates = collision_geometry_set.collision_candidates
 
         for geometry_index, geometry_pair in enumerate(collision_candidates):
             if geometries[geometry_pair[0]] > geometries[geometry_pair[1]]:
@@ -473,7 +481,7 @@ class ContactTerms(Module):
             .reshape(friction_jacobian_shape)
         return torch.cat((J_n, J_t), dim=-2)
 
-    def forward(self, q: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, q: Tensor) -> Tuple[Tensor, Tensor, List, List, List]:
         """Evaluates Lagrangian dynamics terms at given state and input.
 
         Uses :py:class:`GeometryCollider` and kinematics to construct signed
@@ -533,13 +541,14 @@ class ContactTerms(Module):
         phi_list = []
         obj_pair_list = []
         R_FW_list = []
+        mu_list = []
 
         # bundle all modules and kinematics into a tuple iterator
         a_b = zip(geometries_a, geometries_b, R_AW, R_BW, p_AoBo_A, Jv_V_WA_W,
-                  Jv_V_WB_W)
+                  Jv_V_WB_W, deal(mu))
 
         # iterate over body pairs (Ai, Bi)
-        for geo_a, geo_b, R_AiW, R_BiW, p_AiBi_A, Jv_V_WAi_W, Jv_V_WBi_W in a_b:
+        for geo_a, geo_b, R_AiW, R_BiW, p_AiBi_A, Jv_V_WAi_W, Jv_V_WBi_W, mu_i in a_b:
             # relative rotation between Ai and Bi, (*, 3, 3)
             R_AiBi = pbmm(R_AiW, R_BiW.transpose(-1, -2))
 
@@ -562,6 +571,7 @@ class ContactTerms(Module):
             Jv_v_W_BcAc_F.append(pbmm(R_FW, Jv_v_WBc_W - Jv_v_WAc_W))
             phi_list.append(phi_i)
             obj_pair_list.extend(n_c * [(geo_a.name, geo_b.name)])
+            mu_list.extend(n_c * [mu_i])
             R_FW_list.extend([R_FW[..., i, :, :] for i in range(n_c)])
 
         # pylint: disable=E1103
@@ -571,7 +581,7 @@ class ContactTerms(Module):
         J = ContactTerms.relative_velocity_to_contact_jacobian(
             torch.cat(Jv_v_W_BcAc_F, dim=-3), mu_repeated)
 
-        return phi, J, obj_pair_list, R_FW_list
+        return phi, J, obj_pair_list, R_FW_list, mu_list
 
 
 class MultibodyTerms(Module):
@@ -656,7 +666,7 @@ class MultibodyTerms(Module):
         return scalars, meshes
 
     def forward(self, q: Tensor, v: Tensor,
-                u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+                u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List, List]:
         """Evaluates multibody system dynamics terms at given state and input.
 
         Calculation is performed as a thin wrapper around
@@ -677,10 +687,10 @@ class MultibodyTerms(Module):
             (\*, n_v) Contact-free acceleration inv(M(q)) * F(q).
         """
         M, non_contact_acceleration = self.lagrangian_terms(q, v, u)
-        phi, J, obj_pair_list, R_FW_list = self.contact_terms(q)
+        phi, J, obj_pair_list, R_FW_list, mu_list = self.contact_terms(q)
 
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
-        return delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list
+        return delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list
 
     def __init__(self, urdfs: Dict[str, str], inertia_mode: InertiaLearn = InertiaLearn(),
                  constant_bodies: List[str] = [],

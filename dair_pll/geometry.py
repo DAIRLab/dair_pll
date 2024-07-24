@@ -69,6 +69,7 @@ class CollisionGeometry(ABC, Module):
     """
 
     name: str = ""
+    learnable: bool = False
 
     def __ge__(self, other) -> bool:
         """Evaluate total ordering of two geometries based on their types."""
@@ -222,7 +223,7 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         if self.n_query > 1 and (hint is not None) and hint.shape == directions.shape:
             # Find linear combination of queries 
             # Lst Sq: queries (*, 3, n_query) * ? (*, n_query, 1) == hint (*, 1, 3)
-            # TODO: HACK, does this differentiate correctly? Should I attach queries?
+            # Note: solution needs to be detached from the gradient chain.
             sol = torch.linalg.lstsq(queries.detach().transpose(-1, -2), hint.unsqueeze(-1)).solution
             return pbmm(queries.transpose(-1, -2), sol).transpose(-1, -2)
 
@@ -266,6 +267,7 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         super().__init__(n_query)
         scaled_vertices = vertices.clone()/_NOMINAL_HALF_LENGTH
         self.vertices_parameter = Parameter(scaled_vertices, requires_grad=learnable)
+        self.learnable = learnable
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Return batched view of static vertex set"""
@@ -343,6 +345,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         self.network = HomogeneousICNN(depth, width, scale=length_scale, learnable=learnable)
         self.perturbations = torch.cat((torch.zeros(
             (1, 3)), perturbation * (torch.rand((n_query - 1, 3)) - 0.5)))
+        self.learnable = learnable
 
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Return batched view of support points of interest.
@@ -429,6 +432,7 @@ class Box(SparseVertexConvexCollisionGeometry):
         self.length_params = Parameter(scaled_half_lengths.view(1, -1),
                                        requires_grad=learnable)
         self.unit_vertices = _UNIT_BOX_VERTICES.clone().to(device=self.length_params.device)
+        self.learnable = learnable
 
     def get_half_lengths(self) -> Tensor:
         """From the stored :py:attr:`length_params`, compute the half lengths of
@@ -480,6 +484,7 @@ class Sphere(BoundedConvexCollisionGeometry):
 
         self.length_param = Parameter(radius.clone().view(()),
                                       requires_grad=learnable)
+        self.learnable = learnable
 
     def get_radius(self) -> Tensor:
         """From the stored :py:attr:`length_param`, compute the radius of the
@@ -647,6 +652,10 @@ class GeometryCollider:
                 geometry_b, BoundedConvexCollisionGeometry):
             return GeometryCollider.collide_plane_convex(
                 geometry_b, R_AB, p_AoBo_A)
+        if isinstance(geometry_b, Plane) and isinstance(
+                geometry_a, BoundedConvexCollisionGeometry):
+            return GeometryCollider.collide_plane_convex(
+                geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB))
         if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
                 geometry_b, BoundedConvexCollisionGeometry):
             return GeometryCollider.collide_convex_convex(geometry_a, geometry_b,

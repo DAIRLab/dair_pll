@@ -127,7 +127,7 @@ DT = 0.0068
 
 # Generation configuration.
 CUBE_X_0 = torch.tensor(
-    [0.1, 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
+    [0., 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
 #     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
      0.5, #0., 0.0524, # Robot finger_0 Q 1D (x)
      -0.5, #0., 0.0524, # Robot finger_1 Q 1D (x)
@@ -167,7 +167,7 @@ TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 300, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80
 T_PREDICTION = 1
 
 # Optimization configuration.
-CUBE_LR = 2e-3
+CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
 ASYMMETRIC_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR,
@@ -283,6 +283,7 @@ def main(storage_folder_name: str = "",
     urdf_asset = TRUE_URDFS[system][geometry]
     urdf = file_utils.get_asset(urdf_asset)
     urdfs = {system: urdf, 'robot': file_utils.get_asset("spherebot.urdf")}
+    bad_init_urdfs = {system: file_utils.get_asset(CUBE_BOX_URDF_ASSET_BAD), 'robot': file_utils.get_asset("spherebot.urdf")}
 
     additional_system_builders = (["dair_pll.drake_utils.pid_controller_builder"], [{"desired_state": ROBOT_DESIRED, "kp": 2.0, "kd": 100.0}])
 
@@ -318,7 +319,7 @@ def main(storage_folder_name: str = "",
                MultibodyLosses.PREDICTION_LOSS
 
         learnable_config = MultibodyLearnableSystemConfig(
-            urdfs=urdfs, loss=loss, inertia_mode=inertia_mode,
+            urdfs=bad_init_urdfs, loss=loss, inertia_mode=inertia_mode,
             constant_bodies = ["finger_0", "finger_1"],
             w_pred=w_pred,
             w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
@@ -488,7 +489,7 @@ def main(storage_folder_name: str = "",
               help="weight of residual weight regularization term in loss")
 @click.option('--w-dev',
               type=float,
-              default=2e3,
+              default=2e4,
               help="weight of deviation from measured contact forces in ContactNets loss")
 @click.option('--residual/--no-residual',
               default=False,

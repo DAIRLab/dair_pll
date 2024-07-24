@@ -306,7 +306,7 @@ class MultibodyLearnableSystem(System):
         eps = 1e-8 # TODO: HACK, make a hyperparameter
 
         # Begin loss calculation.
-        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list = \
+        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = \
             self.get_multibody_terms(q_plus, v_plus, u)
 
         # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
@@ -349,6 +349,14 @@ class MultibodyLearnableSystem(System):
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
+        # Constant Terms
+        # Calculate the prediction constant based on loss formulation mode.
+        constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        constant_pen = (torch.maximum(
+                            -phi, torch.zeros_like(phi))**2).sum(dim=-1)
+        constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
+
+
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J, dv.transpose(-1, -2))
@@ -359,28 +367,29 @@ class MultibodyLearnableSystem(System):
         # add 1/mass term to bring into Energy.
         q_dev = torch.zeros_like(q_pred)
         Q_dev = torch.zeros_like(Q_delassus)
+        constant_dev = torch.zeros_like(constant_pred)
         for key in contact_forces.keys():
             if key in obj_pair_list:
                 idx = obj_pair_list.index(key)
-                impulse_measured = pbmm(R_FW_list[idx].transpose(-1, -2), contact_forces[key].unsqueeze(-1)) * dt
-                q_dev[..., idx, :] = impulse_measured[..., 2, :]
-                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = impulse_measured[..., :2, :]
+                impulse_measured_W = contact_forces[key].unsqueeze(-1) * dt
+                # Constant term is lambda_m magnitude
+                constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W)
+                # q term is lambda_m in contact frame
+                impulse_measured_c = pbmm(R_FW_list[idx].transpose(-1, -2), impulse_measured_W)
+                # Normal impulse
+                q_dev[..., idx, :] = impulse_measured_c[..., 2, :]
+                # Scale friction impulse by mu
+                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = impulse_measured_c[..., :2, :] * mu_list[idx]
                 # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
-                for diag_idx in (idx, len(obj_pair_list)+2*idx, (len(obj_pair_list)+2*idx) + 1):
-                    Q_dev[..., diag_idx, diag_idx] = 1.0
+                Q_dev[..., idx, idx] = 1.0
+                # Scale friction terms by mu^2
+                for diag_idx in (len(obj_pair_list)+2*idx, (len(obj_pair_list)+2*idx) + 1):
+                    Q_dev[..., diag_idx, diag_idx] = 1.0 * mu_list[idx] * mu_list[idx]
         Q_final = Q_delassus + (self.w_dev/self.w_pred)*Q_dev
 
         q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
                      (self.w_diss/self.w_pred)*q_diss + \
                      (self.w_dev/self.w_pred)*q_dev
-
-        constant_pen = (torch.maximum(
-                            -phi, torch.zeros_like(phi))**2).sum(dim=-1)
-        constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
-
-        # Calculate the prediction constant based on loss formulation mode.
-        constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
-        constant_dev = 0.5 * pbmm(q_dev.transpose(-1, -2), q_dev)
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
@@ -426,7 +435,7 @@ class MultibodyLearnableSystem(System):
         straightfoward pass-through to the system's :py:class:`MultibodyTerms`.
         With a residual, the residual augments the continuous dynamics."""
 
-        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list = self.multibody_terms(
+        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = self.multibody_terms(
             q, v, u)
 
         if self.residual_net != None:
@@ -438,7 +447,7 @@ class MultibodyLearnableSystem(System):
         else:
             amended_acceleration = non_contact_acceleration
 
-        return delassus, M, J, phi, amended_acceleration, obj_pair_list, R_FW_list
+        return delassus, M, J, phi, amended_acceleration, obj_pair_list, R_FW_list, mu_list
 
     def init_residual_network(self, network_width: int, network_depth: int
         ) -> None:
@@ -653,7 +662,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        model_state = torch.vstack([torch.tensor([0.04, 0.0524, 0., 0., 0., 0.])] * traj_len)
+        model_state = torch.vstack([torch.tensor([0., 0.00524, 0., 0., 0., 0.])] * traj_len)
         if true_traj is not None:
             model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
         self.trajectory = ParameterList([Parameter(model_state[idx, :], requires_grad=True) for idx in range(traj_len)])
