@@ -142,6 +142,8 @@ class MultibodyLearnableSystem(System):
 
         self.residual_net = None
 
+        self.debug = 0
+
         if do_residual:
             # This system type is only well defined for systems containing a
             # fixed ground and one floating base system.
@@ -218,15 +220,16 @@ class MultibodyLearnableSystem(System):
         reg_norm = regularizers[0]
         reg_weight = regularizers[1]
         reg_inertia_cond = regularizers[2]
-        reg_smooth_traj = regularizers[3]
+
+        loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
 
         loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
                (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
                (self.w_dev * loss_dev) + \
-               (1e-5 * reg_inertia_cond) + \
-               (2e0 * reg_smooth_traj)
+               (1e-5 * reg_inertia_cond)
 
+        self.debug = self.debug + 1
         return loss
 
     def get_regularization_terms(self, x: Tensor, u: Tensor,
@@ -259,7 +262,7 @@ class MultibodyLearnableSystem(System):
 
         # Penalize the condition number of the mass matrix.
         q_plus, v_plus = self.space.q_v(x_plus)
-        _, M, _, _, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
+        _, M, _, _, _, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
         I_BBcm_B = M[..., :3, :3]
         regularizers.append(torch.linalg.cond(I_BBcm_B))
 
@@ -268,8 +271,6 @@ class MultibodyLearnableSystem(System):
         #    (self.multibody_terms.inertia_mode_txt != 'masses'):
         #     # This means the CoM locations are getting learned.
         #     pass
-
-        regularizers.append(torch.zeros((x.shape[-2],)))
         return regularizers
 
     def calculate_contactnets_loss_terms(self,
@@ -424,6 +425,9 @@ class MultibodyLearnableSystem(System):
         loss_diss = pbmm(impulses.transpose(-1, -2), q_diss)
         loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
                     + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
+
+        if self.debug % 50 == 0:
+            breakpoint()
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1), \
@@ -662,27 +666,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        model_state = torch.vstack([torch.tensor([0., 0.00524, 0., 0., 0., 0.])] * traj_len)
+        model_state = torch.vstack([torch.tensor([0., 0.03524, 0., 0., 0., 0.])] * traj_len)
         if true_traj is not None:
             model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
-        self.trajectory = ParameterList([Parameter(model_state[idx, :], requires_grad=True) for idx in range(traj_len)])
-
-    def get_regularization_terms(self, x: Tensor, u: Tensor,
-                                 x_plus: Tensor, **kwargs) -> List[Tensor]:
-        """Return a list of possible regularization terms.  This template
-        returns no regularizers.
-        """
-        # TODO: HACK re-add mass matrix condition term
-        regularizers = []
-        # Append 0 thrice for the residual norm and weights, and mass condition
-        regularizers.append(torch.zeros((x.shape[-2],)))
-        regularizers.append(torch.zeros((x.shape[-2],)))
-        regularizers.append(torch.zeros((x.shape[-2],)))
-
-        # Add smooth trajectory term
-        regularizers.append(self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus)))
-
-        return regularizers
+        self.trajectory = ParameterList([Parameter(model_state[idx, :], requires_grad=False) for idx in range(traj_len)])
 
     def construct_state_tensor(self,
         data_state: Tensor) -> Tensor:
@@ -734,6 +721,42 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Return full state batch
         return torch.cat((ret_q, ret_v), dim=-1)
+
+    def contactnets_loss(self,
+                         x: Tensor,
+                         u: Tensor,
+                         x_plus: Tensor,
+                         contact_forces: Dict[Tuple[str, str], Tensor] = {},
+                         loss_pool: Optional[pool.Pool] = None) -> Tensor:
+        r"""Calculate ContactNets [1] loss for state transition.
+
+        Change made to scale this loss to be per kilogram.  This helps prevent
+        sending mass quantities to zero in multibody learning scenarios.
+
+        References:
+            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
+            Discontinuous Contact Dynamics with Smooth, Implicit
+            Representations," Conference on Robotic Learning, 2020,
+            https://proceedings.mlr.press/v155/pfrommer21a.html
+
+        Args:
+            x: (\*, space.n_x) current state batch.
+            u: (\*, ?) input batch.
+            x_plus: (\*, space.n_x) current state batch.
+            contact_forces: mapping (obj_a_name, obj_b_name) to force on obj_b in World Frame
+            loss_pool: optional processing pool to enable multithreaded solves.
+
+        Returns:
+            (\*,) loss batch.
+        """
+        loss = super().contactnets_loss(x, u, x_plus, contact_forces, loss_pool)
+
+        # Add Prediction term for v->q, not covered by dynamics prediction term
+        # TODO: HACKadd q_pred weight to config
+        loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
+
+        loss += 1e2 * loss_q_pred
+        return loss
 
 
 class DeepStateAugment3D(Module):

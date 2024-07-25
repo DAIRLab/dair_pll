@@ -431,6 +431,7 @@ class Box(SparseVertexConvexCollisionGeometry):
         scaled_half_lengths = half_lengths.clone()/_NOMINAL_HALF_LENGTH
         self.length_params = Parameter(scaled_half_lengths.view(1, -1),
                                        requires_grad=learnable)
+        self.length_params.register_hook(lambda grad: print(f"Box Param Gradient: {grad}"))
         self.unit_vertices = _UNIT_BOX_VERTICES.clone().to(device=self.length_params.device)
         self.learnable = learnable
 
@@ -686,21 +687,20 @@ class GeometryCollider:
         box_a: Box object
         sphere_b: Sphere object
         R_AB (batch, 3, 3): rotation from box to sphere model frames
-        p_AoBo_A (batch, 1, 3): vector from box to sphere in box frame
+        p_AoBo_A (batch, 3): vector from box to sphere in box frame
 
         Returns:
-        phi (batch, n_c = 1, 1): distance between objects
+        phi (batch, n_c = 1): distance between objects
         R_AC (batch, n_c = 1, 3, 3): A model frame to contact frame [i.e. z == contact normal]
         p_AoAc_A (batch, n_c=1, 3): A's contact in A's frame
         p_BoBc_B (batch, n_c=1, 3): B's contact in B's frame
         """
         batch_dim = R_AB.shape[:-2]
         assert R_AB.shape == batch_dim + (3, 3)
-        assert p_AoBo_A.shape == batch_dim + (1, 3)
+        assert p_AoBo_A.shape == batch_dim + (3,)
         assert isinstance(box_a, Box)
         assert isinstance(sphere_b, Sphere)
         
-        breakpoint()
         ## Get nearest point on box
         # Expand box lengths to batch size
         box_lengths = box_a.get_half_lengths().expand(p_AoBo_A.size())
@@ -718,20 +718,29 @@ class GeometryCollider:
         p_AoAc_A = p_AoBo_A_clamp + p_AoBo_A_diffs
 
         # Get contact normal == normalized(nearest point -> center of the sphere)
-        p_BoAc_A = p_AoAc_A - p_AoBo_A
+        p_AcBo_A = p_AoBo_A - p_AoAc_A
         # Calculate directions (use torch nn functional normalize)
-        directions_a = torch.nn.functional.normalize()
+        directions_A = torch.nn.functional.normalize(p_AcBo_A, dim=-1)
+        # directions needs to be (..., 1, 3) for pbmm, then re-squeezed
+        directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB).squeeze(-2)
 
         # get support point of sphere
-        p_BoBc_B = sphere_b.support_points(directions_b)
+        p_BoBc_B = sphere_b.support_points(directions_B)
+        p_AoAc_A = p_AoAc_A.unsqueeze(-2) # Unsqueeze witness point dimension
+        assert p_BoBc_B.shape == batch_dim + (1, 3) # (..., n_c == 1, 3)
+        assert p_AoAc_A.shape == batch_dim + (1, 3) # (..., n_c == 1, 3)
 
         # Get R_AC by taking directions_a
         # Unsqueeze witness point dimension to 1
-        R_AC = rotation_matrix_from_one_vector(directions_A, -1).unsqueeze(-3)
+        R_AC = rotation_matrix_from_one_vector(directions_A, 2).unsqueeze(-3)
+        assert R_AC.shape == batch_dim + (1, 3, 3) # (..., n_c == 1, 3, 3)
 
         # Get length of witness point distance projected onto contact normal
-        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)  
-
+        # Note: for the sphere, AcBc is already along the normal, so just get norm
+        p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1,-2))
+        p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
+        phi = torch.linalg.vector_norm(p_AcBc_A, dim=-1)
+        assert phi.shape == batch_dim + (1,) # (..., n_c == 1)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 

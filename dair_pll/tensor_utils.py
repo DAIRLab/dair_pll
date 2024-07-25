@@ -329,6 +329,7 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
     Returns:
         ``(*, 3, 3)`` rotation matrix batch.
     """
+    assert directions.shape[-1] == 3
     assert axis in [0, 1, 2]
     original_shape = directions.shape
     directions = directions.view(-1, 3)

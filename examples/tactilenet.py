@@ -167,7 +167,7 @@ TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 300, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80
 T_PREDICTION = 1
 
 # Optimization configuration.
-CUBE_LR = 1e-3
+CUBE_LR = 1e-2
 ELBOW_LR = 1e-3
 ASYMMETRIC_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR,
@@ -454,7 +454,7 @@ def main(storage_folder_name: str = "",
               help="dataset size")
 @click.option('--inertia-params',
               type=click.IntRange(0, 7),
-              default=1,
+              default=0,
               help="Bitmap of what inertia params to learn: inertia-com-mass (e.g. 0 == none, 1 == mass only, 7 == all)")
 @click.option('--true-sys/--wrong-sys',
               default=False,
@@ -465,11 +465,11 @@ def main(storage_folder_name: str = "",
               help="what W&B project to save results under.")
 @click.option('--w-pred',
               type=float,
-              default=2e1,
+              default=1e2,
               help="weight of prediction term in ContactNets loss")
 @click.option('--w-comp',
               type=float,
-              default=2e1,
+              default=1e0,
               help="weight of complementarity term in ContactNets loss")
 @click.option('--w-diss',
               type=float,
@@ -489,7 +489,7 @@ def main(storage_folder_name: str = "",
               help="weight of residual weight regularization term in loss")
 @click.option('--w-dev',
               type=float,
-              default=2e4,
+              default=2e6,
               help="weight of deviation from measured contact forces in ContactNets loss")
 @click.option('--residual/--no-residual',
               default=False,

@@ -809,6 +809,18 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                                        keys=["ground truth", "estimated"],
                                        title="cube_traj_vx",
                                        xname="timestep")}, step=epoch)
+                wandb.log({"cube_traj_z" : wandb.plot.line_series(
+                                       xs=[t for t in range(target_trajectory.shape[0])], 
+                                       ys=[target_trajectory[:, 1].detach().cpu().tolist(), prediction_trajectory[:, 1].detach().cpu().tolist()],
+                                       keys=["ground truth", "estimated"],
+                                       title="cube_traj_z",
+                                       xname="timestep")}, step=epoch)
+                wandb.log({"cube_traj_vz" : wandb.plot.line_series(
+                                       xs=[t for t in range(target_trajectory.shape[0])], 
+                                       ys=[target_trajectory[:, 6].detach().cpu().tolist(), prediction_trajectory[:, 6].detach().cpu().tolist()],
+                                       keys=["ground truth", "estimated"],
+                                       title="cube_traj_vz",
+                                       xname="timestep")}, step=epoch)
 
 
 
