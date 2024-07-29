@@ -1,6 +1,6 @@
 """Configuration dataclasses for experiments."""
 from dataclasses import dataclass, field
-from typing import Type, Optional
+from typing import Type, Optional, Dict, Any
 
 import torch
 from torch.optim import Optimizer
@@ -22,10 +22,11 @@ class OptimizerConfig:
     :func:`~torch.optim.Optimizer` for learning."""
     optimizer: Type[Optimizer] = torch.optim.Adam
     """Subclass of :py:class:`~torch.optim.Optimizer` to use."""
-    lr: Float = Float(1e-5, log=True)
-    """Learning rate."""
-    wd: Float = Float(4e-5, log=True)
-    """Weight decay."""
+    optimizer_kwargs: Dict[str, Any] = field(default_factory = {
+        "lr": Float(1e-5, log=True),
+        "weight_decay": Float(4e-5, log=True),
+    })
+    # Kwargs will be unpacked if type Hyperparameter
     epochs: int = 10000
     """Maximum number of epochs to optimize."""
     patience: int = 30

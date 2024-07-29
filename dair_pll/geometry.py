@@ -45,7 +45,7 @@ _UNIT_BOX_VERTICES = torch.tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
 _ROT_Z_45 = torch.tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
                     [0., 0., 1.]])
 
-_NOMINAL_HALF_LENGTH = 0.05   # 10cm is nominal object length
+_NOMINAL_HALF_LENGTH = 1.0   # Note: matches Box/Polygon space to trajectory space (m)
 
 _total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere', 'DeepSupportConvex']
 
@@ -706,7 +706,8 @@ class GeometryCollider:
         box_lengths = box_a.get_half_lengths().expand(p_AoBo_A.size())
         # Clamp to box
         # NOTE: detaching witness point from position so it is piecewise constant w.r.t. location params
-        p_AoBo_A_clamp = torch.clamp(p_AoBo_A.detach(), min=-box_lengths, max=box_lengths)
+        # TODO: HACK figure out if detaching is necessary
+        p_AoBo_A_clamp = torch.clamp(p_AoBo_A, min=-box_lengths, max=box_lengths)
         # Project onto nearest face
         # Construct difference vector
         p_AoBo_A_diffs = torch.sign(p_AoBo_A_clamp)*box_lengths - p_AoBo_A_clamp

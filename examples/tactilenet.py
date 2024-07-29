@@ -178,7 +178,7 @@ ASYMMETRIC_WD = 0.0
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
-EPOCHS = 200            # change this (originally 500)
+EPOCHS = 300            # change this (originally 500)
 PATIENCE = EPOCHS       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
@@ -270,8 +270,11 @@ def main(storage_folder_name: str = "",
     num_epochs = 0 if true_sys else EPOCHS
 
     # Describes the optimizer settings; by default, the optimizer is Adam.
-    optimizer_config = OptimizerConfig(lr=Float(LRS[system]),
-                                       wd=Float(WDS[system]),
+    optimizer_config = OptimizerConfig(optimizer = torch.optim.Adam,
+                                       optimizer_kwargs = {
+                                        "lr": Float(LRS[system]),
+                                        "weight_decay": Float(WDS[system]),
+                                       },
                                        patience=PATIENCE,
                                        epochs=num_epochs,
                                        batch_size=Int(int(TRAJECTORY_LENGTHS[system])))
@@ -469,7 +472,7 @@ def main(storage_folder_name: str = "",
               help="weight of prediction term in ContactNets loss")
 @click.option('--w-comp',
               type=float,
-              default=1e0,
+              default=1e1,
               help="weight of complementarity term in ContactNets loss")
 @click.option('--w-diss',
               type=float,
@@ -489,7 +492,7 @@ def main(storage_folder_name: str = "",
               help="weight of residual weight regularization term in loss")
 @click.option('--w-dev',
               type=float,
-              default=2e6,
+              default=2e5,
               help="weight of deviation from measured contact forces in ContactNets loss")
 @click.option('--residual/--no-residual',
               default=False,

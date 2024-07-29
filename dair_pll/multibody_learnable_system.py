@@ -426,8 +426,8 @@ class MultibodyLearnableSystem(System):
         loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
                     + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
 
-        if self.debug % 50 == 0:
-            breakpoint()
+        #if self.debug % 50 == 1:
+        #    breakpoint()
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1), \
@@ -666,10 +666,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        model_state = torch.vstack([torch.tensor([0., 0.03524, 0., 0., 0., 0.])] * traj_len)
+        model_state = torch.vstack([torch.tensor([0.1, 0.00524, 0., 0., 0., 0.])] * traj_len)
         if true_traj is not None:
             model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
-        self.trajectory = ParameterList([Parameter(model_state[idx, :], requires_grad=False) for idx in range(traj_len)])
+        self.trajectory = ParameterList([Parameter(model_state[idx, :], requires_grad=True) for idx in range(traj_len)])
+        self.trajectory[50].register_hook(lambda grad: print(f"Trajectory Gradient: {grad}"))
 
     def construct_state_tensor(self,
         data_state: Tensor) -> Tensor:
@@ -695,7 +696,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             assert state.shape == data_state.shape + (self.model_spaces[model].n_x,)
         
         # Get trajectory parameters
-        traj_x = torch.stack([self.trajectory[int(i)] for i in data_state["time"].flatten()])
+        test = [self.trajectory[int(i)] for i in data_state["time"].flatten()]
+        traj_x = torch.stack(test)
         traj_x = traj_x.reshape(data_state.shape + (self.model_spaces[self.trajectory_model].n_x,)) # [batch x traj_n_x]
 
         # Loop through models and construct state
@@ -752,7 +754,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         loss = super().contactnets_loss(x, u, x_plus, contact_forces, loss_pool)
 
         # Add Prediction term for v->q, not covered by dynamics prediction term
-        # TODO: HACKadd q_pred weight to config
+        # TODO: HACK add q_pred weight to config
         loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
 
         loss += 1e2 * loss_q_pred

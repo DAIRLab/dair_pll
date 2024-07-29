@@ -23,6 +23,7 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from dair_pll import file_utils
+from dair_pll.hyperparameter import Hyperparameter
 from dair_pll.dataset_management import ExperimentDataManager, \
     TrajectorySet
 from dair_pll.experiment_config import SupervisedLearningExperimentConfig
@@ -246,12 +247,8 @@ class SupervisedLearningExperiment(ABC):
             Optimizer for training.
         """
         config = self.config.optimizer_config
-        if issubclass(config.optimizer, torch.optim.Adam):
-            return config.optimizer(learned_system.parameters(),
-                                    lr=config.lr.value,
-                                    weight_decay=config.wd.value)
-        raise TypeError('Unsupported optimizer type:',
-                        config.optimizer.__name__)
+        return config.optimizer(learned_system.parameters(),
+                **{key:(val.value if isinstance(val, Hyperparameter) else val) for key, val in config.optimizer_kwargs.items()})
 
     def batch_predict(self, x_past: Tensor, system: System) -> Tensor:
         """Predict forward in time from initial conditions.
@@ -375,6 +372,10 @@ class SupervisedLearningExperiment(ABC):
         """
         losses = []
         for xy_i in data:
+            #import cProfile, pstats, io
+            #from pstats import SortKey
+            #pr = cProfile.Profile()
+            #pr.enable()
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
@@ -386,6 +387,13 @@ class SupervisedLearningExperiment(ABC):
             if optimizer is not None:
                 loss.backward()
                 optimizer.step()
+
+            #s = io.StringIO()
+            #sortby = SortKey.CUMULATIVE
+            #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            #ps.print_stats()
+            #print(s.getvalue())
+            #breakpoint()
 
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss

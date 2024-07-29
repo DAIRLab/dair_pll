@@ -350,7 +350,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         # To save space on W&B storage, only generate comparison videos at first
         # and best epoch, the latter of which is implemented in
         # :meth:`_evaluation`.
-        skip_videos = False if (epoch % 20 == 0) else True
+        skip_videos = False if (epoch % 50 == 0) else True
 
         epoch_vars, learned_system_summary = \
             self.build_epoch_vars_and_system_summary(statistics, learned_system,
@@ -363,7 +363,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         train_dataloader = DataLoader(
             train_traj_set.slices,
             batch_size=self.config.optimizer_config.batch_size.value,
-            shuffle=True,
+            shuffle=False,
             generator=torch.Generator(device=torch.get_default_device()))
 
         # Calculate the average loss components.
@@ -839,6 +839,8 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
         # Construct State
         x_past = system.construct_state_tensor(past)
         x_plus = system.construct_state_tensor(plus)
+
+        #breakpoint()
 
         # Actuation
         control = past["net_actuation"]

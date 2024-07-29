@@ -13,8 +13,11 @@ from dair_pll.tensor_utils import sqrtm
 _CVXPY_LCQP_EPS = 0.  #1e-7
 #_CVXPY_SOLVER_ARGS = {"solve_method": "SCS", "eps": 1e-10, "use_indirect":
 # True}
+# NOTE: It's faster to do serial since the solve is so quick
+# TODO: HACK Recommended to comment out "pre-compute quantities for the derivative" in cone_program.py in diffcp since we don't use it.
 _CVXPY_SOLVER_ARGS = {"solve_method": "ECOS", "max_iters": 300,
-                      "abstol": 1e-10, "reltol": 1e-10, "feastol": 1e-10}
+                      "abstol": 1e-10, "reltol": 1e-10, "feastol": 1e-10,
+                      "n_jobs_forward": 1, "n_jobs_backward": 1}
 
 def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
     """Constructs a CvxpyLayer for solving a Lorentz cone constrained quadratic
