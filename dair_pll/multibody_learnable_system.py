@@ -316,30 +316,13 @@ class MultibodyLearnableSystem(System):
         reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
                                           reorder_mat.shape).expand(
                                               delassus.shape)
-        J_t = J[..., n_contacts:, :]
-
-        # Construct a diagonal scaling matrix (3*n_contacts, 3*n_contacts) S
-        # s.t. S @ lambda_CN = scaled lambdas in units [m/s] instead of [N s].
-        delassus_diag_vec = torch.diagonal(delassus, dim1=-2, dim2=-1)
-        contact_weights = pbmm(one_vector_block_diagonal(n_contacts, 3).t(),
-                               pbmm(reorder_mat.transpose(-1, -2),
-                                    delassus_diag_vec.unsqueeze(-1)))
-        contact_weights = broadcast_lorentz(contact_weights.squeeze(-1))
-        S = torch.diag_embed(contact_weights)
-
-        # Construct a diagonal scaling matrix (n_velocity, n_velocity) P s.t.
-        # velocity errors are scaled to relate translation and rotation errors
-        # in a thoughful way.
-        P_diag = torch.ones_like(v)
-        P_diag[..., :3] *= ROTATION_SCALING
-        P_diag[..., 6:] *= JOINT_SCALING
-        P = torch.diag_embed(P_diag)
-
+                                          
         # pylint: disable=E1103
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
         phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
 
         # pylint: disable=E1103
+        J_t = J[..., n_contacts:, :]
         sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
         sliding_speeds = sliding_velocities.reshape(phi.shape[:-1] +
                                                     (n_contacts, 2)).norm(

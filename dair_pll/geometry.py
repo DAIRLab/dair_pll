@@ -705,8 +705,6 @@ class GeometryCollider:
         # Expand box lengths to batch size
         box_lengths = box_a.get_half_lengths().expand(p_AoBo_A.size())
         # Clamp to box
-        # NOTE: detaching witness point from position so it is piecewise constant w.r.t. location params
-        # TODO: HACK figure out if detaching is necessary
         p_AoBo_A_clamp = torch.clamp(p_AoBo_A, min=-box_lengths, max=box_lengths)
         # Project onto nearest face
         # Construct difference vector
