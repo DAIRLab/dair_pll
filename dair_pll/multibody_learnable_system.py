@@ -353,22 +353,28 @@ class MultibodyLearnableSystem(System):
         Q_dev = torch.zeros_like(Q_delassus)
         constant_dev = torch.zeros_like(constant_pred)
         for key in contact_forces.keys():
-            if key in obj_pair_list:
-                idx = obj_pair_list.index(key)
-                impulse_measured_W = contact_forces[key].unsqueeze(-1) * dt
-                # Constant term is lambda_m magnitude
-                constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W)
-                # q term is lambda_m in contact frame
-                impulse_measured_c = pbmm(R_FW_list[idx].transpose(-1, -2), impulse_measured_W)
-                # Normal impulse
-                q_dev[..., idx, :] = impulse_measured_c[..., 2, :]
-                # Scale friction impulse by mu
-                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = impulse_measured_c[..., :2, :] * mu_list[idx]
-                # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
-                Q_dev[..., idx, idx] = 1.0
-                # Scale friction terms by mu^2
-                for diag_idx in (len(obj_pair_list)+2*idx, (len(obj_pair_list)+2*idx) + 1):
-                    Q_dev[..., diag_idx, diag_idx] = 1.0 * mu_list[idx] * mu_list[idx]
+            indices = [i for i, x in enumerate(obj_pair_list) if x == key]
+            if len(indices) == 0:
+                continue
+            mu_i = mu_list[indices[0]]
+            R_FW_i = R_FW_list[indices[0]]
+            impulse_measured_W = contact_forces[key].unsqueeze(-1) * dt
+            # Constant term is lambda_m magnitude
+            constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W)
+            # q term is lambda_m in contact frame
+            impulse_measured_c = pbmm(R_FW_i.transpose(-1, -2), impulse_measured_W)
+            # Normal impulse
+            q_dev[..., indices, :] = impulse_measured_c[..., [2], :]
+            # Scale friction impulse by mu
+            q_dev[..., len(obj_pair_list)+2*np.array(indices), :] = impulse_measured_c[..., [0], :] * mu_i
+            q_dev[..., len(obj_pair_list)+2*np.array(indices)+1, :] = impulse_measured_c[..., [1], :] * mu_i
+            # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
+            Q_dev[..., indices, indices] = 1.0
+            Q_dev[..., indices, indices[::-1]] = 1.0
+            # Scale friction terms by mu^2
+            for diag_idx in ((len(obj_pair_list)+2*np.array(indices)).tolist(), (len(obj_pair_list)+2*np.array(indices) + 1).tolist()):
+                Q_dev[..., diag_idx, diag_idx] = 1.0 * mu_i * mu_i
+                Q_dev[..., diag_idx, diag_idx[::-1]] = 1.0 * mu_i * mu_i
         Q_final = Q_delassus + (self.w_dev/self.w_pred)*Q_dev
 
         q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
@@ -388,9 +394,9 @@ class MultibodyLearnableSystem(System):
                     pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1), # Linear Term
                 ).detach().unsqueeze(-1))
         except:
-            print(f'reordered Q: {pbmm(reorder_mat.transpose(-1,-2), J_M)}')
-            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
             pdb.set_trace()
+            print(f'reordered Q: {pbmm(reorder_mat.transpose(-1,-2), Q_final)}')
+            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
 
         # Hack: remove elements of ``impulses`` where solver likely failed.
         invalid = torch.any((impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
@@ -408,6 +414,9 @@ class MultibodyLearnableSystem(System):
         loss_diss = pbmm(impulses.transpose(-1, -2), q_diss)
         loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
                     + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
+
+        # Check
+        assert np.all(loss_dev.detach().numpy() > 0.)
 
         #if self.debug % 50 == 1:
         #    breakpoint()

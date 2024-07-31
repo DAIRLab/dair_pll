@@ -481,7 +481,7 @@ class ContactTerms(Module):
             .reshape(friction_jacobian_shape)
         return torch.cat((J_n, J_t), dim=-2)
 
-    def forward(self, q: Tensor) -> Tuple[Tensor, Tensor, List, List, List]:
+    def forward(self, q_config: Tensor) -> Tuple[Tensor, Tensor, List, List, List]:
         """Evaluates Lagrangian dynamics terms at given state and input.
 
         Uses :py:class:`GeometryCollider` and kinematics to construct signed
@@ -503,9 +503,9 @@ class ContactTerms(Module):
         assert self.geometry_rotations is not None
         assert self.geometry_translations is not None
         assert self.geometry_spatial_jacobians is not None
-        R_WC = self.geometry_rotations(q)
-        p_WoCo_W = self.geometry_translations(q)
-        Jv_V_WC_W = self.geometry_spatial_jacobians(q)
+        R_WC = self.geometry_rotations(q_config)
+        p_WoCo_W = self.geometry_translations(q_config)
+        Jv_V_WC_W = self.geometry_spatial_jacobians(q_config)
 
         indices_a = self.collision_candidates[0, :]
         indices_b = self.collision_candidates[1, :]

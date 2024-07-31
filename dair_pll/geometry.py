@@ -708,18 +708,24 @@ class GeometryCollider:
         p_AoBo_A_clamp = torch.clamp(p_AoBo_A, min=-box_lengths, max=box_lengths)
         # Project onto nearest face
         # Construct difference vector
-        p_AoBo_A_diffs = torch.sign(p_AoBo_A_clamp)*box_lengths - p_AoBo_A_clamp
+        p_AoBo_A_clamp_sign = torch.sign(p_AoBo_A_clamp)
+        p_AoBo_A_diffs = p_AoBo_A_clamp_sign*box_lengths - p_AoBo_A_clamp
         # Mask out all but the closest
         mask = torch.zeros_like(p_AoBo_A_diffs)
-        mask[..., torch.arange(mask.shape[-2]), torch.argmin(torch.abs(p_AoBo_A_diffs))] = 1.0
-        p_AoBo_A_diffs = p_AoBo_A_diffs * mask
+        mask[..., torch.arange(mask.shape[-2]), torch.argmin(torch.abs(p_AoBo_A_diffs), dim=1)] = 1.0
+        p_AoBo_A_diffs_masked = p_AoBo_A_diffs * mask
         # Actual projection to get nearest point
-        p_AoAc_A = p_AoBo_A_clamp + p_AoBo_A_diffs
+        p_AoAc_A = p_AoBo_A_clamp + p_AoBo_A_diffs_masked
 
         # Get contact normal == normalized(nearest point -> center of the sphere)
         p_AcBo_A = p_AoBo_A - p_AoAc_A
         # Calculate directions (use torch nn functional normalize)
         directions_A = torch.nn.functional.normalize(p_AcBo_A, dim=-1)
+        # Check if internal, if so, flip directions_A
+        directions_A[torch.norm(p_AoBo_A, dim=1) < torch.norm(p_AoAc_A, dim=1)] *= -1.0
+        # In the unlikely event p_AcBo_A == 0, use an arbitrary surface normal
+        on_surface_idxs = (torch.norm(directions_A, dim=1) == 0)
+        directions_A[on_surface_idxs] = -mask[on_surface_idxs]*p_AoBo_A_clamp_sign[on_surface_idxs]
         # directions needs to be (..., 1, 3) for pbmm, then re-squeezed
         directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB).squeeze(-2)
 
@@ -735,13 +741,12 @@ class GeometryCollider:
         assert R_AC.shape == batch_dim + (1, 3, 3) # (..., n_c == 1, 3, 3)
 
         # Get length of witness point distance projected onto contact normal
-        # Note: for the sphere, AcBc is already along the normal, so just get norm
         p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1,-2))
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
-        phi = torch.linalg.vector_norm(p_AcBc_A, dim=-1)
+        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)  
         assert phi.shape == batch_dim + (1,) # (..., n_c == 1)
 
-        return phi, R_AC, p_AoAc_A, p_BoBc_B
+        return phi.expand(batch_dim + (2,)), R_AC.expand(batch_dim + (2, 3, 3)), p_AoAc_A.expand(batch_dim + (2, 3)), p_BoBc_B.expand(batch_dim + (2, 3))
 
     @staticmethod
     def collide_plane_convex(geometry_b: BoundedConvexCollisionGeometry,
