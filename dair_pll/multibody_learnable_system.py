@@ -362,7 +362,7 @@ class MultibodyLearnableSystem(System):
             # Constant term is lambda_m magnitude
             constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W)
             # q term is lambda_m in contact frame
-            impulse_measured_c = pbmm(R_FW_i.transpose(-1, -2), impulse_measured_W)
+            impulse_measured_c = -pbmm(R_FW_i, impulse_measured_W)
             # Normal impulse
             q_dev[..., indices, :] = impulse_measured_c[..., [2], :]
             # Scale friction impulse by mu
@@ -397,7 +397,7 @@ class MultibodyLearnableSystem(System):
             pdb.set_trace()
             print(f'reordered Q: {pbmm(reorder_mat.transpose(-1,-2), Q_final)}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
-
+        
         # Hack: remove elements of ``impulses`` where solver likely failed.
         invalid = torch.any((impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
                             dim=-2,
