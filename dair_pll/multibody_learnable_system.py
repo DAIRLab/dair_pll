@@ -308,7 +308,7 @@ class MultibodyLearnableSystem(System):
 
         # Begin loss calculation.
         delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = \
-            self.get_multibody_terms(q_plus, v_plus, u)
+            self.get_multibody_terms(q_plus, v_plus, u, contact_forces)
 
         # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
         n_contacts = phi.shape[-1]
@@ -357,17 +357,17 @@ class MultibodyLearnableSystem(System):
             if len(indices) == 0:
                 continue
             mu_i = mu_list[indices[0]]
-            R_FW_i = R_FW_list[indices[0]]
+            R_FW_i = torch.stack(R_FW_list, dim=1)[..., indices, :, :] # Shape: (batch, n_c, 3, 3)
             impulse_measured_W = contact_forces[key].unsqueeze(-1) * dt
             # Constant term is lambda_m magnitude
-            constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W)
+            constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W) # Two copies
             # q term is lambda_m in contact frame
-            impulse_measured_c = -pbmm(R_FW_i, impulse_measured_W)
+            impulse_measured_c = -pbmm(R_FW_i, impulse_measured_W.unsqueeze(-3).expand(-1, len(indices), -1, -1))
             # Normal impulse
-            q_dev[..., indices, :] = impulse_measured_c[..., [2], :]
+            q_dev[..., indices, :] = impulse_measured_c[..., 2, :]
             # Scale friction impulse by mu
-            q_dev[..., len(obj_pair_list)+2*np.array(indices), :] = impulse_measured_c[..., [0], :] * mu_i
-            q_dev[..., len(obj_pair_list)+2*np.array(indices)+1, :] = impulse_measured_c[..., [1], :] * mu_i
+            q_dev[..., len(obj_pair_list)+2*np.array(indices), :] = impulse_measured_c[..., 0, :] * mu_i
+            q_dev[..., len(obj_pair_list)+2*np.array(indices)+1, :] = impulse_measured_c[..., 1, :] * mu_i
             # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
             Q_dev[..., indices, indices] = 1.0
             Q_dev[..., indices, indices[::-1]] = 1.0
@@ -397,7 +397,8 @@ class MultibodyLearnableSystem(System):
             pdb.set_trace()
             print(f'reordered Q: {pbmm(reorder_mat.transpose(-1,-2), Q_final)}')
             print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
-        
+
+
         # Hack: remove elements of ``impulses`` where solver likely failed.
         invalid = torch.any((impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
                             dim=-2,
@@ -416,6 +417,7 @@ class MultibodyLearnableSystem(System):
                     + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
 
         # Check
+        # TODO: CHECK DEVIATION TERM CALC ABOVE!
         assert np.all(loss_dev.detach().numpy() > 0.)
 
         #if self.debug % 50 == 1:
@@ -426,13 +428,13 @@ class MultibodyLearnableSystem(System):
                loss_dev.reshape(-1)
 
     def get_multibody_terms(self, q: Tensor, v: Tensor,
-        u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List]:
+        u: Tensor, estimated_normals_W: Dict[Tuple[str, str], Tensor] = {}) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List]:
         """Get multibody terms of the system.  Without a residual, this is a
         straightfoward pass-through to the system's :py:class:`MultibodyTerms`.
         With a residual, the residual augments the continuous dynamics."""
 
         delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = self.multibody_terms(
-            q, v, u)
+            q, v, u, estimated_normals_W)
 
         if self.residual_net != None:
             # Get the residual network's contribution.

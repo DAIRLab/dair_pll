@@ -621,7 +621,7 @@ class GeometryCollider:
 
     @staticmethod
     def collide(geometry_a: CollisionGeometry, geometry_b: CollisionGeometry,
-                R_AB: Tensor, p_AoBo_A: Tensor) -> \
+                R_AB: Tensor, p_AoBo_A: Tensor, estimated_normals_A: Optional[Tensor]) -> \
             Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Collides two collision geometries.
 
@@ -636,6 +636,7 @@ class GeometryCollider:
               ordering ``not geometry_A > geometry_B``.
             R_AB: (\*,3,3) rotation between geometry frames
             p_AoBo_A: (\*, 3) offset of geometry frame origins
+            estimated_normals_A: (\*, 3) estimate of contact normal from A
 
         Returns:
             (\*, N) batch of witness point pair distances
@@ -660,11 +661,11 @@ class GeometryCollider:
         if isinstance(geometry_a, Box) and isinstance(
                 geometry_b, Sphere):
             return GeometryCollider.collide_box_sphere(
-                geometry_a, geometry_b, R_AB, p_AoBo_A)
+                geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A)
         if isinstance(geometry_a, Sphere) and isinstance(
                 geometry_b, Box):
-            return GeometryCollider.collide_plane_convex(
-                geometry_b, geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB))
+            return GeometryCollider.collide_box_sphere(
+                geometry_b, geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB), -pbmm(estimated_normals_A, R_AB))
         if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
                 geometry_b, BoundedConvexCollisionGeometry):
             return GeometryCollider.collide_convex_convex(geometry_a, geometry_b,
@@ -677,7 +678,7 @@ class GeometryCollider:
 
     @staticmethod
     def collide_box_sphere(box_a: Box, sphere_b: sphere,
-                             R_AB: Tensor, p_AoBo_A: Tensor) -> \
+                             R_AB: Tensor, p_AoBo_A: Tensor, estimated_normals_A: Optional[Tensor]) -> \
             Tuple[Tensor, Tensor, Tensor, Tensor]:
         """
         Implementation of ``GeometryCollider.collide()`` when
@@ -700,6 +701,7 @@ class GeometryCollider:
         assert p_AoBo_A.shape == batch_dim + (3,)
         assert isinstance(box_a, Box)
         assert isinstance(sphere_b, Sphere)
+        n_c = 2
         
         ## Get nearest point on box
         # Expand box lengths to batch size
@@ -726,27 +728,54 @@ class GeometryCollider:
         # In the unlikely event p_AcBo_A == 0, use an arbitrary surface normal
         on_surface_idxs = (torch.norm(directions_A, dim=1) == 0)
         directions_A[on_surface_idxs] = -mask[on_surface_idxs]*p_AoBo_A_clamp_sign[on_surface_idxs]
+        # Unsqueeze witness point dimensions
+        directions_A = directions_A.unsqueeze(-2) 
+        p_AoAc_A = p_AoAc_A.unsqueeze(-2)
+        assert p_AoAc_A.shape == directions_A.shape == batch_dim + (1, 3) # (..., n_c == 1, 3)
+
+        # Add estimated normal if they exist
+        if estimated_normals_A is not None:
+            assert estimated_normals_A.shape == batch_dim + (3,)
+            directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
+            zeros_idx = torch.isclose(torch.norm(directions_A2, dim=-1), torch.zeros(batch_dim))
+            directions_A2[zeros_idx, :] = directions_A[zeros_idx, 0, :]
+            p_AoAc_A2 = box_a.support_points(directions_A2)[..., :1, :]
+            p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
+            directions_A = torch.cat([directions_A, directions_A2.unsqueeze(-2)], dim=-2)
+        else:
+        
+            p_AoAc_A = p_AoAc_A.expand(batch_dim + (n_c, 3))
+            directions_A = directions_A.expand(batch_dim + (n_c, 3))
+
+        assert p_AoAc_A.shape == directions_A.shape == batch_dim + (n_c, 3) # (..., n_c == 2, 3)
+
+
         # directions needs to be (..., 1, 3) for pbmm, then re-squeezed
-        directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB).squeeze(-2)
+        directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB.unsqueeze(-3)).squeeze(-2)
 
         # get support point of sphere
-        p_BoBc_B = sphere_b.support_points(directions_B)
-        p_AoAc_A = p_AoAc_A.unsqueeze(-2) # Unsqueeze witness point dimension
-        assert p_BoBc_B.shape == batch_dim + (1, 3) # (..., n_c == 1, 3)
-        assert p_AoAc_A.shape == batch_dim + (1, 3) # (..., n_c == 1, 3)
+        # It adds n_c==1 which we can squeeze
+        p_BoBc_B = sphere_b.support_points(directions_B).squeeze(-2)
+        assert p_BoBc_B.shape == batch_dim + (n_c, 3) # (..., n_c == 2, 3)
+        
 
         # Get R_AC by taking directions_a
         # Unsqueeze witness point dimension to 1
-        R_AC = rotation_matrix_from_one_vector(directions_A, 2).unsqueeze(-3)
-        assert R_AC.shape == batch_dim + (1, 3, 3) # (..., n_c == 1, 3, 3)
+        R_AC = rotation_matrix_from_one_vector(directions_A, 2)
+        assert R_AC.shape == batch_dim + (n_c, 3, 3) # (..., n_c == 2, 3, 3)
 
         # Get length of witness point distance projected onto contact normal
-        p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1,-2))
+        p_BoBc_A = pbmm(p_BoBc_B.unsqueeze(-2), R_AB.unsqueeze(-3).expand(batch_dim + (n_c, 3, 3)).transpose(-1,-2)).squeeze(-2)
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
-        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)  
-        assert phi.shape == batch_dim + (1,) # (..., n_c == 1)
+        phi = torch.zeros(batch_dim + (n_c,))
+        # Project Phi from Closest Point
+        phi[..., :1] = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
+        # Take vector norm of 2nd witness point
+        #phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        assert phi.shape == batch_dim + (n_c,) # (..., n_c == 2)
 
-        return phi.expand(batch_dim + (2,)), R_AC.expand(batch_dim + (2, 3, 3)), p_AoAc_A.expand(batch_dim + (2, 3)), p_BoBc_B.expand(batch_dim + (2, 3))
+        return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod
     def collide_plane_convex(geometry_b: BoundedConvexCollisionGeometry,

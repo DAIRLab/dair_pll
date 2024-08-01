@@ -332,7 +332,7 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
     assert directions.shape[-1] == 3
     assert axis in [0, 1, 2]
     original_shape = directions.shape
-    directions = directions.view(-1, 3)
+    directions = directions.reshape(-1, 3)
     # pylint: disable=E1103
     batch_range = torch.arange(directions.shape[0])
 

@@ -481,7 +481,7 @@ class ContactTerms(Module):
             .reshape(friction_jacobian_shape)
         return torch.cat((J_n, J_t), dim=-2)
 
-    def forward(self, q_config: Tensor) -> Tuple[Tensor, Tensor, List, List, List]:
+    def forward(self, q_config: Tensor, estimated_normals_W: Dict[Tuple[str, str], Tensor] = {}) -> Tuple[Tensor, Tensor, List, List, List]:
         """Evaluates Lagrangian dynamics terms at given state and input.
 
         Uses :py:class:`GeometryCollider` and kinematics to construct signed
@@ -549,13 +549,17 @@ class ContactTerms(Module):
 
         # iterate over body pairs (Ai, Bi)
         for geo_a, geo_b, R_AiW, R_BiW, p_AiBi_A, Jv_V_WAi_W, Jv_V_WBi_W, mu_i in a_b:
+            estimated_normals_A = None
+            key = (geo_a.name, geo_b.name)
+            if key in estimated_normals_W:
+                estimated_normals_A = pbmm(R_AiW, estimated_normals_W[key].unsqueeze(-1)).squeeze(-1)
             # relative rotation between Ai and Bi, (*, 3, 3)
             R_AiBi = pbmm(R_AiW, R_BiW.transpose(-1, -2))
 
             # collision result,
             # Tuple[(*, n_c), (*, n_c, 3, 3), (*, n_c, 3), (*, n_c, 3)]
             phi_i, R_AiF, p_AiAc_A, p_BiBc_B = GeometryCollider.collide(
-                geo_a, geo_b, R_AiBi, p_AiBi_A)
+                geo_a, geo_b, R_AiBi, p_AiBi_A, estimated_normals_A)
             n_c = phi_i.shape[1]
 
             # contact frame rotation, (*, n_c, 3, 3)
@@ -570,7 +574,7 @@ class ContactTerms(Module):
             # contact relative velocity, (*, n_c, 3, 3)
             Jv_v_W_BcAc_F.append(pbmm(R_FW, Jv_v_WBc_W - Jv_v_WAc_W))
             phi_list.append(phi_i)
-            obj_pair_list.extend(n_c * [(geo_a.name, geo_b.name)])
+            obj_pair_list.extend(n_c * [key])
             mu_list.extend(n_c * [mu_i])
             R_FW_list.extend([R_FW[..., i, :, :] for i in range(n_c)])
 
@@ -666,7 +670,7 @@ class MultibodyTerms(Module):
         return scalars, meshes
 
     def forward(self, q: Tensor, v: Tensor,
-                u: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List, List]:
+                u: Tensor, estimated_normals_W: Dict[Tuple[str, str], Tensor] = {}) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List, List]:
         """Evaluates multibody system dynamics terms at given state and input.
 
         Calculation is performed as a thin wrapper around
@@ -687,7 +691,7 @@ class MultibodyTerms(Module):
             (\*, n_v) Contact-free acceleration inv(M(q)) * F(q).
         """
         M, non_contact_acceleration = self.lagrangian_terms(q, v, u)
-        phi, J, obj_pair_list, R_FW_list, mu_list = self.contact_terms(q)
+        phi, J, obj_pair_list, R_FW_list, mu_list = self.contact_terms(q, estimated_normals_W)
 
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list
