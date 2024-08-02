@@ -55,6 +55,8 @@ ROTATION_SCALING = 0.2/torch.pi
 ELBOW_COM_TO_AXIS_DISTANCE = 0.035
 JOINT_SCALING = 2*ELBOW_COM_TO_AXIS_DISTANCE/torch.pi + ROTATION_SCALING
 
+# Dimension of Measured Force
+DIMENSION = 3
 
 class MultibodyLearnableSystem(System):
     """:py:class:`System` interface for dynamics associated with
@@ -353,28 +355,40 @@ class MultibodyLearnableSystem(System):
         Q_dev = torch.zeros_like(Q_delassus)
         constant_dev = torch.zeros_like(constant_pred)
         for key in contact_forces.keys():
-            indices = [i for i, x in enumerate(obj_pair_list) if x == key]
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
                 continue
             mu_i = mu_list[indices[0]]
-            R_FW_i = torch.stack(R_FW_list, dim=1)[..., indices, :, :] # Shape: (batch, n_c, 3, 3)
-            impulse_measured_W = contact_forces[key].unsqueeze(-1) * dt
-            # Constant term is lambda_m magnitude
-            constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W) # Two copies
-            # q term is lambda_m in contact frame
-            impulse_measured_c = -pbmm(R_FW_i, impulse_measured_W.unsqueeze(-3).expand(-1, len(indices), -1, -1))
-            # Normal impulse
-            q_dev[..., indices, :] = impulse_measured_c[..., 2, :]
-            # Scale friction impulse by mu
-            q_dev[..., len(obj_pair_list)+2*np.array(indices), :] = impulse_measured_c[..., 0, :] * mu_i
-            q_dev[..., len(obj_pair_list)+2*np.array(indices)+1, :] = impulse_measured_c[..., 1, :] * mu_i
-            # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
-            Q_dev[..., indices, indices] = 1.0
-            Q_dev[..., indices, indices[::-1]] = 1.0
-            # Scale friction terms by mu^2
-            for diag_idx in ((len(obj_pair_list)+2*np.array(indices)).tolist(), (len(obj_pair_list)+2*np.array(indices) + 1).tolist()):
-                Q_dev[..., diag_idx, diag_idx] = 1.0 * mu_i * mu_i
-                Q_dev[..., diag_idx, diag_idx[::-1]] = 1.0 * mu_i * mu_i
+            # Q_dev = diag(mu)RS^TSR^Tdiag(mu)^T; diag(mu) = 1 if normal, mu otherwise
+            # R is block diagonal rotation matrices, S is summation matrix
+            diag_F_mu = torch.zeros(q_dev.shape[:-1] + ((len(indices) * 3),)) # (batch x (n_c_tot*3) x (n_c_obj*3))
+            R_FW_mat = torch.zeros(q_dev.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))) # (batch x (n_c_obj*3) x (n_c_obj*3))
+            sum_W_mat = torch.zeros(q_dev.shape[:-2] + (3, (len(indices) * 3))) # (batch x 3 x (n_c_obj*3))
+            for contact, idx in enumerate(indices):
+
+                # Map Normal Force
+                diag_F_mu[..., idx, contact*3 + 2] = 1.0
+                # Map Tangent Forces
+                diag_F_mu[..., len(obj_pair_list)+2*idx, contact*3] = mu_i
+                diag_F_mu[..., len(obj_pair_list)+2*idx+1, contact*3+1] = mu_i
+
+                # Create Block diagonal matrix (note torch.block_diag isn't vectorized)
+                R_FW_mat[..., contact*3:(contact+1)*3, contact*3:(contact+1)*3] = R_FW_list[idx]
+
+                # Summation 
+                sum_W_mat[..., 0, contact*3] = 1.0
+                sum_W_mat[..., 1, contact*3+1] = 1.0
+                sum_W_mat[..., 2, contact*3+2] = 1.0
+            q_dev_part = pbmm(sum_W_mat, pbmm(R_FW_mat.transpose(-1, -2), diag_F_mu.transpose(-1, -2))) # (batch, 3, (n_c_tot*3))
+            Q_dev += pbmm(q_dev_part.transpose(-1, -2), q_dev_part)
+
+            # Linear Term is lambda_mSR^Tdiag(mu)^T
+            impulse_measured_W = contact_forces[key].unsqueeze(-2) * dt # (batch, 1, 3)
+            q_dev -= pbmm(impulse_measured_W, q_dev_part).transpose(-1, -2) # (batch, n_c_tot*3, 1)
+
+            # Constant term is lambda_m magnitude, multiply by 0.5 here to match constant_pred
+            constant_dev += 0.5 * pbmm(impulse_measured_W, impulse_measured_W.transpose(-1, -2))
+            
         Q_final = Q_delassus + (self.w_dev/self.w_pred)*Q_dev
 
         q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
