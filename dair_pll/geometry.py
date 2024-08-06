@@ -711,6 +711,7 @@ class GeometryCollider:
         # Project onto nearest face
         # Construct difference vector
         p_AoBo_A_clamp_sign = torch.sign(p_AoBo_A_clamp)
+        p_AoBo_A_clamp_sign[p_AoBo_A_clamp_sign == 0.] = 1.
         p_AoBo_A_diffs = p_AoBo_A_clamp_sign*box_lengths - p_AoBo_A_clamp
         # Mask out all but the closest
         mask = torch.zeros_like(p_AoBo_A_diffs)
@@ -743,7 +744,6 @@ class GeometryCollider:
             p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
             directions_A = torch.cat([directions_A, directions_A2.unsqueeze(-2)], dim=-2)
         else:
-        
             p_AoAc_A = p_AoAc_A.expand(batch_dim + (n_c, 3))
             directions_A = directions_A.expand(batch_dim + (n_c, 3))
 
@@ -771,8 +771,8 @@ class GeometryCollider:
         # Project Phi from Closest Point
         phi[..., :1] = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
         # Take vector norm of 2nd witness point
-        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
-        #phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        #phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         assert phi.shape == batch_dim + (n_c,) # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B

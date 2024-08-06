@@ -568,7 +568,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             self.learned_system = MultibodyLearnableSystemWithTrajectory(
                 trajectory_model = self.trajectory_model_name,
                 traj_len = traj.shape[0],
-                true_traj = None,
+                true_traj = traj,
                 init_urdfs = learnable_config.urdfs,
                 dt = self.config.data_config.dt,
                 inertia_mode = learnable_config.inertia_mode,

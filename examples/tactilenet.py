@@ -127,7 +127,7 @@ DT = 0.0068
 
 # Generation configuration.
 CUBE_X_0 = torch.tensor(
-    [0., 0.0524 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
+    [0.1, 0.05 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
 #     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
      0.5, #0., 0.0524, # Robot finger_0 Q 1D (x)
      -0.5, #0., 0.0524, # Robot finger_1 Q 1D (x)
@@ -293,7 +293,7 @@ def main(storage_folder_name: str = "",
     base_config = DrakeSystemConfig(urdfs=urdfs, 
         additional_system_builders=additional_system_builders[0], 
         additional_system_kwargs=additional_system_builders[1],
-        use_meshcat=False
+        use_meshcat=True
     )
 
     # how to slice trajectories into training datapoints
@@ -468,15 +468,15 @@ def main(storage_folder_name: str = "",
               help="what W&B project to save results under.")
 @click.option('--w-pred',
               type=float,
-              default=1e2,
+              default=2e1,
               help="weight of prediction term in ContactNets loss")
 @click.option('--w-comp',
               type=float,
-              default=1e1,
+              default=1e0,
               help="weight of complementarity term in ContactNets loss")
 @click.option('--w-diss',
               type=float,
-              default=1e0,
+              default=2e1,
               help="weight of dissipation term in ContactNets loss")
 @click.option('--w-pen',
               type=float,
@@ -492,7 +492,7 @@ def main(storage_folder_name: str = "",
               help="weight of residual weight regularization term in loss")
 @click.option('--w-dev',
               type=float,
-              default=2e5,
+              default=1e5,
               help="weight of deviation from measured contact forces in ContactNets loss")
 @click.option('--residual/--no-residual',
               default=False,
