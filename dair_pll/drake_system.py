@@ -182,6 +182,6 @@ class DrakeSystem(System):
             plant, new_plant_context, self.plant_diagram.model_ids, self.space)
 
         carry_next = self.populate_carry(carry)
-        input("Step...")
+        #input("Step...")
 
         return torch.tensor(x_next), carry_next

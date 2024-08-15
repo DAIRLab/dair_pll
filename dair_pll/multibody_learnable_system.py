@@ -24,6 +24,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 from multiprocessing import pool
 from os import path
 from typing import List, Tuple, Optional, Dict, cast
+from functools import partial
 
 import numpy as np
 import torch
@@ -430,7 +431,7 @@ class MultibodyLearnableSystem(System):
         loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
                     + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
 
-        if self.debug % 50 == 0:
+        if self.debug % 10 == 0:
             breakpoint()
         # Check
         # TODO: CHECK DEVIATION TERM CALC ABOVE!
@@ -678,9 +679,20 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         if true_traj is not None:
             model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
         self.trajectory_q = ParameterList([Parameter(model_state[idx, :3], requires_grad=True) for idx in range(traj_len)])
-        self.trajectory_v = ParameterList([Parameter(model_state[idx, 3:], requires_grad=(idx > 1)) for idx in range(traj_len)])
+        self.trajectory_v = ParameterList([Parameter(model_state[idx, 3:], requires_grad=(idx > 0)) for idx in range(traj_len)])
 
-        self.trajectory_q[51].register_hook(lambda grad: print(f"Trajectory Gradient: {grad}"))
+        self.grad_debug_q = [None] * traj_len
+        def grad_debug_hook_q(idx, grad):
+            self.grad_debug_q[idx] = grad
+
+        self.grad_debug_v = [None] * traj_len
+        def grad_debug_hook_v(idx, grad):
+            self.grad_debug_v[idx] = grad
+
+        for i in range(traj_len):
+            self.trajectory_q[i].register_hook(partial(grad_debug_hook_q, i))
+            if i > 0:
+                self.trajectory_v[i].register_hook(partial(grad_debug_hook_v, i))
 
     def construct_state_tensor(self,
         data_state: Tensor) -> Tensor:

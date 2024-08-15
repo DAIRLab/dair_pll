@@ -771,8 +771,8 @@ class GeometryCollider:
         # Project Phi from Closest Point
         phi[..., :1] = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
         # Take vector norm of 2nd witness point
-        #phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
-        phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        #phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         assert phi.shape == batch_dim + (n_c,) # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B
