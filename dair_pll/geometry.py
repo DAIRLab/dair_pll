@@ -431,7 +431,7 @@ class Box(SparseVertexConvexCollisionGeometry):
         scaled_half_lengths = half_lengths.clone()/_NOMINAL_HALF_LENGTH
         self.length_params = Parameter(scaled_half_lengths.view(1, -1),
                                        requires_grad=learnable)
-        self.length_params.register_hook(lambda grad: print(f"Box Param Gradient: {grad}"))
+        #self.length_params.register_hook(lambda grad: print(f"Box Param Gradient: {grad}"))
         self.unit_vertices = _UNIT_BOX_VERTICES.clone().to(device=self.length_params.device)
         self.learnable = learnable
 
@@ -691,10 +691,10 @@ class GeometryCollider:
         p_AoBo_A (batch, 3): vector from box to sphere in box frame
 
         Returns:
-        phi (batch, n_c = 1): distance between objects
-        R_AC (batch, n_c = 1, 3, 3): A model frame to contact frame [i.e. z == contact normal]
-        p_AoAc_A (batch, n_c=1, 3): A's contact in A's frame
-        p_BoBc_B (batch, n_c=1, 3): B's contact in B's frame
+        phi (batch, n_c=2): distance between objects
+        R_AC (batch, n_c=2, 3, 3): A model frame to contact frame [i.e. z == contact normal]
+        p_AoAc_A (batch, n_c=2, 3): A's contact in A's frame
+        p_BoBc_B (batch, n_c=2, 3): B's contact in B's frame
         """
         batch_dim = R_AB.shape[:-2]
         assert R_AB.shape == batch_dim + (3, 3)
@@ -736,6 +736,7 @@ class GeometryCollider:
 
         # Add estimated normal if they exist
         if estimated_normals_A is not None:
+        #if False:
             assert estimated_normals_A.shape == batch_dim + (3,)
             directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
             zeros_idx = torch.isclose(torch.norm(directions_A2, dim=-1), torch.zeros(batch_dim))
@@ -770,9 +771,17 @@ class GeometryCollider:
         phi = torch.zeros(batch_dim + (n_c,))
         # Project Phi from Closest Point
         phi[..., :1] = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
-        # Take vector norm of 2nd witness point
-        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+
+        # 2nd Witness Point
+        # Vector Norm
+        #phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        # Projected onto Normal
         #phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        # Projected onto Normal, Abs
+        #phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
+        # Projected onto Normal, Abs, Max with previous phi
+        temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
+        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,) # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B

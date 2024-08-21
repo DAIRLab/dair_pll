@@ -74,7 +74,7 @@
     <axis xyz="0 1 0"/>
   </joint>
   <joint name="finger_0_to_base_z" type="fixed">
-    <origin xyz="0 0 0.0524" />
+    <origin xyz="0 0 0.05" />
     <parent link="finger_0_fake_y"/>
     <child link="finger_0"/>
     <axis xyz="0 0 1"/>
@@ -160,7 +160,7 @@
     <axis xyz="0 1 0"/>
   </joint>
   <joint name="finger_1_to_base_z" type="fixed">
-    <origin xyz="0 0 0.0524" />
+    <origin xyz="0 0 0.05" />
     <parent link="finger_1_fake_y"/>
     <child link="finger_1"/>
     <axis xyz="0 0 1"/>

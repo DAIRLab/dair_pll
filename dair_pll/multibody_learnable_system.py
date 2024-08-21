@@ -349,12 +349,36 @@ class MultibodyLearnableSystem(System):
         q_pred = -pbmm(J, dv.transpose(-1, -2))
         q_comp = (1.0/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+
         # Penalize Deviation from measured contact impulses
         # This is in impulse^2, but take deviation w.r.t. Delassus to
         # add 1/mass term to bring into Energy.
         q_dev = torch.zeros_like(q_pred)
         Q_dev = torch.zeros_like(Q_delassus)
         constant_dev = torch.zeros_like(constant_pred)
+
+        ### OLD METHOD
+        """
+        for key in contact_forces.keys():
+            if key in obj_pair_list:
+                idx = obj_pair_list.index(key)
+                impulse_measured_W = contact_forces[key].unsqueeze(-1) * dt
+                # Constant term is lambda_m magnitude
+                constant_dev = constant_dev + 0.5 * pbmm(impulse_measured_W.transpose(-1, -2), impulse_measured_W)
+                # q term is lambda_m in contact frame
+                impulse_measured_c = pbmm(R_FW_list[idx].transpose(-1, -2), impulse_measured_W)
+                # Normal impulse
+                q_dev[..., idx, :] = impulse_measured_c[..., 2, :]
+                # Scale friction impulse by mu
+                q_dev[..., len(obj_pair_list)+2*idx:len(obj_pair_list)+2*(idx+1), :] = impulse_measured_c[..., :2, :] * mu_list[idx]
+                # Set 3 diagonal elements (normal, and 2 transverse) to 1 in quadratic term
+                Q_dev[..., idx, idx] = 1.0
+                # Scale friction terms by mu^2
+                for diag_idx in (len(obj_pair_list)+2*idx, (len(obj_pair_list)+2*idx) + 1):
+                    Q_dev[..., diag_idx, diag_idx] = 1.0 * mu_list[idx] * mu_list[idx]
+        """
+
+        
         for key in contact_forces.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
@@ -389,6 +413,7 @@ class MultibodyLearnableSystem(System):
 
             # Constant term is lambda_m magnitude, multiply by 0.5 here to match constant_pred
             constant_dev += 0.5 * pbmm(impulse_measured_W, impulse_measured_W.transpose(-1, -2))
+        
             
         Q_final = Q_delassus + (self.w_dev/self.w_pred)*Q_dev
 
@@ -431,8 +456,8 @@ class MultibodyLearnableSystem(System):
         loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
                     + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
 
-        if self.debug % 10 == 0:
-            breakpoint()
+        if self.debug % 2 == 0:
+            pass #breakpoint()
         # Check
         # TODO: CHECK DEVIATION TERM CALC ABOVE!
         assert np.all(loss_dev.detach().cpu().numpy() > 0.)
@@ -675,7 +700,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        model_state = torch.vstack([torch.tensor([0.04, 0.0524, 0., 0., 0., 0.])] * traj_len)
+        model_state = torch.vstack([torch.tensor([0.0, 0.05, 0., 0., 0., 0.])] * traj_len)
         if true_traj is not None:
             model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
         self.trajectory_q = ParameterList([Parameter(model_state[idx, :3], requires_grad=True) for idx in range(traj_len)])
@@ -689,10 +714,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         def grad_debug_hook_v(idx, grad):
             self.grad_debug_v[idx] = grad
 
+        """
         for i in range(traj_len):
             self.trajectory_q[i].register_hook(partial(grad_debug_hook_q, i))
             if i > 0:
                 self.trajectory_v[i].register_hook(partial(grad_debug_hook_v, i))
+        """
 
     def construct_state_tensor(self,
         data_state: Tensor) -> Tensor:
