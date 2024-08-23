@@ -39,7 +39,7 @@ import torch.nn as nn
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
-from dair_pll.multibody_terms import MultibodyTerms, InertiaLearn
+from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
 from dair_pll.quaternion import quaternion_to_rotmat_vec
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
 from dair_pll.state_space import FloatingBaseSpace, StateSpace
@@ -79,8 +79,7 @@ class MultibodyLearnableSystem(System):
                  w_res: float,
                  w_res_w: float,
                  w_dev: float,
-                 inertia_mode: InertiaLearn = InertiaLearn(),
-                 constant_bodies: List[str] = [],
+                 learnable_body_dict: Dict[str, LearnableBodySettings] = {},
                  do_residual: bool = False,
                  output_urdfs_dir: Optional[str] = None,
                  network_width: int = 128,
@@ -99,9 +98,7 @@ class MultibodyLearnableSystem(System):
             init_urdfs: Names and corresponding URDFs to model with
               :py:class:`MultibodyTerms`.
             dt: Time step of system in seconds.
-            inertia_mode: An InertiaLearn() object specifying which inertial
-              parameters to learn
-            constant_bodies: list of body names whose properties should NOT
+            learnable_body_dict: dict of body names and which properties should
               be learned
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
@@ -109,8 +106,8 @@ class MultibodyLearnableSystem(System):
               initialization or not.
         """
 
-        multibody_terms = MultibodyTerms(init_urdfs, inertia_mode,
-                                         constant_bodies,
+        multibody_terms = MultibodyTerms(init_urdfs,
+                                         learnable_body_dict,
                                          represent_geometry_as,
                                          randomize_initialization,
                                          g_frac=g_frac)
@@ -124,11 +121,14 @@ class MultibodyLearnableSystem(System):
         self.init_urdfs = init_urdfs
 
         if randomize_initialization:
+            raise NotImplementedError("Random Initialization Not Implemented")
             # Add noise and export.
+            """
             print(f'Randomizing initialization.')
-            multibody_terms.randomize_multibody_terms(inertia_mode)
+            multibody_terms.randomize_multibody_terms()
             self.multibody_terms = multibody_terms
             self.generate_updated_urdfs('init')
+            """
 
         self.visualization_system = None
         self.solver = DynamicCvxpyLCQPLayer()
@@ -270,10 +270,6 @@ class MultibodyLearnableSystem(System):
         regularizers.append(torch.linalg.cond(I_BBcm_B))
 
         # TODO: Use the believed geometry to help supervise the learned CoM.
-        # if (self.multibody_terms.inertia_mode_txt != 'none') and \
-        #    (self.multibody_terms.inertia_mode_txt != 'masses'):
-        #     # This means the CoM locations are getting learned.
-        #     pass
         return regularizers
 
     def calculate_contactnets_loss_terms(self,

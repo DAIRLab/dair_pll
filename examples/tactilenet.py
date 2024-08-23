@@ -29,7 +29,7 @@ from dair_pll.experiment import default_epoch_callback
 from dair_pll.experiment_config import OptimizerConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float, Int
-from dair_pll.multibody_terms import InertiaLearn
+from dair_pll.multibody_terms import LearnableBodySettings
 from dair_pll.state_space import ConstantSampler, UniformSampler, GaussianWhiteNoiser, \
     FloatingBaseSpace, FixedBaseSpace, ProductSpace
 from dair_pll.system import System
@@ -53,22 +53,6 @@ VISCOUS_AUGMENTATION = 'viscous'
 GRAVITY_AUGMENTATION = 'gravity'
 AUGMENTED_FORCE_TYPES = [VORTEX_AUGMENTATION, VISCOUS_AUGMENTATION,
                          GRAVITY_AUGMENTATION]
-
-# Possible inertial parameterizations to learn for the elbow system.
-# The options are:
-# 0 - none (0 parameters)
-# 1 - masses (n_bodies - 1 parameters)
-# 2 - CoMs (3*n_bodies parameters)
-# 3 - CoMs and masses (4*n_bodies - 1 parameters)
-# 4 - all (10*n_bodies - 1 parameters)
-INERTIA_PARAM_CHOICES = [str(i) for i in range(5)]
-INERTIA_PARAM_DESCRIPTIONS = [
-    'learn no inertial parameters (0 * n_bodies)',
-    'learn only masses and not the first mass (n_bodies - 1)',
-    'learn only centers of mass (3 * n_bodies)',
-    'learn masses (except first) and centers of mass (4 * n_bodies - 1)',
-    'learn all parameters (except first mass) (10 * n_bodies - 1)']
-INERTIA_PARAM_OPTIONS = ['none', 'masses', 'CoMs', 'CoMs and masses', 'all']
 
 
 # File management.
@@ -193,7 +177,7 @@ def main(storage_folder_name: str = "",
          geometry: str = BOX_TYPE,
          regenerate: bool = False,
          dataset_size: int = 1,
-         inertia_params: int = 1,
+         learnable_params: int = 0b11000, # Default no inertia
          true_sys: bool = True,
          wandb_project: str = WANDB_DEFAULT_PROJECT,
          w_pred: float = 1e0,
@@ -216,7 +200,7 @@ def main(storage_folder_name: str = "",
         geometry: How to represent geometry (box, mesh, or polygon).
         regenerate: Whether save updated URDF's each epoch.
         dataset_size: Number of trajectories for train/val/test.
-        inertia_params: What inertial parameters to learn.
+        learned_params: What parameters to learn.
         true_sys: Whether to start with the "true" URDF or poor initialization.
         wandb_project: What W&B project to store results under.
         w_pred: Weight of prediction term in ContactNets loss.
@@ -231,11 +215,13 @@ def main(storage_folder_name: str = "",
     # pylint: disable=too-many-locals, too-many-arguments
     torch.set_default_device('cuda')
 
-    # Unpack inertia bitmask
-    inertia_mode = InertiaLearn(
-        mass = bool((int(inertia_params) // 1) % 2),
-        com = bool((int(inertia_params) // 2) % 2),
-        inertia = bool((int(inertia_params) // 4) % 2),
+    # Unpack learning bitmask
+    learnable_settings = LearnableBodySettings(
+        inertia_mass = bool((int(learnable_params) // 1) % 2),
+        inertia_com = bool((int(learnable_params) // 2) % 2),
+        inertia_moments_products = bool((int(learnable_params) // 4) % 2),
+        geometry = bool((int(learnable_params) // 8) % 2),
+        friction = bool((int(learnable_params) // 16) % 2),
     )
 
     print(f'Starting test under \'{storage_folder_name}\' ' \
@@ -245,7 +231,7 @@ def main(storage_folder_name: str = "",
          + f'\n\tusing ContactNets: {contactnets}' \
          + f'\n\twith geometry represented as: {geometry}' \
          + f'\n\tregenerate: {regenerate}' \
-         + f'\n\tinertia learning mode: {inertia_params} == {inertia_mode}' \
+         + f'\n\tlearnable params: {learnable_params} == {learnable_settings}' \
          + f'\n\tloss weights (pred, comp, diss, pen, res, res_w, dev): ' \
          + f'({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w}, {w_dev})' \
          + f'\n\twith residual: {do_residual}' \
@@ -323,8 +309,8 @@ def main(storage_folder_name: str = "",
                MultibodyLosses.PREDICTION_LOSS
 
         learnable_config = MultibodyLearnableSystemConfig(
-            urdfs=bad_init_urdfs, loss=loss, inertia_mode=inertia_mode,
-            constant_bodies = ["finger_0", "finger_1"],
+            urdfs=bad_init_urdfs, loss=loss, 
+            learnable_body_dict = {"cube_body" : learnable_settings},
             w_pred=w_pred,
             w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_diss = Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
@@ -456,10 +442,10 @@ def main(storage_folder_name: str = "",
 @click.option('--dataset-size',
               default=1,
               help="dataset size")
-@click.option('--inertia-params',
-              type=click.IntRange(0, 7),
-              default=0,
-              help="Bitmap of what inertia params to learn: inertia-com-mass (e.g. 0 == none, 1 == mass only, 7 == all)")
+@click.option('--learnable-params',
+              type=click.IntRange(0b00000, 0b11111),
+              default=0b01000, # Default No Inertial Params
+              help="Bitmap of what params to learn: friction-geometry-inertia-com-mass (e.g. 0 == none, 1 == mass only, 31 == all)")
 @click.option('--true-sys/--wrong-sys',
               default=False,
               help="whether to start with correct or poor URDF.")
@@ -505,7 +491,7 @@ def main(storage_folder_name: str = "",
 def main_command(storage_folder_name: str, run_name: str, system: str,
                  source: str, structured: bool, contactnets: bool,
                  geometry: str, regenerate: bool, dataset_size: int,
-                 inertia_params: str, true_sys: bool,
+                 learnable_params: int, true_sys: bool,
                  wandb_project: str, w_pred: float, w_comp: float,
                  w_diss: float, w_pen: float, w_res: float, w_res_w: float,
                  w_dev: float,
@@ -515,7 +501,7 @@ def main_command(storage_folder_name: str, run_name: str, system: str,
     assert run_name is not None
 
     main(storage_folder_name, run_name, system, source, structured, contactnets,
-         geometry, regenerate, dataset_size, inertia_params,
+         geometry, regenerate, dataset_size, learnable_params,
          true_sys, wandb_project, w_pred, w_comp, w_diss, w_pen, w_res, w_res_w, w_dev,
          residual, g_frac)
 

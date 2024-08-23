@@ -23,7 +23,7 @@ from dair_pll.experiment import SupervisedLearningExperiment, \
 from dair_pll.experiment_config import SystemConfig, \
     SupervisedLearningExperimentConfig
 from dair_pll.hyperparameter import Float
-from dair_pll.multibody_terms import InertiaLearn
+from dair_pll.multibody_terms import LearnableBodySettings
 from dair_pll.multibody_learnable_system import \
     MultibodyLearnableSystem, MultibodyLearnableSystemWithTrajectory
 from dair_pll.system import System, SystemSummary
@@ -60,10 +60,8 @@ class DrakeMultibodyLearnableTactileExperimentConfig(DrakeMultibodyLearnableExpe
 class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
     """Whether to use ContactNets or prediction loss."""
-    inertia_mode: InertiaLearn = field(default_factory=InertiaLearn)
-    """What inertial parameters to learn."""
-    constant_bodies: List[str] = field(default_factory=list)
-    """Which bodies to keep constant"""
+    learnable_body_dict: Dict[str, LearnableBodySettings] = field(default_factory={})
+    """What body parameters to learn.  Any body not in this dictionary will be considered unlearnable."""
     w_pred: float = 1.0
     """Weight of prediction term in ContactNets loss (suggested keep at 1.0)."""
     w_comp: Float = Float(1e0, log=True)  #1e-1
@@ -314,8 +312,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             self.learned_system = MultibodyLearnableSystem(
                 learnable_config.urdfs,
                 self.config.data_config.dt,
-                inertia_mode = learnable_config.inertia_mode,
-                constant_bodies = learnable_config.constant_bodies,
+                learnable_body_dict = learnable_config.learnable_body_dict,
                 w_pred = learnable_config.w_pred,
                 w_comp = learnable_config.w_comp.value,
                 w_diss = learnable_config.w_diss.value,
@@ -571,8 +568,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 true_traj = None,
                 init_urdfs = learnable_config.urdfs,
                 dt = self.config.data_config.dt,
-                inertia_mode = learnable_config.inertia_mode,
-                constant_bodies = learnable_config.constant_bodies,
+                learnable_body_dict = learnable_config.learnable_body_dict,
                 w_pred = learnable_config.w_pred,
                 w_comp = learnable_config.w_comp.value,
                 w_diss = learnable_config.w_diss.value,

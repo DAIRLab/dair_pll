@@ -73,11 +73,13 @@ INERTIA_TENSOR_DOF = 6
 DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 
 @dataclass
-class InertiaLearn:
-    """Class to specify which inertial parameters to learn"""
-    mass: bool = False
-    com: bool = False
-    inertia: bool = False
+class LearnableBodySettings:
+    """Class to specify which body parameters to learn"""
+    inertia_mass: bool = False
+    inertia_com: bool = False
+    inertia_moments_products: bool = False
+    geometry: bool = False
+    friction: bool = False
 
 
 # noinspection PyUnresolvedReferences
@@ -127,16 +129,13 @@ class LagrangianTerms(Module):
     inertial_parameters: Tensor
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram,
-                 inertia_learn: InertiaLearn = InertiaLearn(), constant_bodies: List[str] = []) -> None:
+                 learnable_body_dict: Dict[str, LearnableBodySettings] = {}) -> None:
         """Inits :py:class:`LagrangianTerms` with prescribed parameters and
         functional forms.
 
         Args:
             plant_diagram: Drake MultibodyPlant diagram to extract terms from.
-            inertia_mode: An integer 0, 1, 2, 3, or 4 representing the
-            inertial parameters the model can learn.  The higher the number
-            the more inertial parameters are free to be learned, and 0
-            corresponds to learning no inertial parameters.
+            learnable_body_dict: Which properties to learn about each object
         """
         super().__init__()
 
@@ -176,11 +175,11 @@ class LagrangianTerms(Module):
         self.body_parameters = ParameterList()
         
         for body_param_tensor, body in zip(body_param_tensors, bodies):
-            learn_body = (body.name() not in constant_bodies)
+            learn_body = (body.name() in learnable_body_dict)
             body_parameter = [
-                Parameter(body_param_tensor[0], requires_grad=(learn_body and inertia_learn.mass)),
-                Parameter(body_param_tensor[1:4], requires_grad=(learn_body and inertia_learn.com)),
-                Parameter(body_param_tensor[4:], requires_grad=(learn_body and inertia_learn.inertia)),
+                Parameter(body_param_tensor[0], requires_grad=(learn_body and learnable_body_dict[body.name()].inertia_mass)),
+                Parameter(body_param_tensor[1:4], requires_grad=(learn_body and learnable_body_dict[body.name()].inertia_com)),
+                Parameter(body_param_tensor[4:], requires_grad=(learn_body and learnable_body_dict[body.name()].inertia_moments_products)),
             ]
             self.body_parameters.extend(body_parameter)
 
@@ -302,7 +301,7 @@ class ContactTerms(Module):
 
     def __init__(self, plant_diagram: MultibodyPlantDiagram,
                  represent_geometry_as: str = 'box',
-                 constant_bodies: List[str] = []) -> None:
+                 learnable_body_dict: Dict[str, LearnableBodySettings] = {}) -> None:
         """Inits :py:class:`ContactTerms` with prescribed kinematics and
         geometries.
 
@@ -328,10 +327,10 @@ class ContactTerms(Module):
         # sweep over collision elements
         geometries, rotations, translations, drake_spatial_jacobians = \
             ContactTerms.extract_geometries_and_kinematics(
-                plant, inspector, geometry_ids, context, represent_geometry_as, constant_bodies=constant_bodies)
+                plant, inspector, geometry_ids, context, represent_geometry_as, learnable_body_dict=learnable_body_dict)
 
         collision_candidates = []
-        # If Training, only consider collisions between at least one learnable object
+        # If Training, only consider collisions between at least one object with learnable GEOMETRY
         if self.training:
             for candidate in collision_geometry_set.collision_candidates:
                 if geometries[candidate[0]].learnable or geometries[candidate[1]].learnable:
@@ -343,6 +342,9 @@ class ContactTerms(Module):
             if geometries[geometry_pair[0]] > geometries[geometry_pair[1]]:
                 collision_candidates[geometry_index] = (geometry_pair[1],
                                                         geometry_pair[0])
+
+        if len(collision_candidates) < 1:
+            raise ValueError("Empty collision candiates. Do you have at least one learnable object geometry?")
 
         self.geometry_rotations = make_configuration_callback(
             np.stack(rotations), q)
@@ -362,7 +364,7 @@ class ContactTerms(Module):
         self.friction_param_list = ParameterList()
         for idx, friction in enumerate(coulomb_frictions):
             body = drake_utils.get_body_from_geometry_id(plant, inspector, geometry_ids[idx])
-            learnable = (body.name() not in constant_bodies) and (body != plant.world_body())
+            learnable = (body.name() in learnable_body_dict) and (body != plant.world_body()) and learnable_body_dict[body.name()].friction
             self.friction_param_list.append(Parameter(torch.tensor([friction.static_friction()]), requires_grad=learnable))
 
         self.collision_candidates = torch.tensor(collision_candidates).t().long()
@@ -377,7 +379,7 @@ class ContactTerms(Module):
     def extract_geometries_and_kinematics(
         plant: MultibodyPlant_[Expression], inspector: SceneGraphInspector,
         geometry_ids: List[GeometryId], context: Context,
-        represent_geometry_as: str, constant_bodies: List[str] = []
+        represent_geometry_as: str, learnable_body_dict: Dict[str, LearnableBodySettings] = {}
     ) -> Tuple[List[CollisionGeometry], List[np.ndarray], List[np.ndarray],
                List[np.ndarray]]:
         """Extracts modules and kinematics of list of geometries G.
@@ -410,7 +412,7 @@ class ContactTerms(Module):
             body = plant.GetBodyFromFrameId(
                 inspector.GetFrameId(geometry_id))
 
-            learnable = (body.name() not in constant_bodies) and (body != plant.world_body())
+            learnable = (body.name() in learnable_body_dict) and (body != plant.world_body()) and learnable_body_dict[body.name()].geometry
 
             geometry_frame = body.body_frame()
 
@@ -599,8 +601,7 @@ class MultibodyTerms(Module):
     geometry_body_assignment: Dict[str, List[int]]
     plant_diagram: MultibodyPlantDiagram
     urdfs: Dict[str, str]
-    inertia_mode: InertiaLearn
-    constant_bodies: List[str]
+    learnable_body_dict: LearnableBodySettings
 
     def scalars_and_meshes(
             self) -> Tuple[Dict[str, float], Dict[str, MeshSummary]]:
@@ -615,14 +616,14 @@ class MultibodyTerms(Module):
         friction_coefficients = self.contact_terms.get_friction_coefficients()
 
         for body_pi, body_id, body in zip(self.lagrangian_terms.pi_cm(), all_body_ids, bodies):
-            if body.name() in self.constant_bodies:
+            if body.name() not in self.learnable_body_dict:
                 continue
             body_scalars = InertialParameterConverter.pi_cm_to_scalars(body_pi)
-            if not self.inertia_mode.mass:
+            if not self.learnable_body_dict[body.name()].inertia_mass:
                 del body_scalars["m"]
-            if not self.inertia_mode.com:
+            if not self.learnable_body_dict[body.name()].inertia_com:
                 del body_scalars["com_x"], body_scalars["com_y"], body_scalars["com_z"]
-            if not self.inertia_mode.inertia:
+            if not self.learnable_body_dict[body.name()].inertia_moments_products:
                 del body_scalars["I_xx"], body_scalars["I_yy"], body_scalars["I_zz"]
                 del body_scalars["I_xy"], body_scalars["I_xz"], body_scalars["I_yz"]
 
@@ -632,17 +633,20 @@ class MultibodyTerms(Module):
             })
 
             for geometry_index in self.geometry_body_assignment[body_id]:
+                # include friction
+                if self.learnable_body_dict[body.name()].friction:
+                    scalars[f'{body_id}_mu'] = \
+                        friction_coefficients[geometry_index].item()
+
                 # include geometry
+                if not self.learnable_body_dict[body.name()].geometry:
+                    continue
                 geometry = self.contact_terms.geometries[geometry_index]
                 geometry_scalars = geometry.scalars()
                 scalars.update({
                     f'{body_id}_{scalar_name}': scalar
                     for scalar_name, scalar in geometry_scalars.items()
                 })
-
-                # include friction
-                scalars[f'{body_id}_mu'] = \
-                    friction_coefficients[geometry_index].item()
 
                 geometry_mesh = None
                 if isinstance(geometry, DeepSupportConvex):
@@ -696,8 +700,7 @@ class MultibodyTerms(Module):
         delassus = pbmm(J, torch.linalg.solve(M, J.transpose(-1, -2)))
         return delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list
 
-    def __init__(self, urdfs: Dict[str, str], inertia_mode: InertiaLearn = InertiaLearn(),
-                 constant_bodies: List[str] = [],
+    def __init__(self, urdfs: Dict[str, str], learnable_body_dict: Dict[str, LearnableBodySettings] = {},
                  represent_geometry_as: str = 'box',
                  randomize_initialization: bool = False,
                  g_frac: float = 1.0) -> None:
@@ -715,15 +718,13 @@ class MultibodyTerms(Module):
         Args:
             urdfs: Dictionary of named URDF XML file names, containing
               description of multibody system.
-            inertia_mode: specify which inertial parameters to leran
-            constant_bodies: list of body names to keep constant / not learn
+            learnable_body_dict: specify which bodies and parameters to learn
             represent_geometry_as: String box/mesh/polygon to determine how
               the geometry should be represented.
         """
         super().__init__()
 
-        self.inertia_mode = inertia_mode
-        self.constant_bodies = constant_bodies
+        self.learnable_body_dict = learnable_body_dict
 
         plant_diagram = MultibodyPlantDiagram(urdfs, g_frac=g_frac)
         plant = plant_diagram.plant.ToSymbolic()
@@ -748,8 +749,8 @@ class MultibodyTerms(Module):
                 geometry_index)
 
         # setup parameterization
-        self.lagrangian_terms = LagrangianTerms(plant_diagram, inertia_mode, constant_bodies)
-        self.contact_terms = ContactTerms(plant_diagram, represent_geometry_as, constant_bodies)
+        self.lagrangian_terms = LagrangianTerms(plant_diagram, learnable_body_dict)
+        self.contact_terms = ContactTerms(plant_diagram, represent_geometry_as, learnable_body_dict)
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs
