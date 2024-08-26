@@ -36,6 +36,10 @@ install_reqs = [
     # git
     'drake-pytorch @ git+https://github.com/DAIRLab/drake-pytorch.git#egg=drake-pytorch-0.1',
     'sappy @ git+https://github.com/mshalm/sappy.git#egg=sappy-0.0.1',
+    # parse URDF
+    'xacro',
+    'roslaunch @ git+https://github.com/ros/ros_comm.git#egg=roslaunch&subdirectory=tools/roslaunch',
+    'rosgraph @ git+https://github.com/ros/ros_comm.git#egg=rosgraph&subdirectory=tools/rosgraph',
 ]
 
 try:

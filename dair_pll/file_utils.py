@@ -11,6 +11,7 @@ import random
 import pickle
 from os import path
 from typing import List, Callable, BinaryIO, Any, TextIO, Optional
+import xacro
 
 
 TRAJ_EXTENSION = '.pt'  # trajectory file
@@ -65,6 +66,31 @@ def get_asset(asset_file_basename: str) -> str:
         Asset's absolute path.
     """
     return os.path.join(ASSETS_DIR, asset_file_basename)
+
+
+def eval_extension_fixed(s):
+    if s == '$(cwd)':
+        return os.getcwd()
+    try:
+        try:
+            from roslaunch.substitution_args import resolve_args
+        except: # Ignore initial ModuleNotFoundError
+            pass
+        from roslaunch.substitution_args import resolve_args, ArgException
+        from rospkg.common import ResourceNotFound
+        return resolve_args(s, context=xacro.substitution_args_context, resolve_anon=False)
+    except ImportError as e:
+        raise xacro.XacroException("substitution args not supported: ", exc=e)
+    except ResourceNotFound as e:
+        raise xacro.XacroException("resource not found:", exc=e)
+    except ArgException as e:
+        raise xacro.XacroException("Undefined substitution argument", exc=e)
+
+xacro.eval_extension = eval_extension_fixed
+
+def get_urdf_asset_contents(urdf_file_basename: str, **mappings) -> str:
+    file_name = get_asset(urdf_file_basename)
+    return xacro.process_file(file_name, mappings=mappings).toxml()
 
 
 def assure_storage_tree_created(storage_name: str) -> None:

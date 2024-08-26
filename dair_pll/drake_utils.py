@@ -223,7 +223,7 @@ def add_plant_from_urdfs(
 
     Returns:
         Named dictionary of model instances returned by
-        ``AddModels``.
+        ``AddModelsFromString``.
         New plant, which has been added to builder.
         Scene graph associated with new plant.
     """
@@ -235,7 +235,7 @@ def add_plant_from_urdfs(
     # always added by default.
     model_ids = [world_model_instance()]
     for name, urdf in urdfs.items():
-        new_ids = parser.AddModels(urdf)
+        new_ids = parser.AddModelsFromString(urdf, "urdf")
         if len(new_ids) < 1:
             continue
         assert len(new_ids) == 1, "Only one robot supported per URDF"
