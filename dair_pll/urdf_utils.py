@@ -364,7 +364,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
             multibody_terms.plant_diagram.plant.GetModelInstanceByName(
                 urdf_name)
 
-        urdf_tree = ElementTree.parse(urdf)
+        urdf_tree = ElementTree.fromstring(urdf)
 
         for element in urdf_tree.iter():
             if element.tag == "link":
@@ -398,7 +398,7 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
 
         register_namespace('drake', _DRAKE_URL)
         system_urdf_representation = ElementTree.tostring(
-            urdf_tree.getroot(), encoding="utf-8").decode("utf-8")
+            urdf_tree, encoding="utf-8").decode("utf-8")
         urdf_xml[
             urdf_name] = f'<?xml version="1.0"?>\n{system_urdf_representation}'
     return urdf_xml

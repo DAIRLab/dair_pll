@@ -125,7 +125,7 @@ def generate_visualization_system(
     # Start with true base system.
     double_urdfs = deepcopy(base_system.urdfs)
     double_urdfs.update({
-        k: file_utils.get_geometrically_accurate_urdf(v) for k, v in \
+        k: v for k, v in \
         double_urdfs.items()
     })
 
@@ -133,7 +133,7 @@ def generate_visualization_system(
     # geometry.
     if learned_system is None:
         double_urdfs.update({
-            (k + LEARNED_TAG): file_utils.get_geometrically_accurate_urdf(v) \
+            (k + LEARNED_TAG): v \
             for k, v in double_urdfs.items()
         })
 

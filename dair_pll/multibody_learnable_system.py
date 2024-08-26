@@ -169,21 +169,19 @@ class MultibodyLearnableSystem(System):
         old_urdfs = self.init_urdfs
         new_urdf_strings = urdf_utils.represent_multibody_terms_as_urdfs(
             self.multibody_terms, self.output_urdfs_dir)
-        new_urdfs = {}
 
-        # saves new urdfs with original file basenames plus optional suffix in
+        # saves new urdfs with model name plus optional suffix in
         # new folder.
         for urdf_name, new_urdf_string in new_urdf_strings.items():
-            new_urdf_filename = path.basename(old_urdfs[urdf_name])
+            new_urdf_filename = urdf_name + '.urdf'
             if suffix != None:
                 new_urdf_filename = new_urdf_filename.split('.')[0] + '_' + \
                                     suffix + '.urdf'
 
             new_urdf_path = path.join(self.output_urdfs_dir, new_urdf_filename)
             file_utils.save_string(new_urdf_path, new_urdf_string)
-            new_urdfs[urdf_name] = new_urdf_path
 
-        return new_urdfs
+        return new_urdf_strings
 
     def contactnets_loss(self,
                          x: Tensor,
