@@ -270,11 +270,11 @@ def main(storage_folder_name: str = "",
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
     # first, select urdfs
-    urdf_asset = TRUE_URDFS[system][geometry]
-    urdf = file_utils.get_urdf_asset_contents(urdf_asset)
+    cube_urdf_bad = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"planar_xz": "true", "length_x" : "0.01", "length_z" : "0.01"})
+    cube_urdf_good = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"planar_xz": "true"})
     robot_urdf = file_utils.get_urdf_asset_contents("spherebot.urdf.xacro", **{"num_fingers": "2", "fixed_y": "0.0", "fixed_z": "0.05"})
-    urdfs = {system: urdf, 'robot': robot_urdf}
-    bad_init_urdfs = {system: file_utils.get_urdf_asset_contents(CUBE_BOX_URDF_ASSET_BAD), 'robot': robot_urdf}
+    urdfs = {"cube": cube_urdf_good, 'robot': robot_urdf}
+    bad_init_urdfs = {"cube": cube_urdf_bad, 'robot': robot_urdf}
 
     additional_system_builders = (["dair_pll.drake_utils.pid_controller_builder"], [{"desired_state": ROBOT_DESIRED, "kp": 2.0, "kd": 100.0}])
 
