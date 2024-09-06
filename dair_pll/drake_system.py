@@ -11,7 +11,7 @@ from typing import Callable, Tuple, Dict, List, Optional
 
 import torch
 from torch import Tensor
-from tensordict.tensordict import TensorDict
+from tensordict.tensordict import TensorDict, TensorDictBase
 
 from dair_pll.drake_state_converter import DrakeStateConverter
 from dair_pll.drake_utils import MultibodyPlantDiagram
@@ -182,6 +182,88 @@ class DrakeSystem(System):
             plant, new_plant_context, self.plant_diagram.model_ids, self.space)
 
         carry_next = self.populate_carry(carry)
-        #input("Step...")
+        input("Step...")
 
         return torch.tensor(x_next), carry_next
+
+    def model_states_from_state_tensor(self,
+        batched_states: Tensor, model_suffix: str = "") -> TensorDict:
+        """ Input:
+            batched_states: Tensor [batch, self.space.n_x]
+            model_suffix: added to model name before _state in key
+            Returns: TensorDict [batch, ...] for each model in system
+
+            Effectively the inverse of construct_state_tensor()
+        """
+
+        ret = TensorDict({}, batch_size=batched_states.shape[:-1])
+
+        start_idx_q = 0
+        start_idx_v = self.space.n_q
+        for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
+            space = self.space.spaces[space_idx]
+            # Ignore world and other degenerate spaces
+            if space.n_x == 0:
+                continue
+
+            end_idx_q = start_idx_q + space.n_q
+            end_idx_v = start_idx_v + space.n_v
+
+            key = self.plant_diagram.plant.GetModelInstanceName(model_id) + model_suffix + "_state"
+            ret[key] = torch.cat((batched_states[..., start_idx_q:end_idx_q], batched_states[..., start_idx_v:end_idx_v]), dim=-1)
+
+            start_idx_q = end_idx_q
+            start_idx_v = end_idx_v
+
+        assert start_idx_q == self.space.n_q
+        assert start_idx_v == self.space.n_x
+
+        return ret
+
+    def construct_state_tensor(self,
+        data_state: Tensor) -> Tensor:
+        """ Input:
+            data_state: Tensor coming from the TrajectorySet Dataloader,
+                        or similar, shape [batch, ?]
+            Returns: full state tensor (adding traj parameters) shape [batch, self.space.n_x]
+        """
+        if not isinstance(data_state, TensorDictBase):
+            return data_state
+        
+        # TODO: HACK "state" is hard-coded, switch to local arg
+        if "state" in data_state:
+            return data_state["state"]
+
+        # Construct Model States and Sanitize Input
+        model_states = [] # List of Tensors shape (batch, space_n_x)
+        for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
+            key = self.plant_diagram.plant.GetModelInstanceName(model_id) + "_state"
+            model_state = torch.zeros(1, self.space.spaces[space_idx].n_x)
+            if key in data_state.keys():
+                model_state = data_state[key]
+                assert model_state.shape == data_state.shape + (self.space.spaces[space_idx].n_x,)
+                if len(model_state.shape) == 1:
+                    model_state.unsqueeze(0)
+            model_states.append(model_state)
+
+        # Loop through models and construct state
+        ret_q = torch.tensor([])
+        ret_v = torch.tensor([])
+        for space_idx, model_x in enumerate(model_states):
+            space = self.space.spaces[space_idx]
+            # Ignore world and other degenerate spaces
+            if space.n_x == 0:
+                continue
+
+            # Append to return value
+            if ret_q.numel() == 0:
+                ret_q = model_x[..., :space.n_q]
+                ret_v = model_x[..., space.n_q:]
+            else:
+                ret_q = torch.cat((ret_q, model_x[..., :space.n_q]), dim=-1)
+                ret_v = torch.cat((ret_v, model_x[..., space.n_q:]), dim=-1)
+
+        # Return full state batch
+        return torch.cat((ret_q, ret_v), dim=-1)
+
+        

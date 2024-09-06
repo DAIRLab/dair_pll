@@ -48,6 +48,8 @@ class DrakeMultibodyLearnableExperimentConfig(SupervisedLearningExperimentConfig
                                              ):
     visualize_learned_geometry: bool = True
     """Whether to use learned geometry in trajectory overlay visualization."""
+    state_to_plot: List[str] = field(default_factory=list)
+    """Which states to plot, must be in MultibodyPlant GetStateNames."""
 
 @dataclass
 class DrakeMultibodyLearnableTactileExperimentConfig(DrakeMultibodyLearnableExperimentConfig
@@ -205,7 +207,8 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
         """
         visualization_system = self.get_visualization_system(learned_system)
 
-        space = self.get_drake_system().space
+        base_system = self.get_drake_system()
+        space = base_system.space
         videos = {}
 
         # First do overlay prediction videos.
@@ -217,13 +220,15 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
                                  f'_{PREDICTION_NAME}'
                 if not target_key in statistics:
                     continue
-                target_trajectory = torch.tensor(statistics[target_key][traj_num])
-                prediction_trajectory = torch.tensor(
-                    statistics[prediction_key][traj_num])
-                visualization_trajectory = torch.cat(
-                    (space.q(target_trajectory), space.q(prediction_trajectory),
-                     space.v(target_trajectory),
-                     space.v(prediction_trajectory)), -1)
+                # Decompose trajectories into model states
+                target_trajectory = self.get_drake_system().model_states_from_state_tensor(torch.tensor(statistics[target_key][traj_num]))
+                prediction_trajectory = learned_system.model_states_from_state_tensor(torch.tensor(
+                    statistics[prediction_key][traj_num]), model_suffix=vis_utils.LEARNED_TAG)
+                # Merge into one TensorDict
+                for key, val in prediction_trajectory.items():
+                    target_trajectory[key] = val
+                # Construct combined trajectory
+                visualization_trajectory = visualization_system.construct_state_tensor(target_trajectory)
                 video, framerate = vis_utils.visualize_trajectory(
                     visualization_system, visualization_trajectory)
                 videos[f'{set_name}_trajectory_prediction_{traj_num}'] = \
@@ -632,6 +637,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                     del x_prediction_i
                 else:
                     predictions.append(to_append)
+
         return predictions, targets
 
     def evaluate_systems_on_sets(
@@ -752,13 +758,16 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                                  f'_{PREDICTION_NAME}'
                 if not target_key in statistics:
                     continue
-                target_trajectory = torch.tensor(statistics[target_key][traj_num])
-                prediction_trajectory = torch.tensor(
-                    statistics[prediction_key][traj_num])
-                visualization_trajectory = torch.cat(
-                    (space.q(target_trajectory), space.q(prediction_trajectory),
-                     space.v(target_trajectory),
-                     space.v(prediction_trajectory)), -1)
+
+                # Decompose trajectories into model states
+                target_trajectory = self.get_drake_system().model_states_from_state_tensor(torch.tensor(statistics[target_key][traj_num]))
+                prediction_trajectory = learned_system.model_states_from_state_tensor(torch.tensor(
+                    statistics[prediction_key][traj_num]), model_suffix=vis_utils.LEARNED_TAG)
+                # Merge into one TensorDict
+                for key, val in prediction_trajectory.items():
+                    target_trajectory[key] = val
+                # Construct combined trajectory
+                visualization_trajectory = visualization_system.construct_state_tensor(target_trajectory)
                 video, framerate = vis_utils.visualize_trajectory(
                     visualization_system, visualization_trajectory)
                 videos[f'{set_name}_trajectory_prediction_{traj_num}'] = \
@@ -793,32 +802,14 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 target_trajectory = torch.tensor(statistics[target_key][traj_num])
                 prediction_trajectory = torch.tensor(
                     statistics[prediction_key][traj_num])
-                wandb.log({"cube_traj_x" : wandb.plot.line_series(
-                                       xs=[t for t in range(target_trajectory.shape[0])], 
-                                       ys=[target_trajectory[:, 0].detach().cpu().tolist(), prediction_trajectory[:, 0].detach().cpu().tolist()],
-                                       keys=["ground truth", "estimated"],
-                                       title="cube_traj_x",
-                                       xname="timestep")}, step=epoch)
-                wandb.log({"cube_traj_vx" : wandb.plot.line_series(
-                                       xs=[t for t in range(target_trajectory.shape[0])], 
-                                       ys=[target_trajectory[:, 5].detach().cpu().tolist(), prediction_trajectory[:, 5].detach().cpu().tolist()],
-                                       keys=["ground truth", "estimated"],
-                                       title="cube_traj_vx",
-                                       xname="timestep")}, step=epoch)
-                wandb.log({"cube_traj_z" : wandb.plot.line_series(
-                                       xs=[t for t in range(target_trajectory.shape[0])], 
-                                       ys=[target_trajectory[:, 1].detach().cpu().tolist(), prediction_trajectory[:, 1].detach().cpu().tolist()],
-                                       keys=["ground truth", "estimated"],
-                                       title="cube_traj_z",
-                                       xname="timestep")}, step=epoch)
-                wandb.log({"cube_traj_vz" : wandb.plot.line_series(
-                                       xs=[t for t in range(target_trajectory.shape[0])], 
-                                       ys=[target_trajectory[:, 6].detach().cpu().tolist(), prediction_trajectory[:, 6].detach().cpu().tolist()],
-                                       keys=["ground truth", "estimated"],
-                                       title="cube_traj_vz",
-                                       xname="timestep")}, step=epoch)
-
-
+                for item in self.config.state_to_plot:
+                    item_idx = learned_system.multibody_terms.plant_diagram.plant.GetStateNames(False).index(item)
+                    wandb.log({item : wandb.plot.line_series(
+                                           xs=[t for t in range(target_trajectory.shape[0])], 
+                                           ys=[target_trajectory[:, item_idx].detach().cpu().tolist(), prediction_trajectory[:, item_idx].detach().cpu().tolist()],
+                                           keys=["ground truth", "estimated"],
+                                           title=item,
+                                           xname="timestep")}, step=epoch)
 
     def get_loss_args(self,
         x_past: Tensor,

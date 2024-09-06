@@ -110,16 +110,17 @@ REPO_DIR = os.path.normpath(
 DT = 0.0068
 
 # Generation configuration.
-CUBE_X_0 = torch.tensor(
-    [0.1, 0.05 + 0.02, 0.,# Cube Q in 2D (x, z, theta)
-#     1., 0., 0., 0., 0., 0., 0.5, # Robot Floating Base Q
-     0.5, #0., 0.0524, # Robot finger_0 Q 1D (x)
-     -0.5, #0., 0.0524, # Robot finger_1 Q 1D (x)
-     0., 0., 0., # Cube V in 2D (dx, dz, dtheta)
-#     0., 0., 0., 0., 0., -.075, # Robot Floating Base V
-     0., #0., 0., # Robot V finger_0 1D (dx)
-     0., #0., 0., # Robot V finger_1 1D (dx)
-     ])
+CUBE_X_0 = {
+  "cube": (
+    #[0.1, 0.05 + 0.02, 0.],# Cube Q in 2D (x, z, theta)
+    [1., 0., 0., 0., 0.1, 0., 0.05 + 0.02], # Cube Q in 3d (quat, x, y, z)
+    [0., 0., 0., 0., 0., 0.] # Cube V in 3d (dx, dy, dz, dwx, dwy, dwz)
+  ),
+  "robot": (
+    [0.5, -0.5], # Robot finger_0 and finger_1 Q 1D (x)
+    [0., 0.] # Robot finger_0 and finger_1 V 1D (x)
+  ) 
+}
 ROBOT_DESIRED = np.array(
     [0., 0., # 0., 0.0195 + 0.0524, # Desired Robot Q (1d)
      0., 0., # 0., 0., # Desired Robot V (1d)
@@ -162,7 +163,7 @@ ASYMMETRIC_WD = 0.0
 WDS = {CUBE_SYSTEM: CUBE_WD, ELBOW_SYSTEM: ELBOW_WD,
        ASYMMETRIC_SYSTEM: ASYMMETRIC_WD}
 DEFAULT_WEIGHT_RANGE = (1e-2, 1e2)
-EPOCHS = 1000            # change this (originally 500)
+EPOCHS = 1500            # change this (originally 500)
 PATIENCE = EPOCHS       # change this (originally EPOCHS)
 
 WANDB_DEFAULT_PROJECT = 'dair_pll-examples'
@@ -270,8 +271,8 @@ def main(storage_folder_name: str = "",
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
     # first, select urdfs
-    cube_urdf_bad = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"planar_xz": "true", "length_x" : "0.01", "length_z" : "0.01"})
-    cube_urdf_good = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"planar_xz": "true"})
+    cube_urdf_bad = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"length_x" : "0.01", "length_z" : "0.01"})
+    cube_urdf_good = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{})
     robot_urdf = file_utils.get_urdf_asset_contents("spherebot.urdf.xacro", **{"num_fingers": "2", "fixed_y": "0.0", "fixed_z": "0.05"})
     urdfs = {"cube": cube_urdf_good, 'robot': robot_urdf}
     bad_init_urdfs = {"cube": cube_urdf_bad, 'robot': robot_urdf}
@@ -310,7 +311,9 @@ def main(storage_folder_name: str = "",
                MultibodyLosses.PREDICTION_LOSS
 
         learnable_config = MultibodyLearnableSystemConfig(
-            urdfs=bad_init_urdfs, loss=loss, 
+            urdfs=bad_init_urdfs, 
+            #urdfs=urdfs,
+            loss=loss, 
             learnable_body_dict = {"cube_body" : learnable_settings},
             w_pred=w_pred,
             w_comp = Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
@@ -338,6 +341,7 @@ def main(storage_folder_name: str = "",
     # Combines everything into config for entire experiment.
     experiment_config = DrakeMultibodyLearnableTactileExperimentConfig(
         trajectory_model_name = system,
+        state_to_plot = ["cube_body_z", "cube_body_x", "cube_body_vz", "cube_body_vx"],
         data_config=data_config,
         base_config=base_config,
         learnable_config=learnable_config,
@@ -354,7 +358,15 @@ def main(storage_folder_name: str = "",
     experiment = DrakeMultibodyLearnableTactileExperiment(experiment_config)
 
     # Prepare data.
-    x_0 = X_0S[system]
+    # TODO: remove hard-coding
+    x_0_q = torch.tensor([])
+    x_0_v = torch.tensor([])
+    for model_id in experiment.get_drake_system().plant_diagram.model_ids:
+        model_name = experiment.get_drake_system().plant_diagram.plant.GetModelInstanceName(model_id)
+        if model_name in CUBE_X_0:
+            x_0_q = torch.hstack([x_0_q, torch.tensor(CUBE_X_0[model_name][0])])
+            x_0_v = torch.hstack([x_0_v, torch.tensor(CUBE_X_0[model_name][1])])
+    x_0 = torch.hstack([x_0_q, x_0_v])
 
     # Simulate one trajectory
     #experiment.get_base_system().simulate(x_0.reshape(1, -1), experiment.get_base_system().carry_callback(), 3000)
@@ -413,7 +425,7 @@ def main(storage_folder_name: str = "",
     learned_system, stats = experiment.generate_results(
         regenerate_callback if regenerate else default_epoch_callback)
 
-    input(f'Done!')
+    print(f'Done!')
 
 
 
@@ -456,11 +468,11 @@ def main(storage_folder_name: str = "",
               help="what W&B project to save results under.")
 @click.option('--w-pred',
               type=float,
-              default=1e2,
+              default=5e1,
               help="weight of prediction term in ContactNets loss")
 @click.option('--w-comp',
               type=float,
-              default=1e1,
+              default=1e0,
               help="weight of complementarity term in ContactNets loss")
 @click.option('--w-diss',
               type=float,

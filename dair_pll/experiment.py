@@ -992,6 +992,10 @@ class SupervisedLearningExperiment(ABC):
 
         print("Done Training")
 
+        statistics = None
+
+        """
+
         try:
             print("Looking for previously generated statistics...")
             statistics = file_utils.load_evaluation(self.config.storage,
@@ -1002,5 +1006,7 @@ class SupervisedLearningExperiment(ABC):
                   "take several minutes)")
             statistics = self._evaluation(learned_system)
             print("Done generating statistics.")
+
+        """
 
         return learned_system, statistics

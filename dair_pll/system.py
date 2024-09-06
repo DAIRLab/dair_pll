@@ -206,12 +206,7 @@ class System(ABC, Module):
         data_state: Tensor) -> Tensor:
         """ Input:
             data_state: Tensor coming from the TrajectorySet Dataloader,
-                        this class expects a TensorDict, shape [batch, ?]
-            Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
+                        or similar, shape [batch, ?]
+            Returns: full state tensor (adding traj parameters) shape [batch, self.space.n_x]
         """
-
-        # TODO: HACK "state" is hard-coded, switch to local arg
-        if isinstance(data_state, TensorDictBase):
-            return data_state["state"]
-
         return data_state

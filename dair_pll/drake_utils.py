@@ -405,11 +405,25 @@ class MultibodyPlantDiagram:
         if visualization_file == "meshcat":
             input("Start Meshcat now!")
 
+        # Ensure the model_ids order matches the state order.
+        first_joint_indices = []
+        for model_id in model_ids:
+            if len(plant.GetJointIndices(model_id)) < 1:
+                # Always put world model and weld joints first
+                first_joint_indices.append(-1)
+                continue
+            first_joint_index = plant.GetJointIndices(model_id)
+            int_index = int(
+                str(first_joint_index).split('(')[1].split(')')[0])
+            first_joint_indices.append(int_index)
+
+        sorted_pairs = sorted(zip(first_joint_indices, model_ids))
+        self.model_ids = [element for _, element in sorted_pairs]
+
         self.sim = sim
         self.plant = plant
         self.scene_graph = scene_graph
         self.visualizer = visualizer
-        self.model_ids = model_ids
         self.space = self.generate_state_space()
 
     def generate_state_space(self) -> state_space.ProductSpace:
@@ -425,17 +439,26 @@ class MultibodyPlantDiagram:
 
         spaces = []  # type: List[state_space.StateSpace]
         for model_id in self.model_ids:
-            if plant.HasUniqueFreeBaseBody(model_id):
-                # Ensures quaternion is used to model rotation, instead of
-                # XYZMobilizer, for instance.
-                free_body = plant.GetUniqueFreeBaseBodyOrThrow(model_id)
-                assert free_body.has_quaternion_dofs()
-
-                n_joints = plant.num_velocities(
-                    model_id) - N_DRAKE_FLOATING_BODY_VELOCITIES
+            is_floating = False
+            n_joints = 0
+            for joint_idx in plant.GetJointIndices(model_id):
+                joint = plant.get_joint(joint_idx)
+                if joint.type_name() == "quaternion_floating":
+                    is_floating = True
+                elif joint.type_name() == "weld":
+                    continue
+                elif joint.type_name() in ["prismatic", "revolute"]: # R^N
+                    assert joint.num_positions() == joint.num_velocities(), f"Joint {joint.name()} not in R^N"
+                    n_joints = n_joints + joint.num_positions()
+                elif joint.type_name() in ["continuous", "planar"]: # R^N x SO(2)
+                    print(f"WARNING: joint {joint.name()} of type {joint.type_name()} has an SO(2) DOF but will be modeled as R")
+                    assert joint.num_positions() == joint.num_velocities(), f"Joint {joint.name()} not in R^N"
+                    n_joints = n_joints + joint.num_positions()
+                else:
+                    raise ValueError(f"Joint {joint.name()} of type {joint.type_name()} cannot be modeled in R^N or SE(3)")
+            if is_floating:
                 spaces.append(state_space.FloatingBaseSpace(n_joints))
             else:
-                n_joints = plant.num_velocities(model_id)
                 spaces.append(state_space.FixedBaseSpace(n_joints))
 
         return state_space.ProductSpace(spaces)

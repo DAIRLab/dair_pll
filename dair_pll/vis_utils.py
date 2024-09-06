@@ -214,6 +214,7 @@ def visualize_trajectory(drake_system: DrakeSystem,
         This function should be updated as `pydrake` has this functionality
         properly exposed.
     """
+    
     assert drake_system.plant_diagram.visualizer is not None
     assert x_trajectory.dim() == 2
     # pylint: disable=protected-access

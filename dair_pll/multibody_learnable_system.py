@@ -59,7 +59,7 @@ JOINT_SCALING = 2*ELBOW_COM_TO_AXIS_DISTANCE/torch.pi + ROTATION_SCALING
 # Dimension of Measured Force
 DIMENSION = 3
 
-class MultibodyLearnableSystem(System):
+class MultibodyLearnableSystem(DrakeSystem):
     """:py:class:`System` interface for dynamics associated with
     :py:class:`MultibodyTerms`."""
     multibody_terms: MultibodyTerms
@@ -114,7 +114,7 @@ class MultibodyLearnableSystem(System):
 
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
-        super().__init__(space, integrator)
+        super(DrakeSystem, self).__init__(space, integrator)
         
         self.output_urdfs_dir = output_urdfs_dir
         self.multibody_terms = multibody_terms
@@ -159,6 +159,10 @@ class MultibodyLearnableSystem(System):
 
             self.init_residual_network(network_width, network_depth)
 
+        # Match DrakeSystem Attributes
+        self.urdfs = self.init_urdfs
+        self.plant_diagram = multibody_terms.plant_diagram
+
     def generate_updated_urdfs(self, suffix: str = None) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
 
@@ -181,6 +185,7 @@ class MultibodyLearnableSystem(System):
             new_urdf_path = path.join(self.output_urdfs_dir, new_urdf_filename)
             file_utils.save_string(new_urdf_path, new_urdf_string)
 
+        self.urdfs = new_urdf_strings
         return new_urdf_strings
 
     def contactnets_loss(self,
@@ -440,6 +445,7 @@ class MultibodyLearnableSystem(System):
 
         constant_pen[invalid] *= 0.
         constant_pred[invalid] *= 0.
+        constant_dev[invalid] *= 0.
         impulses[invalid.expand(impulses.shape)] = 0.
 
         loss_pred = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_delassus, impulses)) \
@@ -647,21 +653,6 @@ class MultibodyLearnableSystem(System):
 
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)
 
-    def construct_state_tensor(self,
-        data_state: Tensor) -> Tensor:
-        """ Input:
-            data_state: Tensor coming from the TrajectorySet Dataloader,
-                        this class expects a TensorDict, shape [batch, ?]
-            Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
-        """
-
-        # TODO: HACK "state" is hard-coded, switch to local arg
-
-        if isinstance(data_state, TensorDictBase):
-            return data_state["state"]
-
-        return data_state
-
 
 class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     """:py:class:`MultibodyLearnableSystem` where a model can have 
@@ -694,11 +685,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ## Create Trajectory Parameters
         model_n_x = self.model_spaces[trajectory_model].n_x
         # TODO: HACK set this to all zeros instead of hard-coding
-        model_state = torch.vstack([torch.tensor([0.0, 0.05, 0., 0., 0., 0.])] * traj_len)
+        # 3D: qw, qx, qy, qz, x, y, z, dwx, dwy, dyz, dx, dy, dz
+        model_state = torch.vstack([torch.tensor([1., 0., 0., 0., 0., 0., 0.05, 0., 0., 0., 0., 0., 0.])] * traj_len)
         if true_traj is not None:
-            model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, :3], true_traj["state"].squeeze()[:, 5:8])))
-        self.trajectory_q = ParameterList([Parameter(model_state[idx, :3], requires_grad=True) for idx in range(traj_len)])
-        self.trajectory_v = ParameterList([Parameter(model_state[idx, 3:], requires_grad=(idx > 0)) for idx in range(traj_len)])
+            # TODO: HACK hard-coded model index
+            model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, 2:9], true_traj["state"].squeeze()[:, 11:])))
+            assert model_state.shape[-1] == 13
+        self.trajectory_q = ParameterList([Parameter(model_state[idx, :7], requires_grad=True) for idx in range(traj_len)])
+        self.trajectory_v = ParameterList([Parameter(model_state[idx, 7:], requires_grad=(idx > 0)) for idx in range(traj_len)])
 
         self.grad_debug_q = [None] * traj_len
         def grad_debug_hook_q(idx, grad):
@@ -723,49 +717,24 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
         """
 
-        # Fill Partial States
+        # Don't mutate input
         assert isinstance(data_state, TensorDictBase)
-        model_states = {}
-        for model, _ in self.model_spaces.items():
-            key = model + "_state"
-            if key in data_state.keys():
-                model_states[model] = data_state[key]
-                if len(model_states[model].shape) == 1:
-                    model_states[model] = model_states[model].reshape(model_states.shape[0], 1)
+        data_state = data_state.clone()
 
-        # Input Sanitation
-        assert data_state["time"].shape == data_state.shape + (1,)
-        for model, state in model_states.items():
-            assert state.shape == data_state.shape + (self.model_spaces[model].n_x,)
-        
-        # Get trajectory parameters
-        test = [torch.hstack((self.trajectory_q[int(i)], self.trajectory_v[int(i)])) for i in data_state["time"].flatten()]
-        traj_x = torch.stack(test)
-        traj_x = traj_x.reshape(data_state.shape + (self.model_spaces[self.trajectory_model].n_x,)) # [batch x traj_n_x]
+        # Inject trajectory_model's state if not already present
+        if (self.trajectory_model + "_state") not in data_state:
+            assert data_state["time"].shape == data_state.shape + (1,)
+            traj_x = torch.stack([torch.hstack((self.trajectory_q[int(i)], self.trajectory_v[int(i)])) for i in data_state["time"].flatten()])
+            traj_x = traj_x.reshape(data_state.shape + (self.model_spaces[self.trajectory_model].n_x,)) # [batch x traj_n_x]
+            data_state[self.trajectory_model + "_state"] = traj_x
 
-        # Loop through models and construct state
-        ret_q = torch.tensor([])
-        ret_v = torch.tensor([])
-        for model, space in self.model_spaces.items():
-            # Ignore world and other degenerate spaces
-            if space.n_x == 0:
-                continue
+        # Remove "state" to avoid overwritting
+        # TODO: HACK remove this once "state" is no longer hard-coded
+        if "state" in data_state:
+            del data_state["state"]
 
-            # Select model state or trajectory state
-            model_x = traj_x
-            if model != self.trajectory_model:
-                model_x = model_states[model]
-
-            # Append to return value
-            if ret_q.numel() == 0:
-                ret_q = model_x[..., :space.n_q]
-                ret_v = model_x[..., space.n_q:]
-            else:
-                ret_q = torch.cat((ret_q, model_x[..., :space.n_q]), dim=-1)
-                ret_v = torch.cat((ret_v, model_x[..., space.n_q:]), dim=-1)
-
-        # Return full state batch
-        return torch.cat((ret_q, ret_v), dim=-1)
+        # Return full state using DrakeSystem's function
+        return super().construct_state_tensor(data_state)
 
     def contactnets_loss(self,
                          x: Tensor,
