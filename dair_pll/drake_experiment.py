@@ -477,7 +477,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             return DrakeSystem(new_urdfs, self.get_drake_system().dt,
                                g_frac=self.config.learnable_config.g_frac,
                                additional_system_builders=[system_builder_from_string(string, **kwargs) for string, kwargs in zip(base_config.additional_system_builders, base_config.additional_system_kwargs)],
-                               visualization_file=("meshcat" if base_config.use_meshcat else None),
+                               visualization_file=("meshcat" if self.config.learnable_config.use_meshcat else None),
                                )
         return None
 
@@ -570,7 +570,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             self.learned_system = MultibodyLearnableSystemWithTrajectory(
                 trajectory_model = self.trajectory_model_name,
                 traj_len = traj.shape[0],
-                true_traj = None,
+                true_traj = traj,
                 init_urdfs = learnable_config.urdfs,
                 dt = self.config.data_config.dt,
                 learnable_body_dict = learnable_config.learnable_body_dict,

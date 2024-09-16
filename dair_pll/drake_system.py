@@ -7,6 +7,7 @@ Interfacing with Drake is done by massaging a drake system into the
 A large portion of the internal implementation of ``DrakeSystem`` is contained
 in ``MultibodyPlantDiagram`` in ``drake_utils.py``.
 """
+import time
 from typing import Callable, Tuple, Dict, List, Optional
 
 import torch
@@ -95,6 +96,7 @@ class DrakeSystem(System):
                                              self.plant_diagram.model_ids,
                                              self.space)
         sim.Initialize()
+        self.prev_time = time.time()
 
         carry_0 = self.populate_carry(carry_0)
 
@@ -182,7 +184,11 @@ class DrakeSystem(System):
             plant, new_plant_context, self.plant_diagram.model_ids, self.space)
 
         carry_next = self.populate_carry(carry)
-        input("Step...")
+        #input("Step...")
+        # Real Time Sim
+        sleep_time = max(self.dt - (time.time()-self.prev_time), 0.0)
+        time.sleep(sleep_time)
+        self.prev_time = time.time()
 
         return torch.tensor(x_next), carry_next
 

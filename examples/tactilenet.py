@@ -271,13 +271,21 @@ def main(storage_folder_name: str = "",
     # This is a configuration for a DrakeSystem, which wraps a Drake
     # simulation for the described URDFs.
     # first, select urdfs
-    cube_urdf_bad = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"length_x" : "0.01", "length_z" : "0.01"})
+    cube_urdf_bad = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{"length_x" : "0.01", "length_z" : "0.01", "mu" : "0.15"})
     cube_urdf_good = file_utils.get_urdf_asset_contents("contactnets_cube.urdf.xacro", **{})
     robot_urdf = file_utils.get_urdf_asset_contents("spherebot.urdf.xacro", **{"num_fingers": "2", "fixed_y": "0.0", "fixed_z": "0.05"})
     urdfs = {"cube": cube_urdf_good, 'robot': robot_urdf}
     bad_init_urdfs = {"cube": cube_urdf_bad, 'robot': robot_urdf}
 
-    additional_system_builders = (["dair_pll.drake_utils.pid_controller_builder"], [{"desired_state": ROBOT_DESIRED, "kp": 2.0, "kd": 100.0}])
+    traj_len_s = TRAJECTORY_LENGTHS[system] * DT
+    additional_system_builders = (["dair_pll.drake_controllers.traj_with_knots_follower_builder"], 
+        [{
+            "traj_breaks": np.array([0.0, traj_len_s/3.0, 2.0*traj_len_s/3.0, traj_len_s]),
+            "traj_q": np.stack([np.array(CUBE_X_0["robot"][0]), np.array([0.0, -0.2]), np.array([0.2, -0.2]), np.array([0.0, 0.0])]),
+#            "traj_v": np.zeros((4, 2)),
+            "kp": 20.0, "kd": 100.0
+        }]
+    )
 
     base_config = DrakeSystemConfig(urdfs=urdfs, 
         additional_system_builders=additional_system_builders[0], 
@@ -311,8 +319,8 @@ def main(storage_folder_name: str = "",
                MultibodyLosses.PREDICTION_LOSS
 
         learnable_config = MultibodyLearnableSystemConfig(
-            urdfs=bad_init_urdfs, 
-            #urdfs=urdfs,
+            #urdfs=bad_init_urdfs, 
+            urdfs=urdfs,
             loss=loss, 
             learnable_body_dict = {"cube_body" : learnable_settings},
             w_pred=w_pred,
@@ -330,7 +338,7 @@ def main(storage_folder_name: str = "",
             # Use the same additional system builders as the base system
             additional_system_builders=additional_system_builders[0], 
             additional_system_kwargs=additional_system_builders[1],
-            use_meshcat=True,
+            use_meshcat=False,
         )
 
     else:
@@ -457,7 +465,7 @@ def main(storage_folder_name: str = "",
               help="dataset size")
 @click.option('--learnable-params',
               type=click.IntRange(0b00000, 0b11111),
-              default=0b01000, # Default No Inertial Params
+              default=0b11000, # Default No Inertial Params
               help="Bitmap of what params to learn: friction-geometry-inertia-com-mass (e.g. 0 == none, 1 == mass only, 31 == all)")
 @click.option('--true-sys/--wrong-sys',
               default=False,

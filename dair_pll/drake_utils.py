@@ -70,7 +70,7 @@ FPS = 30
 
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
 # to fit the actual trajectory.
-SENSOR_RPY = np.array([-np.pi / 2, 0, 0.])
+SENSOR_RPY = np.array([-np.pi / 2, 0., -0.1])
 SENSOR_POSITION = np.array([0., -1., 0.2])
 SENSOR_POSE = RigidTransform(
     RollPitchYaw(SENSOR_RPY).ToQuaternion(), SENSOR_POSITION)
@@ -245,32 +245,6 @@ def add_plant_from_urdfs(
     return model_ids, plant, scene_graph
 
 
-# TODO: Move to separate file
-from pydrake.systems.controllers import PidController
-from pydrake.systems.primitives import ConstantVectorSource
-def pid_controller_builder(builder, plant, desired_state = np.zeros(2), model_name="robot", kp=1., kd=10.):
-    control_size = int(desired_state.size/2)
-    controller = PidController(kp * np.ones(control_size), np.zeros(control_size), kd * np.zeros(control_size))
-    model = plant.GetModelInstanceByName(model_name)
-
-    controller = builder.AddSystem(controller)
-    builder.Connect(
-        plant.get_state_output_port(model),
-        controller.get_input_port_estimated_state()
-    )
-    builder.Connect(
-        controller.get_output_port_control(),
-        plant.get_actuation_input_port(model)
-    )
-
-    # Desired State
-    constant = ConstantVectorSource(desired_state)
-    constant = builder.AddSystem(constant)
-    builder.Connect(
-        constant.get_output_port(),
-        controller.get_input_port_desired_state()
-    )
-
 
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a visualizer
@@ -297,7 +271,7 @@ class MultibodyPlantDiagram:
                  urdfs: Dict[str, str],
                  dt: float = DEFAULT_DT,
                  visualization_file: Optional[str] = None,
-                 additional_system_builders: List[Callable[[DiagramBuilder, MultibodyPlant], None]] = [],
+                 additional_system_builders: List[Callable[[DrakeDiagramBuilder, MultibodyPlant], None]] = [],
                  g_frac: Optional[float] = 1.0) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
@@ -322,6 +296,8 @@ class MultibodyPlantDiagram:
         visualizer = None
         if visualization_file == "meshcat":
             self.meshcat = StartMeshcat()
+
+            """ Useful for planar_xz
             ortho_camera = Meshcat.OrthographicCamera()
             ortho_camera.top = 1
             ortho_camera.bottom = -0.1
@@ -331,6 +307,7 @@ class MultibodyPlantDiagram:
             ortho_camera.far = 500
             ortho_camera.zoom = 1
             self.meshcat.SetCamera(ortho_camera)
+            """
             visualizer = MeshcatVisualizer.AddToBuilder(builder, scene_graph, self.meshcat)
         elif visualization_file:
             visualizer = VideoWriter.AddToBuilder(filename=visualization_file,

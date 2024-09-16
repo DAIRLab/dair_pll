@@ -2,17 +2,6 @@
 <robot name="cube" 
   xmlns:xacro="http://www.ros.org/wiki/xacro"
   xmlns:drake="https://drake.mit.edu/">
-    <!-- Define the global worldfixed and place all other objects relative to it. 
-            Note: It is hard-coded in PLL right now to weld worldfixed to Drake world.
-    -->
-    <xacro:arg name="is_worldfixed" default="true" />
-    <xacro:if value="$(arg is_worldfixed)">
-      <xacro:property name="global_frame" value="worldfixed" />
-    </xacro:if>
-    <xacro:unless value="$(arg is_worldfixed)">
-      <xacro:property name="global_frame" value="worldfloat" />
-    </xacro:unless>
-    <link name="${global_frame}" />
 
     <xacro:arg name="mass" default="0.5" />
     <xacro:property name="mass" value="$(arg mass)" />
@@ -22,7 +11,7 @@
     <xacro:property name="length_y" value="$(arg length_y)" />
     <xacro:arg name="length_z" default="0.1" />
     <xacro:property name="length_z" value="$(arg length_z)" />
-    <xacro:arg name="mu" default="0.15" />
+    <xacro:arg name="mu" default="0.05" />
     <link name="cube_body">
         <inertial>
             <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -59,18 +48,24 @@
         </collision>
     </link>
 
+    <!-- Define the global worldfixed if we are using a planar_xz
+            Note: It is hard-coded in PLL right now to weld worldfixed to Drake world.
+    -->
+    <xacro:arg name="is_worldfixed" default="true" />
+    <xacro:if value="$(arg is_worldfixed)">
+      <xacro:property name="global_frame" value="worldfixed" />
+    </xacro:if>
+    <xacro:unless value="$(arg is_worldfixed)">
+      <xacro:property name="global_frame" value="worldfloat" />
+    </xacro:unless>
+
     <xacro:arg name="planar_xz" default="false" />
     <xacro:if value="$(arg planar_xz)">
+      <link name="${global_frame}" />
       <joint name="world_to_cube_body" type="planar">
           <parent link="${global_frame}"/>
           <child link="cube_body"/>
           <axis xyz="0 -1 0"/>
       </joint>
     </xacro:if>
-    <xacro:unless value="$(arg planar_xz)">
-      <joint name="world_to_cube_body" type="floating">
-          <parent link="${global_frame}"/>
-          <child link="cube_body"/>
-      </joint>
-    </xacro:unless>
 </robot>
