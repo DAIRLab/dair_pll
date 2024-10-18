@@ -85,8 +85,8 @@ class WeightsAndBiasesManager:
     @staticmethod
     def log_config(config: Any):
         """Log experiment hyperparameter values."""
-        wandb.config.update(hyperparameter_values(config))
-        wandb.config.update({"ExperimentConfig": str(config)})
+        wandb.config.update(hyperparameter_values(config), allow_val_change=True)
+        wandb.config.update({"ExperimentConfig": str(config)}, allow_val_change=True)
 
     @staticmethod
     def update(epoch: int, scalars: Dict[str, float],

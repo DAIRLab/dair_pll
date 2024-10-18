@@ -215,7 +215,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         Returns:
             (\*,) loss batch.
         """
-        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev = \
+        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev, loss_q_pred = \
             self.calculate_contactnets_loss_terms(x, u, x_plus, contact_forces)
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
@@ -227,12 +227,10 @@ class MultibodyLearnableSystem(DrakeSystem):
         reg_weight = regularizers[1]
         reg_inertia_cond = regularizers[2]
 
-        loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
-
         loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
                (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
                (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
-               (self.w_dev * loss_dev) + \
+               (self.w_dev * loss_dev) + (1e2 * loss_q_pred) + \
                (1e-5 * reg_inertia_cond)
 
         self.debug = self.debug + 1
@@ -269,7 +267,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Penalize the condition number of the mass matrix.
         q_plus, v_plus = self.space.q_v(x_plus)
         _, M, _, _, _, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
-        I_BBcm_B = M[..., :3, :3]
+        # TODO HACK: hard-coded. rows/cols in M should match  model_body_qw in GetStateNames()
+        I_BBcm_B = M[..., 2:5, 2:5]
         regularizers.append(torch.linalg.cond(I_BBcm_B))
 
         # TODO: Use the believed geometry to help supervise the learned CoM.
@@ -461,11 +460,12 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Check
         # TODO: CHECK DEVIATION TERM CALC ABOVE!
         assert np.all(loss_dev.detach().cpu().numpy() > 0.)
-        
+
+        loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
 
         return loss_pred.reshape(-1), loss_comp.reshape(-1), \
                loss_pen.reshape(-1), loss_diss.reshape(-1), \
-               loss_dev.reshape(-1)
+               loss_dev.reshape(-1), loss_q_pred.reshape(-1)
 
     def get_multibody_terms(self, q: Tensor, v: Tensor,
         u: Tensor, estimated_normals_W: Dict[Tuple[str, str], Tensor] = {}) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List]:
@@ -666,10 +666,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
     # TODO: Allow multi models to have learnable trajectories
 
-
     def __init__(self,
                  trajectory_model: str,
                  traj_len: int,
+                 first_contact: int = 1, # v=0 fixed before this
                  true_traj: Optional[Tensor] = None,
                  **kwargs) -> None:
         ## Construct Super System
@@ -683,17 +683,20 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             self.model_spaces[plant_diagram.plant.GetModelInstanceName(model_id)] = space
 
         ## Create Trajectory Parameters
-        model_n_x = self.model_spaces[trajectory_model].n_x
-        # TODO: HACK set this to all zeros instead of hard-coding
-        # 3D: qw, qx, qy, qz, x, y, z, dwx, dwy, dyz, dx, dy, dz
-        model_state = torch.vstack([torch.tensor([1., 0., 0., 0., 0., 0., 0.05, 0., 0., 0., 0., 0., 0.])] * traj_len)
+        # e.g. 3D: qw, qx, qy, qz, x, y, z, dwx, dwy, dyz, dx, dy, dz
+        # Until first_contact, same position and zero velocity 
+        model_state = []
+        for _ in range(traj_len):
+            model_state.append(self.model_spaces[trajectory_model].zero_state())
         if true_traj is not None:
             # TODO: HACK hard-coded model index
             model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, 2:9], true_traj["state"].squeeze()[:, 11:])))
-            assert model_state.shape[-1] == 13
-        self.trajectory_q = ParameterList([Parameter(model_state[idx, :7], requires_grad=True) for idx in range(traj_len)])
-        self.trajectory_v = ParameterList([Parameter(model_state[idx, 7:], requires_grad=(idx > 0)) for idx in range(traj_len)])
+            assert model_state.shape[-1] == self.model_spaces[trajectory_model].n_x
+        self.trajectory_q = ParameterList([Parameter(model_state[idx][:self.model_spaces[trajectory_model].n_q], requires_grad=True) for idx in range(traj_len)])
+        self.trajectory_v = ParameterList([Parameter(model_state[idx][self.model_spaces[trajectory_model].n_q:], requires_grad=(idx > first_contact)) for idx in range(traj_len)])
 
+        ## Debugging Hooks
+        """
         self.grad_debug_q = [None] * traj_len
         def grad_debug_hook_q(idx, grad):
             self.grad_debug_q[idx] = grad
@@ -702,7 +705,6 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         def grad_debug_hook_v(idx, grad):
             self.grad_debug_v[idx] = grad
 
-        """
         for i in range(traj_len):
             self.trajectory_q[i].register_hook(partial(grad_debug_hook_q, i))
             if i > 0:
@@ -735,42 +737,6 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Return full state using DrakeSystem's function
         return super().construct_state_tensor(data_state)
-
-    def contactnets_loss(self,
-                         x: Tensor,
-                         u: Tensor,
-                         x_plus: Tensor,
-                         contact_forces: Dict[Tuple[str, str], Tensor] = {},
-                         loss_pool: Optional[pool.Pool] = None) -> Tensor:
-        r"""Calculate ContactNets [1] loss for state transition.
-
-        Change made to scale this loss to be per kilogram.  This helps prevent
-        sending mass quantities to zero in multibody learning scenarios.
-
-        References:
-            [1] S. Pfrommer*, M. Halm*, and M. Posa. "ContactNets: Learning
-            Discontinuous Contact Dynamics with Smooth, Implicit
-            Representations," Conference on Robotic Learning, 2020,
-            https://proceedings.mlr.press/v155/pfrommer21a.html
-
-        Args:
-            x: (\*, space.n_x) current state batch.
-            u: (\*, ?) input batch.
-            x_plus: (\*, space.n_x) current state batch.
-            contact_forces: mapping (obj_a_name, obj_b_name) to force on obj_b in World Frame
-            loss_pool: optional processing pool to enable multithreaded solves.
-
-        Returns:
-            (\*,) loss batch.
-        """
-        loss = super().contactnets_loss(x, u, x_plus, contact_forces, loss_pool)
-
-        # Add Prediction term for v->q, not covered by dynamics prediction term
-        # TODO: HACK add q_pred weight to config
-        loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
-
-        loss += 1e2 * loss_q_pred
-        return loss
 
 
 class DeepStateAugment3D(Module):

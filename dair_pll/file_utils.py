@@ -244,10 +244,13 @@ def run_dir(storage_name: str, run_name: str) -> str:
     return assure_created(path.join(all_runs_dir(storage_name), run_name))
 
 
-def get_trajectory_video_filename(storage_name: str, run_name: str) -> str:
+def get_trajectory_video_filename(storage_name: str, run_name: str, epoch: int) -> str:
     """Return the filepath of the temporary rollout video gif."""
+    assure_created(path.join(run_dir(storage_name, run_name),
+                     "videos"))
     return path.join(run_dir(storage_name, run_name),
-                     TRAJECTORY_GIF_DEFAULT_NAME)
+                     "videos",
+                     ("%04d" % (epoch,)) + str(TRAJECTORY_GIF_DEFAULT_NAME))
 
 
 def get_learned_urdf_dir(storage_name: str, run_name: str) -> str:

@@ -118,7 +118,7 @@ class TrajectorySet:
         for trajectory in trajectory_list:
             self.slices.add_slices_from_trajectory(trajectory)
         # pylint: disable=no-member
-        self.indices = torch.cat([self.indices, indices])
+        self.indices = torch.cat([self.indices, indices.to(torch.get_default_device())])
 
 
 class ExperimentDataManager:

@@ -386,6 +386,34 @@ class SupervisedLearningExperiment(ABC):
 
             if optimizer is not None:
                 loss.backward()
+
+                ## Debug
+                """
+                breakpoint()
+                # Record grad
+                debug_grads = [param.grad for param in system.parameters()]
+                # Loop through steps
+                with torch.no_grad():
+                    debug_step_size = 1E-4
+                    debug_steps = 100
+                    debug_losses = [float(loss)]
+                    for debug_step in range(debug_steps):
+                        print("Debug Step: %d" % debug_step)
+                        # Update parameters
+                        for idx, param in enumerate(system.parameters()):
+                            if debug_grads[idx] is None:
+                                continue
+                            param.add_(-debug_grads[idx], alpha=debug_step_size)
+
+                        # Call Loss
+                        debug_losses.append(float(self.batch_loss(x_i, y_i, system)))
+                # Plot
+                import matplotlib.pyplot as plt
+                breakpoint()
+                debug_plot_x = np.linspace(0., debug_steps * debug_step_size, debug_steps + 1)
+                plt.plot(debug_plot_x, debug_losses)
+                plt.show()
+                """
                 optimizer.step()
 
             #s = io.StringIO()
@@ -399,7 +427,7 @@ class SupervisedLearningExperiment(ABC):
         return avg_loss
 
     def base_and_learned_comparison_summary(
-            self, statistics: Dict, learned_system: System) -> SystemSummary:
+            self, epoch: int, statistics: Dict, learned_system: System) -> SystemSummary:
         """Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares
         the base system to the learned system.
 
@@ -413,7 +441,7 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=unused-argument
         return SystemSummary()
 
-    def build_epoch_vars_and_system_summary(self, statistics: Dict,
+    def build_epoch_vars_and_system_summary(self, epoch: int, statistics: Dict,
         learned_system: System, skip_videos=True) -> Tuple[Dict, SystemSummary]:
         """Build epoch variables and system summary for learning process.
 
@@ -440,7 +468,7 @@ class SupervisedLearningExperiment(ABC):
         learned_system_summary = learned_system.summary(statistics)
 
         if not skip_videos:
-            comparison_summary = self.base_and_learned_comparison_summary(
+            comparison_summary = self.base_and_learned_comparison_summary(epoch,
                 statistics, learned_system)
 
         epoch_vars.update(learned_system_summary.scalars)
@@ -473,7 +501,7 @@ class SupervisedLearningExperiment(ABC):
         skip_videos = False  #if epoch==0 else True BIBIT temporary for debugging
 
         epoch_vars, learned_system_summary = \
-            self.build_epoch_vars_and_system_summary(statistics, learned_system,
+            self.build_epoch_vars_and_system_summary(epoch, statistics, learned_system,
                                                      skip_videos=skip_videos)
 
         self.wandb_manager.update(epoch, epoch_vars,
@@ -965,7 +993,7 @@ class SupervisedLearningExperiment(ABC):
                                    evaluation)
 
         # Generate final toss/geometry inspection videos with best parameters.
-        comparison_summary = self.base_and_learned_comparison_summary(
+        comparison_summary = self.base_and_learned_comparison_summary(-1,
             evaluation, learned_system)
         self.wandb_manager.update(int(1e4), {}, comparison_summary.videos, {})
 

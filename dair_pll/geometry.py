@@ -45,7 +45,8 @@ _UNIT_BOX_VERTICES = torch.tensor([[0, 0, 0, 0, 1, 1, 1, 1.], [
 _ROT_Z_45 = torch.tensor([[2**(-0.5), -(2**(-0.5)), 0.], [2**(-0.5), 2**(-0.5), 0.],
                     [0., 0., 1.]])
 
-_NOMINAL_HALF_LENGTH = 1.0   # Note: matches Box/Polygon space to trajectory space (m)
+# TODO: HACK adjust based on trajectory length
+_NOMINAL_HALF_LENGTH = 1E-2   # Note: matches Box/Polygon space to trajectory space (m)
 
 _total_ordering = ['Plane', 'Polygon', 'Box', 'Sphere', 'DeepSupportConvex']
 
