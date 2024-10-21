@@ -1,9 +1,0 @@
-[BASIC]
-good-names-rgxs=^(J(q|qdot|v)_|Dt([A-Z](([a-z]|\d+))?)?)?((t|F)_[A-Z](([a-z]|\d+))?|f_[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?|(R|X|w|V|alpha|A)_[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?|T_[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?|p_[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?|(v|a|I|M|L)_[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?|K_[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?|(v|a)_[A-Z](([a-z]|\d+))?_[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?|(V|A)_[A-Z](([a-z]|\d+))?_[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?|L_[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?[A-Z](([a-z]|\d+))?(([a-z]|cm|\d+))?)(_[A-Z](([a-z]|\d+))?)?$
-
-good-names=q,v,x,u,dq,dv,dx,du,dt,t,qs,vs,xs,us,pi,M,J,J_x,J_y,J_z,J_n,J_t,Q,q,E,Q_full,lr,wd,mu,r,p
-
-method-rgx=(?:(?P<snake>[a-z_]+)|(?P<Pascal>([A-Z][a-z]*)*))$
-
-[MESSAGES CONTROL]
-disable=E0611
