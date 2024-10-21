@@ -1,19 +1,15 @@
 """Simple ContactNets/differentiable physics learning examples."""
 
-# pylint: disable=E1103
+from functools import partial
 import os
-import time
-from typing import cast, List
-
-import sys
-import pdb
+from typing import List
 
 import click
 import numpy as np
+from pydrake.multibody.plant import MultibodyPlant
 import torch
 from torch import Tensor
 from tensordict.tensordict import TensorDict
-import pickle
 import git
 
 from dair_pll import file_utils
@@ -22,30 +18,17 @@ from dair_pll.dataset_management import DataConfig, TrajectorySliceConfig
 from dair_pll.deep_learnable_model import MLP
 from dair_pll.deep_learnable_system import DeepLearnableSystemConfig
 from dair_pll.drake_experiment import (
-    DrakeMultibodyLearnableExperiment,
     DrakeMultibodyLearnableTactileExperiment,
     DrakeSystemConfig,
     MultibodyLearnableSystemConfig,
     MultibodyLosses,
-    DrakeDeepLearnableExperiment,
     DrakeMultibodyLearnableTactileExperimentConfig,
 )
 from dair_pll.experiment import default_epoch_callback
-from dair_pll.experiment_config import (
-    OptimizerConfig,
-    SupervisedLearningExperimentConfig,
-)
+from dair_pll.experiment_config import OptimizerConfig
 from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_terms import LearnableBodySettings
-from dair_pll.state_space import (
-    ConstantSampler,
-    UniformSampler,
-    GaussianWhiteNoiser,
-    FloatingBaseSpace,
-    FixedBaseSpace,
-    ProductSpace,
-)
-from dair_pll.system import System
+from dair_pll.state_space import ConstantSampler
 
 
 # Possible systems on which to run PLL
@@ -288,7 +271,6 @@ def main(
         do_residual: Whether to add residual physics block.
         g_frac: Fraction of gravity to use with initial model.
     """
-    # pylint: disable=too-many-locals, too-many-arguments
     torch.set_default_device("cuda")
 
     # Unpack learning bitmask
@@ -309,15 +291,12 @@ def main(
         + f"\n\twith geometry represented as: {geometry}"
         + f"\n\tregenerate: {regenerate}"
         + f"\n\tlearnable params: {learnable_params} == {learnable_settings}"
-        + f"\n\tloss weights (pred, comp, diss, pen, res, res_w, dev): "
+        + "\n\tloss weights (pred, comp, diss, pen, res, res_w, dev): "
         + f"({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w}, {w_dev})"
         + f"\n\twith residual: {do_residual}"
         + f"\n\tand starting with provided true_sys={true_sys}"
         + f"\n\twith gravity fraction (if gravity): {g_frac}"
     )
-
-    simulation = source == SIM_SOURCE
-    dynamic = source == DYNAMIC_SOURCE
 
     storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
 
@@ -423,8 +402,8 @@ def main(
         )
 
         learnable_config = MultibodyLearnableSystemConfig(
-            # urdfs=bad_init_urdfs,
-            urdfs=urdfs,
+            urdfs=bad_init_urdfs,
+            #urdfs=urdfs,
             loss=loss,
             learnable_body_dict={"cube_body": learnable_settings},
             w_pred=w_pred,
@@ -463,7 +442,7 @@ def main(
         run_name=run_name,
         run_wandb=True,
         wandb_project=wandb_project,
-        full_evaluation_period=EPOCHS if dynamic else 1,
+        full_evaluation_period=1, #EPOCHS if dynamic else 1,
         update_geometry_in_videos=True,  # ignored for deep learnable experiments
     )
 
@@ -510,8 +489,6 @@ def main(
 
     data_generation_system = experiment.get_base_system()
 
-    from pydrake.multibody.plant import MultibodyPlant
-
     def carry_callback(keys: List[str], plant: MultibodyPlant) -> Tensor:
         carry = TensorDict({}, [1])
         for key in keys:
@@ -523,8 +500,6 @@ def main(
                 size = plant.GetOutputPort(subkeys[0]).size()
             carry.set(tuple(key.split(".")), torch.zeros(1, size))
         return carry
-
-    from functools import partial
 
     data_generation_system.set_carry_sampler(
         partial(
@@ -542,7 +517,7 @@ def main(
     generator = ExperimentDatasetGenerator(
         data_generation_system, data_generation_config
     )
-    print(f"Generating (or getting existing) simulation trajectories.\n")
+    print("Generating (or getting existing) simulation trajectories.\n")
     generator.generate()
 
     # Test Data Loading
@@ -552,12 +527,10 @@ def main(
     # train, val, test = edm.get_updated_trajectory_sets()
 
     # Trains system and saves final results.
-    print(f"\nTraining the model.")
-    learned_system, stats = experiment.generate_results(
-        regenerate_callback if regenerate else default_epoch_callback
-    )
+    print("\nTraining the model.")
+    experiment.generate_results(default_epoch_callback)
 
-    print(f"Done!")
+    print("Done!")
 
 
 @click.command()
@@ -595,7 +568,8 @@ def main(
     "--learnable-params",
     type=click.IntRange(0b00000, 0b11111),
     default=0b11000,  # Default No Inertial Params
-    help="Bitmap of what params to learn: friction-geometry-inertia-com-mass (e.g. 0 == none, 1 == mass only, 31 == all)",
+    help="Bitmap of what params to learn: \
+    friction-geometry-inertia-com-mass (e.g. 0 == none, 1 == mass only, 31 == all)",
 )
 @click.option(
     "--true-sys/--wrong-sys",

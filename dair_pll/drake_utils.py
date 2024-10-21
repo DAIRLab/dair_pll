@@ -284,7 +284,7 @@ class MultibodyPlantDiagram:
     sim: Simulator
     plant: MultibodyPlant
     scene_graph: SceneGraph
-    visualizer: Optional[VideoWriter]
+    visualizer: Optional[Union[VideoWriter, MeshcatVisualizer]]
     model_ids: List[ModelInstanceIndex]
     collision_geometry_set: CollisionGeometrySet
     space: state_space.ProductSpace

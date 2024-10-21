@@ -22,6 +22,7 @@ install_reqs = [
     "gitpython",
     "protobuf==3.20.*",
     "cvxpylayers",
+    "gin-config",
     # documentation
     "networkx",
     "pydeps",
