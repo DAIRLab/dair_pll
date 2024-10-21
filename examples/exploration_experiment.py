@@ -43,6 +43,19 @@ def main(
     print(f"Storing data at    {file_utils.data_dir(storage_name)}")
     print(f"Storing results at {file_utils.run_dir(storage_name, run_name)}")
 
+    # Load True URDFs into Drake Base System
+
+    # Start Input Loop
+
+
+    # Interpret Input Loop:
+    # Collect more Data: ask for amount of time to advance and knot points;
+    ## Simulate Trajectory from previous X0
+    ## Store new X0 and Trajectory
+    # Visualize Data
+
+    # Quit
+
 
 
 if __name__ == "__main__":
