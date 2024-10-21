@@ -37,71 +37,72 @@ from dair_pll.file_utils import *
 # MINIMUM_RUN_NUM = 0   # the minimum for hp_search_4.csv is 0
 
 # For results that generated viscous_hp_search.csv:
-CSV_NAME = 'viscous_hp_search.csv'
-HP_SCRIPT_PATTERN = 'startup_shp_asymmetric_viscous_aa????.bash'
-storage_name = '/home/bibit/dair_pll/results/shp_asymmetric_viscous'
+CSV_NAME = "viscous_hp_search.csv"
+HP_SCRIPT_PATTERN = "startup_shp_asymmetric_viscous_aa????.bash"
+storage_name = "/home/bibit/dair_pll/results/shp_asymmetric_viscous"
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-MINIMUM_RUN_NUM = 0   # the minimum for viscous_hp_search.csv is 0
+MINIMUM_RUN_NUM = 0  # the minimum for viscous_hp_search.csv is 0
 
 # For results that generated viscous_elbow_hp.csv:
-CSV_NAME = 'viscous_elbow_hp.csv'
-HP_SCRIPT_PATTERN = 'startup_shp_elbow_viscous_ae????.bash'
-storage_name = '/home/bibit/dair_pll/results/shp_elbow_viscous'
+CSV_NAME = "viscous_elbow_hp.csv"
+HP_SCRIPT_PATTERN = "startup_shp_elbow_viscous_ae????.bash"
+storage_name = "/home/bibit/dair_pll/results/shp_elbow_viscous"
 # Set a minimum run number since multiple hyperparameter searches were conducted
 # in the same results folder.
-MINIMUM_RUN_NUM = 0   # the minimum for viscous_elbow_hp.csv is 0
+MINIMUM_RUN_NUM = 0  # the minimum for viscous_elbow_hp.csv is 0
 
 
+WANDB_PROJECT_CLUSTER = "dair_pll-cluster"
+WANDB_PROJECT_LOCAL = "dair_pll-dev"
 
-WANDB_PROJECT_CLUSTER = 'dair_pll-cluster'
-WANDB_PROJECT_LOCAL = 'dair_pll-dev'
+VALID_MODEL_MSE = "valid_model_trajectory_mse_mean"
+POS_MODEL_ERROR = "valid_model_pos_int_traj_mean"
+ROT_MODEL_ERROR = "valid_model_angle_int_traj_mean"
+PENETRATION_MODEL = "valid_model_penetration_int_traj_mean"
 
-VALID_MODEL_MSE = 'valid_model_trajectory_mse_mean'
-POS_MODEL_ERROR = 'valid_model_pos_int_traj_mean'
-ROT_MODEL_ERROR = 'valid_model_angle_int_traj_mean'
-PENETRATION_MODEL = 'valid_model_penetration_int_traj_mean'
-
-VALID_MSE = 'valid_trajectory_mse'
-POS_ERROR = 'valid_pos_int_traj'
-ROT_ERROR = 'valid_angle_int_traj'
-PENETRATION = 'valid_penetration_int_traj'
-
+VALID_MSE = "valid_trajectory_mse"
+POS_ERROR = "valid_pos_int_traj"
+ROT_ERROR = "valid_angle_int_traj"
+PENETRATION = "valid_penetration_int_traj"
 
 
 repo = git.Repo(search_parent_directories=True)
 git_folder = repo.git.rev_parse("--show-toplevel")
 git_folder = op.normpath(git_folder)
 
-startup_scripts_folder = op.join(git_folder, 'examples')
+startup_scripts_folder = op.join(git_folder, "examples")
 
 startup_scripts_list = sorted(os.listdir(startup_scripts_folder))
 
+
 def get_parameter_from_string(param: str, long_string: str):
-    return long_string.split(f'{param}=')[-1].split('\n')[0].split(' ')[0].split(';')[0]
+    return long_string.split(f"{param}=")[-1].split("\n")[0].split(" ")[0].split(";")[0]
 
 
 def get_params_from_bash_script(script_name):
-    full_script_path = f'{startup_scripts_folder}/{script_name}'
-    script = open(full_script_path, 'r').read()
+    full_script_path = f"{startup_scripts_folder}/{script_name}"
+    script = open(full_script_path, "r").read()
 
-    wandb_id = get_parameter_from_string('WANDB_RUN_GROUP', script)
-    loss_variation = get_parameter_from_string('loss-variation', script)
-    w_pred = get_parameter_from_string('w-pred', script)
-    w_comp = get_parameter_from_string('w-comp', script)
-    w_diss = get_parameter_from_string('w-diss', script)
-    w_pen = get_parameter_from_string('w-pen', script)
-    w_res = get_parameter_from_string('w-res', script)
-    w_res_w = get_parameter_from_string('w-res-w', script)
+    wandb_id = get_parameter_from_string("WANDB_RUN_GROUP", script)
+    loss_variation = get_parameter_from_string("loss-variation", script)
+    w_pred = get_parameter_from_string("w-pred", script)
+    w_comp = get_parameter_from_string("w-comp", script)
+    w_diss = get_parameter_from_string("w-diss", script)
+    w_pen = get_parameter_from_string("w-pen", script)
+    w_res = get_parameter_from_string("w-res", script)
+    w_res_w = get_parameter_from_string("w-res-w", script)
 
-    return {'wandb_id': wandb_id,
-            'loss variation': loss_variation,
-            'w_pred': w_pred,
-            'w_comp': w_comp,
-            'w_diss': w_diss,
-            'w_pen': w_pen,
-            'w_res': w_res,
-            'w_res_w': w_res_w}
+    return {
+        "wandb_id": wandb_id,
+        "loss variation": loss_variation,
+        "w_pred": w_pred,
+        "w_comp": w_comp,
+        "w_diss": w_diss,
+        "w_pen": w_pen,
+        "w_res": w_res,
+        "w_res_w": w_res_w,
+    }
 
 
 lookup_by_wandb_id = {}
@@ -111,42 +112,41 @@ params_dict = {}
 
 for script in startup_scripts_list:
     if fnmatch.fnmatch(script, HP_SCRIPT_PATTERN):
-        run_name = script.split('_')[-1].split('.')[0]
+        run_name = script.split("_")[-1].split(".")[0]
         try:
-            run_num = int(run_name.split('-')[0][2:])
+            run_num = int(run_name.split("-")[0][2:])
         except:
             continue
 
         if run_num >= MINIMUM_RUN_NUM:
             params_dict = get_params_from_bash_script(script)
-            params_dict['run name'] = run_name
-            wandb_id = params_dict['wandb_id']
+            params_dict["run name"] = run_name
+            wandb_id = params_dict["wandb_id"]
 
-            print(f'{run_name}, {wandb_id}:', end=' ')
+            print(f"{run_name}, {wandb_id}:", end=" ")
 
             try:
                 statistics = load_evaluation(storage_name, run_name)
-                params_dict['best valid MSE'] = statistics[VALID_MODEL_MSE]
-                params_dict['best position MSE'] = statistics[POS_MODEL_ERROR]
-                params_dict['best angular MSE'] = statistics[ROT_MODEL_ERROR]
-                params_dict['best penetration'] = statistics[PENETRATION_MODEL]
-                print('Found statistics file.')
+                params_dict["best valid MSE"] = statistics[VALID_MODEL_MSE]
+                params_dict["best position MSE"] = statistics[POS_MODEL_ERROR]
+                params_dict["best angular MSE"] = statistics[ROT_MODEL_ERROR]
+                params_dict["best penetration"] = statistics[PENETRATION_MODEL]
+                print("Found statistics file.")
 
             except FileNotFoundError:
-                print('No statistics file found; searching wandb logs.', end='')
+                print("No statistics file found; searching wandb logs.", end="")
 
                 checkpoint_filename = get_model_filename(storage_name, run_name)
                 checkpoint_dict = torch.load(checkpoint_filename)
 
-                wandb_run_id = checkpoint_dict['wandb_run_id']
+                wandb_run_id = checkpoint_dict["wandb_run_id"]
 
                 api = wandb.Api()
                 try:
-                    run = api.run(
-                        f'ebianchi/{WANDB_PROJECT_CLUSTER}/{wandb_run_id}')
-                    print('')
+                    run = api.run(f"ebianchi/{WANDB_PROJECT_CLUSTER}/{wandb_run_id}")
+                    print("")
                 except:
-                    print(' --> Could not find W&B run, skipping.')
+                    print(" --> Could not find W&B run, skipping.")
                     continue
 
                 run_history = run.history(pandas=False)
@@ -164,27 +164,25 @@ for script in startup_scripts_list:
                     new_pos_error = epoch_dict[POS_ERROR]
                     if new_pos_error < best_pos_error:
                         best_pos_error = new_pos_error
-                        
+
                     new_rot_error = epoch_dict[ROT_ERROR]
                     if new_rot_error < best_rot_error:
                         best_rot_error = new_rot_error
-                        
+
                     new_penetration = epoch_dict[PENETRATION]
                     if new_penetration < best_penetration:
                         best_penetration = new_penetration
 
-                params_dict['best valid MSE'] = best_valid_mse
-                params_dict['best position MSE'] = best_pos_error
-                params_dict['best angular MSE'] = best_rot_error
-                params_dict['best penetration'] = best_penetration
-
+                params_dict["best valid MSE"] = best_valid_mse
+                params_dict["best position MSE"] = best_pos_error
+                params_dict["best angular MSE"] = best_rot_error
+                params_dict["best penetration"] = best_penetration
 
             lookup_by_run_name[run_name] = params_dict
             lookup_by_wandb_id[wandb_id] = params_dict
 
 
-
-with open(CSV_NAME, 'w', newline='') as csvfile:
+with open(CSV_NAME, "w", newline="") as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=params_dict.keys())
 
     writer.writeheader()
@@ -193,4 +191,3 @@ with open(CSV_NAME, 'w', newline='') as csvfile:
 
 
 pdb.set_trace()
-

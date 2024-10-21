@@ -21,6 +21,7 @@ https://doi.org/10.1007/s10107-005-0590-7
 Contact Dynamics with Smooth, Implicit Representations," Conference on
 Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 """
+
 from multiprocessing import pool
 from os import path
 from typing import List, Tuple, Optional, Dict, cast
@@ -30,6 +31,7 @@ import numpy as np
 import torch
 import pdb
 import time
+
 # from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 from tensordict.tensordict import TensorDict, TensorDictBase
@@ -44,24 +46,31 @@ from dair_pll.quaternion import quaternion_to_rotmat_vec
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
 from dair_pll.state_space import FloatingBaseSpace, StateSpace
 from dair_pll.system import System, SystemSummary
-from dair_pll.tensor_utils import pbmm, broadcast_lorentz, \
-    one_vector_block_diagonal, project_lorentz, reflect_lorentz
+from dair_pll.tensor_utils import (
+    pbmm,
+    broadcast_lorentz,
+    one_vector_block_diagonal,
+    project_lorentz,
+    reflect_lorentz,
+)
 
 # Scaling factors to equalize translation and rotation errors.
 # For rotation versus linear scaling:  penalize 0.1 meters same as 90 degrees.
-ROTATION_SCALING = 0.2/torch.pi
+ROTATION_SCALING = 0.2 / torch.pi
 # For articulation versus linear/rotation scaling:  penalize the scenario where
 # one elbow link is in the right place and the other is 180 degrees flipped the
 # same, whether link 1 or link 2 are in the right place.
 ELBOW_COM_TO_AXIS_DISTANCE = 0.035
-JOINT_SCALING = 2*ELBOW_COM_TO_AXIS_DISTANCE/torch.pi + ROTATION_SCALING
+JOINT_SCALING = 2 * ELBOW_COM_TO_AXIS_DISTANCE / torch.pi + ROTATION_SCALING
 
 # Dimension of Measured Force
 DIMENSION = 3
 
+
 class MultibodyLearnableSystem(DrakeSystem):
     """:py:class:`System` interface for dynamics associated with
     :py:class:`MultibodyTerms`."""
+
     multibody_terms: MultibodyTerms
     init_urdfs: Dict[str, str]
     output_urdfs_dir: Optional[str] = None
@@ -69,24 +78,26 @@ class MultibodyLearnableSystem(DrakeSystem):
     solver: DynamicCvxpyLCQPLayer
     dt: float
 
-    def __init__(self,
-                 init_urdfs: Dict[str, str],
-                 dt: float,
-                 w_pred: float,
-                 w_comp: float,
-                 w_diss: float,
-                 w_pen: float,
-                 w_res: float,
-                 w_res_w: float,
-                 w_dev: float,
-                 learnable_body_dict: Dict[str, LearnableBodySettings] = {},
-                 do_residual: bool = False,
-                 output_urdfs_dir: Optional[str] = None,
-                 network_width: int = 128,
-                 network_depth: int = 2,
-                 represent_geometry_as: str = 'box',
-                 randomize_initialization: bool = False,
-                 g_frac: float = 1.0) -> None:
+    def __init__(
+        self,
+        init_urdfs: Dict[str, str],
+        dt: float,
+        w_pred: float,
+        w_comp: float,
+        w_diss: float,
+        w_pen: float,
+        w_res: float,
+        w_res_w: float,
+        w_dev: float,
+        learnable_body_dict: Dict[str, LearnableBodySettings] = {},
+        do_residual: bool = False,
+        output_urdfs_dir: Optional[str] = None,
+        network_width: int = 128,
+        network_depth: int = 2,
+        represent_geometry_as: str = "box",
+        randomize_initialization: bool = False,
+        g_frac: float = 1.0,
+    ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
         Implementation is primarily based on Drake. Bodies are modeled via
@@ -106,16 +117,18 @@ class MultibodyLearnableSystem(DrakeSystem):
               initialization or not.
         """
 
-        multibody_terms = MultibodyTerms(init_urdfs,
-                                         learnable_body_dict,
-                                         represent_geometry_as,
-                                         randomize_initialization,
-                                         g_frac=g_frac)
+        multibody_terms = MultibodyTerms(
+            init_urdfs,
+            learnable_body_dict,
+            represent_geometry_as,
+            randomize_initialization,
+            g_frac=g_frac,
+        )
 
         space = multibody_terms.plant_diagram.space
         integrator = VelocityIntegrator(space, self.sim_step, dt)
         super(DrakeSystem, self).__init__(space, integrator)
-        
+
         self.output_urdfs_dir = output_urdfs_dir
         self.multibody_terms = multibody_terms
         self.init_urdfs = init_urdfs
@@ -172,15 +185,17 @@ class MultibodyLearnableSystem(DrakeSystem):
         assert self.output_urdfs_dir is not None
         old_urdfs = self.init_urdfs
         new_urdf_strings = urdf_utils.represent_multibody_terms_as_urdfs(
-            self.multibody_terms, self.output_urdfs_dir)
+            self.multibody_terms, self.output_urdfs_dir
+        )
 
         # saves new urdfs with model name plus optional suffix in
         # new folder.
         for urdf_name, new_urdf_string in new_urdf_strings.items():
-            new_urdf_filename = urdf_name + '.urdf'
+            new_urdf_filename = urdf_name + ".urdf"
             if suffix != None:
-                new_urdf_filename = new_urdf_filename.split('.')[0] + '_' + \
-                                    suffix + '.urdf'
+                new_urdf_filename = (
+                    new_urdf_filename.split(".")[0] + "_" + suffix + ".urdf"
+                )
 
             new_urdf_path = path.join(self.output_urdfs_dir, new_urdf_filename)
             file_utils.save_string(new_urdf_path, new_urdf_string)
@@ -188,12 +203,14 @@ class MultibodyLearnableSystem(DrakeSystem):
         self.urdfs = new_urdf_strings
         return new_urdf_strings
 
-    def contactnets_loss(self,
-                         x: Tensor,
-                         u: Tensor,
-                         x_plus: Tensor,
-                         contact_forces: Dict[Tuple[str, str], Tensor] = {},
-                         loss_pool: Optional[pool.Pool] = None) -> Tensor:
+    def contactnets_loss(
+        self,
+        x: Tensor,
+        u: Tensor,
+        x_plus: Tensor,
+        contact_forces: Dict[Tuple[str, str], Tensor] = {},
+        loss_pool: Optional[pool.Pool] = None,
+    ) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
         Change made to scale this loss to be per kilogram.  This helps prevent
@@ -215,8 +232,9 @@ class MultibodyLearnableSystem(DrakeSystem):
         Returns:
             (\*,) loss batch.
         """
-        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev, loss_q_pred = \
+        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev, loss_q_pred = (
             self.calculate_contactnets_loss_terms(x, u, x_plus, contact_forces)
+        )
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
 
@@ -227,17 +245,24 @@ class MultibodyLearnableSystem(DrakeSystem):
         reg_weight = regularizers[1]
         reg_inertia_cond = regularizers[2]
 
-        loss = (self.w_res * reg_norm) + (self.w_res_w * reg_weight) + \
-               (self.w_pred * loss_pred) + (self.w_comp * loss_comp) + \
-               (self.w_pen * loss_pen) + (self.w_diss * loss_diss) + \
-               (self.w_dev * loss_dev) + (1e2 * loss_q_pred) + \
-               (1e-5 * reg_inertia_cond)
+        loss = (
+            (self.w_res * reg_norm)
+            + (self.w_res_w * reg_weight)
+            + (self.w_pred * loss_pred)
+            + (self.w_comp * loss_comp)
+            + (self.w_pen * loss_pen)
+            + (self.w_diss * loss_diss)
+            + (self.w_dev * loss_dev)
+            + (1e2 * loss_q_pred)
+            + (1e-5 * reg_inertia_cond)
+        )
 
         self.debug = self.debug + 1
         return loss
 
-    def get_regularization_terms(self, x: Tensor, u: Tensor,
-                                 x_plus: Tensor, **kwargs) -> List[Tensor]:
+    def get_regularization_terms(
+        self, x: Tensor, u: Tensor, x_plus: Tensor, **kwargs
+    ) -> List[Tensor]:
         """Calculate some regularization terms."""
 
         regularizers = []
@@ -274,12 +299,13 @@ class MultibodyLearnableSystem(DrakeSystem):
         # TODO: Use the believed geometry to help supervise the learned CoM.
         return regularizers
 
-    def calculate_contactnets_loss_terms(self,
-                         x: Tensor,
-                         u: Tensor,
-                         x_plus: Tensor,
-                         contact_forces: Dict[Tuple[str, str], Tensor] = {}) -> \
-                         Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+    def calculate_contactnets_loss_terms(
+        self,
+        x: Tensor,
+        u: Tensor,
+        x_plus: Tensor,
+        contact_forces: Dict[Tuple[str, str], Tensor] = {},
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
         :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
         individual pre-weighted loss contributions:
@@ -305,19 +331,27 @@ class MultibodyLearnableSystem(DrakeSystem):
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self.dt
-        eps = 1e-8 # TODO: HACK, make a hyperparameter
+        eps = 1e-8  # TODO: HACK, make a hyperparameter
 
         # Begin loss calculation.
-        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = \
-            self.get_multibody_terms(q_plus, v_plus, u, contact_forces)
+        (
+            delassus,
+            M,
+            J,
+            phi,
+            non_contact_acceleration,
+            obj_pair_list,
+            R_FW_list,
+            mu_list,
+        ) = self.get_multibody_terms(q_plus, v_plus, u, contact_forces)
 
         # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
         n_contacts = phi.shape[-1]
         reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
-        reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
-                                          reorder_mat.shape).expand(
-                                              delassus.shape)
-                                          
+        reorder_mat = reorder_mat.reshape(
+            (1,) * (delassus.dim() - 2) + reorder_mat.shape
+        ).expand(delassus.shape)
+
         # pylint: disable=E1103
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
         phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
@@ -325,27 +359,25 @@ class MultibodyLearnableSystem(DrakeSystem):
         # pylint: disable=E1103
         J_t = J[..., n_contacts:, :]
         sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
-        sliding_speeds = sliding_velocities.reshape(phi.shape[:-1] +
-                                                    (n_contacts, 2)).norm(
-                                                        dim=-1, keepdim=True)
+        sliding_speeds = sliding_velocities.reshape(
+            phi.shape[:-1] + (n_contacts, 2)
+        ).norm(dim=-1, keepdim=True)
 
         # Units: Energy
-        Q_delassus = delassus + eps * torch.eye(3 * n_contacts) # Force PD
+        Q_delassus = delassus + eps * torch.eye(3 * n_contacts)  # Force PD
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
 
         # Constant Terms
         # Calculate the prediction constant based on loss formulation mode.
         constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
-        constant_pen = (torch.maximum(
-                            -phi, torch.zeros_like(phi))**2).sum(dim=-1)
-        constant_pen = constant_pen.reshape(constant_pen.shape + (1,1))
-
+        constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
+        constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
 
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J, dv.transpose(-1, -2))
-        q_comp = (1.0/dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+        q_comp = (1.0 / dt) * torch.abs(phi_then_zero).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
 
         # Penalize Deviation from measured contact impulses
@@ -376,7 +408,6 @@ class MultibodyLearnableSystem(DrakeSystem):
                     Q_dev[..., diag_idx, diag_idx] = 1.0 * mu_list[idx] * mu_list[idx]
         """
 
-        
         for key in contact_forces.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
@@ -384,40 +415,58 @@ class MultibodyLearnableSystem(DrakeSystem):
             mu_i = mu_list[indices[0]]
             # Q_dev = diag(mu)RS^TSR^Tdiag(mu)^T; diag(mu) = 1 if normal, mu otherwise
             # R is block diagonal rotation matrices, S is summation matrix
-            diag_F_mu = torch.zeros(q_dev.shape[:-1] + ((len(indices) * 3),)) # (batch x (n_c_tot*3) x (n_c_obj*3))
-            R_FW_mat = torch.zeros(q_dev.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))) # (batch x (n_c_obj*3) x (n_c_obj*3))
-            sum_W_mat = torch.zeros(q_dev.shape[:-2] + (3, (len(indices) * 3))) # (batch x 3 x (n_c_obj*3))
+            diag_F_mu = torch.zeros(
+                q_dev.shape[:-1] + ((len(indices) * 3),)
+            )  # (batch x (n_c_tot*3) x (n_c_obj*3))
+            R_FW_mat = torch.zeros(
+                q_dev.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))
+            )  # (batch x (n_c_obj*3) x (n_c_obj*3))
+            sum_W_mat = torch.zeros(
+                q_dev.shape[:-2] + (3, (len(indices) * 3))
+            )  # (batch x 3 x (n_c_obj*3))
             for contact, idx in enumerate(indices):
 
                 # Map Normal Force
-                diag_F_mu[..., idx, contact*3 + 2] = 1.0
+                diag_F_mu[..., idx, contact * 3 + 2] = 1.0
                 # Map Tangent Forces
-                diag_F_mu[..., len(obj_pair_list)+2*idx, contact*3] = mu_i
-                diag_F_mu[..., len(obj_pair_list)+2*idx+1, contact*3+1] = mu_i
+                diag_F_mu[..., len(obj_pair_list) + 2 * idx, contact * 3] = mu_i
+                diag_F_mu[..., len(obj_pair_list) + 2 * idx + 1, contact * 3 + 1] = mu_i
 
                 # Create Block diagonal matrix (note torch.block_diag isn't vectorized)
-                R_FW_mat[..., contact*3:(contact+1)*3, contact*3:(contact+1)*3] = R_FW_list[idx]
+                R_FW_mat[
+                    ...,
+                    contact * 3 : (contact + 1) * 3,
+                    contact * 3 : (contact + 1) * 3,
+                ] = R_FW_list[idx]
 
-                # Summation 
-                sum_W_mat[..., 0, contact*3] = 1.0
-                sum_W_mat[..., 1, contact*3+1] = 1.0
-                sum_W_mat[..., 2, contact*3+2] = 1.0
-            q_dev_part = pbmm(sum_W_mat, pbmm(R_FW_mat.transpose(-1, -2), diag_F_mu.transpose(-1, -2))) # (batch, 3, (n_c_tot*3))
+                # Summation
+                sum_W_mat[..., 0, contact * 3] = 1.0
+                sum_W_mat[..., 1, contact * 3 + 1] = 1.0
+                sum_W_mat[..., 2, contact * 3 + 2] = 1.0
+            q_dev_part = pbmm(
+                sum_W_mat, pbmm(R_FW_mat.transpose(-1, -2), diag_F_mu.transpose(-1, -2))
+            )  # (batch, 3, (n_c_tot*3))
             Q_dev += pbmm(q_dev_part.transpose(-1, -2), q_dev_part)
 
             # Linear Term is lambda_mSR^Tdiag(mu)^T
-            impulse_measured_W = contact_forces[key].unsqueeze(-2) * dt # (batch, 1, 3)
-            q_dev -= pbmm(impulse_measured_W, q_dev_part).transpose(-1, -2) # (batch, n_c_tot*3, 1)
+            impulse_measured_W = contact_forces[key].unsqueeze(-2) * dt  # (batch, 1, 3)
+            q_dev -= pbmm(impulse_measured_W, q_dev_part).transpose(
+                -1, -2
+            )  # (batch, n_c_tot*3, 1)
 
             # Constant term is lambda_m magnitude, multiply by 0.5 here to match constant_pred
-            constant_dev += 0.5 * pbmm(impulse_measured_W, impulse_measured_W.transpose(-1, -2))
-        
-            
-        Q_final = Q_delassus + (self.w_dev/self.w_pred)*Q_dev
+            constant_dev += 0.5 * pbmm(
+                impulse_measured_W, impulse_measured_W.transpose(-1, -2)
+            )
 
-        q_final = q_pred + (self.w_comp/self.w_pred)*q_comp + \
-                     (self.w_diss/self.w_pred)*q_diss + \
-                     (self.w_dev/self.w_pred)*q_dev
+        Q_final = Q_delassus + (self.w_dev / self.w_pred) * Q_dev
+
+        q_final = (
+            q_pred
+            + (self.w_comp / self.w_pred) * q_comp
+            + (self.w_diss / self.w_pred) * q_diss
+            + (self.w_dev / self.w_pred) * q_dev
+        )
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
         # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
@@ -428,67 +477,110 @@ class MultibodyLearnableSystem(DrakeSystem):
             impulses = pbmm(
                 reorder_mat,
                 self.solver(
-                    pbmm(reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)), # Quadratic Term
-                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1), # Linear Term
-                ).detach().unsqueeze(-1))
+                    pbmm(
+                        reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
+                    ),  # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(
+                        -1
+                    ),  # Linear Term
+                )
+                .detach()
+                .unsqueeze(-1),
+            )
         except:
             pdb.set_trace()
-            print(f'reordered Q: {pbmm(reorder_mat.transpose(-1,-2), Q_final)}')
-            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}')
-
+            print(f"reordered Q: {pbmm(reorder_mat.transpose(-1,-2), Q_final)}")
+            print(f"reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_final)}")
 
         # Hack: remove elements of ``impulses`` where solver likely failed.
-        invalid = torch.any((impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
-                            dim=-2,
-                            keepdim=True)
+        invalid = torch.any(
+            (impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
+            dim=-2,
+            keepdim=True,
+        )
 
-        constant_pen[invalid] *= 0.
-        constant_pred[invalid] *= 0.
-        constant_dev[invalid] *= 0.
-        impulses[invalid.expand(impulses.shape)] = 0.
+        constant_pen[invalid] *= 0.0
+        constant_pred[invalid] *= 0.0
+        constant_dev[invalid] *= 0.0
+        impulses[invalid.expand(impulses.shape)] = 0.0
 
-        loss_pred = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_delassus, impulses)) \
-                    + pbmm(impulses.transpose(-1, -2), q_pred) + constant_pred
+        loss_pred = (
+            0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_delassus, impulses))
+            + pbmm(impulses.transpose(-1, -2), q_pred)
+            + constant_pred
+        )
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
         loss_diss = pbmm(impulses.transpose(-1, -2), q_diss)
-        loss_dev = 0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses)) \
-                    + pbmm(impulses.transpose(-1, -2), q_dev) + constant_dev
+        loss_dev = (
+            0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses))
+            + pbmm(impulses.transpose(-1, -2), q_dev)
+            + constant_dev
+        )
 
         if self.debug % 2 == 0:
-            pass #breakpoint()
+            pass  # breakpoint()
         # Check
         # TODO: CHECK DEVIATION TERM CALC ABOVE!
-        assert np.all(loss_dev.detach().cpu().numpy() > 0.)
+        assert np.all(loss_dev.detach().cpu().numpy() > 0.0)
 
-        loss_q_pred = self.space.config_square_error(self.space.euler_step(self.space.q(x), self.space.v(x), self.dt), self.space.q(x_plus))
+        loss_q_pred = self.space.config_square_error(
+            self.space.euler_step(self.space.q(x), self.space.v(x), self.dt),
+            self.space.q(x_plus),
+        )
 
-        return loss_pred.reshape(-1), loss_comp.reshape(-1), \
-               loss_pen.reshape(-1), loss_diss.reshape(-1), \
-               loss_dev.reshape(-1), loss_q_pred.reshape(-1)
+        return (
+            loss_pred.reshape(-1),
+            loss_comp.reshape(-1),
+            loss_pen.reshape(-1),
+            loss_diss.reshape(-1),
+            loss_dev.reshape(-1),
+            loss_q_pred.reshape(-1),
+        )
 
-    def get_multibody_terms(self, q: Tensor, v: Tensor,
-        u: Tensor, estimated_normals_W: Dict[Tuple[str, str], Tensor] = {}) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List]:
+    def get_multibody_terms(
+        self,
+        q: Tensor,
+        v: Tensor,
+        u: Tensor,
+        estimated_normals_W: Dict[Tuple[str, str], Tensor] = {},
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, List, List]:
         """Get multibody terms of the system.  Without a residual, this is a
         straightfoward pass-through to the system's :py:class:`MultibodyTerms`.
         With a residual, the residual augments the continuous dynamics."""
 
-        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = self.multibody_terms(
-            q, v, u, estimated_normals_W)
+        (
+            delassus,
+            M,
+            J,
+            phi,
+            non_contact_acceleration,
+            obj_pair_list,
+            R_FW_list,
+            mu_list,
+        ) = self.multibody_terms(q, v, u, estimated_normals_W)
 
         if self.residual_net != None:
             # Get the residual network's contribution.
             x = torch.cat((q, v), dim=1)
-            residual = self.residual_net(x)/self.dt
+            residual = self.residual_net(x) / self.dt
             amended_acceleration = non_contact_acceleration + residual
 
         else:
             amended_acceleration = non_contact_acceleration
 
-        return delassus, M, J, phi, amended_acceleration, obj_pair_list, R_FW_list, mu_list
+        return (
+            delassus,
+            M,
+            J,
+            phi,
+            amended_acceleration,
+            obj_pair_list,
+            R_FW_list,
+            mu_list,
+        )
 
-    def init_residual_network(self, network_width: int, network_depth: int
-        ) -> None:
+    def init_residual_network(self, network_width: int, network_depth: int) -> None:
         """Create and store a neural network architecture that has the multibody
         system state as input and outputs the size of the multibody system's
         velocity space."""
@@ -515,11 +607,9 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         self.residual_net = nn.Sequential(*layers)
 
-    def forward_dynamics(self,
-                         q: Tensor,
-                         v: Tensor,
-                         u: Tensor,
-                         dynamics_pool: Optional[pool.Pool] = None) -> Tensor:
+    def forward_dynamics(
+        self, q: Tensor, v: Tensor, u: Tensor, dynamics_pool: Optional[pool.Pool] = None
+    ) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
         Implements Anitescu's [1] convex formulation in dual form, derived
@@ -581,26 +671,26 @@ class MultibodyLearnableSystem(DrakeSystem):
         # pylint: disable=too-many-locals
         dt = self.dt
         phi_eps = 1e6
-        eps = 1e-8 # TODO: HACK make this a hyperparameter
-        delassus, M, J, phi, non_contact_acceleration, _, _ = \
-            self.get_multibody_terms(q, v, u)
+        eps = 1e-8  # TODO: HACK make this a hyperparameter
+        delassus, M, J, phi, non_contact_acceleration, _, _ = self.get_multibody_terms(
+            q, v, u
+        )
         n_contacts = phi.shape[-1]
         contact_filter = (broadcast_lorentz(phi) <= phi_eps).unsqueeze(-1)
-        contact_matrix_filter = pbmm(contact_filter.int(),
-                                     contact_filter.transpose(-1,
-                                                              -2).int()).bool()
+        contact_matrix_filter = pbmm(
+            contact_filter.int(), contact_filter.transpose(-1, -2).int()
+        ).bool()
 
         reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
-        reorder_mat = reorder_mat.reshape((1,) * (delassus.dim() - 2) +
-                                          reorder_mat.shape).expand(
-                                              delassus.shape)
+        reorder_mat = reorder_mat.reshape(
+            (1,) * (delassus.dim() - 2) + reorder_mat.shape
+        ).expand(delassus.shape)
 
         Q_delassus = delassus + eps * torch.eye(3 * n_contacts)
 
         # pylint: disable=E1103
         double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
-        phi_then_zero = torch.cat((phi, double_zero_vector),
-                                  dim=-1).unsqueeze(-1)
+        phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1).unsqueeze(-1)
 
         v_minus = v + dt * non_contact_acceleration
         q_full = pbmm(J, v_minus.unsqueeze(-1)) + (1 / dt) * phi_then_zero
@@ -609,20 +699,27 @@ class MultibodyLearnableSystem(DrakeSystem):
             impulse_full = pbmm(
                 reorder_mat,
                 self.solver(
-                    pbmm(reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)), # Quadratic Term
-                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1), # Linear Term
-                 ).detach().unsqueeze(-1))
+                    pbmm(
+                        reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)
+                    ),  # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(
+                        -1
+                    ),  # Linear Term
+                )
+                .detach()
+                .unsqueeze(-1),
+            )
         except:
-            print(f'J_M: {J_M}')
-            print(f'reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_full)}')
+            print(f"J_M: {J_M}")
+            print(f"reordered q: {pbmm(reorder_mat.transpose(-1, -2), q_full)}")
             pdb.set_trace()
-
 
         impulse = torch.zeros_like(impulse_full)
         impulse[contact_filter] += impulse_full[contact_filter]
 
-        return v_minus + torch.linalg.solve(M, pbmm(J.transpose(-1, -2),
-                                                    impulse)).squeeze(-1)
+        return v_minus + torch.linalg.solve(
+            M, pbmm(J.transpose(-1, -2), impulse)
+        ).squeeze(-1)
 
     def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         """``Integrator.partial_step`` wrapper for
@@ -655,8 +752,9 @@ class MultibodyLearnableSystem(DrakeSystem):
 
 
 class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
-    """:py:class:`MultibodyLearnableSystem` where a model can have 
-        learnable trajectories."""
+    """:py:class:`MultibodyLearnableSystem` where a model can have
+    learnable trajectories."""
+
     model_spaces: Dict[str, StateSpace]
     r"""Map of model name to state space, ignoring spaces where n_x == 0"""
     trajectory_model: str
@@ -666,12 +764,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
     # TODO: Allow multi models to have learnable trajectories
 
-    def __init__(self,
-                 trajectory_model: str,
-                 traj_len: int,
-                 first_contact: int = 1, # v=0 fixed before this
-                 true_traj: Optional[Tensor] = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        trajectory_model: str,
+        traj_len: int,
+        first_contact: int = 1,  # v=0 fixed before this
+        true_traj: Optional[Tensor] = None,
+        **kwargs,
+    ) -> None:
         ## Construct Super System
         super().__init__(**kwargs)
         self.trajectory_model = trajectory_model
@@ -680,20 +780,45 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self.model_spaces = {}
         plant_diagram = self.multibody_terms.plant_diagram
         for model_id, space in zip(plant_diagram.model_ids, plant_diagram.space.spaces):
-            self.model_spaces[plant_diagram.plant.GetModelInstanceName(model_id)] = space
+            self.model_spaces[plant_diagram.plant.GetModelInstanceName(model_id)] = (
+                space
+            )
 
         ## Create Trajectory Parameters
         # e.g. 3D: qw, qx, qy, qz, x, y, z, dwx, dwy, dyz, dx, dy, dz
-        # Until first_contact, same position and zero velocity 
+        # Until first_contact, same position and zero velocity
         model_state = []
         for _ in range(traj_len):
             model_state.append(self.model_spaces[trajectory_model].zero_state())
         if true_traj is not None:
             # TODO: HACK hard-coded model index
-            model_state = torch.clone(torch.hstack((true_traj["state"].squeeze()[:, 2:9], true_traj["state"].squeeze()[:, 11:])))
+            model_state = torch.clone(
+                torch.hstack(
+                    (
+                        true_traj["state"].squeeze()[:, 2:9],
+                        true_traj["state"].squeeze()[:, 11:],
+                    )
+                )
+            )
             assert model_state.shape[-1] == self.model_spaces[trajectory_model].n_x
-        self.trajectory_q = ParameterList([Parameter(model_state[idx][:self.model_spaces[trajectory_model].n_q], requires_grad=True) for idx in range(traj_len)])
-        self.trajectory_v = ParameterList([Parameter(model_state[idx][self.model_spaces[trajectory_model].n_q:], requires_grad=(idx > first_contact)) for idx in range(traj_len)])
+        self.trajectory_q = ParameterList(
+            [
+                Parameter(
+                    model_state[idx][: self.model_spaces[trajectory_model].n_q],
+                    requires_grad=True,
+                )
+                for idx in range(traj_len)
+            ]
+        )
+        self.trajectory_v = ParameterList(
+            [
+                Parameter(
+                    model_state[idx][self.model_spaces[trajectory_model].n_q :],
+                    requires_grad=(idx > first_contact),
+                )
+                for idx in range(traj_len)
+            ]
+        )
 
         ## Debugging Hooks
         """
@@ -711,12 +836,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 self.trajectory_v[i].register_hook(partial(grad_debug_hook_v, i))
         """
 
-    def construct_state_tensor(self,
-        data_state: Tensor) -> Tensor:
-        """ Input:
-            data_state: Tensor coming from the TrajectorySet Dataloader,
-                        this class expects a TensorDict, shape [batch, ?]
-            Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
+    def construct_state_tensor(self, data_state: Tensor) -> Tensor:
+        """Input:
+        data_state: Tensor coming from the TrajectorySet Dataloader,
+                    this class expects a TensorDict, shape [batch, ?]
+        Returns: full state tensor (adding traj parameters) shape [batch, n_x_full]
         """
 
         # Don't mutate input
@@ -726,8 +850,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         # Inject trajectory_model's state if not already present
         if (self.trajectory_model + "_state") not in data_state:
             assert data_state["time"].shape == data_state.shape + (1,)
-            traj_x = torch.stack([torch.hstack((self.trajectory_q[int(i)], self.trajectory_v[int(i)])) for i in data_state["time"].flatten()])
-            traj_x = traj_x.reshape(data_state.shape + (self.model_spaces[self.trajectory_model].n_x,)) # [batch x traj_n_x]
+            traj_x = torch.stack(
+                [
+                    torch.hstack((self.trajectory_q[int(i)], self.trajectory_v[int(i)]))
+                    for i in data_state["time"].flatten()
+                ]
+            )
+            traj_x = traj_x.reshape(
+                data_state.shape + (self.model_spaces[self.trajectory_model].n_x,)
+            )  # [batch x traj_n_x]
             data_state[self.trajectory_model + "_state"] = traj_x
 
         # Remove "state" to avoid overwritting

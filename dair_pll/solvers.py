@@ -2,6 +2,7 @@
 Current supported problem/solver types:
     * Lorentz cone constrained quadratic program (LCQP) solved with CVXPY.
 """
+
 from typing import Optional, Dict, List, cast
 
 import cvxpy as cp
@@ -10,14 +11,21 @@ import torch
 from torch import Tensor
 from dair_pll.tensor_utils import sqrtm
 
-_CVXPY_LCQP_EPS = 0.  #1e-7
-#_CVXPY_SOLVER_ARGS = {"solve_method": "SCS", "eps": 1e-10, "use_indirect":
+_CVXPY_LCQP_EPS = 0.0  # 1e-7
+# _CVXPY_SOLVER_ARGS = {"solve_method": "SCS", "eps": 1e-10, "use_indirect":
 # True}
 # NOTE: It's faster to do serial since the solve is so quick
 # TODO: HACK Recommended to comment out "pre-compute quantities for the derivative" in cone_program.py in diffcp since we don't use it.
-_CVXPY_SOLVER_ARGS = {"solve_method": "ECOS", "max_iters": 300,
-                      "abstol": 1e-10, "reltol": 1e-10, "feastol": 1e-10,
-                      "n_jobs_forward": 1, "n_jobs_backward": 1}
+_CVXPY_SOLVER_ARGS = {
+    "solve_method": "ECOS",
+    "max_iters": 300,
+    "abstol": 1e-10,
+    "reltol": 1e-10,
+    "feastol": 1e-10,
+    "n_jobs_forward": 1,
+    "n_jobs_backward": 1,
+}
+
 
 def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
     """Constructs a CvxpyLayer for solving a Lorentz cone constrained quadratic
@@ -35,23 +43,23 @@ def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
 
     objective = 0.5 * cp.sum_squares(objective_matrix @ variables)
     objective += objective_vector.T @ variables
-    if _CVXPY_LCQP_EPS > 0.:
+    if _CVXPY_LCQP_EPS > 0.0:
         objective += 0.5 * _CVXPY_LCQP_EPS * cp.sum_squares(variables)
     constraints = [
-        cp.SOC(variables[3 * i + 2], variables[(3 * i):(3 * i + 2)])
+        cp.SOC(variables[3 * i + 2], variables[(3 * i) : (3 * i + 2)])
         for i in range(num_contacts)
     ]
 
-    problem = cp.Problem(cp.Minimize(objective),
-                         cast(List[cp.Constraint], constraints))
-    return CvxpyLayer(problem,
-                      parameters=[objective_matrix, objective_vector],
-                      variables=[variables])
+    problem = cp.Problem(cp.Minimize(objective), cast(List[cp.Constraint], constraints))
+    return CvxpyLayer(
+        problem, parameters=[objective_matrix, objective_vector], variables=[variables]
+    )
 
 
 class DynamicCvxpyLCQPLayer:
     """Solves a LCQP with dynamic sizing by maintaining a family of
     constant-size ``CvxpyLayer`` s."""
+
     num_velocities: int
     _cvxpy_layers: Dict[int, CvxpyLayer]
 
@@ -85,4 +93,3 @@ class DynamicCvxpyLCQPLayer:
         layer = self.get_sized_layer(Q.shape[-2] // 3)
         Q_sqrt = sqrtm(Q)
         return layer(Q_sqrt, q, solver_args=_CVXPY_SOLVER_ARGS)[0]
-        

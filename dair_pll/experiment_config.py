@@ -1,4 +1,5 @@
 """Configuration dataclasses for experiments."""
+
 from dataclasses import dataclass, field
 from typing import Type, Optional, Dict, Any
 
@@ -20,12 +21,15 @@ class SystemConfig:
 class OptimizerConfig:
     """:func:`~dataclasses.dataclass` defining setup and usage opf a Pytorch
     :func:`~torch.optim.Optimizer` for learning."""
+
     optimizer: Type[Optimizer] = torch.optim.Adam
     """Subclass of :py:class:`~torch.optim.Optimizer` to use."""
-    optimizer_kwargs: Dict[str, Any] = field(default_factory = {
-        "lr": Float(1e-5, log=True),
-        "weight_decay": Float(4e-5, log=True),
-    })
+    optimizer_kwargs: Dict[str, Any] = field(
+        default_factory={
+            "lr": Float(1e-5, log=True),
+            "weight_decay": Float(4e-5, log=True),
+        }
+    )
     # Kwargs will be unpacked if type Hyperparameter
     epochs: int = 10000
     """Maximum number of epochs to optimize."""
@@ -39,6 +43,7 @@ class OptimizerConfig:
 class SupervisedLearningExperimentConfig:
     """:py:class:`~dataclasses.dataclass` defining setup of a
     :py:class:`SupervisedLearningExperiment`"""
+
     #  pylint: disable=too-many-instance-attributes
     data_config: DataConfig = field(default_factory=DataConfig)
     """Configuration for experiment's
@@ -50,9 +55,9 @@ class SupervisedLearningExperimentConfig:
     """Configuration for system to be learned."""
     optimizer_config: OptimizerConfig = field(default_factory=OptimizerConfig)
     """Configuration for experiment's optimization process."""
-    storage: str = './'
+    storage: str = "./"
     """Folder for results/data storage. Defaults to working directory."""
-    run_name: str = 'experiment_run'
+    run_name: str = "experiment_run"
     """Unique identifier for experiment run."""
     run_wandb: bool = True
     """Whether to run Weights and Biases logging."""

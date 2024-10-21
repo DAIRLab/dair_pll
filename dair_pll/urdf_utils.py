@@ -8,6 +8,7 @@ The ``UrdfGeometryRepresentationFactory`` generates URDF XML representations
 of a ``CollisionGeometry``, and ``fill_link_with_parameterization`` dumps
 these representations into a URDF "link" tag.
 """
+
 import os.path
 from typing import Dict, List, Optional, Tuple, cast
 from xml.etree import ElementTree
@@ -16,10 +17,12 @@ from xml.etree.ElementTree import register_namespace
 from torch import Tensor
 
 from dair_pll import drake_utils, file_utils
-from dair_pll.deep_support_function import extract_obj_from_support_function, \
-    extract_obj_from_mesh_summary, get_mesh_summary_from_polygon
-from dair_pll.geometry import CollisionGeometry, Box, Sphere, Polygon, \
-    DeepSupportConvex
+from dair_pll.deep_support_function import (
+    extract_obj_from_support_function,
+    extract_obj_from_mesh_summary,
+    get_mesh_summary_from_polygon,
+)
+from dair_pll.geometry import CollisionGeometry, Box, Sphere, Polygon, DeepSupportConvex
 from dair_pll.inertia import InertialParameterConverter
 from dair_pll.multibody_terms import MultibodyTerms
 
@@ -37,9 +40,9 @@ _CYLINDER = "cylinder"
 _MESH = "mesh"
 _DRAKE_URL = "https://drake.mit.edu/"
 _PROXIMITY_PROPERTIES = "proximity_properties"
-_DRAKE_PROXIMITY_PROPERTIES = '{' + _DRAKE_URL + '}' + _PROXIMITY_PROPERTIES
+_DRAKE_PROXIMITY_PROPERTIES = "{" + _DRAKE_URL + "}" + _PROXIMITY_PROPERTIES
 _MU_STATIC = "mu_static"
-_DRAKE_MU_STATIC = '{' + _DRAKE_URL + '}' + _MU_STATIC
+_DRAKE_MU_STATIC = "{" + _DRAKE_URL + "}" + _MU_STATIC
 
 # attributes
 _VALUE = "value"
@@ -76,7 +79,7 @@ _URDF_DEFAULT_TREE: Dict[str, List] = {
     _COLLISION: [_GEOMETRY, _ORIGIN, _DRAKE_PROXIMITY_PROPERTIES],
     _BOX: [],
     _SPHERE: [],
-    _CYLINDER: []
+    _CYLINDER: [],
 }  # pylint: disable=C0303
 """Default tree structure for URDF elements. 
 
@@ -91,21 +94,14 @@ _URDF_DEFAULT_ATTRIBUTES: Dict[str, Dict] = {
     _MASS: _SCALAR_ATTR,
     _INERTIA: {i: _ZERO_FLOAT for i in _INERTIAL_ATTRIBUTES},
     _INERTIAL: {},
-    _BOX: {
-        _SIZE: _ZERO_FLOAT_3
-    },
-    _SPHERE: {
-        _RADIUS: _ZERO_FLOAT
-    },
-    _CYLINDER: {
-        _RADIUS: _ZERO_FLOAT,
-        _LENGTH: _ZERO_FLOAT
-    },
+    _BOX: {_SIZE: _ZERO_FLOAT_3},
+    _SPHERE: {_RADIUS: _ZERO_FLOAT},
+    _CYLINDER: {_RADIUS: _ZERO_FLOAT, _LENGTH: _ZERO_FLOAT},
     _GEOMETRY: {},
     _VISUAL: {},
     _COLLISION: {},
     _DRAKE_PROXIMITY_PROPERTIES: {},
-    _DRAKE_MU_STATIC: _SCALAR_ATTR
+    _DRAKE_MU_STATIC: _SCALAR_ATTR,
 }
 """Default element attributes for URDFs.
 
@@ -137,8 +133,9 @@ class UrdfFindOrDefault:
     """
 
     @staticmethod
-    def find(element: ElementTree.Element,
-             sub_element_type: str) -> ElementTree.Element:
+    def find(
+        element: ElementTree.Element, sub_element_type: str
+    ) -> ElementTree.Element:
         """Finds an XML sub-element of specified type, adding a default
         element of that type if necessary.
 
@@ -156,10 +153,12 @@ class UrdfFindOrDefault:
         sub-elements of given type.
         """
         current_sub_element: Optional[ElementTree.Element] = element.find(
-            sub_element_type)
+            sub_element_type
+        )
         if current_sub_element is None:
-            default_sub_element = \
-                UrdfFindOrDefault.generate_default_element(sub_element_type)
+            default_sub_element = UrdfFindOrDefault.generate_default_element(
+                sub_element_type
+            )
             element.append(default_sub_element)
             return default_sub_element
         return current_sub_element
@@ -178,7 +177,8 @@ class UrdfFindOrDefault:
         default_element.attrib = _URDF_DEFAULT_ATTRIBUTES[element_type]
         for child_element_type in _URDF_DEFAULT_TREE[element_type]:
             default_element.append(
-                UrdfFindOrDefault.generate_default_element(child_element_type))
+                UrdfFindOrDefault.generate_default_element(child_element_type)
+            )
         return default_element
 
 
@@ -187,8 +187,9 @@ class UrdfGeometryRepresentationFactory:
     ``CollisionGeometry`` instances."""
 
     @staticmethod
-    def representation(geometry: CollisionGeometry, output_dir: str,
-                       link_name: str = None) -> Tuple[str, Dict[str, str]]:
+    def representation(
+        geometry: CollisionGeometry, output_dir: str, link_name: str = None
+    ) -> Tuple[str, Dict[str, str]]:
         """Representation of an associated URDF tag that describes the
         properties of this geometry.
 
@@ -212,39 +213,39 @@ class UrdfGeometryRepresentationFactory:
         """
         if isinstance(geometry, Polygon):
             return UrdfGeometryRepresentationFactory.polygon_representation(
-                geometry, output_dir, link_name)
+                geometry, output_dir, link_name
+            )
         if isinstance(geometry, Box):
-            return UrdfGeometryRepresentationFactory.box_representation(
-                geometry)
+            return UrdfGeometryRepresentationFactory.box_representation(geometry)
         if isinstance(geometry, Sphere):
-            return UrdfGeometryRepresentationFactory.sphere_representation(
-                geometry)
+            return UrdfGeometryRepresentationFactory.sphere_representation(geometry)
         if isinstance(geometry, DeepSupportConvex):
             return UrdfGeometryRepresentationFactory.mesh_representation(
-                geometry, output_dir, link_name)
+                geometry, output_dir, link_name
+            )
         raise TypeError(
             "Unsupported type for CollisionGeometry() to"
-            "URDF representation conversion:", type(geometry))
+            "URDF representation conversion:",
+            type(geometry),
+        )
 
     @staticmethod
-    def polygon_representation(polygon: Polygon, output_dir: str,
-                               link_name: str) -> Tuple[str, Dict[str, str]]:
+    def polygon_representation(
+        polygon: Polygon, output_dir: str, link_name: str
+    ) -> Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``mesh`` tag with name of saved
         mesh file."""
         mesh_name = f"{link_name}.obj"
         mesh_path = os.path.join(output_dir, mesh_name)
         mesh_summary = get_mesh_summary_from_polygon(polygon)
-        file_utils.save_string(
-            mesh_path,
-            extract_obj_from_mesh_summary(mesh_summary))
+        file_utils.save_string(mesh_path, extract_obj_from_mesh_summary(mesh_summary))
 
         return _MESH, {_FILENAME: mesh_name}
 
     @staticmethod
     def box_representation(box: Box) -> Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``box`` tag with full-length sizes."""
-        size = ' '.join([str(2 * i.item()) for i in \
-                         box.get_half_lengths().view(-1)])
+        size = " ".join([str(2 * i.item()) for i in box.get_half_lengths().view(-1)])
         return _BOX, {_SIZE: size}
 
     @staticmethod
@@ -254,24 +255,28 @@ class UrdfGeometryRepresentationFactory:
         return _SPHERE, {_RADIUS: str(sphere.get_radius().item())}
 
     @staticmethod
-    def mesh_representation(convex: DeepSupportConvex, output_dir: str,
-                            link_name: str) -> Tuple[str, Dict[str, str]]:
+    def mesh_representation(
+        convex: DeepSupportConvex, output_dir: str, link_name: str
+    ) -> Tuple[str, Dict[str, str]]:
         """Returns URDF representation as ``mesh`` tag with name of saved
         mesh file."""
         mesh_name = f"{link_name}.obj"
         mesh_path = os.path.join(output_dir, mesh_name)
         file_utils.save_string(
-            mesh_path,
-            extract_obj_from_support_function(convex.network))
+            mesh_path, extract_obj_from_support_function(convex.network)
+        )
 
         return _MESH, {_FILENAME: mesh_name}
 
 
-def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
-                                    geometries: List[CollisionGeometry],
-                                    friction_coeffs: Tensor,
-                                    output_dir: str,
-                                    link_name: str = None) -> None:
+def fill_link_with_parameterization(
+    element: ElementTree.Element,
+    pi_cm: Tensor,
+    geometries: List[CollisionGeometry],
+    friction_coeffs: Tensor,
+    output_dir: str,
+    link_name: str = None,
+) -> None:
     """Convert pytorch inertial and geometric representations to URDF elements.
 
     Args:
@@ -292,10 +297,10 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
     """
     # pylint: disable=too-many-locals
     if len(geometries) > 1:
-        raise NotImplementedError("generating a URDF with multiple geometries"
-                                  "per body not implemented yet.")
-    mass, p_BoBcm_B, I_BBcm_B = \
-        InertialParameterConverter.pi_cm_to_urdf(pi_cm)
+        raise NotImplementedError(
+            "generating a URDF with multiple geometries" "per body not implemented yet."
+        )
+    mass, p_BoBcm_B, I_BBcm_B = InertialParameterConverter.pi_cm_to_urdf(pi_cm)
 
     # This will have to change when function can handle more than one geometry.
     mu = str(friction_coeffs.item())
@@ -305,8 +310,7 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
     UrdfFindOrDefault.find(body_inertial_element, _MASS).set(_VALUE, mass)
     UrdfFindOrDefault.find(body_inertial_element, _ORIGIN).set(_XYZ, p_BoBcm_B)
 
-    body_inertia_element = UrdfFindOrDefault.find(body_inertial_element,
-                                                  _INERTIA)
+    body_inertia_element = UrdfFindOrDefault.find(body_inertial_element, _INERTIA)
     body_inertia_element.attrib = dict(zip(_INERTIAL_ATTRIBUTES, I_BBcm_B))
 
     for geometry in geometries:
@@ -314,25 +318,27 @@ def fill_link_with_parameterization(element: ElementTree.Element, pi_cm: Tensor,
         visual_element = UrdfFindOrDefault.find(element, _VISUAL)
         geometry_elements = [
             UrdfFindOrDefault.find(collision_element, _GEOMETRY),
-            UrdfFindOrDefault.find(visual_element, _GEOMETRY)
+            UrdfFindOrDefault.find(visual_element, _GEOMETRY),
         ]
 
-        (shape_tag, shape_attributes) = \
-            UrdfGeometryRepresentationFactory.representation(geometry,
-                                                             output_dir,
-                                                             link_name=link_name)
+        (shape_tag, shape_attributes) = (
+            UrdfGeometryRepresentationFactory.representation(
+                geometry, output_dir, link_name=link_name
+            )
+        )
         for geometry_element in geometry_elements:
             shape_element = UrdfFindOrDefault.find(geometry_element, shape_tag)
             shape_element.attrib = shape_attributes
 
-        prox_props_element = UrdfFindOrDefault.find(collision_element,
-            _DRAKE_PROXIMITY_PROPERTIES)
-        UrdfFindOrDefault.find(prox_props_element, _DRAKE_MU_STATIC).set(
-            _VALUE, mu)
+        prox_props_element = UrdfFindOrDefault.find(
+            collision_element, _DRAKE_PROXIMITY_PROPERTIES
+        )
+        UrdfFindOrDefault.find(prox_props_element, _DRAKE_MU_STATIC).set(_VALUE, mu)
 
 
-def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
-                                       output_dir: str) -> Dict[str, str]:
+def represent_multibody_terms_as_urdfs(
+    multibody_terms: MultibodyTerms, output_dir: str
+) -> Dict[str, str]:
     """Renders the current parameterization of multibody terms as a
     set of urdfs.
 
@@ -350,19 +356,18 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
     """
     # pylint: disable=too-many-locals
     urdf_xml = {}
-    _, all_body_ids = \
-        drake_utils.get_all_inertial_bodies(
-            multibody_terms.plant_diagram.plant,
-            multibody_terms.plant_diagram.model_ids)
+    _, all_body_ids = drake_utils.get_all_inertial_bodies(
+        multibody_terms.plant_diagram.plant, multibody_terms.plant_diagram.model_ids
+    )
     pi_cm = multibody_terms.lagrangian_terms.pi_cm()
     friction_coeffs = multibody_terms.contact_terms.get_friction_coefficients()
 
     for urdf_name, urdf in multibody_terms.urdfs.items():
 
         # assumes urdf name mirrors model name
-        model_instance_index = \
-            multibody_terms.plant_diagram.plant.GetModelInstanceByName(
-                urdf_name)
+        model_instance_index = (
+            multibody_terms.plant_diagram.plant.GetModelInstanceByName(urdf_name)
+        )
 
         urdf_tree = ElementTree.fromstring(urdf)
 
@@ -374,31 +379,38 @@ def represent_multibody_terms_as_urdfs(multibody_terms: MultibodyTerms,
                 body_id = drake_utils.unique_body_identifier(
                     multibody_terms.plant_diagram.plant,
                     multibody_terms.plant_diagram.plant.GetBodyByName(
-                        cast(str, element.get("name")),
-                        model_instance_index))
+                        cast(str, element.get("name")), model_instance_index
+                    ),
+                )
                 if body_id not in all_body_ids:
                     # body does not have inertial attributes,
                     # for instance, the world body.
                     continue
                 body_index = all_body_ids.index(body_id)
-                body_geometry_indices = \
-                    multibody_terms.geometry_body_assignment[body_id]
+                body_geometry_indices = multibody_terms.geometry_body_assignment[
+                    body_id
+                ]
                 body_geometries = [
-                    cast(CollisionGeometry,
-                         multibody_terms.contact_terms.geometries[index])
+                    cast(
+                        CollisionGeometry,
+                        multibody_terms.contact_terms.geometries[index],
+                    )
                     for index in body_geometry_indices
                 ]
                 body_friction_coeffs = friction_coeffs[body_geometry_indices]
-                
-                fill_link_with_parameterization(element, pi_cm[body_index, :],
-                                                body_geometries,
-                                                body_friction_coeffs,
-                                                output_dir,
-                                                link_name=link_name)
 
-        register_namespace('drake', _DRAKE_URL)
+                fill_link_with_parameterization(
+                    element,
+                    pi_cm[body_index, :],
+                    body_geometries,
+                    body_friction_coeffs,
+                    output_dir,
+                    link_name=link_name,
+                )
+
+        register_namespace("drake", _DRAKE_URL)
         system_urdf_representation = ElementTree.tostring(
-            urdf_tree, encoding="utf-8").decode("utf-8")
-        urdf_xml[
-            urdf_name] = f'<?xml version="1.0"?>\n{system_urdf_representation}'
+            urdf_tree, encoding="utf-8"
+        ).decode("utf-8")
+        urdf_xml[urdf_name] = f'<?xml version="1.0"?>\n{system_urdf_representation}'
     return urdf_xml

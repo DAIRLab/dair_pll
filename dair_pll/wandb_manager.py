@@ -1,4 +1,5 @@
 """Interface for logging training progress to Weights and Biases."""
+
 import time
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional, Any
@@ -18,8 +19,7 @@ def _write_scalars(epoch: int, scalars: Dict[str, float]) -> None:
     wandb.log(scalars, step=epoch)
 
 
-def _write_videos(epoch: int, videos: Dict[str, Tuple[np.ndarray,
-                                                      int]]) -> None:
+def _write_videos(epoch: int, videos: Dict[str, Tuple[np.ndarray, int]]) -> None:
     """Logs videos."""
     wandb_videos = {
         video_name: wandb.Video(video_array[0], fps=fps)
@@ -44,6 +44,7 @@ class WeightsAndBiasesManager:
     Given a set of scalars, videos, and meshes, writes to Weights and Biases
     at https://wandb.ai .
     """
+
     run_name: str
     """Display name for Weights and Biases experiment run."""
     directory: str
@@ -73,12 +74,14 @@ class WeightsAndBiasesManager:
         resuming = self.resume_from_id is not None
         wandb_run_id = self._setup_wandb_run_id()
 
-        wandb.init(project=self.project_name,
-                   dir=self.directory,
-                   name=self.run_name,
-                   id=wandb_run_id,
-                   config={},
-                   resume=WANDB_ALLOW if resuming else WANDB_NEVER)
+        wandb.init(
+            project=self.project_name,
+            dir=self.directory,
+            name=self.run_name,
+            id=wandb_run_id,
+            config={},
+            resume=WANDB_ALLOW if resuming else WANDB_NEVER,
+        )
 
         return wandb_run_id
 
@@ -89,10 +92,13 @@ class WeightsAndBiasesManager:
         wandb.config.update({"ExperimentConfig": str(config)}, allow_val_change=True)
 
     @staticmethod
-    def update(epoch: int, scalars: Dict[str, float],
-               videos: Dict[str, Tuple[np.ndarray, int]],
-               meshes: Dict[str, MeshSummary],
-               objs: Dict[str, Any] = {}) -> None:
+    def update(
+        epoch: int,
+        scalars: Dict[str, float],
+        videos: Dict[str, Tuple[np.ndarray, int]],
+        meshes: Dict[str, MeshSummary],
+        objs: Dict[str, Any] = {},
+    ) -> None:
         """Write new epoch summary to Weights and Biases.
 
         Args:

@@ -19,17 +19,28 @@ The following hyperparameters types and priors are supported:
       , or :py:class:`str` types which are selected from uniformly.
 
 """
+
 from abc import abstractmethod, ABC
 from dataclasses import is_dataclass
-from typing import Tuple, TypeVar, Sequence, List, Union, Optional, \
-    Dict, Generic, Callable, Any
+from typing import (
+    Tuple,
+    TypeVar,
+    Sequence,
+    List,
+    Union,
+    Optional,
+    Dict,
+    Generic,
+    Callable,
+    Any,
+)
 
 from optuna.trial import Trial
 
 ValueType = Union[int, float, str]
 ValueDict = Dict[str, ValueType]
 
-ScalarT = TypeVar('ScalarT', int, float)
+ScalarT = TypeVar("ScalarT", int, float)
 r"""Templating type hint for :py:class:`Scalar`\ s."""
 
 
@@ -69,7 +80,7 @@ class Hyperparameter(ABC):
 
     def __repr__(self) -> str:
         """Human-readable representation of underlying hyperparameter value."""
-        return f'{type(self).__qualname__}({str(self.value)})'
+        return f"{type(self).__qualname__}({str(self.value)})"
 
     @abstractmethod
     def suggest(self, trial: Trial, name: str) -> ValueType:
@@ -97,6 +108,7 @@ class Scalar(Hyperparameter, ABC, Generic[ScalarT]):
     :py:attr:`distribution` attribute, or set as a default based on the
     provided :py:attr:`value` in the abstract method :py:meth:`default_range`\ .
     """
+
     value: ScalarT
     """Scalar value of hyperparameter."""
     distribution: Tuple[ScalarT, ScalarT]
@@ -104,10 +116,12 @@ class Scalar(Hyperparameter, ABC, Generic[ScalarT]):
     log: bool
     """Whether the distribution is uniform or log-uniform."""
 
-    def __init__(self,
-                 value: ScalarT,
-                 distribution: Optional[Tuple[ScalarT, ScalarT]] = None,
-                 log: bool = False):
+    def __init__(
+        self,
+        value: ScalarT,
+        distribution: Optional[Tuple[ScalarT, ScalarT]] = None,
+        log: bool = False,
+    ):
         if not distribution:
             distribution = self.default_range(value, log)
         assert distribution[1] >= distribution[0]
@@ -118,8 +132,7 @@ class Scalar(Hyperparameter, ABC, Generic[ScalarT]):
         self.log = log
 
     @abstractmethod
-    def default_range(self, value: ScalarT,
-                      log: bool) -> Tuple[ScalarT, ScalarT]:
+    def default_range(self, value: ScalarT, log: bool) -> Tuple[ScalarT, ScalarT]:
         """Returns default range for Scalar, depending on provided value."""
 
 
@@ -129,6 +142,7 @@ INT_ABS_WIDTH = 2
 
 class Int(Scalar):
     """Integer scalar hyperparameter."""
+
     value: int
     distribution: Tuple[int, int]
 
@@ -137,7 +151,7 @@ class Int(Scalar):
 
         Returns ``(max(1, value // RANGE), value * RANGE)``, where ``RANGE``
         is ``8`` in the log-uniform case and ``2`` otherwise.
-        
+
         Args:
             value: Default value of hyperparameter.
             log: Whether the distribution is uniform or log-uniform.
@@ -153,11 +167,12 @@ class Int(Scalar):
 
 
 FLOAT_LOG_WIDTH = 1e2
-FLOAT_ABS_WIDTH = 2.
+FLOAT_ABS_WIDTH = 2.0
 
 
 class Float(Scalar):
     """Real number (floating-point) scalar hyperparameter."""
+
     value: float
     distribution: Tuple[float, float]
 
@@ -188,6 +203,7 @@ class Float(Scalar):
 # inheriting type of Hyperparameter.
 class Categorical(Hyperparameter):  # pylint: disable=too-few-public-methods
     """Categorical hyperparameter."""
+
     value: ValueType
     distribution: List[ValueType]
 
@@ -204,9 +220,9 @@ def is_dataclass_instance(obj) -> bool:
     return is_dataclass(obj) and not isinstance(obj, type)
 
 
-def traverse_config(config: Any,
-                    callback: Callable[[str, Hyperparameter], None],
-                    namespace: str = '') -> None:
+def traverse_config(
+    config: Any, callback: Callable[[str, Hyperparameter], None], namespace: str = ""
+) -> None:
     r"""Recursively searches through ``config`` and its member
     :py:func:`~dataclasses.dataclass`\ es, for member
     :py:class:`Hyperparameter` objects.
@@ -228,7 +244,7 @@ def traverse_config(config: Any,
     for field in config.__dataclass_fields__:
         value = getattr(config, field)
         if is_dataclass_instance(value):
-            subspace = f'{namespace}{field}.'
+            subspace = f"{namespace}{field}."
             traverse_config(value, callback, subspace)
         if isinstance(value, Hyperparameter):
             name = namespace + field

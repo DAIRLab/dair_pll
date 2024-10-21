@@ -12,6 +12,7 @@ such as a UKF estimator or an RNN.
 
 ``System`` is used to interface with external simulators, e.g. Drake and MuJoCo.
 """
+
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import Tuple, Callable, Optional, Dict, List
@@ -30,6 +31,7 @@ from dair_pll.state_space import StateSpace, StateSpaceSampler
 @dataclass
 class MeshSummary:
     r""":py:func:`dataclasses.dataclass` for mesh visualization."""
+
     vertices: Tensor = field(default_factory=lambda: torch.tensor([]))
     r"""Vertices in mesh, ``(n_vert, 3)``\ ."""
     faces: Tensor = field(default_factory=lambda: torch.tensor([]))
@@ -40,6 +42,7 @@ class MeshSummary:
 class SystemSummary:
     """:py:func:`dataclasses.dataclass` for reporting information about the
     progress of a training run."""
+
     scalars: Dict[str, float] = field(default_factory=dict)
     videos: Dict[str, Tuple[np.ndarray, int]] = field(default_factory=dict)
     meshes: Dict[str, MeshSummary] = field(default_factory=dict)
@@ -57,16 +60,19 @@ class System(ABC, Module):
     an initial condition to accommodate proper initialization of some types
     of recurrent dynamics.
     """
+
     space: StateSpace
     integrator: Integrator
     state_sampler: StateSpaceSampler
     carry_callback: Optional[Callable[[], Tensor]]
     max_batch_dim: Optional[int]
 
-    def __init__(self,
-                 space: StateSpace,
-                 integrator: Integrator,
-                 max_batch_dim: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        space: StateSpace,
+        integrator: Integrator,
+        max_batch_dim: Optional[int] = None,
+    ) -> None:
         """Inits ``System`` with prescribed integration properties.
 
         Args:
@@ -96,10 +102,9 @@ class System(ABC, Module):
         x_0, carry_0 = self.sample_initial_condition()
         return self.simulate(x_0, carry_0, length)
 
-    def simulate(self,
-                 x_0: Tensor,
-                 carry_0: Tensor,
-                 steps: int = 1) -> Tuple[Tensor, Tensor]:
+    def simulate(
+        self, x_0: Tensor, carry_0: Tensor, steps: int = 1
+    ) -> Tuple[Tensor, Tensor]:
         """Simulate forward in time from initial condition.
 
         Args:
@@ -114,20 +119,17 @@ class System(ABC, Module):
 
         # If batching is more dimensions than allowed, iterate over outer
         # dimension.
-        if self.max_batch_dim is not None and \
-            (x_0.dim() - 2) > self.max_batch_dim:
-            
+        if self.max_batch_dim is not None and (x_0.dim() - 2) > self.max_batch_dim:
+
             x_carry_list = [
                 self.simulate(x0i, c0i, steps) for x0i, c0i in zip(x_0, carry_0)
             ]
             # pylint: disable=E1103
             x_trajectory = torch.stack([x_carry[0] for x_carry in x_carry_list])
-            carry_trajectory = torch.stack(
-                [x_carry[1] for x_carry in x_carry_list])
+            carry_trajectory = torch.stack([x_carry[1] for x_carry in x_carry_list])
         else:
             x, carry = self.preprocess_initial_condition(x_0, carry_0)
-            x_trajectory, carry_trajectory = self.integrator.simulate(
-                x, carry, steps)
+            x_trajectory, carry_trajectory = self.integrator.simulate(x, carry, steps)
         return x_trajectory, carry_trajectory
 
     def sample_initial_condition(self) -> Tuple[Tensor, Tensor]:
@@ -135,8 +137,10 @@ class System(ABC, Module):
         assert self.carry_callback is not None
 
         # Reshapes (space.n_x,) sample into duration-1 sequence.
-        return self.state_sampler.get_sample().reshape(
-            1, self.space.n_x), self.carry_callback()
+        return (
+            self.state_sampler.get_sample().reshape(1, self.space.n_x),
+            self.carry_callback(),
+        )
 
     def set_state_sampler(self, sampler: StateSpaceSampler) -> None:
         """Setter for state initial condition sampler."""
@@ -146,8 +150,9 @@ class System(ABC, Module):
         """Setter for hidden state initial condition sampler."""
         self.carry_callback = callback
 
-    def preprocess_initial_condition(self, x_0: Tensor,
-                                     carry_0: Tensor) -> Tuple[Tensor, Tensor]:
+    def preprocess_initial_condition(
+        self, x_0: Tensor, carry_0: Tensor
+    ) -> Tuple[Tensor, Tensor]:
         r"""Preprocesses initial condition state sequence into single state
         initial condition for integration.
 
@@ -166,7 +171,7 @@ class System(ABC, Module):
         """
         assert len(x_0.shape) >= 2
         # We don't care about an empty carry, and if TensorDict it can be shape[0] if no batching
-        #assert len(carry_0.shape) >= 1
+        # assert len(carry_0.shape) >= 1
         if len(carry_0.shape) == 0:
             carry_0 = carry_0.unsqueeze(-1)
         if self.max_batch_dim is not None:
@@ -195,18 +200,18 @@ class System(ABC, Module):
         assert self is not None
         return SystemSummary()
 
-    def get_regularization_terms(self, x: Tensor, u: Tensor,
-                                 x_plus: Tensor, **kwargs) -> List[Tensor]:
+    def get_regularization_terms(
+        self, x: Tensor, u: Tensor, x_plus: Tensor, **kwargs
+    ) -> List[Tensor]:
         """Return a list of possible regularization terms.  This template
         returns no regularizers.
         """
         return []
 
-    def construct_state_tensor(self,
-        data_state: Tensor) -> Tensor:
-        """ Input:
-            data_state: Tensor coming from the TrajectorySet Dataloader,
-                        or similar, shape [batch, ?]
-            Returns: full state tensor (adding traj parameters) shape [batch, self.space.n_x]
+    def construct_state_tensor(self, data_state: Tensor) -> Tensor:
+        """Input:
+        data_state: Tensor coming from the TrajectorySet Dataloader,
+                    or similar, shape [batch, ?]
+        Returns: full state tensor (adding traj parameters) shape [batch, self.space.n_x]
         """
         return data_state

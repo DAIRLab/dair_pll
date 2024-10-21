@@ -16,30 +16,38 @@ factor space is a
 :py:class:`~dair_pll.state_space.FloatingBaseSpace`
 or :py:class:`~dair_pll.state_space.FixedBaseSpace`.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, \
-    TypeAlias
+from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, TypeAlias
 
 import pdb
 import math
 
 # TODO: put in place
-from pydrake.all import MeshcatVisualizer, StartMeshcat, Meshcat, DiscreteContactApproximation
+from pydrake.all import (
+    MeshcatVisualizer,
+    StartMeshcat,
+    Meshcat,
+    DiscreteContactApproximation,
+)
 
 import matplotlib.pyplot as plt
 import numpy as np
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
+
 # pylint: disable-next=import-error
 from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
+
 # pylint: disable-next=import-error
 from pydrake.geometry import SceneGraphInspector_, GeometryId  # type: ignore
-from pydrake.math import RigidTransform, RollPitchYaw, \
-    RigidTransform_  # type: ignore
+from pydrake.math import RigidTransform, RollPitchYaw, RigidTransform_  # type: ignore
 from pydrake.multibody.parsing import Parser  # type: ignore
-from pydrake.multibody.plant import AddMultibodyPlantSceneGraph, \
-    CoulombFriction_  # type: ignore
+from pydrake.multibody.plant import (
+    AddMultibodyPlantSceneGraph,
+    CoulombFriction_,
+)  # type: ignore
 from pydrake.multibody.plant import CoulombFriction  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant_  # type: ignore
@@ -49,37 +57,37 @@ from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
 from pydrake.systems.drawing import plot_system_graphviz
-from pydrake.systems.framework import DiagramBuilder, \
-    DiagramBuilder_  # type: ignore
+from pydrake.systems.framework import DiagramBuilder, DiagramBuilder_  # type: ignore
+
 # pylint: disable-next=import-error
 from pydrake.visualization import VideoWriter  # type: ignore
 
 from dair_pll import state_space
 
 WORLD_GROUND_PLANE_NAME = "world_ground_plane"
-DRAKE_MATERIAL_GROUP = 'material'
-DRAKE_FRICTION_PROPERTY = 'coulomb_friction'
+DRAKE_MATERIAL_GROUP = "material"
+DRAKE_FRICTION_PROPERTY = "coulomb_friction"
 N_DRAKE_FLOATING_BODY_VELOCITIES = 6
 DEFAULT_DT = 1e-3
 
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
-CAM_FOV = np.pi/6
+CAM_FOV = np.pi / 6
 VIDEO_PIXELS = [480, 640]
 FPS = 30
 
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
 # to fit the actual trajectory.
-SENSOR_RPY = np.array([-np.pi / 2, 0., -0.1])
-SENSOR_POSITION = np.array([0., -1., 0.2])
-SENSOR_POSE = RigidTransform(
-    RollPitchYaw(SENSOR_RPY).ToQuaternion(), SENSOR_POSITION)
+SENSOR_RPY = np.array([-np.pi / 2, 0.0, -0.1])
+SENSOR_POSITION = np.array([0.0, -1.0, 0.2])
+SENSOR_POSE = RigidTransform(RollPitchYaw(SENSOR_RPY).ToQuaternion(), SENSOR_POSITION)
 
 MultibodyPlantFloat: TypeAlias = cast(Type, MultibodyPlant_[float])
 MultibodyPlantAutoDiffXd: TypeAlias = cast(Type, MultibodyPlant_[AutoDiffXd])
 MultibodyPlantExpression: TypeAlias = cast(Type, MultibodyPlant_[Expression])
-DrakeMultibodyPlant = Union[MultibodyPlantFloat, MultibodyPlantAutoDiffXd,
-                            MultibodyPlantExpression]
+DrakeMultibodyPlant = Union[
+    MultibodyPlantFloat, MultibodyPlantAutoDiffXd, MultibodyPlantExpression
+]
 
 BodyFloat: TypeAlias = cast(Type, Body_[float])
 BodyAutoDiffXd: TypeAlias = cast(Type, Body_[AutoDiffXd])
@@ -89,26 +97,29 @@ DrakeBody = Union[BodyFloat, BodyAutoDiffXd, BodyExpression]
 SpatialInertiaFloat: TypeAlias = cast(Type, SpatialInertia_[float])
 SpatialInertiaAutoDiffXd: TypeAlias = cast(Type, SpatialInertia_[AutoDiffXd])
 SpatialInertiaExpression: TypeAlias = cast(Type, SpatialInertia_[Expression])
-DrakeSpatialInertia = Union[SpatialInertiaFloat, SpatialInertiaAutoDiffXd,
-                            SpatialInertiaExpression]
+DrakeSpatialInertia = Union[
+    SpatialInertiaFloat, SpatialInertiaAutoDiffXd, SpatialInertiaExpression
+]
 #:
 SceneGraphInspectorFloat: TypeAlias = cast(Type, SceneGraphInspector_[float])
-SceneGraphInspectorAutoDiffXd: TypeAlias = cast(
-    Type, SceneGraphInspector_[AutoDiffXd])
-DrakeSceneGraphInspector = Union[SceneGraphInspectorFloat,
-                                 SceneGraphInspectorAutoDiffXd]
+SceneGraphInspectorAutoDiffXd: TypeAlias = cast(Type, SceneGraphInspector_[AutoDiffXd])
+DrakeSceneGraphInspector = Union[
+    SceneGraphInspectorFloat, SceneGraphInspectorAutoDiffXd
+]
 #:
 DiagramBuilderFloat: TypeAlias = cast(Type, DiagramBuilder_[float])
 DiagramBuilderAutoDiffXd: TypeAlias = cast(Type, DiagramBuilder_[AutoDiffXd])
 DiagramBuilderExpression: TypeAlias = cast(Type, DiagramBuilder_[Expression])
-DrakeDiagramBuilder = Union[DiagramBuilderFloat, DiagramBuilderAutoDiffXd,
-                            DiagramBuilderExpression]
+DrakeDiagramBuilder = Union[
+    DiagramBuilderFloat, DiagramBuilderAutoDiffXd, DiagramBuilderExpression
+]
 #:
 UniqueBodyIdentifier = str
 
+
 def get_bodies_in_model_instance(
-        plant: DrakeMultibodyPlant,
-        model_instance_index: ModelInstanceIndex) -> List[DrakeBody]:
+    plant: DrakeMultibodyPlant, model_instance_index: ModelInstanceIndex
+) -> List[DrakeBody]:
     """Get list of body names associated with model instance.
 
     Args:
@@ -120,20 +131,25 @@ def get_bodies_in_model_instance(
 
 
 def get_body_names_in_model_instance(
-        plant: DrakeMultibodyPlant,
-        model_instance_index: ModelInstanceIndex) -> List[str]:
+    plant: DrakeMultibodyPlant, model_instance_index: ModelInstanceIndex
+) -> List[str]:
     """Get list of body names associated with model instance."""
     bodies = get_bodies_in_model_instance(plant, model_instance_index)
     return [body.name() for body in bodies]
 
 
-def unique_body_identifier(plant: DrakeMultibodyPlant,
-                           body: DrakeBody) -> UniqueBodyIdentifier:
+def unique_body_identifier(
+    plant: DrakeMultibodyPlant, body: DrakeBody
+) -> UniqueBodyIdentifier:
     """Unique string identifier for given ``Body_``."""
-    return f'{plant.GetModelInstanceName(body.model_instance())}_{body.name()}'
+    return f"{plant.GetModelInstanceName(body.model_instance())}_{body.name()}"
 
-def get_body_from_geometry_id(plant: DrakeMultibodyPlant, inspector: DrakeSceneGraphInspector,
-                           geometry_id: GeometryId) -> DrakeBody:
+
+def get_body_from_geometry_id(
+    plant: DrakeMultibodyPlant,
+    inspector: DrakeSceneGraphInspector,
+    geometry_id: GeometryId,
+) -> DrakeBody:
     """Return the Drake Body from the given GeometryId"""
     frame_id = inspector.GetFrameId(geometry_id)
     return plant.GetBodyFromFrameId(frame_id)
@@ -156,7 +172,7 @@ def get_all_inertial_bodies(
     bodies = []
     for model_instance_index in model_instance_indices:
         for body in get_bodies_in_model_instance(plant, model_instance_index):
-            if not math.isnan(body.default_mass()) and body.default_mass() > 0.:
+            if not math.isnan(body.default_mass()) and body.default_mass() > 0.0:
                 bodies.append(body)
     return bodies, [unique_body_identifier(plant, body) for body in bodies]
 
@@ -164,18 +180,20 @@ def get_all_inertial_bodies(
 @dataclass
 class CollisionGeometrySet:
     r""":py:func:`dataclasses.dataclass` for tracking object collisions."""
+
     ids: List[GeometryId] = field(default_factory=list)
     r"""List of geometries that may collide."""
-    frictions: List[CoulombFriction] = field(
-        default_factory=dict)  # type: ignore
+    frictions: List[CoulombFriction] = field(default_factory=dict)  # type: ignore
     r"""List of coulomb friction coefficients for the geometries."""
     collision_candidates: List[Tuple[int, int]] = field(
-        default_factory=dict)  # type: ignore
+        default_factory=dict
+    )  # type: ignore
     r"""Pairs of geometries that may collide."""
 
 
 def get_collision_geometry_set(
-        inspector: DrakeSceneGraphInspector) -> CollisionGeometrySet:
+    inspector: DrakeSceneGraphInspector,
+) -> CollisionGeometrySet:
     """Get colliding geometries, frictional properties, and corresponding
     collision pairs in a scene.
 
@@ -201,16 +219,20 @@ def get_collision_geometry_set(
     for geometry_id in geometry_ids:
         proximity_properties = inspector.GetProximityProperties(geometry_id)
         coulomb_frictions.append(
-            proximity_properties.GetProperty(DRAKE_MATERIAL_GROUP,
-                                             DRAKE_FRICTION_PROPERTY))
+            proximity_properties.GetProperty(
+                DRAKE_MATERIAL_GROUP, DRAKE_FRICTION_PROPERTY
+            )
+        )
 
-    return CollisionGeometrySet(ids=geometry_ids,
-                                frictions=coulomb_frictions,
-                                collision_candidates=geometry_pairs)
+    return CollisionGeometrySet(
+        ids=geometry_ids,
+        frictions=coulomb_frictions,
+        collision_candidates=geometry_pairs,
+    )
 
 
 def add_plant_from_urdfs(
-        builder: DrakeDiagramBuilder, urdfs: Dict[str, str], dt: float
+    builder: DrakeDiagramBuilder, urdfs: Dict[str, str], dt: float
 ) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
     """Add plant to builder with prescribed URDF models.
 
@@ -245,7 +267,6 @@ def add_plant_from_urdfs(
     return model_ids, plant, scene_graph
 
 
-
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a visualizer
     for a multibody system described in a list of URDF's.
@@ -258,6 +279,7 @@ class MultibodyPlantDiagram:
     velocity vectors in the plant's context, via the one-chain-per-file
     assumption.
     """
+
     # pylint: disable=too-few-public-methods
     sim: Simulator
     plant: MultibodyPlant
@@ -267,12 +289,16 @@ class MultibodyPlantDiagram:
     collision_geometry_set: CollisionGeometrySet
     space: state_space.ProductSpace
 
-    def __init__(self,
-                 urdfs: Dict[str, str],
-                 dt: float = DEFAULT_DT,
-                 visualization_file: Optional[str] = None,
-                 additional_system_builders: List[Callable[[DrakeDiagramBuilder, MultibodyPlant], None]] = [],
-                 g_frac: Optional[float] = 1.0) -> None:
+    def __init__(
+        self,
+        urdfs: Dict[str, str],
+        dt: float = DEFAULT_DT,
+        visualization_file: Optional[str] = None,
+        additional_system_builders: List[
+            Callable[[DrakeDiagramBuilder, MultibodyPlant], None]
+        ] = [],
+        g_frac: Optional[float] = 1.0,
+    ) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
         trigger a state update every ``dt``.
@@ -308,32 +334,45 @@ class MultibodyPlantDiagram:
             ortho_camera.zoom = 1
             self.meshcat.SetCamera(ortho_camera)
             """
-            visualizer = MeshcatVisualizer.AddToBuilder(builder, scene_graph, self.meshcat)
+            visualizer = MeshcatVisualizer.AddToBuilder(
+                builder, scene_graph, self.meshcat
+            )
         elif visualization_file:
-            visualizer = VideoWriter.AddToBuilder(filename=visualization_file,
-                                                  builder=builder,
-                                                  sensor_pose=SENSOR_POSE,
-                                                  fps=FPS,
-                                                  width=VIDEO_PIXELS[1],
-                                                  height=VIDEO_PIXELS[0],
-                                                  fov_y=CAM_FOV)
+            visualizer = VideoWriter.AddToBuilder(
+                filename=visualization_file,
+                builder=builder,
+                sensor_pose=SENSOR_POSE,
+                fps=FPS,
+                width=VIDEO_PIXELS[1],
+                height=VIDEO_PIXELS[0],
+                fov_y=CAM_FOV,
+            )
 
         # Adds ground plane at ``z = 0``
         halfspace_transform = RigidTransform_[float]()
         friction = CoulombFriction_[float](1.0, 1.0)
-        plant.RegisterCollisionGeometry(plant.world_body(), halfspace_transform,
-                                        HalfSpace(), WORLD_GROUND_PLANE_NAME,
-                                        friction)
-        plant.RegisterVisualGeometry(plant.world_body(), halfspace_transform,
-                                     HalfSpace(), WORLD_GROUND_PLANE_NAME,
-                                     GROUND_COLOR)
+        plant.RegisterCollisionGeometry(
+            plant.world_body(),
+            halfspace_transform,
+            HalfSpace(),
+            WORLD_GROUND_PLANE_NAME,
+            friction,
+        )
+        plant.RegisterVisualGeometry(
+            plant.world_body(),
+            halfspace_transform,
+            HalfSpace(),
+            WORLD_GROUND_PLANE_NAME,
+            GROUND_COLOR,
+        )
 
         # get collision candidates before default context filters for proximity.
         self.collision_geometry_set = get_collision_geometry_set(
-            scene_graph.model_inspector())
+            scene_graph.model_inspector()
+        )
 
         # Edit the gravitational constant.
-        new_gravity_vector = np.array([0., 0., -9.81*g_frac])
+        new_gravity_vector = np.array([0.0, 0.0, -9.81 * g_frac])
         plant.mutable_gravity_field().set_gravity_vector(new_gravity_vector)
 
         # TODO: fix contact model
@@ -343,7 +382,9 @@ class MultibodyPlantDiagram:
         for name in urdfs.keys():
             model = plant.GetModelInstanceByName(name)
             if plant.HasFrameNamed("worldfixed", model):
-                plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("worldfixed", model))
+                plant.WeldFrames(
+                    plant.world_frame(), plant.GetFrameByName("worldfixed", model)
+                )
 
         # Gravcomp
         # TODO: this is a HACK, find principled way of doing gravcomp
@@ -361,13 +402,12 @@ class MultibodyPlantDiagram:
         diagram.CreateDefaultContext()
 
         # Uncomment the below lines to generate diagram graph.
-        #diagram.set_name("graphviz example")
-        #plt.figure(figsize=(11,8.5), dpi=300)
-        #plot_system_graphviz(diagram)
-        #from pathlib import Path
-        #plt.savefig(str(Path.home() / "Desktop" / "graphviz_example.png"))
-        #plt.close()
-
+        # diagram.set_name("graphviz example")
+        # plt.figure(figsize=(11,8.5), dpi=300)
+        # plot_system_graphviz(diagram)
+        # from pathlib import Path
+        # plt.savefig(str(Path.home() / "Desktop" / "graphviz_example.png"))
+        # plt.close()
 
         # Initialize simulator from diagram.
         sim = Simulator(diagram)
@@ -390,8 +430,7 @@ class MultibodyPlantDiagram:
                 first_joint_indices.append(-1)
                 continue
             first_joint_index = plant.GetJointIndices(model_id)
-            int_index = int(
-                str(first_joint_index).split('(')[1].split(')')[0])
+            int_index = int(str(first_joint_index).split("(")[1].split(")")[0])
             first_joint_indices.append(int_index)
 
         sorted_pairs = sorted(zip(first_joint_indices, model_ids))
@@ -424,15 +463,23 @@ class MultibodyPlantDiagram:
                     is_floating = True
                 elif joint.type_name() == "weld":
                     continue
-                elif joint.type_name() in ["prismatic", "revolute"]: # R^N
-                    assert joint.num_positions() == joint.num_velocities(), f"Joint {joint.name()} not in R^N"
+                elif joint.type_name() in ["prismatic", "revolute"]:  # R^N
+                    assert (
+                        joint.num_positions() == joint.num_velocities()
+                    ), f"Joint {joint.name()} not in R^N"
                     n_joints = n_joints + joint.num_positions()
-                elif joint.type_name() in ["continuous", "planar"]: # R^N x SO(2)
-                    print(f"WARNING: joint {joint.name()} of type {joint.type_name()} has an SO(2) DOF but will be modeled as R")
-                    assert joint.num_positions() == joint.num_velocities(), f"Joint {joint.name()} not in R^N"
+                elif joint.type_name() in ["continuous", "planar"]:  # R^N x SO(2)
+                    print(
+                        f"WARNING: joint {joint.name()} of type {joint.type_name()} has an SO(2) DOF but will be modeled as R"
+                    )
+                    assert (
+                        joint.num_positions() == joint.num_velocities()
+                    ), f"Joint {joint.name()} not in R^N"
                     n_joints = n_joints + joint.num_positions()
                 else:
-                    raise ValueError(f"Joint {joint.name()} of type {joint.type_name()} cannot be modeled in R^N or SE(3)")
+                    raise ValueError(
+                        f"Joint {joint.name()} of type {joint.type_name()} cannot be modeled in R^N or SE(3)"
+                    )
             if is_floating:
                 spaces.append(state_space.FloatingBaseSpace(n_joints))
             else:

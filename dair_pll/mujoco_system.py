@@ -14,7 +14,7 @@ from dair_pll.system import System
 from dair_pll.ukf import UKF
 
 
-class MuJoCoStateConverter():
+class MuJoCoStateConverter:
 
     @staticmethod
     def mujoco_to_state(x_mujoco):
@@ -45,27 +45,33 @@ class MuJoCoStateConverter():
 class MuJoCoSystem(System):
     sim: MjSim
 
-    def __init__(self,
-                 mjcf: str,
-                 dt: float,
-                 stiffness: float,
-                 damping_rato: float,
-                 v200: bool = False) -> None:
+    def __init__(
+        self,
+        mjcf: str,
+        dt: float,
+        stiffness: float,
+        damping_rato: float,
+        v200: bool = False,
+    ) -> None:
 
-        time_constant = 1. / (damping_rato * np.sqrt(stiffness))
+        time_constant = 1.0 / (damping_rato * np.sqrt(stiffness))
         total_damping = damping_rato * 2 * np.sqrt(stiffness)
-        sys_xml = ''
-        with open(mjcf, 'r') as sysfile:
+        sys_xml = ""
+        with open(mjcf, "r") as sysfile:
             if v200:
-                sys_xml = sysfile.read() \
-                    .replace("$solrefarg1", str(-stiffness)) \
-                    .replace("$solrefarg2", str(-total_damping)) \
+                sys_xml = (
+                    sysfile.read()
+                    .replace("$solrefarg1", str(-stiffness))
+                    .replace("$solrefarg2", str(-total_damping))
                     .replace("$dt", str(dt))
+                )
             else:
-                sys_xml = sysfile.read() \
-                    .replace("$solrefarg1", str(time_constant)) \
-                    .replace("$solrefarg2", str(damping_rato)) \
+                sys_xml = (
+                    sysfile.read()
+                    .replace("$solrefarg1", str(time_constant))
+                    .replace("$solrefarg2", str(damping_rato))
                     .replace("$dt", str(dt))
+                )
         # print(sys_xml)
         model = load_model_from_xml(sys_xml)
         sim = MjSim(model)
@@ -79,8 +85,9 @@ class MuJoCoSystem(System):
         self.sim = sim
         self.set_carry_sampler(lambda: torch.tensor([[False]]))
 
-    def preprocess_initial_condition(self, x_0: Tensor,
-                                     carry_0: Tensor) -> Tuple[Tensor, Tensor]:
+    def preprocess_initial_condition(
+        self, x_0: Tensor, carry_0: Tensor
+    ) -> Tuple[Tensor, Tensor]:
         # get dummy state
         while len(x_0.shape) >= 2:
             # x0 has (probably trivial) duration dimension;
@@ -124,14 +131,17 @@ class MuJoCoUKFSystem(MuJoCoSystem):
     R: Tensor
 
     @staticmethod
-    def noise_stds_to_P0_R_stds(static_stds: Tensor, dynamic_std: Tensor,
-                                dt: float) -> Tuple[Tensor, Tensor]:
+    def noise_stds_to_P0_R_stds(
+        static_stds: Tensor, dynamic_std: Tensor, dt: float
+    ) -> Tuple[Tensor, Tensor]:
         if BIAS:
             M = 1.0
             nv = static_stds.nelement() // 2
             composite_noise_diag = dynamic_std[:nv]  # + static_stds[:nv]
-            state0_diag = torch.cat(
-                (composite_noise_diag, dynamic_std[:nv] * np.sqrt(2 / dt))) * M
+            state0_diag = (
+                torch.cat((composite_noise_diag, dynamic_std[:nv] * np.sqrt(2 / dt)))
+                * M
+            )
             bias0_diag = (static_stds + 1e-8) * M
             if BIAS_VEL:
                 P0_diag = torch.cat((state0_diag, bias0_diag))
@@ -149,24 +159,24 @@ class MuJoCoUKFSystem(MuJoCoSystem):
             return (P0_diag, R_diag)
         else:
             nv = static_stds.nelement() // 2
-            config_noise_diag = torch.sqrt(static_stds ** 2 + dynamic_std ** 2)[
-                                :nv]
-            P0_diag = torch.cat(
-                (config_noise_diag, dynamic_std[:nv] * np.sqrt(2 / dt)))
+            config_noise_diag = torch.sqrt(static_stds**2 + dynamic_std**2)[:nv]
+            P0_diag = torch.cat((config_noise_diag, dynamic_std[:nv] * np.sqrt(2 / dt)))
             if SENSE_VELOCITY:
                 R_diag = P0_diag.clone()
             else:
                 R_diag = config_noise_diag.clone()
             return (P0_diag, R_diag)
 
-    def __init__(self,
-                 mjcf: str,
-                 dt: float,
-                 stiffness: float,
-                 damping_rato: float,
-                 v200: bool = False,
-                 P0: Optional[Tensor] = None,
-                 R: Optional[Tensor] = None) -> None:
+    def __init__(
+        self,
+        mjcf: str,
+        dt: float,
+        stiffness: float,
+        damping_rato: float,
+        v200: bool = False,
+        P0: Optional[Tensor] = None,
+        R: Optional[Tensor] = None,
+    ) -> None:
         super().__init__(mjcf, dt, stiffness, damping_rato, v200)
         if P0 is None:
             P0 = torch.eye((4 if BIAS else 2) * self.space.n_v)
@@ -205,15 +215,14 @@ class MuJoCoUKFSystem(MuJoCoSystem):
             state = torchify(state).unsqueeze(0)
             zero = torchify(self.space.zero_state().unsqueeze(0))
             if SENSE_VELOCITY:
-                return numpify(
-                    self.space.state_difference(zero, state).squeeze(0))
+                return numpify(self.space.state_difference(zero, state).squeeze(0))
             # pdb.set_trace()
             else:
                 zero_q = self.space.q(zero)
                 state_q = self.space.q(state)
                 return numpify(
-                    self.space.configuration_difference(zero_q,
-                                                        state_q).squeeze(0))
+                    self.space.configuration_difference(zero_q, state_q).squeeze(0)
+                )
 
         def ukf_phi(state, dstate):
             state = torchify(state).unsqueeze(0)
@@ -227,7 +236,7 @@ class MuJoCoUKFSystem(MuJoCoSystem):
 
         Q = numpify(1e-10 * torch.eye(2 * self.space.n_v))
 
-        alpha = 1e-1 * np.array([1., 1., 1.])
+        alpha = 1e-1 * np.array([1.0, 1.0, 1.0])
 
         start = numpify(torchify(x0[0, :]))
 
@@ -239,13 +248,13 @@ class MuJoCoUKFSystem(MuJoCoSystem):
         ukf = UKF(ukf_f, ukf_h, ukf_phi, ukf_phi_inv, Q, R, alpha, start, P0)
         # pdb.set_trace()
         for x_i in x0[1:, :]:
-            ukf.propagation(torch.tensor(0.), self.integrator.dt)
+            ukf.propagation(torch.tensor(0.0), self.integrator.dt)
 
             y_i = ukf_h(numpify(x_i))
             ukf.update(y_i)
 
         # pdb.set_trace()
-        print('done!')
+        print("done!")
         return torchify(ukf.state).unsqueeze(0)
 
     def ukf_bias_estimate(self, x0: Tensor) -> Tensor:
@@ -272,11 +281,11 @@ class MuJoCoUKFSystem(MuJoCoSystem):
             # pdb.set_trace()
             state = ukf_phi(state, w)
             state = torchify(state).unsqueeze(0)
-            bias = state[:, self.space.n_x:]
+            bias = state[:, self.space.n_x :]
             shift = bias
             if not BIAS_VEL:
-                shift = torch.cat((bias, 0. * bias), dim=1)
-            state = self.space.shift_state(state[:, :self.space.n_x], shift)
+                shift = torch.cat((bias, 0.0 * bias), dim=1)
+            state = self.space.shift_state(state[:, : self.space.n_x], shift)
             # w = torchify(w).unsqueeze(0)
             # x0 = self.space.shift_state(state, w)
             carry = self.carry_callback()
@@ -284,14 +293,13 @@ class MuJoCoUKFSystem(MuJoCoSystem):
             real_next_state = self.sim_step(x0, carry)[0]
             # pdb.set_trace()
             sensed_next_state = self.space.shift_state(real_next_state, -shift)
-            return numpify(
-                torch.cat((sensed_next_state.squeeze(0), bias.squeeze(0))))
+            return numpify(torch.cat((sensed_next_state.squeeze(0), bias.squeeze(0))))
 
         def ukf_h(state):
             # pdb.set_trace()
             state = torchify(state).unsqueeze(0)
-            bias = state[:, self.space.n_x:]
-            state = state[:, :self.space.n_x]
+            bias = state[:, self.space.n_x :]
+            state = state[:, : self.space.n_x]
             zero = torchify(self.space.zero_state().unsqueeze(0))
             if SENSE_VELOCITY:
                 ds = self.space.state_difference(zero, state)
@@ -303,15 +311,15 @@ class MuJoCoUKFSystem(MuJoCoSystem):
                 zero_q = self.space.q(zero)
                 state_q = self.space.q(state)
                 return numpify(
-                    self.space.configuration_difference(zero_q,
-                                                        state_q).squeeze(0))
+                    self.space.configuration_difference(zero_q, state_q).squeeze(0)
+                )
 
         def ukf_phi(state, delta):
             state = torchify(state).unsqueeze(0)
-            bias = state[:, self.space.n_x:]
-            state = state[:, :self.space.n_x]
-            dstate = torchify(delta[:(2 * self.space.n_v)]).unsqueeze(0)
-            dbias = torchify(delta[(2 * self.space.n_v):]).unsqueeze(0)
+            bias = state[:, self.space.n_x :]
+            state = state[:, : self.space.n_x]
+            dstate = torchify(delta[: (2 * self.space.n_v)]).unsqueeze(0)
+            dbias = torchify(delta[(2 * self.space.n_v) :]).unsqueeze(0)
 
             fullx = self.space.shift_state(state, dstate).squeeze(0)
             if dbias.nelement() == 0:
@@ -323,24 +331,23 @@ class MuJoCoUKFSystem(MuJoCoSystem):
         def ukf_phi_inv(x1, x2):
             x1 = torchify(x1).unsqueeze(0)
             x2 = torchify(x2).unsqueeze(0)
-            delta_bias = (x2[:, self.space.n_x:] -
-                          x1[:, self.space.n_x:]).squeeze(0)
+            delta_bias = (x2[:, self.space.n_x :] - x1[:, self.space.n_x :]).squeeze(0)
             delta_state = self.space.state_difference(
-                x1[:, :self.space.n_x], x2[:, :self.space.n_x]).squeeze(0)
+                x1[:, : self.space.n_x], x2[:, : self.space.n_x]
+            ).squeeze(0)
 
             return numpify(torch.cat((delta_state, delta_bias)))
 
         Q = numpify(1e-8 * torch.eye((4 if BIAS_VEL else 3) * self.space.n_v))
 
-        alpha = 1e-1 * np.array([1., 1., 1.])
+        alpha = 1e-1 * np.array([1.0, 1.0, 1.0])
 
         # start = numpify(torchify(x0[0, :]))
 
         NT = 2 * self.space.n_v
         start = numpify(
-            torchify(
-                torch.cat(
-                    (x0[0, :], torch.zeros(NT if BIAS_VEL else NT // 2)))))
+            torchify(torch.cat((x0[0, :], torch.zeros(NT if BIAS_VEL else NT // 2))))
+        )
 
         R = numpify(self.R)
         # pdb.set_trace()
@@ -353,22 +360,21 @@ class MuJoCoUKFSystem(MuJoCoSystem):
         ukf = UKF(ukf_f, ukf_h, ukf_phi, ukf_phi_inv, Q, R, alpha, start, P0)
         # pdb.set_trace()
         for x_i in x0[1:, :]:
-            ukf.propagation(torch.tensor(0.), self.integrator.dt)
+            ukf.propagation(torch.tensor(0.0), self.integrator.dt)
 
-            y_i = ukf_h(
-                numpify(torch.cat((x_i, 0. * x_i[(1 if BIAS_VEL else 7):]))))
+            y_i = ukf_h(numpify(torch.cat((x_i, 0.0 * x_i[(1 if BIAS_VEL else 7) :]))))
             ukf.update(y_i)
 
         # pdb.set_trace()
         state = ukf.state
         state = torchify(state).unsqueeze(0)
-        bias = state[:, self.space.n_x:]
+        bias = state[:, self.space.n_x :]
         shift = bias
         if not BIAS_VEL:
-            shift = torch.cat((bias, 0. * bias), dim=1)
-        state = self.space.shift_state(state[:, :self.space.n_x], shift)
+            shift = torch.cat((bias, 0.0 * bias), dim=1)
+        state = self.space.shift_state(state[:, : self.space.n_x], shift)
         # pdb.set_trace()
-        print('done', bias.norm())
+        print("done", bias.norm())
         return state
 
     def mll_estimate(self, x0: Tensor) -> Tensor:
@@ -404,7 +410,7 @@ class MuJoCoUKFSystem(MuJoCoSystem):
             if LSQ:
                 return torch.flatten(scd).detach().numpy()
             else:
-                return (scd ** 2).sum()
+                return (scd**2).sum()
 
         # fitted_x0 = minimize(eval_ic, np.zeros((12,)), method = 'Nelder-Mead')
         z_window = 1 * torch.sqrt(torch.diag(self.R)).numpy()
@@ -412,13 +418,13 @@ class MuJoCoUKFSystem(MuJoCoSystem):
         def hp2state(ostate):
             vstate = np.zeros(12)
             for i in range(12):
-                vstate[i] = ostate[f'x_{i}']
+                vstate[i] = ostate[f"x_{i}"]
             return vstate
 
         def optuna_shell(trial):
             ostate = {}
             for i in range(12):
-                p = f'x_{i}'
+                p = f"x_{i}"
                 ostate[p] = trial.suggest_float(p, -z_window[i], z_window[i])
             vstate = hp2state(ostate)
             return eval_ic(vstate)
@@ -433,38 +439,40 @@ class MuJoCoUKFSystem(MuJoCoSystem):
 
             LM = False
 
-            method = 'lm' if LM else 'dogbox'
+            method = "lm" if LM else "dogbox"
             if LSQ:
                 bounds = (-np.inf, np.inf) if LM else (-z_window, z_window)
             else:
                 bounds = [(-zi, zi) for zi in z_window]
             # fitted_x0 = least_squares(eval_ic, np.zeros((12,)), bounds=bounds, jac='3-point', verbose=1, method=method)
-            fitted_x0 = minimize(eval_ic,
-                                 np.zeros((12,)),
-                                 method='Nelder-Mead',
-                                 bounds=bounds).x
+            fitted_x0 = minimize(
+                eval_ic, np.zeros((12,)), method="Nelder-Mead", bounds=bounds
+            ).x
             # pdb.set_trace()
 
-        start = self.space.shift_state(x0[0, :].unsqueeze(0),
-                                       torchify32(fitted_x0).unsqueeze(0))
+        start = self.space.shift_state(
+            x0[0, :].unsqueeze(0), torchify32(fitted_x0).unsqueeze(0)
+        )
         # TODO
         start_traj, carrytraj = self.integrator.simulate(
-            start, self.carry_callback(), T - 1)
+            start, self.carry_callback(), T - 1
+        )
         # pdb.set_trace()
-        print('done')
-        return self.space.shift_state(start_traj[-1, :].unsqueeze(0),
-                                      torchify32(fitted_x0).unsqueeze(0))
+        print("done")
+        return self.space.shift_state(
+            start_traj[-1, :].unsqueeze(0), torchify32(fitted_x0).unsqueeze(0)
+        )
 
-    def preprocess_initial_condition(self, x_0: Tensor,
-                                     carry_0: Tensor) -> Tuple[Tensor, Tensor]:
+    def preprocess_initial_condition(
+        self, x_0: Tensor, carry_0: Tensor
+    ) -> Tuple[Tensor, Tensor]:
         # pdb.set_trace()
-        estimate = self.ukf_bias_estimate(x_0) if BIAS else self.ukf_estimate(
-            x_0)
+        estimate = self.ukf_bias_estimate(x_0) if BIAS else self.ukf_estimate(x_0)
         return super().preprocess_initial_condition(estimate, carry_0)
 
 
 if __name__ == "__main__":
-    '''
+    """
     mjcsys = MuJoCoSystem('assets/cube_mujoco.xml', 6.74e-3, 2500., 1.04)
     starting_state = mjcsys.space.zero_state()
     starting_state[6] += 0.07
@@ -481,11 +489,11 @@ if __name__ == "__main__":
     #learned_system = DeepLearnableSystem(mjcsys, DeepLearnableSystemConfig())
     print(xtraj.shape)
     print(xtraj[-1, :])
-    '''
-    '''
+    """
+    """
     import matplotlib.pyplot as plt
     plt.plot(xtraj[:, 6])
     plt.plot(xtraj_chain[:, 6].detach())
     plt.legend(['drake', 'todorov'])
     plt.show()
-    '''
+    """

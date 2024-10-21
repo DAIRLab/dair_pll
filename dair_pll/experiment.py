@@ -7,6 +7,7 @@ Current supported experiment types include:
       dataset of trajectories.
 
 """
+
 import dataclasses
 import signal
 import time
@@ -24,8 +25,7 @@ from torch.utils.data import DataLoader
 
 from dair_pll import file_utils
 from dair_pll.hyperparameter import Hyperparameter
-from dair_pll.dataset_management import ExperimentDataManager, \
-    TrajectorySet
+from dair_pll.dataset_management import ExperimentDataManager, TrajectorySet
 from dair_pll.experiment_config import SupervisedLearningExperimentConfig
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystem
 from dair_pll.state_space import StateSpace, FloatingBaseSpace
@@ -34,6 +34,8 @@ from dair_pll.wandb_manager import WeightsAndBiasesManager
 
 # Enable default_collate for TensorDict
 from tensordict.tensordict import TensorDict
+
+
 def collate_tensordict_fn(batch, *, collate_fn_map: Optional[Any] = None):
     out = None
     if torch.utils.data.get_worker_info() is not None:
@@ -43,13 +45,18 @@ def collate_tensordict_fn(batch, *, collate_fn_map: Optional[Any] = None):
         storage = elem._typed_storage()._new_shared(numel, device=elem.device)
         out = elem.new(storage).resize_(len(batch), *list(elem.size()))
     return torch.stack(batch, 0, out=out)
-torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = collate_tensordict_fn
+
+
+torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = (
+    collate_tensordict_fn
+)
 
 
 @dataclass
 class TrainingState:
     """Dataclass to store a complete summary of the state of training
     process."""
+
     # pylint: disable=too-many-instance-attributes
     trajectory_set_split_indices: Tuple[Tensor, Tensor, Tensor]
     """Which trajectory indices are in train/valid/test sets."""
@@ -71,42 +78,46 @@ class TrainingState:
     """Whether training has finished."""
 
 
-TRAIN_SET = 'train'
-VALID_SET = 'valid'
-TEST_SET = 'test'
+TRAIN_SET = "train"
+VALID_SET = "valid"
+TEST_SET = "test"
 
 TRAIN_TIME_SETS = [TRAIN_SET, VALID_SET]
 ALL_SETS = [TRAIN_SET, VALID_SET, TEST_SET]
 
-TRAINING_DURATION = 'training_duration'
-EVALUATION_DURATION = 'evaluation_duration'
-LOGGING_DURATION = 'logging_duration'
+TRAINING_DURATION = "training_duration"
+EVALUATION_DURATION = "evaluation_duration"
+LOGGING_DURATION = "logging_duration"
 ALL_DURATIONS = [TRAINING_DURATION, EVALUATION_DURATION, LOGGING_DURATION]
 
 MAX_SAVED_TRAJECTORIES = 5
 
-BASE_SYSTEM_NAME = 'base'
-ORACLE_SYSTEM_NAME = 'oracle'
-LEARNED_SYSTEM_NAME = 'model'
+BASE_SYSTEM_NAME = "base"
+ORACLE_SYSTEM_NAME = "oracle"
+LEARNED_SYSTEM_NAME = "model"
 
-LOSS_NAME = 'loss'
-TRAJECTORY_ERROR_NAME = 'trajectory_mse'
-PREDICTED_VELOCITY_SIZE = 'v_plus_squared'
-DELTA_VELOCITY_SIZE = 'delta_v_squared'
-TARGET_NAME = 'target_sample'
-PREDICTION_NAME = 'prediction_sample'
-TRAJECTORY_POSITION_ERROR_NAME = 'pos_int_traj'
-TRAJECTORY_ROTATION_ERROR_NAME = 'angle_int_traj'
-TRAJECTORY_PENETRATION_NAME = 'penetration_int_traj'
-RESIDUAL_SINGLE_STEP_SIZE_NAME = 'residual_norm_stepwise'
-RESIDUAL_TRAJECTORY_SIZE_MSE_NAME = 'residual_norm_traj_mse'
+LOSS_NAME = "loss"
+TRAJECTORY_ERROR_NAME = "trajectory_mse"
+PREDICTED_VELOCITY_SIZE = "v_plus_squared"
+DELTA_VELOCITY_SIZE = "delta_v_squared"
+TARGET_NAME = "target_sample"
+PREDICTION_NAME = "prediction_sample"
+TRAJECTORY_POSITION_ERROR_NAME = "pos_int_traj"
+TRAJECTORY_ROTATION_ERROR_NAME = "angle_int_traj"
+TRAJECTORY_PENETRATION_NAME = "penetration_int_traj"
+RESIDUAL_SINGLE_STEP_SIZE_NAME = "residual_norm_stepwise"
+RESIDUAL_TRAJECTORY_SIZE_MSE_NAME = "residual_norm_traj_mse"
 
-AVERAGE_TAG = 'mean'
+AVERAGE_TAG = "mean"
 
-EVALUATION_VARIABLES = [LOSS_NAME, TRAJECTORY_ERROR_NAME, 
-    TRAJECTORY_POSITION_ERROR_NAME, TRAJECTORY_ROTATION_ERROR_NAME,
-    TRAJECTORY_PENETRATION_NAME, RESIDUAL_SINGLE_STEP_SIZE_NAME,
-    RESIDUAL_TRAJECTORY_SIZE_MSE_NAME
+EVALUATION_VARIABLES = [
+    LOSS_NAME,
+    TRAJECTORY_ERROR_NAME,
+    TRAJECTORY_POSITION_ERROR_NAME,
+    TRAJECTORY_ROTATION_ERROR_NAME,
+    TRAJECTORY_PENETRATION_NAME,
+    RESIDUAL_SINGLE_STEP_SIZE_NAME,
+    RESIDUAL_TRAJECTORY_SIZE_MSE_NAME,
 ]
 
 
@@ -138,8 +149,9 @@ Returns:
 """
 
 
-def default_epoch_callback(epoch: int, _learned_system: System,
-                           train_loss: Tensor, best_valid_loss: Tensor) -> None:
+def default_epoch_callback(
+    epoch: int, _learned_system: System, train_loss: Tensor, best_valid_loss: Tensor
+) -> None:
     """Default :py:data:`EpochCallbackCallable` which prints epoch, training
     loss, and best validation loss so far."""
     print(epoch, train_loss, best_valid_loss)
@@ -172,6 +184,7 @@ class SupervisedLearningExperiment(ABC):
     :class:`~dair_pll.system.SystemSummary` to Tensorboard on each
     epoch.
     """
+
     config: SupervisedLearningExperimentConfig
     """Configuration of the experiment."""
     space: StateSpace
@@ -188,7 +201,7 @@ class SupervisedLearningExperiment(ABC):
 
         self.config = config
         file_utils.assure_storage_tree_created(config.storage)
-        if not hasattr(self, 'space'):
+        if not hasattr(self, "space"):
             base_system = self.get_base_system()
             self.space = base_system.space
         self.loss_callback = cast(LossCallbackCallable, self.prediction_loss)
@@ -247,8 +260,13 @@ class SupervisedLearningExperiment(ABC):
             Optimizer for training.
         """
         config = self.config.optimizer_config
-        return config.optimizer(learned_system.parameters(),
-                **{key:(val.value if isinstance(val, Hyperparameter) else val) for key, val in config.optimizer_kwargs.items()})
+        return config.optimizer(
+            learned_system.parameters(),
+            **{
+                key: (val.value if isinstance(val, Hyperparameter) else val)
+                for key, val in config.optimizer_kwargs.items()
+            },
+        )
 
     def batch_predict(self, x_past: Tensor, system: System) -> Tensor:
         """Predict forward in time from initial conditions.
@@ -265,16 +283,15 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=E1103
         assert system.carry_callback is not None
         carries = torch.stack([system.carry_callback() for _ in x_past])
-        prediction, _ = system.simulate(x_past, carries,
-                                        data_config.slice_config.t_prediction)
+        prediction, _ = system.simulate(
+            x_past, carries, data_config.slice_config.t_prediction
+        )
         future = prediction[..., 1:, :]
         return future
 
     def trajectory_predict(
-            self,
-            x: List[Tensor],
-            system: System,
-            do_detach: bool = False) -> Tuple[List[Tensor], List[Tensor]]:
+        self, x: List[Tensor], system: System, do_detach: bool = False
+    ) -> Tuple[List[Tensor], List[Tensor]]:
         """Predict from full lists of trajectories.
 
         Preloads initial conditions from the first ``t_skip + 1`` elements of
@@ -315,11 +332,9 @@ class SupervisedLearningExperiment(ABC):
                 predictions.append(to_append)
         return predictions, targets
 
-    def prediction_loss(self,
-                        x_past: Tensor,
-                        x_future: Tensor,
-                        system: System,
-                        keep_batch: bool = False) -> Tensor:
+    def prediction_loss(
+        self, x_past: Tensor, x_future: Tensor, system: System, keep_batch: bool = False
+    ) -> Tensor:
         r"""Default :py:data:`LossCallbackCallable` which evaluates to system's
         :math:`l_2` prediction error on batch:
 
@@ -342,23 +357,21 @@ class SupervisedLearningExperiment(ABC):
         avg_const = v_predicted.nelement() // v_predicted.shape[0]
         if not keep_batch:
             avg_const *= x_predicted.shape[0]
-        return space.velocity_square_error(v_future, v_predicted,
-                                           keep_batch) / avg_const
+        return (
+            space.velocity_square_error(v_future, v_predicted, keep_batch) / avg_const
+        )
 
-    def batch_loss(self,
-                   x_past: Tensor,
-                   x_future: Tensor,
-                   system: System,
-                   keep_batch: bool = False) -> Tensor:
+    def batch_loss(
+        self, x_past: Tensor, x_future: Tensor, system: System, keep_batch: bool = False
+    ) -> Tensor:
         """Runs :py:attr:`loss_callback` (a
         :py:data:`LossCallbackCallable`) on the given batch."""
         assert self.loss_callback is not None
         return self.loss_callback(x_past, x_future, system, keep_batch)
 
-    def train_epoch(self,
-                    data: DataLoader,
-                    system: System,
-                    optimizer: Optional[Optimizer] = None) -> Tensor:
+    def train_epoch(
+        self, data: DataLoader, system: System, optimizer: Optional[Optimizer] = None
+    ) -> Tensor:
         """Train learned model for a single epoch.  Takes gradient steps in the
         learned parameters if ``optimizer`` is provided.
 
@@ -372,10 +385,10 @@ class SupervisedLearningExperiment(ABC):
         """
         losses = []
         for xy_i in data:
-            #import cProfile, pstats, io
-            #from pstats import SortKey
-            #pr = cProfile.Profile()
-            #pr.enable()
+            # import cProfile, pstats, io
+            # from pstats import SortKey
+            # pr = cProfile.Profile()
+            # pr.enable()
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
@@ -416,18 +429,19 @@ class SupervisedLearningExperiment(ABC):
                 """
                 optimizer.step()
 
-            #s = io.StringIO()
-            #sortby = SortKey.CUMULATIVE
-            #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            #ps.print_stats()
-            #print(s.getvalue())
-            #breakpoint()
+            # s = io.StringIO()
+            # sortby = SortKey.CUMULATIVE
+            # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            # ps.print_stats()
+            # print(s.getvalue())
+            # breakpoint()
 
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         return avg_loss
 
     def base_and_learned_comparison_summary(
-            self, epoch: int, statistics: Dict, learned_system: System) -> SystemSummary:
+        self, epoch: int, statistics: Dict, learned_system: System
+    ) -> SystemSummary:
         """Extracts a :py:class:`~dair_pll.system.SystemSummary` that compares
         the base system to the learned system.
 
@@ -441,8 +455,9 @@ class SupervisedLearningExperiment(ABC):
         # pylint: disable=unused-argument
         return SystemSummary()
 
-    def build_epoch_vars_and_system_summary(self, epoch: int, statistics: Dict,
-        learned_system: System, skip_videos=True) -> Tuple[Dict, SystemSummary]:
+    def build_epoch_vars_and_system_summary(
+        self, epoch: int, statistics: Dict, learned_system: System, skip_videos=True
+    ) -> Tuple[Dict, SystemSummary]:
         """Build epoch variables and system summary for learning process.
 
         Args:
@@ -460,22 +475,25 @@ class SupervisedLearningExperiment(ABC):
         epoch_vars = {}
         for stats_set in TRAIN_TIME_SETS:
             for variable in EVALUATION_VARIABLES:
-                var_key = f'{stats_set}_{LEARNED_SYSTEM_NAME}' + \
-                          f'_{variable}_{AVERAGE_TAG}'
+                var_key = (
+                    f"{stats_set}_{LEARNED_SYSTEM_NAME}" + f"_{variable}_{AVERAGE_TAG}"
+                )
                 if var_key in statistics:
-                    epoch_vars[f'{stats_set}_{variable}'] = statistics[var_key]
+                    epoch_vars[f"{stats_set}_{variable}"] = statistics[var_key]
 
         learned_system_summary = learned_system.summary(statistics)
 
         if not skip_videos:
-            comparison_summary = self.base_and_learned_comparison_summary(epoch,
-                statistics, learned_system)
+            comparison_summary = self.base_and_learned_comparison_summary(
+                epoch, statistics, learned_system
+            )
 
         epoch_vars.update(learned_system_summary.scalars)
         logging_duration = time.time() - start_log_time
         statistics[LOGGING_DURATION] = logging_duration
         epoch_vars.update(
-            {duration: statistics[duration] for duration in ALL_DURATIONS})
+            {duration: statistics[duration] for duration in ALL_DURATIONS}
+        )
 
         if not skip_videos:
             epoch_vars.update(comparison_summary.scalars)
@@ -484,8 +502,9 @@ class SupervisedLearningExperiment(ABC):
 
         return epoch_vars, learned_system_summary
 
-    def write_to_wandb(self, epoch: int, learned_system: System,
-                       statistics: Dict) -> None:
+    def write_to_wandb(
+        self, epoch: int, learned_system: System, statistics: Dict
+    ) -> None:
         """Extracts and writes summary of training progress to Tensorboard.
 
         Args:
@@ -498,19 +517,26 @@ class SupervisedLearningExperiment(ABC):
         # To save space on W&B storage, only generate comparison videos at first
         # and best epoch, the latter of which is implemented in
         # :meth:`_evaluation`.
-        skip_videos = False  #if epoch==0 else True BIBIT temporary for debugging
+        skip_videos = False  # if epoch==0 else True BIBIT temporary for debugging
 
-        epoch_vars, learned_system_summary = \
-            self.build_epoch_vars_and_system_summary(epoch, statistics, learned_system,
-                                                     skip_videos=skip_videos)
+        epoch_vars, learned_system_summary = self.build_epoch_vars_and_system_summary(
+            epoch, statistics, learned_system, skip_videos=skip_videos
+        )
 
-        self.wandb_manager.update(epoch, epoch_vars,
-                                  learned_system_summary.videos,
-                                  learned_system_summary.meshes)
+        self.wandb_manager.update(
+            epoch,
+            epoch_vars,
+            learned_system_summary.videos,
+            learned_system_summary.meshes,
+        )
 
-    def per_epoch_evaluation(self, epoch: int, learned_system: System,
-                             train_loss: Tensor,
-                             training_duration: float) -> Tensor:
+    def per_epoch_evaluation(
+        self,
+        epoch: int,
+        learned_system: System,
+        train_loss: Tensor,
+        training_duration: float,
+    ) -> Tensor:
         """Evaluates and logs training progress at end of an epoch.
 
         Runs evaluation on full slice datasets, as well as a handful of
@@ -534,35 +560,36 @@ class SupervisedLearningExperiment(ABC):
         statistics = {}
 
         if (epoch % self.config.full_evaluation_period) == 0:
-            train_set, valid_set, _ = \
+            train_set, valid_set, _ = (
                 self.learning_data_manager.get_updated_trajectory_sets()
+            )
 
-            n_train_eval = min(len(train_set.trajectories),
-                               self.config.full_evaluation_samples)
+            n_train_eval = min(
+                len(train_set.trajectories), self.config.full_evaluation_samples
+            )
 
-            n_valid_eval = min(len(valid_set.trajectories),
-                               self.config.full_evaluation_samples)
+            n_valid_eval = min(
+                len(valid_set.trajectories), self.config.full_evaluation_samples
+            )
 
-            train_eval_set = \
-                self.learning_data_manager.make_empty_trajectory_set()
+            train_eval_set = self.learning_data_manager.make_empty_trajectory_set()
             train_eval_set.add_trajectories(
-                train_set.trajectories[:n_train_eval],
-                train_set.indices[:n_train_eval])
+                train_set.trajectories[:n_train_eval], train_set.indices[:n_train_eval]
+            )
 
-            valid_eval_set = \
-                self.learning_data_manager.make_empty_trajectory_set()
+            valid_eval_set = self.learning_data_manager.make_empty_trajectory_set()
             valid_eval_set.add_trajectories(
-                valid_set.trajectories[:n_valid_eval],
-                valid_set.indices[:n_valid_eval])
+                valid_set.trajectories[:n_valid_eval], valid_set.indices[:n_valid_eval]
+            )
 
             statistics = self.evaluate_systems_on_sets(
-                {LEARNED_SYSTEM_NAME: learned_system}, {
-                    TRAIN_SET: train_eval_set,
-                    VALID_SET: valid_eval_set
-                })
+                {LEARNED_SYSTEM_NAME: learned_system},
+                {TRAIN_SET: train_eval_set, VALID_SET: valid_eval_set},
+            )
 
-        statistics[f'{TRAIN_SET}_{LEARNED_SYSTEM_NAME}_'
-                   f'{LOSS_NAME}_{AVERAGE_TAG}'] = float(train_loss.item())
+        statistics[
+            f"{TRAIN_SET}_{LEARNED_SYSTEM_NAME}_" f"{LOSS_NAME}_{AVERAGE_TAG}"
+        ] = float(train_loss.item())
 
         statistics[TRAINING_DURATION] = training_duration
         statistics[EVALUATION_DURATION] = time.time() - start_eval_time
@@ -573,14 +600,15 @@ class SupervisedLearningExperiment(ABC):
             self.write_to_wandb(epoch, learned_system, statistics)
 
         # pylint: disable=E1103
-        valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}' \
-                         f'_{AVERAGE_TAG}'
+        valid_loss_key = (
+            f"{VALID_SET}_{LEARNED_SYSTEM_NAME}_{LOSS_NAME}" f"_{AVERAGE_TAG}"
+        )
         # # Use validation set mean rollout error as validation loss.
         # valid_loss_key = f'{VALID_SET}_{LEARNED_SYSTEM_NAME}' \
         #                  + f'_{TRAJECTORY_ERROR_NAME}_{AVERAGE_TAG}'
-        valid_loss = 0.0 \
-            if valid_loss_key not in statistics \
-            else statistics[valid_loss_key]
+        valid_loss = (
+            0.0 if valid_loss_key not in statistics else statistics[valid_loss_key]
+        )
         return torch.tensor(valid_loss)
 
     def setup_training(self) -> Tuple[System, Optimizer, TrainingState]:
@@ -598,7 +626,8 @@ class SupervisedLearningExperiment(ABC):
         is_resumed = False
         training_state = None
         checkpoint_filename = file_utils.get_model_filename(
-            self.config.storage, self.config.run_name)
+            self.config.storage, self.config.run_name
+        )
         try:
             # if a checkpoint is saved from disk, attempt to load it.
             checkpoint_dict = torch.load(checkpoint_filename)
@@ -606,32 +635,33 @@ class SupervisedLearningExperiment(ABC):
             print("Resumed from disk.")
             is_resumed = True
             self.learning_data_manager = ExperimentDataManager(
-                self.config.storage, self.config.data_config,
-                training_state.trajectory_set_split_indices)
+                self.config.storage,
+                self.config.data_config,
+                training_state.trajectory_set_split_indices,
+            )
         except FileNotFoundError:
             self.learning_data_manager = ExperimentDataManager(
-                self.config.storage, self.config.data_config)
+                self.config.storage, self.config.data_config
+            )
 
-        train_set, _, _ = \
-            self.learning_data_manager.get_updated_trajectory_sets()
+        train_set, _, _ = self.learning_data_manager.get_updated_trajectory_sets()
 
         # Setup optimization.
         # pylint: disable=E1103
-        learned_system = self.get_learned_system(
-            torch.cat(train_set.trajectories))
+        learned_system = self.get_learned_system(torch.cat(train_set.trajectories))
         optimizer = self.get_optimizer(learned_system)
 
         if is_resumed:
             assert training_state is not None
-            learned_system.load_state_dict(
-                training_state.current_learned_system_state)
+            learned_system.load_state_dict(training_state.current_learned_system_state)
             optimizer.load_state_dict(training_state.optimizer_state)
         else:
             training_state = TrainingState(
                 self.learning_data_manager.trajectory_set_indices(),
                 deepcopy(learned_system.state_dict()),
                 deepcopy(learned_system.state_dict()),
-                deepcopy(optimizer.state_dict()))
+                deepcopy(optimizer.state_dict()),
+            )
 
             # Our Weights & Biases logic assumes that if there's no training
             # state on disk, that resumption is not allowed. Therefore, we
@@ -641,12 +671,16 @@ class SupervisedLearningExperiment(ABC):
 
         if self.config.run_wandb:
             assert self.config.wandb_project is not None
-            wandb_directory = file_utils.wandb_dir(self.config.storage,
-                                                   self.config.run_name)
+            wandb_directory = file_utils.wandb_dir(
+                self.config.storage, self.config.run_name
+            )
 
             self.wandb_manager = WeightsAndBiasesManager(
-                self.config.run_name, wandb_directory,
-                self.config.wandb_project, training_state.wandb_run_id)
+                self.config.run_name,
+                wandb_directory,
+                self.config.wandb_project,
+                training_state.wandb_run_id,
+            )
             training_state.wandb_run_id = self.wandb_manager.launch()
             self.wandb_manager.log_config(self.config)
 
@@ -671,13 +705,13 @@ class SupervisedLearningExperiment(ABC):
               validation loss.
         """
         checkpoint_filename = file_utils.get_model_filename(
-            self.config.storage, self.config.run_name)
+            self.config.storage, self.config.run_name
+        )
 
         learned_system, optimizer, training_state = self.setup_training()
         assert self.learning_data_manager is not None
 
-        train_set, _, _ = \
-            self.learning_data_manager.get_updated_trajectory_sets()
+        train_set, _, _ = self.learning_data_manager.get_updated_trajectory_sets()
 
         # Prepare sets for training.
         train_dataloader = DataLoader(
@@ -697,17 +731,18 @@ class SupervisedLearningExperiment(ABC):
 
         # Terminate if the training state indicates training already finished.
         if training_state.finished_training:
-            learned_system.load_state_dict(
-                training_state.best_learned_system_state)
+            learned_system.load_state_dict(training_state.best_learned_system_state)
             return training_loss, training_state.best_valid_loss, learned_system
 
         # Report losses before any parameter updates.
         if training_state.epoch == 1:
             print("Report pre-train losses")
             training_state.best_valid_loss = self.per_epoch_evaluation(
-                0, learned_system, training_loss, 0.)
-            epoch_callback(0, learned_system, training_loss,
-                           training_state.best_valid_loss)
+                0, learned_system, training_loss, 0.0
+            )
+            epoch_callback(
+                0, learned_system, training_loss, training_state.best_valid_loss
+            )
 
         patience = self.config.optimizer_config.patience
 
@@ -720,50 +755,61 @@ class SupervisedLearningExperiment(ABC):
                     # reload training data
 
                     # get train/test/val trajectories
-                    train_set, _, _ = \
+                    train_set, _, _ = (
                         self.learning_data_manager.get_updated_trajectory_sets()
+                    )
 
                     # Prepare sets for training.
                     train_dataloader = DataLoader(
                         train_set.slices,
-                        batch_size=self.config.optimizer_config.batch_size.
-                        value,
+                        batch_size=self.config.optimizer_config.batch_size.value,
                         shuffle=self.config.data_config.slice_config.shuffle,
-                        generator=torch.Generator(device=torch.get_default_device()))
+                        generator=torch.Generator(device=torch.get_default_device()),
+                    )
 
-                    training_state.trajectory_set_split_indices = \
+                    training_state.trajectory_set_split_indices = (
                         self.learning_data_manager.trajectory_set_indices()
+                    )
 
                 learned_system.train()
                 start_train_time = time.time()
-                training_loss = self.train_epoch(train_dataloader,
-                                                 learned_system, optimizer)
-                
+                training_loss = self.train_epoch(
+                    train_dataloader, learned_system, optimizer
+                )
+
                 training_duration = time.time() - start_train_time
                 learned_system.eval()
-                valid_loss = self.per_epoch_evaluation(training_state.epoch,
-                                                       learned_system,
-                                                       training_loss,
-                                                       training_duration)
+                valid_loss = self.per_epoch_evaluation(
+                    training_state.epoch,
+                    learned_system,
+                    training_loss,
+                    training_duration,
+                )
 
                 # Check for validation loss improvement.
                 if valid_loss < training_state.best_valid_loss:
                     training_state.best_valid_loss = valid_loss
                     training_state.best_learned_system_state = deepcopy(
-                        learned_system.state_dict())
+                        learned_system.state_dict()
+                    )
                     training_state.epochs_since_best = 0
                 else:
                     training_state.epochs_since_best += 1
 
-                epoch_callback(training_state.epoch, learned_system,
-                               training_loss, training_state.best_valid_loss)
+                epoch_callback(
+                    training_state.epoch,
+                    learned_system,
+                    training_loss,
+                    training_state.best_valid_loss,
+                )
 
                 # Decide to early-stop or not.
                 if training_state.epochs_since_best >= patience:
                     break
 
-                training_state.current_learned_system_state = \
+                training_state.current_learned_system_state = (
                     learned_system.state_dict()
+                )
                 training_state.optimizer_state = optimizer.state_dict()
                 training_state.epoch += 1
 
@@ -782,17 +828,17 @@ class SupervisedLearningExperiment(ABC):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Reload best parameters.
-        #print("Loading best parameters...")
-        #learned_system.load_state_dict(training_state.best_learned_system_state)
-        #print("Done loading best parameters.")
+        # print("Loading best parameters...")
+        # learned_system.load_state_dict(training_state.best_learned_system_state)
+        # print("Done loading best parameters.")
         return training_loss, training_state.best_valid_loss, learned_system
 
     def extra_metrics(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
         return {}
 
     def evaluate_systems_on_sets(
-            self, systems: Dict[str, System],
-            sets: Dict[str, TrajectorySet]) -> StatisticsDict:
+        self, systems: Dict[str, System], sets: Dict[str, TrajectorySet]
+    ) -> StatisticsDict:
         r"""Evaluate given systems on trajectory sets.
 
         Builds a "statistics" dictionary containing a thorough evaluation
@@ -821,8 +867,7 @@ class SupervisedLearningExperiment(ABC):
         stats = {}  # type: StatisticsDict
         space = self.space
 
-        def to_json(possible_tensor: Union[float, List, Tensor]) -> \
-                StatisticsValue:
+        def to_json(possible_tensor: Union[float, List, Tensor]) -> StatisticsValue:
             """Converts tensor to :class:`~np.ndarray`, which enables saving
             stats as json."""
             if isinstance(possible_tensor, list):
@@ -836,12 +881,13 @@ class SupervisedLearningExperiment(ABC):
 
         for set_name, trajectory_set in sets.items():
             trajectories = trajectory_set.trajectories
-            n_saved_trajectories = min(MAX_SAVED_TRAJECTORIES,
-                                       len(trajectories))
-            slices_loader = DataLoader(trajectory_set.slices,
-                                       batch_size=128,
-                                       shuffle=False,
-                                       generator=torch.Generator(device=torch.get_default_device()))
+            n_saved_trajectories = min(MAX_SAVED_TRAJECTORIES, len(trajectories))
+            slices_loader = DataLoader(
+                trajectory_set.slices,
+                batch_size=128,
+                shuffle=False,
+                generator=torch.Generator(device=torch.get_default_device()),
+            )
             slices = trajectory_set.slices[:]
             all_x = cast(List[Tensor], slices[0])
             all_y = cast(List[Tensor], slices[1])
@@ -850,43 +896,50 @@ class SupervisedLearningExperiment(ABC):
             # pylint: disable=E1103
             v_plus = [space.v(y[:1, :]) for y in all_y]
             v_minus = [space.v(x[-1:, :]) for x in all_x]
-            dv2 = torch.stack([
-                space.velocity_square_error(vp, vm)
-                for vp, vm in zip(v_plus, v_minus)
-            ])
+            dv2 = torch.stack(
+                [space.velocity_square_error(vp, vm) for vp, vm in zip(v_plus, v_minus)]
+            )
             vp2 = torch.stack(
-                [space.velocity_square_error(vp, 0 * vp) for vp in v_plus])
-            stats[f'{set_name}_{DELTA_VELOCITY_SIZE}'] = to_json(dv2)
-            stats[f'{set_name}_{PREDICTED_VELOCITY_SIZE}'] = to_json(vp2)
+                [space.velocity_square_error(vp, 0 * vp) for vp in v_plus]
+            )
+            stats[f"{set_name}_{DELTA_VELOCITY_SIZE}"] = to_json(dv2)
+            stats[f"{set_name}_{PREDICTED_VELOCITY_SIZE}"] = to_json(vp2)
 
             for system_name, system in systems.items():
                 model_loss_list = []
                 for batch_x, batch_y in slices_loader:
                     model_loss_list.append(
-                        self.prediction_loss(batch_x, batch_y, system, True))
+                        self.prediction_loss(batch_x, batch_y, system, True)
+                    )
                 model_loss = torch.cat(model_loss_list)
-                loss_name = f'{set_name}_{system_name}_{LOSS_NAME}'
+                loss_name = f"{set_name}_{system_name}_{LOSS_NAME}"
                 stats[loss_name] = to_json(model_loss)
 
                 if system_name == LEARNED_SYSTEM_NAME:
                     trajectories = [t.unsqueeze(0) for t in trajectories]
                 traj_pred, traj_target = self.trajectory_predict(
-                    trajectories, system, True)
+                    trajectories, system, True
+                )
                 if system_name == LEARNED_SYSTEM_NAME:
                     traj_target = [t.squeeze(0) for t in traj_target]
                     traj_pred = [t.squeeze(0) for t in traj_pred]
-                    stats[f'{set_name}_{system_name}_{TARGET_NAME}'] = \
-                        to_json(traj_target[:n_saved_trajectories])
-                    stats[f'{set_name}_{system_name}_{PREDICTION_NAME}'] = \
-                        to_json(traj_pred[:n_saved_trajectories])
+                    stats[f"{set_name}_{system_name}_{TARGET_NAME}"] = to_json(
+                        traj_target[:n_saved_trajectories]
+                    )
+                    stats[f"{set_name}_{system_name}_{PREDICTION_NAME}"] = to_json(
+                        traj_pred[:n_saved_trajectories]
+                    )
 
                 # pylint: disable=E1103
-                trajectory_mse = torch.stack([
-                    space.state_square_error(tp, tt)
-                    for tp, tt in zip(traj_pred, traj_target)
-                ])
-                stats[f'{set_name}_{system_name}_{TRAJECTORY_ERROR_NAME}'] = \
-                    to_json(trajectory_mse)
+                trajectory_mse = torch.stack(
+                    [
+                        space.state_square_error(tp, tt)
+                        for tp, tt in zip(traj_pred, traj_target)
+                    ]
+                )
+                stats[f"{set_name}_{system_name}_{TRAJECTORY_ERROR_NAME}"] = to_json(
+                    trajectory_mse
+                )
 
                 # Add position and rotation error over trajectory.  TODO this
                 # could be implemented more elegantly; perhaps somewhere else
@@ -896,14 +949,18 @@ class SupervisedLearningExperiment(ABC):
                 running_angle_mse = None
                 for space_i in space.spaces:
                     if isinstance(space_i, FloatingBaseSpace):
-                        pos_mse = torch.stack([
-                            space_i.base_error(tp, tt)
-                            for tp, tt in zip(traj_pred, traj_target)
-                        ])
-                        angle_mse = torch.stack([
-                            space_i.quaternion_error(tp, tt)
-                            for tp, tt in zip(traj_pred, traj_target)
-                        ])
+                        pos_mse = torch.stack(
+                            [
+                                space_i.base_error(tp, tt)
+                                for tp, tt in zip(traj_pred, traj_target)
+                            ]
+                        )
+                        angle_mse = torch.stack(
+                            [
+                                space_i.quaternion_error(tp, tt)
+                                for tp, tt in zip(traj_pred, traj_target)
+                            ]
+                        )
                         if running_pos_mse == None:
                             running_pos_mse = pos_mse
                             running_angle_mse = angle_mse
@@ -911,55 +968,64 @@ class SupervisedLearningExperiment(ABC):
                             running_pos_mse += pos_mse
                             running_angle_mse += angle_mse
 
-                stats[f'{set_name}_{system_name}_' + \
-                      f'{TRAJECTORY_POSITION_ERROR_NAME}'] = \
-                    to_json(running_pos_mse)
-                stats[f'{set_name}_{system_name}_' + \
-                      f'{TRAJECTORY_ROTATION_ERROR_NAME}'] = \
-                    to_json(running_angle_mse)
+                stats[
+                    f"{set_name}_{system_name}_" + f"{TRAJECTORY_POSITION_ERROR_NAME}"
+                ] = to_json(running_pos_mse)
+                stats[
+                    f"{set_name}_{system_name}_" + f"{TRAJECTORY_ROTATION_ERROR_NAME}"
+                ] = to_json(running_angle_mse)
 
                 # Add residual sizes over trajectory and single steps.
                 if isinstance(system, MultibodyLearnableSystem):
                     if system.residual_net != None:
-                        residual_mse = torch.stack([
-                            torch.linalg.norm(system.residual_net(tp),
-                                              dim=1).sum()
-                            for tp in traj_pred
-                        ])
-                        stats[f'{set_name}_{system_name}_' + \
-                              f'{RESIDUAL_TRAJECTORY_SIZE_MSE_NAME}'] = \
-                            to_json(residual_mse/len(traj_pred))
+                        residual_mse = torch.stack(
+                            [
+                                torch.linalg.norm(system.residual_net(tp), dim=1).sum()
+                                for tp in traj_pred
+                            ]
+                        )
+                        stats[
+                            f"{set_name}_{system_name}_"
+                            + f"{RESIDUAL_TRAJECTORY_SIZE_MSE_NAME}"
+                        ] = to_json(residual_mse / len(traj_pred))
 
-                        residual_single_step_mse = torch.stack([
-                            torch.linalg.norm(system.residual_net(x_i),
-                                              dim=1).sum()
-                            for x_i in all_x
-                        ])
-                        stats[f'{set_name}_{system_name}_' + \
-                              f'{RESIDUAL_SINGLE_STEP_SIZE_NAME}'] = \
-                            to_json(residual_mse/len(all_x))
+                        residual_single_step_mse = torch.stack(
+                            [
+                                torch.linalg.norm(system.residual_net(x_i), dim=1).sum()
+                                for x_i in all_x
+                            ]
+                        )
+                        stats[
+                            f"{set_name}_{system_name}_"
+                            + f"{RESIDUAL_SINGLE_STEP_SIZE_NAME}"
+                        ] = to_json(residual_mse / len(all_x))
 
                 extra_metrics = self.extra_metrics()
                 for metric_name in extra_metrics:
-                    stats[f'{set_name}_{system_name}_{metric_name}'] = to_json(
-                        torch.tensor([
-                        extra_metrics[metric_name](tp, tt)
-                        for tp, tt in zip(traj_pred, traj_target)
-                    ]))
+                    stats[f"{set_name}_{system_name}_{metric_name}"] = to_json(
+                        torch.tensor(
+                            [
+                                extra_metrics[metric_name](tp, tt)
+                                for tp, tt in zip(traj_pred, traj_target)
+                            ]
+                        )
+                    )
 
                 aux_comps = space.auxiliary_comparisons()
                 for comp_name in aux_comps:
-                    stats[f'{set_name}_{system_name}_{comp_name}'] = to_json([
-                        aux_comps[comp_name](tp, tt)
-                        for tp, tt in zip(traj_pred, traj_target)
-                    ])
+                    stats[f"{set_name}_{system_name}_{comp_name}"] = to_json(
+                        [
+                            aux_comps[comp_name](tp, tt)
+                            for tp, tt in zip(traj_pred, traj_target)
+                        ]
+                    )
 
         summary_stats = {}  # type: StatisticsDict
         for key, stat in stats.items():
             if isinstance(stat, np.ndarray):
                 if len(stat) > 0:
                     if isinstance(stat[0], float):
-                        summary_stats[f'{key}_{AVERAGE_TAG}'] = np.average(stat)
+                        summary_stats[f"{key}_{AVERAGE_TAG}"] = np.average(stat)
 
         stats.update(summary_stats)
         return stats
@@ -981,20 +1047,22 @@ class SupervisedLearningExperiment(ABC):
         """
         assert self.learning_data_manager is not None
         sets = dict(
-            zip(ALL_SETS,
-                self.learning_data_manager.get_updated_trajectory_sets()))
+            zip(ALL_SETS, self.learning_data_manager.get_updated_trajectory_sets())
+        )
         systems = {
             ORACLE_SYSTEM_NAME: self.get_oracle_system(),
-            LEARNED_SYSTEM_NAME: learned_system
+            LEARNED_SYSTEM_NAME: learned_system,
         }
 
         evaluation = self.evaluate_systems_on_sets(systems, sets)
-        file_utils.save_evaluation(self.config.storage, self.config.run_name,
-                                   evaluation)
+        file_utils.save_evaluation(
+            self.config.storage, self.config.run_name, evaluation
+        )
 
         # Generate final toss/geometry inspection videos with best parameters.
-        comparison_summary = self.base_and_learned_comparison_summary(-1,
-            evaluation, learned_system)
+        comparison_summary = self.base_and_learned_comparison_summary(
+            -1, evaluation, learned_system
+        )
         self.wandb_manager.update(int(1e4), {}, comparison_summary.videos, {})
 
         return evaluation

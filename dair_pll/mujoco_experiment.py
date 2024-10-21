@@ -5,18 +5,22 @@ from typing import cast, Callable
 
 import torch
 
-from dair_pll.deep_learnable_system import \
-    DeepLearnableSystemConfig, DeepLearnableExperiment
+from dair_pll.deep_learnable_system import (
+    DeepLearnableSystemConfig,
+    DeepLearnableExperiment,
+)
 from dair_pll.experiment import DataConfig, TrajectorySliceDataset
-from dair_pll.experiment_config import OptimizerConfig, \
-    SupervisedLearningExperimentConfig
+from dair_pll.experiment_config import (
+    OptimizerConfig,
+    SupervisedLearningExperimentConfig,
+)
 from dair_pll.mujoco_system import MuJoCoSystem, MuJoCoUKFSystem
 
 
 @dataclass
 class MuJoCoExperimentConfig(SupervisedLearningExperimentConfig):
-    xml: str = 'assets/cube_mujoco.xml'
-    stiffness: float = 100.
+    xml: str = "assets/cube_mujoco.xml"
+    stiffness: float = 100.0
     damping_ratio: float = 1.00
     v200: bool = False
 
@@ -29,23 +33,32 @@ class MuJoCoExperiment(DeepLearnableExperiment):
     def get_base_system(self) -> MuJoCoSystem:
         config = cast(MuJoCoExperimentConfig, self.config)
         dt = config.data_config.dt
-        return MuJoCoSystem(config.xml, dt, config.stiffness,
-                            config.damping_ratio, config.v200)
+        return MuJoCoSystem(
+            config.xml, dt, config.stiffness, config.damping_ratio, config.v200
+        )
 
     def get_oracle_system(self) -> MuJoCoSystem:
         config = cast(MuJoCoExperimentConfig, self.config)
         data_config = config.data_config
         noiser = data_config.noiser_type(self.space)
         P0_diag, R_diag = MuJoCoUKFSystem.noise_stds_to_P0_R_stds(
-            data_config.static_noise, data_config.dynamic_noise, data_config.dt)
+            data_config.static_noise, data_config.dynamic_noise, data_config.dt
+        )
         P0 = noiser.covariance(P0_diag)
         R = noiser.covariance(R_diag)
-        return MuJoCoUKFSystem(config.xml, data_config.dt, config.stiffness,
-                               config.damping_ratio, config.v200, P0, R)
+        return MuJoCoUKFSystem(
+            config.xml,
+            data_config.dt,
+            config.stiffness,
+            config.damping_ratio,
+            config.v200,
+            P0,
+            R,
+        )
 
 
 if __name__ == "__main__":
-    '''
+    """
     stiffness = 2500
     study_name = f'mujoco_cube_{stiffness}_experiment_test'
     if stiffness == 2500:
@@ -64,7 +77,7 @@ if __name__ == "__main__":
         )
     experiment = MuJoCoDataExperiment(experiment_config)
     experiment.train()
-    '''
+    """
 
     eval_test = False
     ukf_test = False
@@ -73,12 +86,12 @@ if __name__ == "__main__":
         POP = 1024
         T_SKIP = 16
         V200 = False
-        CUBE_XML = 'assets/cube_mujoco.xml'
+        CUBE_XML = "assets/cube_mujoco.xml"
 
-        study_name = f'mujoco_cube_{stiffness}_eval_test'
-        os.system(f'rm -r results/{study_name}')
+        study_name = f"mujoco_cube_{stiffness}_eval_test"
+        os.system(f"rm -r results/{study_name}")
 
-        optimizer_config = OptimizerConfig(lr=1e-4, wd=0., patience=0)
+        optimizer_config = OptimizerConfig(lr=1e-4, wd=0.0, patience=0)
 
         learnable_config = DeepLearnableSystemConfig()
         data_config = DataConfig(
@@ -88,7 +101,7 @@ if __name__ == "__main__":
             n_test=2,
             t_skip=T_SKIP,
             t_history=1,
-            storage=study_name  # ,
+            storage=study_name,  # ,
             # static_noise = torch.zeros(12),
             # dynamic_noise = torch.zeros(12)
         )
@@ -99,23 +112,33 @@ if __name__ == "__main__":
             optimizer_config=optimizer_config,
             data_config=data_config,
             stiffness=stiffness,
-            v200=V200)
+            v200=V200,
+        )
 
         experiment = MuJoCoExperiment(experiment_config)
-        _, best_valid_loss, learned_system, train_traj, valid_traj, test_traj = experiment.train(
+        _, best_valid_loss, learned_system, train_traj, valid_traj, test_traj = (
+            experiment.train()
         )
-        stats = experiment.evaluation(learned_system, train_traj, valid_traj,
-                                      test_traj,
-                                      TrajectorySliceDataset(train_traj),
-                                      TrajectorySliceDataset(valid_traj),
-                                      TrajectorySliceDataset(test_traj))
+        stats = experiment.evaluation(
+            learned_system,
+            train_traj,
+            valid_traj,
+            test_traj,
+            TrajectorySliceDataset(train_traj),
+            TrajectorySliceDataset(valid_traj),
+            TrajectorySliceDataset(test_traj),
+        )
         # print(stats['train_oracle_loss_mean'])
-        oracle_tensor = torch.tensor(stats['train_oracle_loss'])
-        print('oracle: loss ', oracle_tensor.mean())
-        print('rot err degrees',
-              torch.tensor(stats['train_oracle_rot_err']).mean() * 180 / 3.1415)
-        print('pos err percent',
-              torch.tensor(stats['train_oracle_pos_err']).mean() * 100 / 0.1)
+        oracle_tensor = torch.tensor(stats["train_oracle_loss"])
+        print("oracle: loss ", oracle_tensor.mean())
+        print(
+            "rot err degrees",
+            torch.tensor(stats["train_oracle_rot_err"]).mean() * 180 / 3.1415,
+        )
+        print(
+            "pos err percent",
+            torch.tensor(stats["train_oracle_pos_err"]).mean() * 100 / 0.1,
+        )
         # print(oracle_tensor.std() / np.sqrt(len(stats['train_oracle_loss'])))
         pdb.set_trace()
 
@@ -123,12 +146,12 @@ if __name__ == "__main__":
         stiffness = 2500
         POP = 16
         V200 = False
-        CUBE_XML = 'assets/cube_mujoco.xml'
+        CUBE_XML = "assets/cube_mujoco.xml"
 
-        study_name = f'mujoco_cube_{stiffness}_ukf_test'
-        os.system(f'rm -r results/{study_name}')
+        study_name = f"mujoco_cube_{stiffness}_ukf_test"
+        os.system(f"rm -r results/{study_name}")
 
-        optimizer_config = OptimizerConfig(lr=1e-4, wd=0., patience=0)
+        optimizer_config = OptimizerConfig(lr=1e-4, wd=0.0, patience=0)
 
         learnable_config = DeepLearnableSystemConfig()
         data_config = DataConfig(
@@ -137,7 +160,7 @@ if __name__ == "__main__":
             n_valid=1,
             n_test=1,
             t_history=16,
-            storage=study_name
+            storage=study_name,
             # T_skip = TSKIP,
             # static_noise = torch.zeros(12)#,
             # dynamic_noise = torch.zeros(12)
@@ -150,10 +173,12 @@ if __name__ == "__main__":
             optimizer_config=optimizer_config,
             data_config=data_config,
             stiffness=stiffness,
-            v200=V200)
+            v200=V200,
+        )
 
         experiment = MuJoCoExperiment(experiment_config)
-        _, best_valid_loss, learned_system, train_traj, valid_traj, test_traj = experiment.train(
+        _, best_valid_loss, learned_system, train_traj, valid_traj, test_traj = (
+            experiment.train()
         )
         dataset = experiment.data_manager.slice(train_traj)
         base_system = experiment.get_base_system()
@@ -166,16 +191,19 @@ if __name__ == "__main__":
         N = 0
         M = 0
         BL_MIN = 1e-3
-        for (x, y) in dataset:
+        for x, y in dataset:
             M += 1
-            bl = experiment.evaluation_loss(x.clone().unsqueeze(0),
-                                            y.unsqueeze(0), base_system)
+            bl = experiment.evaluation_loss(
+                x.clone().unsqueeze(0), y.unsqueeze(0), base_system
+            )
             if bl > BL_MIN:
                 N += 1
                 base_loss.append(bl)
                 oracle_loss.append(
-                    experiment.evaluation_loss(x.clone().unsqueeze(0),
-                                               y.unsqueeze(0), oracle_system))
+                    experiment.evaluation_loss(
+                        x.clone().unsqueeze(0), y.unsqueeze(0), oracle_system
+                    )
+                )
         dur = time() - t0
         print(dur, N, dur / N, M)
         itemize: Callable = lambda l: [i.item() for i in l]
@@ -188,8 +216,8 @@ if __name__ == "__main__":
         fig = plt.figure()
         ax = plt.gca()
         ax.scatter(base_loss, oracle_loss)
-        ax.set_yscale('log')
-        ax.set_xscale('log')
+        ax.set_yscale("log")
+        ax.set_xscale("log")
         min_loss = min(base_loss + oracle_loss)
         max_loss = max(base_loss + oracle_loss)
         bounds = [min_loss, max_loss]

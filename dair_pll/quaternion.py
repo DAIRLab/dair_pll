@@ -1,4 +1,5 @@
 r"""Quaternion-based :math:`SO(3)` operations."""
+
 from typing import TypeVar, cast
 
 import numpy as np
@@ -7,7 +8,7 @@ from torch import Tensor
 from typing_extensions import Protocol
 
 #:
-DataType = TypeVar('DataType', Tensor, np.ndarray)
+DataType = TypeVar("DataType", Tensor, np.ndarray)
 r"""Static type for both supported types of quaternion/vector 
 representations: :class:`~torch.Tensor` and :class:`~numpy.ndarray`\ ."""
 
@@ -17,22 +18,22 @@ class TensorCallable(Protocol):
     to :class:`~torch.Tensor`\ ."""
 
     # pylint: disable=too-few-public-methods
-    def __call__(self, *args: Tensor) -> Tensor:
-        ...
+    def __call__(self, *args: Tensor) -> Tensor: ...
 
 
 class NdarrayCallable(Protocol):
     r"""Static type for callable mapping from list of :class:`~numpy.ndarray`\ s
-        to :class:`~numpy.ndarray`\ ."""
+    to :class:`~numpy.ndarray`\ ."""
 
     # pylint: disable=too-few-public-methods
-    def __call__(self, *args: np.ndarray) -> np.ndarray:
-        ...
+    def __call__(self, *args: np.ndarray) -> np.ndarray: ...
 
 
-def operation_selector(tensor_operation: TensorCallable,
-                       ndarray_operation: NdarrayCallable,
-                       *args: DataType) -> DataType:
+def operation_selector(
+    tensor_operation: TensorCallable,
+    ndarray_operation: NdarrayCallable,
+    *args: DataType
+) -> DataType:
     r"""Helper function which selects between Pytorch and Numpy
     implementations of a quaternion operation.
 
@@ -82,8 +83,9 @@ def inverse(q: DataType) -> DataType:
     Returns:
         ``(*, 4)`` inverse of ``q``.
     """
-    return operation_selector(cast(TensorCallable, inverse_torch),
-                              cast(NdarrayCallable, inverse_np), q)
+    return operation_selector(
+        cast(TensorCallable, inverse_torch), cast(NdarrayCallable, inverse_np), q
+    )
 
 
 def multiply_torch(q: Tensor, r: Tensor) -> Tensor:
@@ -143,8 +145,9 @@ def multiply(q: DataType, r: DataType) -> DataType:
     Returns:
         ``(*, 4)`` Product quaternion ``q * r``.
     """
-    return operation_selector(cast(TensorCallable, multiply_torch),
-                              cast(NdarrayCallable, multiply_np), q, r)
+    return operation_selector(
+        cast(TensorCallable, multiply_torch), cast(NdarrayCallable, multiply_np), q, r
+    )
 
 
 def rotate_torch(q: Tensor, p: Tensor) -> Tensor:
@@ -160,8 +163,11 @@ def rotate_torch(q: Tensor, p: Tensor) -> Tensor:
     q_xyz_cross_q_xyz_cross_p = torch.cross(q_xyz, q_xyz_cross_p, dim=-1)
     q_xyz_dot_p = torch.sum(q_xyz * p, dim=-1, keepdim=True)
 
-    return q_xyz * (q_xyz_dot_p) + q_w * (2 * q_xyz_cross_p + q_w * p) + \
-           q_xyz_cross_q_xyz_cross_p
+    return (
+        q_xyz * (q_xyz_dot_p)
+        + q_w * (2 * q_xyz_cross_p + q_w * p)
+        + q_xyz_cross_q_xyz_cross_p
+    )
 
 
 def rotate_np(q: np.ndarray, p: np.ndarray) -> np.ndarray:
@@ -176,33 +182,37 @@ def rotate_np(q: np.ndarray, p: np.ndarray) -> np.ndarray:
     q_xyz_cross_q_xyz_cross_p = np.cross(q_xyz, q_xyz_cross_p)
     q_xyz_dot_p = np.sum(q_xyz * p, axis=-1, keepdims=True)
 
-    return q_xyz * (q_xyz_dot_p) + q_w * (2 * q_xyz_cross_p + q_w * p) + \
-           q_xyz_cross_q_xyz_cross_p
+    return (
+        q_xyz * (q_xyz_dot_p)
+        + q_w * (2 * q_xyz_cross_p + q_w * p)
+        + q_xyz_cross_q_xyz_cross_p
+    )
 
 
 def rotate(q: DataType, p: DataType) -> DataType:
     r"""Quaternion rotation.
 
-       Given a quaternion :math:`q = [q_w, q_{xyz}]` and vector :math:`p`\ ,
-       produces the :math:`q`\ -rotated vector :math:`p'` via the formula
+    Given a quaternion :math:`q = [q_w, q_{xyz}]` and vector :math:`p`\ ,
+    produces the :math:`q`\ -rotated vector :math:`p'` via the formula
 
-       .. math::
+    .. math::
 
-           p' = (q_{xyz} \cdot p) q_{xyz} + 2 q_w (q_{xyz} \times p) +
-           q_w^2 p + q_{xyz} \times (q_{xyz} \times p)
+        p' = (q_{xyz} \cdot p) q_{xyz} + 2 q_w (q_{xyz} \times p) +
+        q_w^2 p + q_{xyz} \times (q_{xyz} \times p)
 
-       This formula was taken from the following address:
-       https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix
+    This formula was taken from the following address:
+    https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix
 
-       Args:
-           q: ``(*, 4)`` quaternion batch.
-           p: ``(*, 3)`` vector batch.
+    Args:
+        q: ``(*, 4)`` quaternion batch.
+        p: ``(*, 3)`` vector batch.
 
-       Returns:
-           ``(*, 3)`` rotated vector batch.
-       """
-    return operation_selector(cast(TensorCallable, rotate_torch),
-                              cast(NdarrayCallable, rotate_np), q, p)
+    Returns:
+        ``(*, 3)`` rotated vector batch.
+    """
+    return operation_selector(
+        cast(TensorCallable, rotate_torch), cast(NdarrayCallable, rotate_np), q, p
+    )
 
 
 def sinc(x: Tensor) -> Tensor:
@@ -224,7 +234,7 @@ def sinc(x: Tensor) -> Tensor:
     notnull = torch.abs(x) > 0
     null = torch.logical_not(notnull)
     sinc_x = torch.zeros_like(x)
-    sinc_x[null] += 1.
+    sinc_x[null] += 1.0
     sinc_x[notnull] += torch.sin(x[notnull]) / (x[notnull])
     return sinc_x
 
@@ -312,19 +322,22 @@ def exp(r: Tensor) -> Tensor:
 def quaternion_to_rotmat_vec(q: Tensor) -> Tensor:
     """Converts batched quaternions of shape (*, 4) to vectorized rotation
     matrices of shape (*, 9)."""
-    
+
     qr = q[..., 0:1]
     qi = q[..., 1:2]
     qj = q[..., 2:3]
     qk = q[..., 3:4]
-    r1 = torch.cat((1. - 2*(qj ** 2 + qk ** 2),
-                   2*(qi*qj - qk*qr),
-                   2*(qi*qk + qj*qr)), dim=-1)
-    r2 = torch.cat((2*(qi*qj + qk*qr),
-                   1. - 2*(qi ** 2 + qk ** 2),
-                   2*(qj*qk - qi*qr)), dim=-1)
-    r3 = torch.cat((2*(qi*qk - qj*qr),
-                   2*(qj*qk + qi*qr),
-                   1. - 2*(qi ** 2 + qj ** 2)), dim=-1)
+    r1 = torch.cat(
+        (1.0 - 2 * (qj**2 + qk**2), 2 * (qi * qj - qk * qr), 2 * (qi * qk + qj * qr)),
+        dim=-1,
+    )
+    r2 = torch.cat(
+        (2 * (qi * qj + qk * qr), 1.0 - 2 * (qi**2 + qk**2), 2 * (qj * qk - qi * qr)),
+        dim=-1,
+    )
+    r3 = torch.cat(
+        (2 * (qi * qk - qj * qr), 2 * (qj * qk + qi * qr), 1.0 - 2 * (qi**2 + qj**2)),
+        dim=-1,
+    )
 
     return torch.cat((r1, r2, r3), dim=-1)

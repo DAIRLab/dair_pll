@@ -6,6 +6,7 @@ from typing import List
 class TrajectorySliceConfig:
     """:func:`~dataclasses.dataclass` for configuring a trajectory slicing
     for training process."""
+
     t_skip: int = 0
     """Index of first time to predict from ``>=`` :attr:`t_history` ``- 1``."""
     t_history: int = 1
@@ -29,6 +30,7 @@ class TrajectorySliceConfig:
 @dataclass
 class DataConfig:
     """:func:`~dataclasses.dataclass` for configuring a trajectory dataset."""
+
     dt: float = 1e-3
     r"""Time step, ``> 0``\ ."""
     train_fraction: float = 0.5
@@ -37,16 +39,13 @@ class DataConfig:
     r"""Fraction of validation trajectories to select, ``<= 1, >= 0``\ ."""
     test_fraction: float = 0.25
     r"""Fraction of testing trajectories to select, ``<= 1, >= 0``\ ."""
-    slice_config: TrajectorySliceConfig = field(
-        default_factory=TrajectorySliceConfig)
+    slice_config: TrajectorySliceConfig = field(default_factory=TrajectorySliceConfig)
     r"""Config for arranging trajectories into times slices for training."""
     update_dynamically: bool = False
     """Whether to check for new trajectories after each epoch."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""
-        fractions = [
-            self.train_fraction, self.valid_fraction, self.test_fraction
-        ]
-        assert all(0. <= fraction <= 1. for fraction in fractions)
+        fractions = [self.train_fraction, self.valid_fraction, self.test_fraction]
+        assert all(0.0 <= fraction <= 1.0 for fraction in fractions)
         assert sum(fractions) <= 1

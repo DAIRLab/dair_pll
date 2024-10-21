@@ -16,6 +16,7 @@ This is also the place where batching dimensions are defined for states. By
 convention, the state element index is always the last dimension of the
 tensor, and when states are batched in time, time is the second-to-last index.
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Callable, Dict, cast
 
@@ -82,6 +83,7 @@ class StateSpace(ABC):
     be defined on these coordinates. :py:class:`StateState` defines several
     other group operations from these units.
     """
+
     n_q: int
     n_v: int
     n_x: int
@@ -171,12 +173,12 @@ class StateSpace(ABC):
     def q(self, x: Tensor) -> Tensor:
         """Selects configuration indices from state(s) ``x``"""
         assert x.shape[-1] == self.n_x
-        return x[..., :self.n_q]
+        return x[..., : self.n_q]
 
     def v(self, x: Tensor) -> Tensor:
         """Selects velocity indices from state(s) ``x``"""
         assert x.shape[-1] == self.n_x
-        return x[..., self.n_q:]
+        return x[..., self.n_q :]
 
     def q_v(self, x: Tensor) -> Tuple[Tensor, Tensor]:
         """Separates state(s) ``x`` into configuration and velocity"""
@@ -191,10 +193,9 @@ class StateSpace(ABC):
         # pylint: disable=E1103
         return torch.cat((q, v), dim=-1)
 
-    def config_square_error(self,
-                            q_1: Tensor,
-                            q_2: Tensor,
-                            keep_batch: bool = False) -> Tensor:
+    def config_square_error(
+        self, q_1: Tensor, q_2: Tensor, keep_batch: bool = False
+    ) -> Tensor:
         r"""Returns squared distance between two Lie group
         elements/configurations.
 
@@ -213,12 +214,12 @@ class StateSpace(ABC):
         assert q_1.shape[-1] == self.n_q
         assert q_2.shape[-1] == self.n_q
         return partial_sum_batch(
-            self.configuration_difference(q_1, q_2)**2, keep_batch)
+            self.configuration_difference(q_1, q_2) ** 2, keep_batch
+        )
 
-    def velocity_square_error(self,
-                              v_1: Tensor,
-                              v_2: Tensor,
-                              keep_batch: bool = False) -> Tensor:
+    def velocity_square_error(
+        self, v_1: Tensor, v_2: Tensor, keep_batch: bool = False
+    ) -> Tensor:
         """Returns squared distance between two Lie algebra
         elements/velocities.
 
@@ -235,12 +236,11 @@ class StateSpace(ABC):
         """
         assert v_1.shape[-1] == self.n_v
         assert v_2.shape[-1] == self.n_v
-        return partial_sum_batch((v_2 - v_1)**2, keep_batch)
+        return partial_sum_batch((v_2 - v_1) ** 2, keep_batch)
 
-    def state_square_error(self,
-                           x_1: Tensor,
-                           x_2: Tensor,
-                           keep_batch: bool = False) -> Tensor:
+    def state_square_error(
+        self, x_1: Tensor, x_2: Tensor, keep_batch: bool = False
+    ) -> Tensor:
         """Returns squared distance between two states, which are in the
         cartesian product G x g.
 
@@ -263,11 +263,10 @@ class StateSpace(ABC):
         q_1, v_1 = self.q_v(x_1)
         q_2, v_2 = self.q_v(x_2)
         return self.config_square_error(
-            q_1, q_2, keep_batch) + self.velocity_square_error(
-                v_1, v_2, keep_batch)
+            q_1, q_2, keep_batch
+        ) + self.velocity_square_error(v_1, v_2, keep_batch)
 
-    def auxiliary_comparisons(
-            self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
+    def auxiliary_comparisons(self) -> Dict[str, Callable[[Tensor, Tensor], Tensor]]:
         """Any additional useful comparisons between pairs of states"""
         return self.comparisons
 
@@ -354,8 +353,8 @@ class StateSpace(ABC):
         assert dx.shape[-1] == (2 * self.n_v)
         q, v = self.q_v(x)
 
-        dq = dx[..., :self.n_v]
-        dv = dx[..., self.n_v:]
+        dq = dx[..., : self.n_v]
+        dv = dx[..., self.n_v :]
 
         q_new = self.exponential(q, dq)
         v_new = v + dv
@@ -373,7 +372,9 @@ class StateSpace(ABC):
         Returns:
             ``(*, n_x)`` tensor, projection of ``x`` onto G x g.
         """
-        assert x.shape[-1] == self.n_x, f"State Space Size Mismatch: {x.shape[-1]} != {self.n_x}"
+        assert (
+            x.shape[-1] == self.n_x
+        ), f"State Space Size Mismatch: {x.shape[-1]} != {self.n_x}"
         return self.x(self.project_configuration(self.q(x)), self.v(x))
 
     def project_derivative(self, x: Tensor, dt: float) -> Tensor:
@@ -422,10 +423,12 @@ class FloatingBaseSpace(StateSpace):
         """
         assert n_joints >= 0
         super().__init__(7 + n_joints, 6 + n_joints)
-        self.comparisons.update({
-            'rot_err': self.quaternion_error,
-            'pos_err': self.base_error,
-        })
+        self.comparisons.update(
+            {
+                "rot_err": self.quaternion_error,
+                "pos_err": self.base_error,
+            }
+        )
 
     def quat(self, q_or_x: Tensor) -> Tensor:
         """select quaternion elements from configuration/state"""
@@ -435,7 +438,7 @@ class FloatingBaseSpace(StateSpace):
     def base(self, q_or_x: Tensor) -> Tensor:
         """select floating base position elements from configuration/state"""
         assert q_or_x.shape[-1] == self.n_q or q_or_x.shape[-1] == self.n_x
-        return q_or_x[..., N_QUAT:(N_QUAT + N_COM)]
+        return q_or_x[..., N_QUAT : (N_QUAT + N_COM)]
 
     def configuration_difference(self, q_1: Tensor, q_2: Tensor) -> Tensor:
         """Implements configuration offset for a floating-base rigid chain.
@@ -513,7 +516,7 @@ class FloatingBaseSpace(StateSpace):
         """
         # pylint: disable=E1103
         zero = torch.zeros((self.n_x,))
-        zero[0] = 1.
+        zero[0] = 1.0
         return zero
 
     def quaternion_error(self, x_1: Tensor, x_2: Tensor) -> Tensor:
@@ -667,9 +670,9 @@ class ProductSpace(StateSpace):
 
         super().__init__(n_q, n_v)
         # pylint: disable=E1103
-        self.q_splits = torch.cumsum(torch.tensor(n_qs, device='cpu'), 0)[:-1]
-        self.v_splits = torch.cumsum(torch.tensor(n_vs, device='cpu'), 0)[:-1]
-        self.x_splits = torch.cumsum(torch.tensor(n_xs, device='cpu'), 0)[:-1]
+        self.q_splits = torch.cumsum(torch.tensor(n_qs, device="cpu"), 0)[:-1]
+        self.v_splits = torch.cumsum(torch.tensor(n_vs, device="cpu"), 0)[:-1]
+        self.x_splits = torch.cumsum(torch.tensor(n_xs, device="cpu"), 0)[:-1]
         self.spaces = spaces
 
     def q_split(self, q: Tensor) -> List[Tensor]:
@@ -700,8 +703,9 @@ class ProductSpace(StateSpace):
         assert q_2.shape[-1] == self.n_q
         diffs = [
             space.configuration_difference(q_1i, q_2i)
-            for space, q_1i, q_2i in zip(self.spaces, self.q_split(q_1),
-                                         self.q_split(q_2))
+            for space, q_1i, q_2i in zip(
+                self.spaces, self.q_split(q_1), self.q_split(q_2)
+            )
         ]
         # pylint: disable=E1103
         return torch.cat(diffs, dim=-1)
@@ -712,8 +716,8 @@ class ProductSpace(StateSpace):
         assert q.shape[-1] == self.n_q
         assert dq.shape[-1] == self.n_v
         exps = [
-            space.exponential(qi, dqi) for space, qi, dqi in zip(
-                self.spaces, self.q_split(q), self.v_split(dq))
+            space.exponential(qi, dqi)
+            for space, qi, dqi in zip(self.spaces, self.q_split(q), self.v_split(dq))
         ]
         # pylint: disable=E1103
         return torch.cat(exps, dim=-1)
@@ -735,16 +739,18 @@ class ProductSpace(StateSpace):
 
         # pylint: disable=E1103
         q = torch.cat(
-            [space.q(zero) for space, zero in zip(self.spaces, zeros)], dim=-1)
+            [space.q(zero) for space, zero in zip(self.spaces, zeros)], dim=-1
+        )
         v = torch.cat(
-            [space.v(zero) for space, zero in zip(self.spaces, zeros)], dim=-1)
+            [space.v(zero) for space, zero in zip(self.spaces, zeros)], dim=-1
+        )
         return torch.cat((q, v), dim=-1)
 
 
 def centered_uniform(size: Size) -> Tensor:
     """Uniform distribution on zero-centered box [-1, 1]^size"""
     # pylint: disable=E1103
-    return 2. * torch.rand(size) - 1.
+    return 2.0 * torch.rand(size) - 1.0
 
 
 class WhiteNoiser:
@@ -755,14 +761,17 @@ class WhiteNoiser:
     :math:`\mathbb{R}^{2 n_v}`. Note that this means that velocities receive
     noise independent to the configuration, and thus may break the
     finite-difference relationship in a trajectory."""
+
     space: StateSpace
     ranges: Tensor
     variance_factor: float
 
-    def __init__(self,
-                 space: StateSpace,
-                 unit_noise: Callable[[Size], Tensor],
-                 variance_factor: float = 1) -> None:
+    def __init__(
+        self,
+        space: StateSpace,
+        unit_noise: Callable[[Size], Tensor],
+        variance_factor: float = 1,
+    ) -> None:
         """Inits a :py:class:`WhiteNoiser` of specified distribution.
 
         Args:
@@ -776,10 +785,7 @@ class WhiteNoiser:
         self.unit_noise = unit_noise
         self.variance_factor = variance_factor
 
-    def noise(self,
-              x: Tensor,
-              ranges: Tensor,
-              independent: bool = True) -> Tensor:
+    def noise(self, x: Tensor, ranges: Tensor, independent: bool = True) -> Tensor:
         """Adds noise to a given batch of states.
 
         Uses the ``unit_noise()`` to get. Optionally, adds identical
@@ -820,7 +826,7 @@ class UniformWhiteNoiser(WhiteNoiser):
     """Convenience :py:class:`WhiteNoiser` class for uniform noise."""
 
     def __init__(self, space: StateSpace) -> None:
-        super().__init__(space, centered_uniform, 1. / 3.)
+        super().__init__(space, centered_uniform, 1.0 / 3.0)
 
 
 class GaussianWhiteNoiser(WhiteNoiser):
@@ -832,6 +838,7 @@ class GaussianWhiteNoiser(WhiteNoiser):
 
 class StateSpaceSampler(ABC):
     """Abstract utility class for sampling on a state space."""
+
     space: StateSpace
 
     def __init__(self, space: StateSpace) -> None:
@@ -867,6 +874,7 @@ class StateSpaceSampler(ABC):
 class ConstantSampler(StateSpaceSampler):
     """Convenience :py:class:`StateSpaceSampler` for returning constant
     state."""
+
     space: StateSpace
     x_0: Tensor
 
@@ -903,15 +911,18 @@ class CenteredSampler(StateSpaceSampler):
     Implemented by sampling the state, and perturbing it with specified white
     noise.
     """
+
     ranges: Tensor
     x_0: Tensor
     variance_factor: float
 
-    def __init__(self,
-                 space: StateSpace,
-                 ranges: Tensor,
-                 unit_noise: Callable[[Size], Tensor] = torch.randn,
-                 x_0: Tensor = None) -> None:
+    def __init__(
+        self,
+        space: StateSpace,
+        ranges: Tensor,
+        unit_noise: Callable[[Size], Tensor] = torch.randn,
+        x_0: Tensor = None,
+    ) -> None:
         """Inits :py:class:`CenteredSampler` with specified distribution
 
         Args:

@@ -7,6 +7,7 @@ with the following exceptions:
     * Utilities for operating directly on :math:`SO(3)` should be placed in
       :py:mod:`dair_pll.quaternion`
 """
+
 from typing import List, cast
 
 import torch
@@ -17,6 +18,7 @@ import scipy.linalg
 
 ####
 #### Batched Sqrt Function from: https://github.com/pytorch/pytorch/issues/25481#issuecomment-576493693
+
 
 def sqrtm(matrix):
     """Compute the square root of a positive definite matrix."""
@@ -33,6 +35,7 @@ def sqrtm(matrix):
     if unbalanced:
         s = s.where(good, torch.zeros((), device=s.device, dtype=s.dtype))
     return (v * s.sqrt().unsqueeze(-2)) @ v.transpose(-2, -1)
+
 
 ####
 
@@ -53,8 +56,7 @@ def tile_dim(tiling_tensor: Tensor, copies: int, dim: int = 0) -> Tensor:
 
     """
     if not copies >= 1:
-        raise ValueError(
-            f'Tiling count should be positive int, got {copies} instead.')
+        raise ValueError(f"Tiling count should be positive int, got {copies} instead.")
 
     # pylint: disable=E1103
     return torch.cat([tiling_tensor] * copies, dim=dim)
@@ -129,9 +131,7 @@ def pbmm(t_1: Tensor, t_2: Tensor) -> Tensor:
     return product
 
 
-def deal(dealing_tensor: Tensor,
-         dim: int = 0,
-         keep_dim: bool = False) -> List[Tensor]:
+def deal(dealing_tensor: Tensor, dim: int = 0, keep_dim: bool = False) -> List[Tensor]:
     """Converts dim of tensor to list.
 
     Example:
@@ -240,8 +240,11 @@ def one_vector_block_diagonal(num_blocks: int, vector_length: int) -> Tensor:
         ``(n * vector_length, n)`` 0-1 tensor.
     """
     # pylint: disable=E1103
-    return torch.eye(num_blocks).repeat(1, vector_length).reshape(
-        num_blocks * vector_length, num_blocks)
+    return (
+        torch.eye(num_blocks)
+        .repeat(1, vector_length)
+        .reshape(num_blocks * vector_length, num_blocks)
+    )
 
 
 def spatial_to_point_jacobian(p_BoP_E: Tensor) -> Tensor:
@@ -351,19 +354,15 @@ def rotation_matrix_from_one_vector(directions: Tensor, axis: int) -> Tensor:
 
     # pylint: disable=E1103
     column_b = torch.zeros_like(column_a)
-    column_b[batch_range,
-             axis_j] += -column_a[batch_range, axis_k] / magnitude_a_u
-    column_b[batch_range,
-             axis_k] += column_a[batch_range, axis_j] / magnitude_a_u
+    column_b[batch_range, axis_j] += -column_a[batch_range, axis_k] / magnitude_a_u
+    column_b[batch_range, axis_k] += column_a[batch_range, axis_j] / magnitude_a_u
 
     column_c = torch.zeros_like(column_a)
     column_c[batch_range, axis_i] += magnitude_a_u
-    column_c[batch_range,
-             axis_j] += axis_c_correction * column_a[batch_range, axis_j]
-    column_c[batch_range,
-             axis_k] += axis_c_correction * column_a[batch_range, axis_k]
+    column_c[batch_range, axis_j] += axis_c_correction * column_a[batch_range, axis_j]
+    column_c[batch_range, axis_k] += axis_c_correction * column_a[batch_range, axis_k]
 
-    columns = [torch.tensor(0.)] * 3
+    columns = [torch.tensor(0.0)] * 3
     columns[axis] = column_a
     columns[(axis + 1) % 3] = column_b
     columns[(axis + 2) % 3] = column_c
@@ -389,8 +388,11 @@ def broadcast_lorentz(vectors: Tensor) -> Tensor:
     """
     n_cones = vectors.shape[-1]
     double_vectors_shape = vectors.shape[:-1] + (2 * n_cones,)
-    vectors_tiled = vectors.unsqueeze(-1).repeat(
-        [1] * len(vectors.shape) + [2]).reshape(double_vectors_shape)
+    vectors_tiled = (
+        vectors.unsqueeze(-1)
+        .repeat([1] * len(vectors.shape) + [2])
+        .reshape(double_vectors_shape)
+    )
     # pylint: disable=E1103
     return torch.cat((vectors, vectors_tiled), dim=-1)
 
@@ -442,20 +444,20 @@ def project_lorentz(vectors: Tensor) -> Tensor:
 
     not_in_lorentz_cone = tangent_norms > normals
     in_polar_cone: Tensor = cast(Tensor, tangent_norms <= -normals)
-    in_neither_cone: Tensor = cast(Tensor,
-                                   (~in_polar_cone) & not_in_lorentz_cone)
+    in_neither_cone: Tensor = cast(Tensor, (~in_polar_cone) & not_in_lorentz_cone)
 
     in_polar_mask = broadcast_lorentz(in_polar_cone)
     in_neither_mask = broadcast_lorentz(in_neither_cone)
 
     projected_vectors = vectors.clone()
 
-    projected_vectors[in_polar_mask] *= 0.
+    projected_vectors[in_polar_mask] *= 0.0
 
     normals_rescaled = (normals + tangent_norms) / 2
     tangent_normalizer = normals_rescaled / tangent_norms
     tangent_rescaled = tangents * tangent_normalizer.unsqueeze(-1).expand(
-        tangent_vectors_shape).reshape(tangents.shape)
+        tangent_vectors_shape
+    ).reshape(tangents.shape)
     # pylint: disable=E1103
     vectors_rescaled = torch.cat((normals_rescaled, tangent_rescaled), dim=-1)
 

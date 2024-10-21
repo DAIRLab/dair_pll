@@ -3,6 +3,7 @@ r"""Classes for generating and managing datasets for experiments.
 Centers around the :class:`ExperimentDataManager` type, which transforms a
 set of trajectories saved to disk for various tasks encountered during an
 experiment."""
+
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, cast
 
@@ -24,6 +25,7 @@ class TrajectorySliceDataset(Dataset):
     Extends :py:class:`torch.utils.data.Dataset` type in order to be managed
     in the training process with a :py:class:`torch.utils.data.DataLoader`\ .
     """
+
     config: TrajectorySliceConfig
     """Slice configuration describing durations and start index."""
     previous_states_slices: List[Tensor]
@@ -53,7 +55,7 @@ class TrajectorySliceDataset(Dataset):
         future_states_length = self.config.t_prediction
         assert first_time_index <= last_time_index
         for index in range(first_time_index, last_time_index):
-            his_state = trajectory[(index + 1 - previous_states_length):(index + 1)]
+            his_state = trajectory[(index + 1 - previous_states_length) : (index + 1)]
             if len(self.config.his_state_keys) > 0:
                 # Only keep requested state keys
                 for key in [key for key in his_state.keys()]:
@@ -61,7 +63,7 @@ class TrajectorySliceDataset(Dataset):
                         del his_state[key]
             self.previous_states_slices.append(his_state)
 
-            pred_state = trajectory[(index + 1):(index + 1 + future_states_length)]
+            pred_state = trajectory[(index + 1) : (index + 1 + future_states_length)]
             if len(self.config.pred_state_keys) > 0:
                 # Only keep requested state keys
                 for key in [key for key in pred_state.keys()]:
@@ -88,6 +90,7 @@ class TrajectorySet:
         * Entire trajectories for evaluation; and
         * Indices associated with on-disk location for experiment resumption.
     """
+
     slices: TrajectorySliceDataset
     """Trajectories rendered as a dataset of time slices."""
     trajectories: List[Tensor] = field(default_factory=lambda: [])
@@ -101,8 +104,7 @@ class TrajectorySet:
         # assure all indices are unique
         assert self.indices.unique().nelement() == self.indices.nelement()
 
-    def add_trajectories(self, trajectory_list: List[Tensor], indices: Tensor) \
-            -> None:
+    def add_trajectories(self, trajectory_list: List[Tensor], indices: Tensor) -> None:
         """Add new subset of trajectories to set.
 
         Args:
@@ -110,10 +112,14 @@ class TrajectorySet:
             indices: indices associated with on-disk filenames.
         """
         # Move to default device
-        trajectory_list = [traj.to(torch.get_default_device()) for traj in trajectory_list]
+        trajectory_list = [
+            traj.to(torch.get_default_device()) for traj in trajectory_list
+        ]
         for trajectory in trajectory_list:
             # TODO: HACK add time manually
-            trajectory["time"] = torch.arange(trajectory.shape[0], dtype=torch.int32).reshape(trajectory.shape + (1,))
+            trajectory["time"] = torch.arange(
+                trajectory.shape[0], dtype=torch.int32
+            ).reshape(trajectory.shape + (1,))
         self.trajectories.extend(trajectory_list)
         for trajectory in trajectory_list:
             self.slices.add_slices_from_trajectory(trajectory)
@@ -129,6 +135,7 @@ class ExperimentDataManager:
     storage directory; splits into train/valid/test sets; and instantiates
     transformations for each set of data as a :py:class:`TrajectorySet`\ .
     """
+
     trajectory_dir: str
     """Directory in which trajectory files are stored."""
     config: DataConfig
@@ -142,9 +149,13 @@ class ExperimentDataManager:
     n_sorted: int
     """Number of files on disk split into (train, valid, test) sets so far."""
 
-    def __init__(self, storage: str, config: DataConfig,
-                 initial_split: Optional[Tuple[Tensor, Tensor, Tensor]] = None,
-                 use_ground_truth: bool = False) -> None:
+    def __init__(
+        self,
+        storage: str,
+        config: DataConfig,
+        initial_split: Optional[Tuple[Tensor, Tensor, Tensor]] = None,
+        use_ground_truth: bool = False,
+    ) -> None:
         """
         Args:
             storage: Storage directory to source trajectories from.
@@ -168,8 +179,7 @@ class ExperimentDataManager:
             self.extend_trajectory_sets(initial_split)
 
     @property
-    def _trajectory_sets(
-            self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
+    def _trajectory_sets(self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
         """getter for tuple of (train, valid, test) set."""
         return self.train_set, self.valid_set, self.test_set
 
@@ -188,26 +198,29 @@ class ExperimentDataManager:
         return TrajectorySet(slices=slice_dataset)
 
     def extend_trajectory_sets(
-            self, index_lists: Tuple[Tensor, Tensor, Tensor]) -> None:
+        self, index_lists: Tuple[Tensor, Tensor, Tensor]
+    ) -> None:
         """Supplement each of (train, valid, test) trajectory sets with
         provided trajectories, listed by their on-disk indices.
 
         Args:
             index_lists: Lists of trajectory indices for each set.
         """
-        for trajectory_set, trajectory_indices in zip(self._trajectory_sets,
-                                                      index_lists):
+        for trajectory_set, trajectory_indices in zip(
+            self._trajectory_sets, index_lists
+        ):
             trajectories = [
                 torch.load(
-                    file_utils.trajectory_file(self.trajectory_dir,
-                                               trajectory_index))
+                    file_utils.trajectory_file(self.trajectory_dir, trajectory_index)
+                )
                 for trajectory_index in trajectory_indices
             ]
             trajectory_set.add_trajectories(trajectories, trajectory_indices)
             self.n_sorted += trajectory_indices.nelement()
 
     def get_updated_trajectory_sets(
-            self) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
+        self,
+    ) -> Tuple[TrajectorySet, TrajectorySet, TrajectorySet]:
         """Returns an up-to-date partition of trajectories on disk.
 
         Checks if some trajectories on disk have yet to be sorted,
@@ -240,7 +253,6 @@ class ExperimentDataManager:
             trajectory_order = trajectory_order[n_valid:]
             test_indices = trajectory_order[:n_test]
 
-            self.extend_trajectory_sets(
-                (train_indices, valid_indices, test_indices))
+            self.extend_trajectory_sets((train_indices, valid_indices, test_indices))
 
         return self._trajectory_sets

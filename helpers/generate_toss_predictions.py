@@ -14,8 +14,11 @@ from torch import Tensor
 from dair_pll import file_utils
 from dair_pll.dataset_management import ExperimentDataManager
 from dair_pll.deep_learnable_system import DeepLearnableSystemConfig
-from dair_pll.drake_experiment import DrakeMultibodyLearnableExperiment, \
-    DrakeDeepLearnableExperiment, MultibodyLearnableSystemConfig
+from dair_pll.drake_experiment import (
+    DrakeMultibodyLearnableExperiment,
+    DrakeDeepLearnableExperiment,
+    MultibodyLearnableSystemConfig,
+)
 from dair_pll.experiment import default_epoch_callback, TrainingState
 from dair_pll.state_space import FloatingBaseSpace
 
@@ -617,33 +620,39 @@ PLL_TO_BAG_NUMBERS = {
     537: 597,
     538: 598,
     539: 599,
-    540: 600
+    540: 600,
 }
 REPO_DIR = op.normpath(
-    git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
-RESULTS_DIR = op.join(REPO_DIR, 'results')
-ELBOW_ASSET_DIR = op.join(REPO_DIR, 'assets', 'contactnets_elbow')
+    git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
+)
+RESULTS_DIR = op.join(REPO_DIR, "results")
+ELBOW_ASSET_DIR = op.join(REPO_DIR, "assets", "contactnets_elbow")
 
-EXPERIMENT_TYPE_BY_PREFIX = {'sc': 'cube_real', 'se': 'elbow_real',
-                             'va': 'vortex_asymmetric',}
-                             # 've': 'vortex_elbow',
-                             # 'ba': 'viscous_asymmetric',
-                             # 'be': 'viscous_elbow',
-                             #'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
-SYSTEM_BY_PREFIX = {'sc': 'cube', 'se': 'elbow', 'va': 'asymmetric'}
+EXPERIMENT_TYPE_BY_PREFIX = {
+    "sc": "cube_real",
+    "se": "elbow_real",
+    "va": "vortex_asymmetric",
+}
+# 've': 'vortex_elbow',
+# 'ba': 'viscous_asymmetric',
+# 'be': 'viscous_elbow',
+#'gc': 'gravity_cube', 'ge': 'gravity_elbow'}
+SYSTEM_BY_PREFIX = {"sc": "cube", "se": "elbow", "va": "asymmetric"}
 
-BAD_REAL_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 32)] + \
-                       [35, 36, 37, 38, 39, 40, 41, 42]
-BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + \
-                      [31, 33, 35]
-FOLDERS_TO_LOAD = [f'sweep_elbow-{i}' for i in range(2, 10)] #+ \
-                  #[f'sweep_cube-{i}' for i in range(2, 10)] + \
-                  #[f'sweep_asymmetric_vortex-{i}' for i in range(2, 10)] #+ \
-                  # [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
-                  # [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
-                  # [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
+BAD_REAL_RUN_NUMBERS = (
+    [i for i in range(24)]
+    + [i for i in range(25, 32)]
+    + [35, 36, 37, 38, 39, 40, 41, 42]
+)
+BAD_SIM_RUN_NUMBERS = [i for i in range(24)] + [i for i in range(25, 30)] + [31, 33, 35]
+FOLDERS_TO_LOAD = [f"sweep_elbow-{i}" for i in range(2, 10)]  # + \
+# [f'sweep_cube-{i}' for i in range(2, 10)] + \
+# [f'sweep_asymmetric_vortex-{i}' for i in range(2, 10)] #+ \
+# [f'sweep_elbow_vortex-{i}' for i in range(2, 10)] + \
+# [f'sweep_elbow_viscous-{i}' for i in range(2, 10)] + \
+# [f'sweep_cube_viscous-{i}' for i in range(2, 10)]
 
-N_STATE = {'cube': 13, 'elbow': 15, 'asymmetric': 13}
+N_STATE = {"cube": 13, "elbow": 15, "asymmetric": 13}
 
 # RUNS_TO_LOAD = ['se30-9-0', 'se31-9-0', 'se32-9-0', 'se33-9-0', 'se34-9-0',
 #                 'se35-9-0', 'se24-9-0']
@@ -655,9 +664,9 @@ PLL_TOSS_NUMS_TO_GENERATE = [0]
 # number.  When this is the case, since the test set prediction is already
 # provided in the statistics file, we will iterate over rollout horizon and
 # generate many per trajectory.
-MODE_TEST_SET = 'test set'
-MODE_HORIZON_SWEEP = 'horizon sweep'
-MODE_FIXED_HORIZON_TRAJECTORY_SWEEP = 'fixed horizon trajectory sweep'
+MODE_TEST_SET = "test set"
+MODE_HORIZON_SWEEP = "horizon sweep"
+MODE_FIXED_HORIZON_TRAJECTORY_SWEEP = "fixed horizon trajectory sweep"
 MODE = MODE_FIXED_HORIZON_TRAJECTORY_SWEEP
 
 FIXED_HORIZON = 16
@@ -670,74 +679,81 @@ def run_name_to_run_dir(run_name):
     run_prefix = run_name[:2]
     experiment_type = EXPERIMENT_TYPE_BY_PREFIX[run_prefix]
 
-    assert 'real' in experiment_type, \
-           f'run_name: {run_name}, experiment_type: {experiment_type}'
+    assert (
+        "real" in experiment_type
+    ), f"run_name: {run_name}, experiment_type: {experiment_type}"
 
-    system = experiment_type.split('_real')[0]
+    system = experiment_type.split("_real")[0]
     try:
-        sub_number = run_name.split('-')[1]
-        subfolder = f'sweep_{system}-{sub_number}'
+        sub_number = run_name.split("-")[1]
+        subfolder = f"sweep_{system}-{sub_number}"
 
-        assert run_name in os.listdir(op.join(RESULTS_DIR, subfolder, 'runs'))
+        assert run_name in os.listdir(op.join(RESULTS_DIR, subfolder, "runs"))
 
-        return op.join(RESULTS_DIR, subfolder, 'runs', run_name)
+        return op.join(RESULTS_DIR, subfolder, "runs", run_name)
     except:
         return None
+
 
 def experiment_finished(run_name):
     run_dir = run_name_to_run_dir(run_name)
     if run_dir == None:
         return False
-    return os.path.isfile(op.join(run_dir, 'statistics.pkl'))
+    return os.path.isfile(op.join(run_dir, "statistics.pkl"))
+
 
 def post_processing_done(run_name):
     run_dir = run_name_to_run_dir(run_name)
-    return os.path.isfile(
-        op.join(run_dir, 'post_processing', 'post_statistics.pkl'))
+    return os.path.isfile(op.join(run_dir, "post_processing", "post_statistics.pkl"))
+
 
 def post_processing_traj_sweep_done(run_name):
     run_dir = run_name_to_run_dir(run_name)
-    return os.path.isfile(
-        op.join(run_dir, 'traj_sweep_statistics.pkl'))
+    return os.path.isfile(op.join(run_dir, "traj_sweep_statistics.pkl"))
+
 
 def load_experiment(run_name):
     run_path = run_name_to_run_dir(run_name)
-    storage_name = op.abspath(op.join(run_path, '..', '..'))
+    storage_name = op.abspath(op.join(run_path, "..", ".."))
 
     experiment_config = file_utils.load_configuration(storage_name, run_name)
 
-    if isinstance(experiment_config.learnable_config,
-                  MultibodyLearnableSystemConfig):
+    if isinstance(experiment_config.learnable_config, MultibodyLearnableSystemConfig):
         experiment_config.learnable_config.randomize_initialization = False
         return DrakeMultibodyLearnableExperiment(experiment_config)
-    elif isinstance(experiment_config.learnable_config,
-                    DeepLearnableSystemConfig):
+    elif isinstance(experiment_config.learnable_config, DeepLearnableSystemConfig):
         return DrakeDeepLearnableExperiment(experiment_config)
-    raise RuntimeError(f'Cannot recognize learnable type ' + \
-                       f'{experiment_config.learnable_config}')
+    raise RuntimeError(
+        f"Cannot recognize learnable type " + f"{experiment_config.learnable_config}"
+    )
+
 
 def get_best_system_from_experiment(exp):
-    checkpoint_filename = file_utils.get_model_filename(exp.config.storage,
-                                                        exp.config.run_name)
+    checkpoint_filename = file_utils.get_model_filename(
+        exp.config.storage, exp.config.run_name
+    )
     checkpoint_dict = torch.load(checkpoint_filename)
     training_state = TrainingState(**checkpoint_dict)
 
     assert training_state.finished_training
 
     exp.learning_data_manager = ExperimentDataManager(
-        exp.config.storage, exp.config.data_config,
-        training_state.trajectory_set_split_indices)
-    train_set, _, test_set = \
-        exp.learning_data_manager.get_updated_trajectory_sets()
+        exp.config.storage,
+        exp.config.data_config,
+        training_state.trajectory_set_split_indices,
+    )
+    train_set, _, test_set = exp.learning_data_manager.get_updated_trajectory_sets()
     learned_system = exp.get_learned_system(torch.cat(train_set.trajectories))
     learned_system.load_state_dict(training_state.best_learned_system_state)
 
     return learned_system
 
+
 def load_ground_truth_toss_trajectory(system_name, toss_num):
-    assert system_name == 'elbow'
-    toss_filename = op.join(ELBOW_ASSET_DIR, f'{toss_num}.pt')
+    assert system_name == "elbow"
+    toss_filename = op.join(ELBOW_ASSET_DIR, f"{toss_num}.pt")
     return torch.load(toss_filename)
+
 
 def compute_predicted_trajectory(experiment, learned_system, target_traj, system_name):
     state_n = N_STATE[system_name]
@@ -746,54 +762,66 @@ def compute_predicted_trajectory(experiment, learned_system, target_traj, system
 
     target_traj_list = [target_traj.reshape(1, -1, state_n)]
 
-    predictions, targets = experiment.trajectory_predict(target_traj_list,
-        learned_system, do_detach=True)
+    predictions, targets = experiment.trajectory_predict(
+        target_traj_list, learned_system, do_detach=True
+    )
 
     first_state = target_traj[0].reshape(1, state_n)
-    pred_traj = torch.cat((first_state,
-                           predictions[0].reshape(-1, state_n)), dim=0)
+    pred_traj = torch.cat((first_state, predictions[0].reshape(-1, state_n)), dim=0)
 
     return pred_traj
 
+
 def make_and_get_post_processing_dir(run_name):
     run_dir = run_name_to_run_dir(run_name)
-    post_dir = op.join(run_dir, 'post_processing')
+    post_dir = op.join(run_dir, "post_processing")
     file_utils.assure_created(post_dir)
     return post_dir
+
 
 def save_predicted_bag_trajectory(predicted_traj, run_name, pll_toss_num):
     bag_toss_num = PLL_TO_BAG_NUMBERS[pll_toss_num]
     post_dir = make_and_get_post_processing_dir(run_name)
-    torch.save(predicted_traj, op.join(post_dir, f'predicted_{bag_toss_num}.pt'))
+    torch.save(predicted_traj, op.join(post_dir, f"predicted_{bag_toss_num}.pt"))
+
 
 def get_test_set_traj_target_and_prediction(experiment):
-    stats = file_utils.load_evaluation(experiment.config.storage,
-                                       experiment.config.run_name)
-    test_traj_target = stats['test_model_target_sample'][0]
-    test_traj_prediction = stats['test_model_prediction_sample'][0]
-    
+    stats = file_utils.load_evaluation(
+        experiment.config.storage, experiment.config.run_name
+    )
+    test_traj_target = stats["test_model_target_sample"][0]
+    test_traj_prediction = stats["test_model_prediction_sample"][0]
+
     return Tensor(test_traj_target), Tensor(test_traj_prediction)
 
-def get_traj_with_rollout_of_len(traj, rollout_len, experiment, learned_system, system_name):
+
+def get_traj_with_rollout_of_len(
+    traj, rollout_len, experiment, learned_system, system_name
+):
     state_n = N_STATE[system_name]
     assert traj.ndim == 2
     assert traj.shape[1] == state_n
 
-    gt_traj_target = traj[(-rollout_len-1):].reshape(rollout_len+1, state_n)
+    gt_traj_target = traj[(-rollout_len - 1) :].reshape(rollout_len + 1, state_n)
 
     partial_pred_traj = compute_predicted_trajectory(
-        experiment, learned_system, gt_traj_target, system_name)
-    first_portion = traj[:(-rollout_len-1)]
+        experiment, learned_system, gt_traj_target, system_name
+    )
+    first_portion = traj[: (-rollout_len - 1)]
     pred_traj = torch.cat((first_portion, partial_pred_traj), dim=0)
 
     return pred_traj
 
+
 def save_rollout_sweep_trajs(rollouts, run_name):
     post_dir = make_and_get_post_processing_dir(run_name)
     for horizon, traj in zip(ROLLOUT_LENGTHS, rollouts):
-        torch.save(traj, op.join(post_dir, f'test_w_horizon_{horizon}.pt'))
+        torch.save(traj, op.join(post_dir, f"test_w_horizon_{horizon}.pt"))
 
-def compute_pos_rot_trajectory_errors(target, predicteds, experiment, use_different_trajs=False):
+
+def compute_pos_rot_trajectory_errors(
+    target, predicteds, experiment, use_different_trajs=False
+):
     space = experiment.space
     pos_errors, rot_errors = [], []
 
@@ -809,7 +837,7 @@ def compute_pos_rot_trajectory_errors(target, predicteds, experiment, use_differ
             if isinstance(space_i, FloatingBaseSpace):
                 pos_mse = torch.stack([space_i.base_error(tp, tt)])
                 angle_mse = torch.stack([space_i.quaternion_error(tp, tt)])
-                
+
                 running_pos_mse += pos_mse
                 running_angle_mse += angle_mse
 
@@ -818,28 +846,29 @@ def compute_pos_rot_trajectory_errors(target, predicteds, experiment, use_differ
 
     return pos_errors, rot_errors
 
+
 def save_post_processing_stats(pos_errors, rot_errors, run_dir):
     # Make a dictionary.
     stats = {}
 
-    for horizon, pos_error, rot_error in \
-    zip(ROLLOUT_LENGTHS, pos_errors, rot_errors):
-        pos_key = f'test_pos_error_w_horizon_{horizon}'
-        rot_key = f'test_rot_error_w_horizon_{horizon}'
+    for horizon, pos_error, rot_error in zip(ROLLOUT_LENGTHS, pos_errors, rot_errors):
+        pos_key = f"test_pos_error_w_horizon_{horizon}"
+        rot_key = f"test_rot_error_w_horizon_{horizon}"
 
         stats[pos_key] = pos_error.item()
         stats[rot_key] = rot_error.item()
 
-    filename = op.join(run_dir, 'post_processing', 'post_statistics.pkl')
-    with open(filename, 'wb') as file:
+    filename = op.join(run_dir, "post_processing", "post_statistics.pkl")
+    with open(filename, "wb") as file:
         pickle.dump(stats, file)
+
 
 def save_post_processing_traj_sweep_stats(pos_errors, rot_errors, run_dir):
     # Make a dictionary.
     stats = {}
 
-    pos_key = f'test_pos_error_w_horizon_{FIXED_HORIZON}'
-    rot_key = f'test_rot_error_w_horizon_{FIXED_HORIZON}'
+    pos_key = f"test_pos_error_w_horizon_{FIXED_HORIZON}"
+    rot_key = f"test_rot_error_w_horizon_{FIXED_HORIZON}"
 
     stats[pos_key] = 0
     stats[rot_key] = 0
@@ -853,14 +882,15 @@ def save_post_processing_traj_sweep_stats(pos_errors, rot_errors, run_dir):
     stats[pos_key] /= n_trajs
     stats[rot_key] /= n_trajs
 
-    filename = op.join(run_dir, 'traj_sweep_statistics.pkl')
-    with open(filename, 'wb') as file:
+    filename = op.join(run_dir, "traj_sweep_statistics.pkl")
+    with open(filename, "wb") as file:
         pickle.dump(stats, file)
+
 
 def get_runs_to_load(folder, real=True):
     bad_numbers = BAD_REAL_RUN_NUMBERS if real else BAD_SIM_RUN_NUMBERS
 
-    runs_to_load = os.listdir(op.join(RESULTS_DIR, folder, 'runs'))
+    runs_to_load = os.listdir(op.join(RESULTS_DIR, folder, "runs"))
     i = 0
     while i < len(runs_to_load):
         if int(runs_to_load[i][2:4]) in bad_numbers:
@@ -870,12 +900,14 @@ def get_runs_to_load(folder, real=True):
 
     return runs_to_load
 
+
 def load_experiment_run_dir_sys(run_name):
     experiment = load_experiment(run_name)
     run_dir = run_name_to_run_dir(run_name)
-    print(f'Loading {run_dir}')
+    print(f"Loading {run_dir}")
     learned_system = get_best_system_from_experiment(experiment)
     return experiment, run_dir, learned_system
+
 
 def all_rollouts_of_len(horizon, target_traj, experiment, learned_system, system_name):
     state_n = N_STATE[system_name]
@@ -883,91 +915,91 @@ def all_rollouts_of_len(horizon, target_traj, experiment, learned_system, system
     assert target_traj.shape[1] == state_n
 
     traj_len = target_traj.shape[0]
-    n_traj = math.floor((traj_len - horizon - 1)/STEP_SIZE)
+    n_traj = math.floor((traj_len - horizon - 1) / STEP_SIZE)
 
     # Get all the possible targets contained in the trajectory.
-    targets = [target_traj[i*STEP_SIZE:(i*STEP_SIZE)+horizon+1] for i in range(n_traj)]
+    targets = [
+        target_traj[i * STEP_SIZE : (i * STEP_SIZE) + horizon + 1]
+        for i in range(n_traj)
+    ]
 
     # Get all the predictions.
     predictions = [
-        compute_predicted_trajectory(
-            experiment, learned_system, targ, system_name
-        ) for targ in targets
+        compute_predicted_trajectory(experiment, learned_system, targ, system_name)
+        for targ in targets
     ]
     return predictions, targets
 
+
 # ============================= Compute rollouts ============================= #
 for folder in FOLDERS_TO_LOAD:
-    real = True if ('viscous' not in folder and 'vortex' not in folder) \
-        else False
-    system = 'cube' if 'cube' in folder else 'elbow' if 'elbow' in folder else \
-        'asymmetric'
+    real = True if ("viscous" not in folder and "vortex" not in folder) else False
+    system = (
+        "cube" if "cube" in folder else "elbow" if "elbow" in folder else "asymmetric"
+    )
 
     runs_to_load = get_runs_to_load(folder, real=real)
 
     for run_name in runs_to_load:
         if not experiment_finished(run_name):
-            print(f'Skipping unfinished {run_name}')
+            print(f"Skipping unfinished {run_name}")
             continue
 
         # Use the first test set trajectory in the stats file, and predict all
         # possible rollouts of a fixed length within it.
         if MODE == MODE_FIXED_HORIZON_TRAJECTORY_SWEEP:
             if post_processing_traj_sweep_done(run_name):
-                print(f'{run_name} already post-processed twice.')
+                print(f"{run_name} already post-processed twice.")
                 continue
-            experiment, run_dir, learned_system = \
-                load_experiment_run_dir_sys(run_name)
+            experiment, run_dir, learned_system = load_experiment_run_dir_sys(run_name)
 
-            gt_traj, pred_120 = get_test_set_traj_target_and_prediction(
-                experiment)
+            gt_traj, pred_120 = get_test_set_traj_target_and_prediction(experiment)
 
             rollouts, ground_truths = all_rollouts_of_len(
-                FIXED_HORIZON, gt_traj, experiment, learned_system, system)
+                FIXED_HORIZON, gt_traj, experiment, learned_system, system
+            )
             pos_errors, rot_errors = compute_pos_rot_trajectory_errors(
-                ground_truths, rollouts, experiment, use_different_trajs=True)
+                ground_truths, rollouts, experiment, use_different_trajs=True
+            )
             save_post_processing_traj_sweep_stats(pos_errors, rot_errors, run_dir)
 
         # Use the first test set trajectory in the stats file, and predict with
         # different rollout lengths.
         elif MODE == MODE_HORIZON_SWEEP:
-            experiment, run_dir, learned_system = \
-                load_experiment_run_dir_sys(run_name)
+            experiment, run_dir, learned_system = load_experiment_run_dir_sys(run_name)
 
-            gt_traj, pred_120 = get_test_set_traj_target_and_prediction(
-                experiment)
+            gt_traj, pred_120 = get_test_set_traj_target_and_prediction(experiment)
 
             rollouts = []
             for rollout_len in ROLLOUT_LENGTHS[:-1]:
                 rollouts.append(
                     get_traj_with_rollout_of_len(
-                        gt_traj, rollout_len, experiment, learned_system,
-                        system))
+                        gt_traj, rollout_len, experiment, learned_system, system
+                    )
+                )
 
             rollouts.append(pred_120)
 
             save_rollout_sweep_trajs(rollouts, run_name)
             pos_errors, rot_errors = compute_pos_rot_trajectory_errors(
-                gt_traj, rollouts, experiment)
+                gt_traj, rollouts, experiment
+            )
             save_post_processing_stats(pos_errors, rot_errors, run_dir)
 
         # Compute rollouts from original dataset trajectories.
         elif MODE == MODE_TEST_SET:
             if post_processing_done(run_name):
-                print(f'{run_name} already post-processed.')
+                print(f"{run_name} already post-processed.")
                 continue
-            experiment, run_dir, learned_system = \
-                load_experiment_run_dir_sys(run_name)
+            experiment, run_dir, learned_system = load_experiment_run_dir_sys(run_name)
 
             for pll_toss_num in PLL_TOSS_NUMS_TO_GENERATE:
-                gt_traj = load_ground_truth_toss_trajectory(
-                    'elbow', pll_toss_num)
+                gt_traj = load_ground_truth_toss_trajectory("elbow", pll_toss_num)
                 l_traj = compute_predicted_trajectory(
-                    experiment, learned_system, gt_traj, system)
+                    experiment, learned_system, gt_traj, system
+                )
 
                 save_predicted_bag_trajectory(l_traj, run_name, pll_toss_num)
 
 # pdb.set_trace()
 # ======================= Compute metrics on rollouts ======================== #
-
-

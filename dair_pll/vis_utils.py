@@ -11,6 +11,7 @@ The main contents of this file are as follows:
     * A method which takes a ``DrakeSystem`` and corresponding trajectory,
       captures a visualization video, and outputs it as a numpy ndarray.
 """
+
 from copy import deepcopy
 from typing import Tuple, Optional
 
@@ -18,6 +19,7 @@ import numpy as np
 import torch
 from torch import Tensor
 from PIL import Image
+
 # pylint: disable-next=import-error
 from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
 from torch import Tensor
@@ -30,21 +32,23 @@ RED = Rgba(0.6, 0.0, 0.0, 0.5)
 BLUE = Rgba(0.0, 0.0, 0.6, 0.7)
 BASE_SYSTEM_DEFAULT_COLOR = RED
 LEARNED_SYSTEM_DEFAULT_COLOR = BLUE
-PERCEPTION_COLOR_GROUP = 'phong'
-PERCEPTION_COLOR_PROPERTY = 'diffuse'
-LEARNED_TAG = '__learned__'
+PERCEPTION_COLOR_GROUP = "phong"
+PERCEPTION_COLOR_PROPERTY = "diffuse"
+LEARNED_TAG = "__learned__"
 GEOMETRY_INSPECTION_TRAJECTORY_LENGTH = 1000
-HALF_STEPS = int(GEOMETRY_INSPECTION_TRAJECTORY_LENGTH/2)
+HALF_STEPS = int(GEOMETRY_INSPECTION_TRAJECTORY_LENGTH / 2)
 
-FULL_SPIN_HALF_TIME = torch.stack([
-        torch.tensor([np.cos(torch.pi*i/HALF_STEPS), 0, 0,
-                np.sin(torch.pi*i/HALF_STEPS)]) \
+FULL_SPIN_HALF_TIME = torch.stack(
+    [
+        torch.tensor(
+            [np.cos(torch.pi * i / HALF_STEPS), 0, 0, np.sin(torch.pi * i / HALF_STEPS)]
+        )
         for i in range(HALF_STEPS)
-    ])
-ARTICULATION_FULL_SPIN_HALF_TIME = torch.stack([
-        torch.tensor([2*torch.pi*i/HALF_STEPS])
-        for i in range(HALF_STEPS)
-    ])
+    ]
+)
+ARTICULATION_FULL_SPIN_HALF_TIME = torch.stack(
+    [torch.tensor([2 * torch.pi * i / HALF_STEPS]) for i in range(HALF_STEPS)]
+)
 LINEAR_LOCATION_HALF_TIME = torch.tensor([1.2, 0, 0.15]).repeat(HALF_STEPS, 1)
 
 
@@ -71,24 +75,39 @@ def get_geometry_inspection_trajectory(learned_system: DrakeSystem) -> Tensor:
     # Rotation and articulation depend on if there's articulation or not.
     if n_q == 7:
         rotation_piece = torch.cat(
-            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME, vels), dim=1)
+            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME, vels), dim=1
+        )
 
         trajectory = rotation_piece
-        
+
     elif n_q == 8:
         rotation_piece = torch.cat(
-            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME,
-             torch.zeros((HALF_STEPS, 1)), vels), dim=1)
+            (
+                FULL_SPIN_HALF_TIME,
+                LINEAR_LOCATION_HALF_TIME,
+                torch.zeros((HALF_STEPS, 1)),
+                vels,
+            ),
+            dim=1,
+        )
 
         rotate_and_articulate = torch.cat(
-            (FULL_SPIN_HALF_TIME, LINEAR_LOCATION_HALF_TIME,
-             ARTICULATION_FULL_SPIN_HALF_TIME, vels), dim=1)
+            (
+                FULL_SPIN_HALF_TIME,
+                LINEAR_LOCATION_HALF_TIME,
+                ARTICULATION_FULL_SPIN_HALF_TIME,
+                vels,
+            ),
+            dim=1,
+        )
 
         trajectory = torch.cat((rotation_piece, rotate_and_articulate), dim=0)
 
     else:
-        raise NotImplementedError(f'Don\'t know how to handle a system ' + \
-            f'other than the cube or elbow or similar.')
+        raise NotImplementedError(
+            f"Don't know how to handle a system "
+            + f"other than the cube or elbow or similar."
+        )
 
     return trajectory
 
@@ -124,60 +143,68 @@ def generate_visualization_system(
     # pylint: disable=too-many-locals
     # Start with true base system.
     double_urdfs = deepcopy(base_system.urdfs)
-    double_urdfs.update({
-        k: v for k, v in \
-        double_urdfs.items()
-    })
+    double_urdfs.update({k: v for k, v in double_urdfs.items()})
 
     # Either copy the base system's geometry or optionally use the learned
     # geometry.
     if learned_system is None:
-        double_urdfs.update({
-            (k + LEARNED_TAG): v \
-            for k, v in double_urdfs.items()
-        })
+        double_urdfs.update({(k + LEARNED_TAG): v for k, v in double_urdfs.items()})
 
     else:
-        double_urdfs.update({
-            (k + LEARNED_TAG): v for k, v in learned_system.urdfs.items()
-        })
+        double_urdfs.update(
+            {(k + LEARNED_TAG): v for k, v in learned_system.urdfs.items()}
+        )
 
-    visualization_system = DrakeSystem(double_urdfs,
-                                       base_system.dt,
-                                       visualization_file=visualization_file)
+    visualization_system = DrakeSystem(
+        double_urdfs, base_system.dt, visualization_file=visualization_file
+    )
 
     # Recolors every perception geometry to default colors
     plant_diagram = visualization_system.plant_diagram
     plant = plant_diagram.plant
     scene_graph = plant_diagram.scene_graph
     scene_graph_context = scene_graph.GetMyContextFromRoot(
-        plant_diagram.sim.get_mutable_context())
+        plant_diagram.sim.get_mutable_context()
+    )
     inspector = scene_graph.model_inspector()
     for model_id in plant_diagram.model_ids:
         model_name = plant.GetModelInstanceName(model_id)
         for body_index in plant.GetBodyIndices(model_id):
             body_frame = plant.GetBodyFrameIdOrThrow(body_index)
-            for geometry_id in inspector.GetGeometries(body_frame,
-                                                       Role.kPerception):
+            for geometry_id in inspector.GetGeometries(body_frame, Role.kPerception):
                 props = inspector.GetPerceptionProperties(geometry_id)
                 # phong.diffuse is the name of property controlling perception
                 # color.
-                if props and \
-                   props.HasProperty(PERCEPTION_COLOR_GROUP, \
-                                     PERCEPTION_COLOR_PROPERTY):
+                if props and props.HasProperty(
+                    PERCEPTION_COLOR_GROUP, PERCEPTION_COLOR_PROPERTY
+                ):
                     # Sets color in properties.
                     props.UpdateProperty(
-                        PERCEPTION_COLOR_GROUP, PERCEPTION_COLOR_PROPERTY,
-                        learned_system_color
-                        if LEARNED_TAG in model_name else base_system_color)
+                        PERCEPTION_COLOR_GROUP,
+                        PERCEPTION_COLOR_PROPERTY,
+                        (
+                            learned_system_color
+                            if LEARNED_TAG in model_name
+                            else base_system_color
+                        ),
+                    )
                     # Tells ``scene_graph`` to update the color.
                     plant_source_id = plant.get_source_id()
                     assert plant_source_id is not None
 
-                    scene_graph.RemoveRole(scene_graph_context, plant_source_id,
-                                           geometry_id, Role.kPerception)
-                    scene_graph.AssignRole(scene_graph_context, plant_source_id,
-                                           geometry_id, props, RoleAssign.kNew)
+                    scene_graph.RemoveRole(
+                        scene_graph_context,
+                        plant_source_id,
+                        geometry_id,
+                        Role.kPerception,
+                    )
+                    scene_graph.AssignRole(
+                        scene_graph_context,
+                        plant_source_id,
+                        geometry_id,
+                        props,
+                        RoleAssign.kNew,
+                    )
 
     # Changing perception properties requires the ``Simulator`` to be
     # re-initialized.
@@ -186,9 +213,9 @@ def generate_visualization_system(
     return visualization_system
 
 
-def visualize_trajectory(drake_system: DrakeSystem,
-                         x_trajectory: Tensor,
-                         framerate: int = 30) -> Tuple[np.ndarray, int]:
+def visualize_trajectory(
+    drake_system: DrakeSystem, x_trajectory: Tensor, framerate: int = 30
+) -> Tuple[np.ndarray, int]:
     r"""Visualizes trajectory of system.
 
     Specifies a ``framerate`` for output video, though should be noted that
@@ -214,7 +241,7 @@ def visualize_trajectory(drake_system: DrakeSystem,
         This function should be updated as `pydrake` has this functionality
         properly exposed.
     """
-    
+
     assert drake_system.plant_diagram.visualizer is not None
     assert x_trajectory.dim() == 2
     # pylint: disable=protected-access
@@ -242,8 +269,7 @@ def visualize_trajectory(drake_system: DrakeSystem,
         vis._publish(video_context)
 
     # Compose a video ndarray of shape (T, H, W, 4[rgba]).
-    video = np.stack([np.asarray(frame) for frame in vis._pil_images
-                     ])  # type: ignore
+    video = np.stack([np.asarray(frame) for frame in vis._pil_images])  # type: ignore
     vis.Save()
 
     # Since Drake's VideoWriter defaults to not looping gifs, re-load and re-
@@ -251,7 +277,7 @@ def visualize_trajectory(drake_system: DrakeSystem,
     # as the gif gets overwritten with every trajectory.  The actual output of
     # this function is a numpy array.
     vizualization_image = Image.open(vis._filename)  # type: ignore
-    new_name = vis._filename.split('.')[0] + '_.gif'  # type: ignore
+    new_name = vis._filename.split(".")[0] + "_.gif"  # type: ignore
     vizualization_image.save(new_name, save_all=True, loop=0)
     vizualization_image.close()
 

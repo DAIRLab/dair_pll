@@ -25,6 +25,7 @@ hidden state denoted as ``carry`` to be propagated through .
 :py:class:`Integrator` objects have a simulation interface that requires an
 initial condition in the form of an initial state and ``carry``.
 """
+
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Tuple
 
@@ -46,13 +47,15 @@ class Integrator(ABC, Module):
     This class is primarily used for its :py:meth:`simulate` method which
     integrates forward in time from a given initial condition.
     """
+
     partial_step_callback: Optional[PartialStepCallback]
     space: StateSpace
     dt: float
     out_size: int
 
-    def __init__(self, space: StateSpace,
-                 partial_step_callback: PartialStepCallback, dt: float) -> None:
+    def __init__(
+        self, space: StateSpace, partial_step_callback: PartialStepCallback, dt: float
+    ) -> None:
         """Inits :py:class:`Integrator` with specified dynamics.
 
         Args:
@@ -72,8 +75,9 @@ class Integrator(ABC, Module):
         assert self.partial_step_callback is not None
         return self.partial_step_callback(x, carry)
 
-    def simulate(self, x_0: Tensor, carry_0: Tensor,
-                 steps: int) -> Tuple[Tensor, Tensor]:
+    def simulate(
+        self, x_0: Tensor, carry_0: Tensor, steps: int
+    ) -> Tuple[Tensor, Tensor]:
         """Simulates forward in time from initial condition.
 
         Args:
@@ -86,10 +90,10 @@ class Integrator(ABC, Module):
         """
         assert steps >= 0
         assert x_0.shape[-1] == self.space.n_x
-        x_trajectory = tensor_utils.tile_penultimate_dim(
-            x_0.unsqueeze(-2), steps + 1)
+        x_trajectory = tensor_utils.tile_penultimate_dim(x_0.unsqueeze(-2), steps + 1)
         carry_trajectory = tensor_utils.tile_penultimate_dim(
-            carry_0.unsqueeze(-2), steps + 1)
+            carry_0.unsqueeze(-2), steps + 1
+        )
         x = x_0
         carry = carry_0
         for step in range(steps):
@@ -102,7 +106,7 @@ class Integrator(ABC, Module):
     def step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         """Takes single step in time.
 
-        Abstract wrapper which inheriting classes incorporate 
+        Abstract wrapper which inheriting classes incorporate
         :py:meth:`partial_step` into to complete a single time step.
 
         Args:
@@ -151,7 +155,7 @@ class VelocityIntegrator(Integrator):
     :py:meth:`partial_step` maps current state to next velocity."""
 
     def step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
-        """Integrates by setting next velocity to output of 
+        """Integrates by setting next velocity to output of
         :py:meth:`partial_step` and implicit Euler integration of the
         configuration."""
         space = self.space

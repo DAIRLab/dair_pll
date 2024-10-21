@@ -5,6 +5,7 @@ Centers around the :class:`ExperimentDatasetGenerator` type, which takes in a
 configuration describing trajectory parameters, as well as distributions for
 initial conditions and noise to apply to simulated states.
 """
+
 from dataclasses import dataclass, field
 from typing import Optional, Any, Dict, Type, Union, List
 
@@ -15,17 +16,25 @@ from torch import Tensor
 from tensordict.tensordict import TensorDict
 
 from dair_pll import file_utils
-from dair_pll.state_space import ConstantSampler, CenteredSampler, UniformSampler, \
-    GaussianWhiteNoiser, UniformWhiteNoiser, StateSpaceSampler
+from dair_pll.state_space import (
+    ConstantSampler,
+    CenteredSampler,
+    UniformSampler,
+    GaussianWhiteNoiser,
+    UniformWhiteNoiser,
+    StateSpaceSampler,
+)
 from dair_pll.system import System
 
 DEFAULT_TRAJECTORY_BATCH_SIZE = 30
 """Number of trajectories to simulate before intermediate save-to-disk."""
 
+
 @dataclass
 class DataGenerationConfig:
     """:func:`~dataclasses.dataclass` for configuring generation of a
     trajectory dataset."""
+
     # pylint: disable=too-many-instance-attributes
     dt: float = 1e-3
     r"""Time step, ``> 0``\ ."""
@@ -39,19 +48,20 @@ class DataGenerationConfig:
     r"""Distribution for sampling around :attr:`x_0`\ ."""
     sampler_kwargs: Dict[str, Any] = field(default_factory=dict)
     r"""``(2 * n_v)`` size of perturbations sampled around :attr:`x_0`\ ."""
-    noiser_type: Optional[Union[Type[GaussianWhiteNoiser], Type[UniformWhiteNoiser]]] = \
-        GaussianWhiteNoiser
+    noiser_type: Optional[
+        Union[Type[GaussianWhiteNoiser], Type[UniformWhiteNoiser]]
+    ] = GaussianWhiteNoiser
     """Type of noise to add to data."""
     static_noise: Tensor = field(default_factory=lambda: torch.tensor([]))
     """``(2 * n_v)`` sampler ranges for constant-in-time trajectory noise."""
     dynamic_noise: Tensor = field(default_factory=lambda: torch.tensor([]))
     """``(2 * n_v)`` sampler ranges for i.i.d.-in-time trajectory noise."""
-    storage: str = './'
+    storage: str = "./"
     """Experiment folder for data storage. Defaults to working directory."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""
-        assert self.dt > 0.
+        assert self.dt > 0.0
         assert self.n_pop >= 0
         assert self.trajectory_length >= 1
         if self.noiser_type:
@@ -71,6 +81,7 @@ class ExperimentDatasetGenerator:
     The various parameters describing the qualities of the dataset are given
     in the provided :py:class:`DataGenerationConfig`\ .
     """
+
     system: System
     config: DataGenerationConfig
 
@@ -93,15 +104,17 @@ class ExperimentDatasetGenerator:
                 break
             ground_truth_trajectories = self.simulate_trajectory_set(n_to_add)
             learning_trajectories = self.make_noised_trajectories(
-                ground_truth_trajectories)
+                ground_truth_trajectories
+            )
             for relative_index in range(n_to_add):
                 ground_truth_file = file_utils.trajectory_file(
-                    ground_truth_dir, n_on_disk + relative_index)
-                torch.save(ground_truth_trajectories[relative_index],
-                           ground_truth_file)
+                    ground_truth_dir, n_on_disk + relative_index
+                )
+                torch.save(ground_truth_trajectories[relative_index], ground_truth_file)
 
                 learning_file = file_utils.trajectory_file(
-                    learning_dir, n_on_disk + relative_index)
+                    learning_dir, n_on_disk + relative_index
+                )
                 torch.save(learning_trajectories[relative_index], learning_file)
 
     def simulate_trajectory_set(self, num_trajectories: int) -> List[Tensor]:
@@ -118,15 +131,17 @@ class ExperimentDatasetGenerator:
         system = self.system
         starting_state = config.x_0
         system.set_state_sampler(
-            config.sampler_type(system.space,
-                                **config.sampler_kwargs))
+            config.sampler_type(system.space, **config.sampler_kwargs)
+        )
 
         trajectories = []
         for _ in range(num_trajectories):
             trajectory, carry_traj = system.sample_trajectory(config.trajectory_length)
             if type(carry_traj) == TensorDict:
                 # Save as Tensordict instead of Trajetory
-                carry_traj["state"] = trajectory.reshape(config.trajectory_length+1, 1, -1)
+                carry_traj["state"] = trajectory.reshape(
+                    config.trajectory_length + 1, 1, -1
+                )
                 trajectory = carry_traj
             trajectories.append(trajectory)
         return trajectories
@@ -149,12 +164,12 @@ class ExperimentDatasetGenerator:
         noiser = config.noiser_type(self.system.space)
         noised_trajectories = []
         for traj in traj_set:
-            static_disturbed = noiser.noise(traj,
-                                            config.static_noise,
-                                            independent=False)
-            dynamic_disturbed = noiser.noise(static_disturbed,
-                                             config.dynamic_noise)
+            static_disturbed = noiser.noise(
+                traj, config.static_noise, independent=False
+            )
+            dynamic_disturbed = noiser.noise(static_disturbed, config.dynamic_noise)
             dynamic_disturbed = self.system.space.project_derivative(
-                dynamic_disturbed, config.dt)
+                dynamic_disturbed, config.dt
+            )
             noised_trajectories.append(dynamic_disturbed)
         return noised_trajectories

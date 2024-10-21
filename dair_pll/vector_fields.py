@@ -11,7 +11,6 @@ import numpy as np
 from pydrake.systems.framework import LeafSystem
 
 
-
 ROTATION_PRIMITIVE = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 0]])
 INWARD_PRIMITIVE = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 0]])
 
@@ -31,11 +30,14 @@ class ForceVectorField(ABC):
 class VortexForceVectorField(ForceVectorField):
     """Specifically generate a vortex like a toilet bowl."""
 
-    def __init__(self, n_velocity: int,
-                 center_xy: Tuple[float, float] = (0., 0.),
-                 rotation_scaling: float = 1.,
-                 inward_scaling: float = 1.,
-                 height_std_dev: float = 1.) -> None:
+    def __init__(
+        self,
+        n_velocity: int,
+        center_xy: Tuple[float, float] = (0.0, 0.0),
+        rotation_scaling: float = 1.0,
+        inward_scaling: float = 1.0,
+        height_std_dev: float = 1.0,
+    ) -> None:
         super().__init__(n_velocity)
 
         self.center_x = center_xy[0]
@@ -74,8 +76,13 @@ class ViscousDampingVectorField(ForceVectorField):
     """Specifically add viscous damping to linear, angular, and articulation
     velocities."""
 
-    def __init__(self, n_velocity: int, w_linear: float = 0.0,
-                 w_angular: float = 0.0, w_articulation: float = 0.0):
+    def __init__(
+        self,
+        n_velocity: int,
+        w_linear: float = 0.0,
+        w_angular: float = 0.0,
+        w_articulation: float = 0.0,
+    ):
         super().__init__(n_velocity)
 
         self.w_linear = w_linear
@@ -87,26 +94,28 @@ class ViscousDampingVectorField(ForceVectorField):
         damping vector field, the generalized forces depend only on the
         velocity components of the state.
         """
-        vels = state[-self.n_velocity:]
+        vels = state[-self.n_velocity :]
 
         if np.any(np.isnan(vels)):
             pdb.set_trace()
 
-        generalized_force = np.concatenate((
-            -self.w_linear * vels[:3],
-            -self.w_angular * vels[3:6],
-            -self.w_articulation * vels[6:]))
+        generalized_force = np.concatenate(
+            (
+                -self.w_linear * vels[:3],
+                -self.w_angular * vels[3:6],
+                -self.w_articulation * vels[6:],
+            )
+        )
 
         return generalized_force
-
 
 
 class ForceVectorFieldInjectorLeafSystem(LeafSystem):
     """Create a Drake ``LeafSystem`` which can inject forces from a force vector
     field into the dynamics of a Multibody Plant.
     """
-    def __init__(self, n_state: int, n_velocity: int,
-                 vector_field: ForceVectorField):
+
+    def __init__(self, n_state: int, n_velocity: int, vector_field: ForceVectorField):
         super().__init__()
 
         # Store the force vector field.
@@ -114,19 +123,20 @@ class ForceVectorFieldInjectorLeafSystem(LeafSystem):
 
         # Create an input port for the current state of the system.
         self.mbp_state_input_port = self.DeclareVectorInputPort(
-            name="mbp_state", size=n_state)
+            name="mbp_state", size=n_state
+        )
 
         # Create an output port for the generalized forces.
-        self.DeclareVectorOutputPort(name="force_vector", size=n_velocity,
-                                     calc=self.CalculateVectorField)
+        self.DeclareVectorOutputPort(
+            name="force_vector", size=n_velocity, calc=self.CalculateVectorField
+        )
 
     def CalculateVectorField(self, context, output):
         # Evaluate the input ports to obtain the current multibody plant state.
         mbp_state = self.mbp_state_input_port.Eval(context)
 
         # Generate the generalized force from the multibody plant state.
-        generalized_force = \
-            self.vector_field.generalized_force_by_state(mbp_state)
+        generalized_force = self.vector_field.generalized_force_by_state(mbp_state)
 
         # Write the output vector.
         output.SetFromVector(generalized_force)
@@ -136,7 +146,10 @@ class ForceVectorFieldInjectorLeafSystem(LeafSystem):
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import MultibodyPlant
 
-def force_system_builder(builder: DiagramBuilder, plant: MultibodyPlant, field_type: str = "vortex") -> None:
+
+def force_system_builder(
+    builder: DiagramBuilder, plant: MultibodyPlant, field_type: str = "vortex"
+) -> None:
     # Get sizes for defining appropriately sized input and output ports
     # for the force vector field injector ``LeafSystem``.
     n_x = plant.get_state_output_port().size()
@@ -145,12 +158,11 @@ def force_system_builder(builder: DiagramBuilder, plant: MultibodyPlant, field_t
     field = None
     if field_type == "vortex":
         print("Injecting vortex force vector field into dynamics.")
-        field = VortexForceVectorField(n_velocity=n_v, rotation_scaling = 10.0)
+        field = VortexForceVectorField(n_velocity=n_v, rotation_scaling=10.0)
     elif field_type == "viscous":
         print("Injecting viscous damping vector field into dynamics.")
         field = ViscousDampingVectorField(
-            n_velocity=n_v,
-            w_linear=1e-1, w_angular=3e-3, w_articulation=1e-2
+            n_velocity=n_v, w_linear=1e-1, w_angular=3e-3, w_articulation=1e-2
         )
 
     if not field:
@@ -158,19 +170,17 @@ def force_system_builder(builder: DiagramBuilder, plant: MultibodyPlant, field_t
 
     # Define a force vector field injector based on the vector field.
     vector_field_injector = ForceVectorFieldInjectorLeafSystem(
-        n_state=n_x, n_velocity=n_v,
-        vector_field=field
+        n_state=n_x, n_velocity=n_v, vector_field=field
     )
 
     vector_field_injector = builder.AddSystem(vector_field_injector)
-    
+
     # Wire in the vector field force injector so it affects the system
     # dynamics.
     builder.Connect(
-        plant.get_state_output_port(),
-        vector_field_injector.GetInputPort("mbp_state")
+        plant.get_state_output_port(), vector_field_injector.GetInputPort("mbp_state")
     )
     builder.Connect(
         vector_field_injector.GetOutputPort("force_vector"),
-        plant.get_applied_generalized_force_input_port()
+        plant.get_applied_generalized_force_input_port(),
     )

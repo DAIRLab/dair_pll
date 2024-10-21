@@ -13,6 +13,7 @@ types. This is particularly useful as it allows pydrake symbolic types to
 be used, facilitating differentiable geometric analysis of the relationship
 between the coordinate systems in ``multibody_terms.py``.
 """
+
 from typing import Tuple, List
 
 import numpy as np
@@ -49,25 +50,25 @@ class DrakeFloatingBaseStateConverter:
     """
 
     @staticmethod
-    def drake_to_state(q_drake: np.ndarray,
-                       v_drake: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def drake_to_state(
+        q_drake: np.ndarray, v_drake: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Formats configuration and velocity into row vectors, and rotates
         angular velocity into body frame."""
         q = state_ndarray_reformat(q_drake)
         v = state_ndarray_reformat(v_drake)
-        v[..., :3] = quaternion.rotate(quaternion.inverse(q[..., :4]),
-                                        v[..., :3])
+        v[..., :3] = quaternion.rotate(quaternion.inverse(q[..., :4]), v[..., :3])
         return q, v
 
     @staticmethod
-    def state_to_drake(q: np.ndarray,
-                       v: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def state_to_drake(q: np.ndarray, v: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Formats configuration and velocity into squeezed vectors,
         and rotates angular velocity into world frame."""
         q_drake = state_ndarray_reformat(q)
         v_drake = state_ndarray_reformat(v)
-        v_drake[..., :3] = quaternion.rotate(q[..., :4].reshape(1, -1),
-                                              v_drake[..., :3])
+        v_drake[..., :3] = quaternion.rotate(
+            q[..., :4].reshape(1, -1), v_drake[..., :3]
+        )
         q_drake = q_drake.reshape(q_drake.size)
         v_drake = v_drake.reshape(v_drake.size)
         return q_drake, v_drake
@@ -85,16 +86,16 @@ class DrakeFixedBaseStateConverter:
     """
 
     @staticmethod
-    def drake_to_state(q_drake: np.ndarray,
-                       v_drake: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def drake_to_state(
+        q_drake: np.ndarray, v_drake: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Formats configuration and velocity into row vectors."""
         q = state_ndarray_reformat(q_drake)
         v = state_ndarray_reformat(v_drake)
         return q, v
 
     @staticmethod
-    def state_to_drake(q: np.ndarray,
-                       v: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def state_to_drake(q: np.ndarray, v: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Formats configuration and velocity into squeezed vectors."""
         q_drake = drake_ndarray_reformat(q)
         v_drake = drake_ndarray_reformat(v)
@@ -107,8 +108,8 @@ class DrakeModelStateConverterFactory:
 
     @staticmethod
     def state_to_drake(
-            q: np.ndarray, v: np.ndarray,
-            space: state_space.StateSpace) -> Tuple[np.ndarray, np.ndarray]:
+        q: np.ndarray, v: np.ndarray, space: state_space.StateSpace
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Selects ``state_to_drake`` method based on presence of floating
         base from ``DrakeFloatingBaseStateConverter`` or
         ``DrakeFixedBaseStateConverter``."""
@@ -117,24 +118,27 @@ class DrakeModelStateConverterFactory:
         if isinstance(space, state_space.FixedBaseSpace):
             return DrakeFixedBaseStateConverter.state_to_drake(q, v)
 
-        raise TypeError('Argument "space" must be instance of type '
-                        'FloatingBaseSpace or FixedBaseSpce!')
+        raise TypeError(
+            'Argument "space" must be instance of type '
+            "FloatingBaseSpace or FixedBaseSpce!"
+        )
 
     @staticmethod
     def drake_to_state(
-            q_drake: np.ndarray, v_drake: np.ndarray,
-            space: state_space.StateSpace) -> Tuple[np.ndarray, np.ndarray]:
+        q_drake: np.ndarray, v_drake: np.ndarray, space: state_space.StateSpace
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Selects ``drake_to_state`` method based on presence of floating
         base from ``DrakeFloatingBaseStateConverter`` or
         ``DrakeFixedBaseStateConverter``."""
         if isinstance(space, state_space.FloatingBaseSpace):
-            return DrakeFloatingBaseStateConverter.drake_to_state(
-                q_drake, v_drake)
+            return DrakeFloatingBaseStateConverter.drake_to_state(q_drake, v_drake)
         if isinstance(space, state_space.FixedBaseSpace):
             return DrakeFixedBaseStateConverter.drake_to_state(q_drake, v_drake)
 
-        raise TypeError('Argument "space" must be instance of type '
-                        'FloatingBaseSpace or FixedBaseSpce!')
+        raise TypeError(
+            'Argument "space" must be instance of type '
+            "FloatingBaseSpace or FixedBaseSpce!"
+        )
 
 
 class DrakeStateConverter:
@@ -150,9 +154,12 @@ class DrakeStateConverter:
     """
 
     @staticmethod
-    def context_to_state(plant: MultibodyPlant, plant_context: Context,
-                         model_ids: List[ModelInstanceIndex],
-                         space: state_space.ProductSpace) -> np.ndarray:
+    def context_to_state(
+        plant: MultibodyPlant,
+        plant_context: Context,
+        model_ids: List[ModelInstanceIndex],
+        space: state_space.ProductSpace,
+    ) -> np.ndarray:
         """Retrieves ``ProductSpace``-formatted state from plant's context.
 
         Args:
@@ -171,7 +178,8 @@ class DrakeStateConverter:
             q_drake = plant.GetPositions(plant_context, model_id)
             v_drake = plant.GetVelocities(plant_context, model_id)
             q, v = DrakeModelStateConverterFactory.drake_to_state(
-                q_drake, v_drake, model_space)
+                q_drake, v_drake, model_space
+            )
             qs.append(q)
             vs.append(v)
         q = np.concatenate(qs, axis=-1)
@@ -179,9 +187,13 @@ class DrakeStateConverter:
         return np.concatenate([q, v], axis=-1).squeeze()
 
     @staticmethod
-    def state_to_context(plant: MultibodyPlant, plant_context: Context,
-                         x: np.ndarray, model_ids: List[ModelInstanceIndex],
-                         space: state_space.ProductSpace) -> None:
+    def state_to_context(
+        plant: MultibodyPlant,
+        plant_context: Context,
+        x: np.ndarray,
+        model_ids: List[ModelInstanceIndex],
+        space: state_space.ProductSpace,
+    ) -> None:
         """Transforms and assigns ``ProductSpace``-formatted state in plant's
         mutable context.
 
@@ -193,13 +205,13 @@ class DrakeStateConverter:
             space: state space of output state.
         """
         assert x.shape[-1] == space.n_x
-        qs = np.array_split(x[..., :space.n_q], space.q_splits, -1)
-        vs = np.array_split(x[..., space.n_q:], space.v_splits, -1)
+        qs = np.array_split(x[..., : space.n_q], space.q_splits, -1)
+        vs = np.array_split(x[..., space.n_q :], space.v_splits, -1)
         spaces = space.spaces
-        for model_id, model_space, model_q, model_v in zip(
-                model_ids, spaces, qs, vs):
+        for model_id, model_space, model_q, model_v in zip(model_ids, spaces, qs, vs):
             (q_drake, v_drake) = DrakeModelStateConverterFactory.state_to_drake(
-                model_q, model_v, model_space)
+                model_q, model_v, model_space
+            )
 
             plant.SetPositions(plant_context, model_id, q_drake)
             plant.SetVelocities(plant_context, model_id, v_drake)

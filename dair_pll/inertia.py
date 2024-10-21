@@ -84,14 +84,19 @@ the :py:class:`InertialParameterConverter` class.
 .. [1] C. Rucker and P. M. Wensing, "Smooth Parameterization of Rigid-Body
     Inertia", IEEE RA-L 2020, https://doi.org/10.1109/LRA.2022.3144517
 """
+
 from typing import Any, Tuple, List, Dict
 
 import torch
 from torch import Tensor
 
 from dair_pll.drake_utils import DrakeSpatialInertia
-from dair_pll.tensor_utils import skew_symmetric, symmetric_offdiagonal, \
-    pbmm, trace_identity
+from dair_pll.tensor_utils import (
+    skew_symmetric,
+    symmetric_offdiagonal,
+    pbmm,
+    trace_identity,
+)
 
 torch.set_default_dtype(torch.float64)  # pylint: disable=no-member
 
@@ -104,11 +109,11 @@ def number_to_float(number: Any) -> float:
     """Converts a number to float via intermediate string representation."""
     return float(str(number))
 
+
 # pylint: disable=invalid-name
-def parallel_axis_theorem(I_BBa_B: Tensor,
-                          m_B: Tensor,
-                          p_BaBb_B: Tensor,
-                          Ba_is_Bcm: bool = True) -> Tensor:
+def parallel_axis_theorem(
+    I_BBa_B: Tensor, m_B: Tensor, p_BaBb_B: Tensor, Ba_is_Bcm: bool = True
+) -> Tensor:
     """Converts an inertia matrix represented from one reference point to that
     represented from another reference point.  One of these reference points
     must be the center of mass.
@@ -145,7 +150,10 @@ def parallel_axis_theorem(I_BBa_B: Tensor,
         return I_BBa_B - term
 
     return I_BBa_B + term
+
+
 # pylint: enable=invalid-name
+
 
 def inertia_matrix_from_vector(I_BBa_B_vec: Tensor) -> Tensor:
     r"""Converts vectorized inertia vector of the following order into an
@@ -229,7 +237,7 @@ class InertialParameterConverter:
 
         sigma = pbmm(cholesky_sigma, cholesky_sigma.mT)
 
-        I_BBcm_B = (trace_identity(sigma) - sigma)# TODO: * mass
+        I_BBcm_B = trace_identity(sigma) - sigma  # TODO: * mass
 
         I_BBcm_B_vec = torch.mul(inertia_vector_from_matrix(I_BBcm_B), mass)
 
@@ -263,9 +271,13 @@ class InertialParameterConverter:
         d_vector = torch.log(torch.diagonal(cholesky_sigma, dim1=-2, dim2=-1))
 
         s_vector = torch.stack(
-            (cholesky_sigma[..., 1, 0], cholesky_sigma[..., 2, 0],
-             cholesky_sigma[..., 2, 1]),
-            dim=-1)
+            (
+                cholesky_sigma[..., 1, 0],
+                cholesky_sigma[..., 2, 0],
+                cholesky_sigma[..., 2, 1],
+            ),
+            dim=-1,
+        )
 
         return torch.cat((log_m, p_vector, d_vector, s_vector), -1)
 
@@ -273,10 +285,9 @@ class InertialParameterConverter:
     def pi_cm_to_drake_spatial_inertia_vector(pi_cm: Tensor) -> Tensor:
         """Converts batch of ``pi-cm`` parameters to ``drake_inertia_vector``
         parameters."""
-        return torch.cat((pi_cm[..., 0:1],
-                          pi_cm[..., 1:4] / pi_cm[..., 0:1],
-                          pi_cm[..., 4:]),
-                         dim=-1)
+        return torch.cat(
+            (pi_cm[..., 0:1], pi_cm[..., 1:4] / pi_cm[..., 0:1], pi_cm[..., 4:]), dim=-1
+        )
 
     @staticmethod
     def pi_cm_to_urdf(pi_cm: Tensor) -> Tuple[str, str, List[str]]:
@@ -284,11 +295,10 @@ class InertialParameterConverter:
         format."""
         assert len(pi_cm.shape) == 1
         mass = str(pi_cm[0].item())
-        p_BoBcm_B = ' '.join(
-            [str((coordinate / pi_cm[0]).item()) for coordinate in pi_cm[1:4]])
-        I_BBcm_B = [
-            str(inertia_element.item()) for inertia_element in pi_cm[4:]
-        ]
+        p_BoBcm_B = " ".join(
+            [str((coordinate / pi_cm[0]).item()) for coordinate in pi_cm[1:4]]
+        )
+        I_BBcm_B = [str(inertia_element.item()) for inertia_element in pi_cm[4:]]
 
         return mass, p_BoBcm_B, I_BBcm_B
 
@@ -306,13 +316,10 @@ class InertialParameterConverter:
         M_BBcm_B = M_BBo_B.Shift(p_BoBcm_B)
         I_BBcm_B = M_BBcm_B.CalcRotationalInertia()
 
-        mass_list = [
-            mass * number_to_float(coordinate) for coordinate in p_BoBcm_B
-        ]
+        mass_list = [mass * number_to_float(coordinate) for coordinate in p_BoBcm_B]
 
         inertia_list = [
-            number_to_float(I_BBcm_B[index[0], index[1]])
-            for index in INERTIA_INDICES
+            number_to_float(I_BBcm_B[index[0], index[1]]) for index in INERTIA_INDICES
         ]
         pi = torch.tensor([mass] + mass_list + inertia_list)
         return pi
@@ -331,12 +338,13 @@ class InertialParameterConverter:
         p_BoBcm_B = pi_cm[1:4] / mass
         I_BBcm_B = pi_cm[4:]
         scalars = {"m": mass.item()}
-        scalars.update({
-            f'com_{axis}': p_axis.item()
-            for axis, p_axis in zip(AXES, p_BoBcm_B)
-        })
-        scalars.update({
-            inertia_scalar: inertial_value.item()
-            for inertia_scalar, inertial_value in zip(INERTIA_SCALARS, I_BBcm_B)
-        })
+        scalars.update(
+            {f"com_{axis}": p_axis.item() for axis, p_axis in zip(AXES, p_BoBcm_B)}
+        )
+        scalars.update(
+            {
+                inertia_scalar: inertial_value.item()
+                for inertia_scalar, inertial_value in zip(INERTIA_SCALARS, I_BBcm_B)
+            }
+        )
         return scalars

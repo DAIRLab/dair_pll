@@ -4,6 +4,7 @@ File system is organized around a "storage" directory associated with data and
 training runs. The functions herein can be used to return absolute paths of and
 summary information about the content of this directory.
 """
+
 import glob
 import json
 import os
@@ -14,23 +15,23 @@ from typing import List, Callable, BinaryIO, Any, TextIO, Optional
 import xacro
 
 
-TRAJ_EXTENSION = '.pt'  # trajectory file
-HYPERPARAMETERS_EXTENSION = '.json'  # hyperparameter set file
-STATS_EXTENSION = '.pkl'  # experiment statistics
-CONFIG_EXTENSION = '.pkl'
-CHECKPOINT_EXTENSION = '.pt'
-DATA_SUBFOLDER_NAME = 'data'
-LEARNING_DATA_SUBFOLDER_NAME = 'learning'
-GROUND_TRUTH_DATA_SUBFOLDER_NAME = 'ground_truth'
-RUNS_SUBFOLDER_NAME = 'runs'
-STUDIES_SUBFOLDER_NAME = 'studies'
-URDFS_SUBFOLDER_NAME = 'urdfs'
-WANDB_SUBFOLDER_NAME = 'wandb'
-TRAJECTORY_GIF_DEFAULT_NAME = 'trajectory.gif'
-FINAL_EVALUATION_NAME = f'statistics{STATS_EXTENSION}'
-HYPERPARAMETERS_FILENAME = f'optimal_hyperparameters{HYPERPARAMETERS_EXTENSION}'
-CONFIG_FILENAME = f'config{CONFIG_EXTENSION}'
-CHECKPOINT_FILENAME = f'checkpoint{CHECKPOINT_EXTENSION}'
+TRAJ_EXTENSION = ".pt"  # trajectory file
+HYPERPARAMETERS_EXTENSION = ".json"  # hyperparameter set file
+STATS_EXTENSION = ".pkl"  # experiment statistics
+CONFIG_EXTENSION = ".pkl"
+CHECKPOINT_EXTENSION = ".pt"
+DATA_SUBFOLDER_NAME = "data"
+LEARNING_DATA_SUBFOLDER_NAME = "learning"
+GROUND_TRUTH_DATA_SUBFOLDER_NAME = "ground_truth"
+RUNS_SUBFOLDER_NAME = "runs"
+STUDIES_SUBFOLDER_NAME = "studies"
+URDFS_SUBFOLDER_NAME = "urdfs"
+WANDB_SUBFOLDER_NAME = "wandb"
+TRAJECTORY_GIF_DEFAULT_NAME = "trajectory.gif"
+FINAL_EVALUATION_NAME = f"statistics{STATS_EXTENSION}"
+HYPERPARAMETERS_FILENAME = f"optimal_hyperparameters{HYPERPARAMETERS_EXTENSION}"
+CONFIG_FILENAME = f"config{CONFIG_EXTENSION}"
+CHECKPOINT_FILENAME = f"checkpoint{CHECKPOINT_EXTENSION}"
 """str: extensions for saved files"""
 
 
@@ -51,8 +52,8 @@ def assure_created(directory: str) -> str:
 
 
 MAIN_DIR = path.dirname(path.dirname(__file__))
-LOG_DIR = assure_created(os.path.join(MAIN_DIR, 'logs'))
-ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, 'assets'))
+LOG_DIR = assure_created(os.path.join(MAIN_DIR, "logs"))
+ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, "assets"))
 # str: locations of key static directories
 
 
@@ -69,16 +70,19 @@ def get_asset(asset_file_basename: str) -> str:
 
 
 def eval_extension_fixed(s):
-    if s == '$(cwd)':
+    if s == "$(cwd)":
         return os.getcwd()
     try:
         try:
             from roslaunch.substitution_args import resolve_args
-        except: # Ignore initial ModuleNotFoundError
+        except:  # Ignore initial ModuleNotFoundError
             pass
         from roslaunch.substitution_args import resolve_args, ArgException
         from rospkg.common import ResourceNotFound
-        return resolve_args(s, context=xacro.substitution_args_context, resolve_anon=False)
+
+        return resolve_args(
+            s, context=xacro.substitution_args_context, resolve_anon=False
+        )
     except ImportError as e:
         raise xacro.XacroException("substitution args not supported: ", exc=e)
     except ResourceNotFound as e:
@@ -86,7 +90,9 @@ def eval_extension_fixed(s):
     except ArgException as e:
         raise xacro.XacroException("Undefined substitution argument", exc=e)
 
+
 xacro.eval_extension = eval_extension_fixed
+
 
 def get_urdf_asset_contents(urdf_file_basename: str, **mappings) -> str:
     file_name = get_asset(urdf_file_basename)
@@ -99,8 +105,11 @@ def assure_storage_tree_created(storage_name: str) -> None:
     Args:
         storage_name: name of storage directory.
     """
-    storage_directories = [data_dir, all_runs_dir,
-                           all_studies_dir]  # type: List[Callable[[str],str]]
+    storage_directories = [
+        data_dir,
+        all_runs_dir,
+        all_studies_dir,
+    ]  # type: List[Callable[[str],str]]
 
     for directory in storage_directories:
         assure_created(directory(storage_name))
@@ -109,12 +118,13 @@ def assure_storage_tree_created(storage_name: str) -> None:
 def list_file_nums(path: str) -> List[int]:
     file_nums = []
     for file_name in os.listdir(path):
-        file_nums.append(int(file_name.split('.')[0]))
+        file_nums.append(int(file_name.split(".")[0]))
     return file_nums
 
 
-def import_data_to_storage(storage_name: str, import_data_dir: str,
-                           num: int = None) -> List[int]:
+def import_data_to_storage(
+    storage_name: str, import_data_dir: str, num: int = None
+) -> List[int]:
     """Import data in external folder into data directory.
 
     Args:
@@ -125,18 +135,16 @@ def import_data_to_storage(storage_name: str, import_data_dir: str,
     """
     output_directories = [
         ground_truth_data_dir(storage_name),
-        learning_data_dir(storage_name)
+        learning_data_dir(storage_name),
     ]
     data_traj_count = get_numeric_file_count(import_data_dir, TRAJ_EXTENSION)
     run_indices = [i for i in range(data_traj_count)]
 
-    target_traj_number = data_traj_count if num is None else \
-                         min(num, data_traj_count)
+    target_traj_number = data_traj_count if num is None else min(num, data_traj_count)
 
     # Check if data is synchronized already.
     for output_directory in output_directories:
-        storage_traj_count = get_numeric_file_count(output_directory,
-                                                    TRAJ_EXTENSION)
+        storage_traj_count = get_numeric_file_count(output_directory, TRAJ_EXTENSION)
 
         # Overwrite in case of any discrepancies.
         if storage_traj_count != target_traj_number:
@@ -144,22 +152,23 @@ def import_data_to_storage(storage_name: str, import_data_dir: str,
             # Copy entire directory if all trajectories are desired.
             if target_traj_number == data_traj_count:
                 for output_dir in output_directories:
-                    os.system(f'rm -r {output_dir}')
-                    os.system(f'cp -r {import_data_dir} {output_dir}')
+                    os.system(f"rm -r {output_dir}")
+                    os.system(f"cp -r {import_data_dir} {output_dir}")
 
             # Copy a random subset of trajectories if want a smaller number.
             else:
                 random.shuffle(run_indices)
                 run_indices = run_indices[:target_traj_number]
                 for output_dir in output_directories:
-                    os.system(f'rm -r {output_dir}')
-                    os.system(f'mkdir {output_dir}')
+                    os.system(f"rm -r {output_dir}")
+                    os.system(f"mkdir {output_dir}")
 
                     # Copy over a random selection of trajectories, numbering
                     # from 0.
                     for i, run in zip(range(target_traj_number), run_indices):
-                        os.system(f'cp {import_data_dir}/{run}.pt ' + \
-                                  f'{output_dir}/{i}.pt')
+                        os.system(
+                            f"cp {import_data_dir}/{run}.pt " + f"{output_dir}/{i}.pt"
+                        )
 
             # Can terminate outer loop over output directories since all output
             # directories are written to at once.
@@ -174,33 +183,32 @@ def storage_dir(storage_name: str) -> str:
 
 def data_dir(storage_name: str) -> str:
     """Absolute path of data folder."""
-    return assure_created(
-        path.join(storage_dir(storage_name), DATA_SUBFOLDER_NAME))
+    return assure_created(path.join(storage_dir(storage_name), DATA_SUBFOLDER_NAME))
 
 
 def learning_data_dir(storage_name: str) -> str:
     """Absolute path of folder for data preprocessed for
     training/validation."""
     return assure_created(
-        path.join(data_dir(storage_name), LEARNING_DATA_SUBFOLDER_NAME))
+        path.join(data_dir(storage_name), LEARNING_DATA_SUBFOLDER_NAME)
+    )
 
 
 def ground_truth_data_dir(storage_name: str) -> str:
     """Absolute path of folder for raw unprocessed trajectories."""
     return assure_created(
-        path.join(data_dir(storage_name), GROUND_TRUTH_DATA_SUBFOLDER_NAME))
+        path.join(data_dir(storage_name), GROUND_TRUTH_DATA_SUBFOLDER_NAME)
+    )
 
 
 def all_runs_dir(storage_name: str) -> str:
     """Absolute path of tensorboard storage folder"""
-    return assure_created(
-        path.join(storage_dir(storage_name), RUNS_SUBFOLDER_NAME))
+    return assure_created(path.join(storage_dir(storage_name), RUNS_SUBFOLDER_NAME))
 
 
 def all_studies_dir(storage_name: str) -> str:
     """Absolute path of tensorboard storage folder"""
-    return assure_created(
-        path.join(storage_dir(storage_name), STUDIES_SUBFOLDER_NAME))
+    return assure_created(path.join(storage_dir(storage_name), STUDIES_SUBFOLDER_NAME))
 
 
 def delete(file_name: str) -> None:
@@ -209,8 +217,7 @@ def delete(file_name: str) -> None:
         os.remove(file_name)
 
 
-def get_numeric_file_count(directory: str,
-                           extension: str = TRAJ_EXTENSION) -> int:
+def get_numeric_file_count(directory: str, extension: str = TRAJ_EXTENSION) -> int:
     """Count number of whole-number-named files.
 
     If folder ``/fldr`` has contents (7.pt, 11.pt, 4.pt), then::
@@ -225,7 +232,7 @@ def get_numeric_file_count(directory: str,
         Number of files in specified ``directory`` with specified
         ``extension`` that have an integer basename.
     """
-    return len(glob.glob(path.join(directory, './[0-9]*' + extension)))
+    return len(glob.glob(path.join(directory, "./[0-9]*" + extension)))
 
 
 def get_trajectory_count(trajectory_dir: str):
@@ -235,8 +242,7 @@ def get_trajectory_count(trajectory_dir: str):
 
 def trajectory_file(trajectory_dir: str, num_trajectory: int) -> str:
     """Absolute path of specific trajectory in storage"""
-    return path.join(trajectory_dir,
-                     f'{num_trajectory}{TRAJ_EXTENSION}')
+    return path.join(trajectory_dir, f"{num_trajectory}{TRAJ_EXTENSION}")
 
 
 def run_dir(storage_name: str, run_name: str) -> str:
@@ -246,23 +252,26 @@ def run_dir(storage_name: str, run_name: str) -> str:
 
 def get_trajectory_video_filename(storage_name: str, run_name: str, epoch: int) -> str:
     """Return the filepath of the temporary rollout video gif."""
-    assure_created(path.join(run_dir(storage_name, run_name),
-                     "videos"))
-    return path.join(run_dir(storage_name, run_name),
-                     "videos",
-                     ("%04d" % (epoch,)) + str(TRAJECTORY_GIF_DEFAULT_NAME))
+    assure_created(path.join(run_dir(storage_name, run_name), "videos"))
+    return path.join(
+        run_dir(storage_name, run_name),
+        "videos",
+        ("%04d" % (epoch,)) + str(TRAJECTORY_GIF_DEFAULT_NAME),
+    )
 
 
 def get_learned_urdf_dir(storage_name: str, run_name: str) -> str:
     """Absolute path of learned model URDF storage directory."""
     return assure_created(
-        path.join(run_dir(storage_name, run_name), URDFS_SUBFOLDER_NAME))
+        path.join(run_dir(storage_name, run_name), URDFS_SUBFOLDER_NAME)
+    )
 
 
 def wandb_dir(storage_name: str, run_name: str) -> str:
     """Absolute path of tensorboard storage folder"""
     return assure_created(
-        path.join(run_dir(storage_name, run_name), WANDB_SUBFOLDER_NAME))
+        path.join(run_dir(storage_name, run_name), WANDB_SUBFOLDER_NAME)
+    )
 
 
 def get_evaluation_filename(storage_name: str, run_name: str) -> str:
@@ -291,23 +300,27 @@ def get_geometrically_accurate_urdf(urdf_name: str) -> str:
         The name of a URDF file located in ``ASSET_DIR`` that contains the true
         geometry of the system.
     """
-    URDF_MAP = {'contactnets_cube_bad_init.urdf': 'contactnets_cube.urdf',
-                'contactnets_cube_small_init.urdf': 'contactnets_cube.urdf',
-                'contactnets_cube.urdf': 'contactnets_cube.urdf',
-                'contactnets_cube_mesh.urdf': 'contactnets_cube_mesh.urdf',
-                'contactnets_elbow_bad_init.urdf': 'contactnets_elbow.urdf',
-                'contactnets_elbow_small_init.urdf': 'contactnets_elbow.urdf',
-                'contactnets_elbow.urdf': 'contactnets_elbow.urdf',
-                'contactnets_elbow_mesh.urdf': 'contactnets_elbow_mesh.urdf',
-                'contactnets_asymmetric.urdf': 'contactnets_asymmetric.urdf',
-                'spherebot.urdf': 'spherebot.urdf'}
-    base_name = urdf_name.split('/')[-1]
+    URDF_MAP = {
+        "contactnets_cube_bad_init.urdf": "contactnets_cube.urdf",
+        "contactnets_cube_small_init.urdf": "contactnets_cube.urdf",
+        "contactnets_cube.urdf": "contactnets_cube.urdf",
+        "contactnets_cube_mesh.urdf": "contactnets_cube_mesh.urdf",
+        "contactnets_elbow_bad_init.urdf": "contactnets_elbow.urdf",
+        "contactnets_elbow_small_init.urdf": "contactnets_elbow.urdf",
+        "contactnets_elbow.urdf": "contactnets_elbow.urdf",
+        "contactnets_elbow_mesh.urdf": "contactnets_elbow_mesh.urdf",
+        "contactnets_asymmetric.urdf": "contactnets_asymmetric.urdf",
+        "spherebot.urdf": "spherebot.urdf",
+    }
+    base_name = urdf_name.split("/")[-1]
 
     if base_name in URDF_MAP.keys():
         return get_asset(URDF_MAP[base_name])
     else:
-        print(f'Could not find geometrically accurate version of {base_name};' +
-              f' defaulting to using it directly.')
+        print(
+            f"Could not find geometrically accurate version of {base_name};"
+            + f" defaulting to using it directly."
+        )
         return get_asset(base_name)
 
 
@@ -318,31 +331,31 @@ def study_dir(storage_name: str, study_name: str) -> str:
 
 def hyperparameter_opt_run_name(study_name: str, trial_number: int) -> str:
     """Experiment run name for hyperparameter optimization trial."""
-    return f'{study_name}_hyperparameter_opt_{trial_number}'
+    return f"{study_name}_hyperparameter_opt_{trial_number}"
 
 
 def sweep_run_name(study_name: str, sweep_run: int, n_train: int) -> str:
     """Experiment run name for dataset size sweep study."""
-    return f'{study_name}_sweep_{sweep_run}_n_train_{n_train}'
+    return f"{study_name}_sweep_{sweep_run}_n_train_{n_train}"
 
 
 def get_hyperparameter_filename(storage_name: str, study_name: str) -> str:
     """Absolute path of optimized hyperparameters for a study"""
-    return path.join(study_dir(storage_name, study_name),
-                     HYPERPARAMETERS_FILENAME)
+    return path.join(study_dir(storage_name, study_name), HYPERPARAMETERS_FILENAME)
 
 
 def load_binary(filename: str, load_callback: Callable[[BinaryIO], Any]) -> Any:
     """Load binary file"""
-    with open(filename, 'rb') as file:
+    with open(filename, "rb") as file:
         value = load_callback(file)
     return value
 
 
-def load_string(filename: str,
-                load_callback: Optional[Callable[[TextIO], Any]] = None) -> Any:
+def load_string(
+    filename: str, load_callback: Optional[Callable[[TextIO], Any]] = None
+) -> Any:
     """Load text file"""
-    with open(filename, 'r', encoding='utf8') as file:
+    with open(filename, "r", encoding="utf8") as file:
         if load_callback:
             value = load_callback(file)
         else:
@@ -350,19 +363,21 @@ def load_string(filename: str,
     return value
 
 
-def save_binary(filename: str, value: Any,
-                save_callback: Callable[[Any, BinaryIO], None]) -> None:
+def save_binary(
+    filename: str, value: Any, save_callback: Callable[[Any, BinaryIO], None]
+) -> None:
     """Save binary file."""
-    with open(filename, 'wb') as file:
+    with open(filename, "wb") as file:
         save_callback(value, file)
 
 
 def save_string(
-        filename: str,
-        value: Any,
-        save_callback: Optional[Callable[[Any, TextIO], None]] = None) -> None:
+    filename: str,
+    value: Any,
+    save_callback: Optional[Callable[[Any, TextIO], None]] = None,
+) -> None:
     """Save text file."""
-    with open(filename, 'w', encoding='utf8') as file:
+    with open(filename, "w", encoding="utf8") as file:
         if save_callback:
             save_callback(value, file)
         else:
@@ -397,14 +412,13 @@ def save_evaluation(storage_name: str, run_name: str, evaluation: Any) -> None:
 
 def load_hyperparameters(storage_name: str, study_name: str) -> Any:
     """Load hyperparameter file."""
-    hyperparameter_filename = get_hyperparameter_filename(
-        storage_name, study_name)
+    hyperparameter_filename = get_hyperparameter_filename(storage_name, study_name)
     return load_string(hyperparameter_filename, json.load)
 
 
-def save_hyperparameters(storage_name: str, study_name: str,
-                         hyperparameters: Any) -> None:
+def save_hyperparameters(
+    storage_name: str, study_name: str, hyperparameters: Any
+) -> None:
     """Save hyperparameter file."""
-    hyperparameter_filename = get_hyperparameter_filename(
-        storage_name, study_name)
+    hyperparameter_filename = get_hyperparameter_filename(storage_name, study_name)
     save_string(hyperparameter_filename, hyperparameters, json.dump)
