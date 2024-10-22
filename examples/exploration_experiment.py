@@ -37,11 +37,12 @@ def sim_initial_state(
 # Main Function
 @gin.configurable
 def main(
-    storage_name: str = "storage",
+    storage_folder_name: str = "storage",
     run_name: str = "default_run",
 ):
 
     print("ContactNets With Sparse Tactile Sensing")
+    storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
     print(f"Storing data at    {file_utils.data_dir(storage_name)}")
     print(f"Storing results at {file_utils.run_dir(storage_name, run_name)}")
 
@@ -54,11 +55,17 @@ def main(
     # Set system to initial state
     base_system.preprocess_initial_condition(initial_state, carry_dict)
 
+    # Start with None current sim_trajectory
+    sim_trajectory = None
+
     # Start Input Loop
     def print_help():
         print("\nUsage:\n" \
+            "b - breakpoint()\n" \
             "c - Collect Sim Data\n" \
             "h - Print Help\n" \
+            "l - Load sim trajectory\n" \
+            "s - Save sim trajectory\n" \
             "u - Update PID Ref\n" \
             "q - Quit\n")
     print_help()
@@ -69,11 +76,25 @@ def main(
         if command_char == 'h':
             print_help()
 
+        elif command_char == 'b':
+            breakpoint()
+
         elif command_char == 'c':
             seconds = float(input("How long (s)? "))
-            trajectory, _ = base_system.simulate(initial_state, carry_dict, int(seconds/base_system.dt))
+            state, data = base_system.simulate(initial_state, carry_dict, int(seconds/base_system.dt))
+            data["state"] = state
+            if sim_trajectory is None:
+                sim_trajectory = torch.clone(data)
+            else:
+                # Adjust time and append
+                if "time" in data:
+                    data["time"] += sim_trajectory["time"][-1]
+                sim_trajectory = torch.cat((sim_trajectory, data))
             # Update Initial State
-            initial_state = trajectory[-1:, :]
+            initial_state = sim_trajectory[-1:, :]
+
+        elif command_char == 's':
+            traj_file = os.path.join(file_utils.run_dir())
 
         elif command_char == 'u':
             print("Enter comma-space-separated floats.\n")
