@@ -1,1 +1,59 @@
 # Default GIN Config File
+
+## Storage
+main.storage_name = "storage"
+main.run_name = "default_run"
+
+## General Config
+robot_model_name = "robot"
+object_model_name = "cube"
+
+## Base Drake System
+DrakeSystem.dt = 0.0068 # seconds
+DrakeSystem.urdfs = { 
+	%object_model_name: @object/get_urdf_asset_contents(), 
+	%robot_model_name: @robot/get_urdf_asset_contents()
+}
+DrakeSystem.visualization_file = "meshcat"
+# What to collect during sim:
+carry_dict_create.keys = [
+	"net_actuation",
+    "robot_state",
+    "contact_forces.finger_0", # Newtons
+    "contact_forces.finger_1", # Newtons
+    "time", # s
+]
+
+## Base URDF and State Config
+object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_urdf_asset_contents.mappings = {
+	"length_z": "0.1" # m
+}
+object_initial_state = [
+	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
+	0.0, 0.0, 0.05,     # XYZ
+	0.0, 0.0, 0.0,      # omega_XYZ
+	0.0, 0.0, 0.0,		# dXYZ
+]
+
+robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
+robot/get_urdf_asset_contents.mappings = {
+	"num_fingers": "2", 
+	"fixed_y": "0.0", # m
+	"fixed_z": "0.05" # m
+}
+robot_initial_state = [
+	0.5, -0.5, # Robot Q
+	0.0, 0.0,  # Robot V
+]
+
+sim_initial_state.state = {
+	%object_model_name: %object_initial_state,
+	%robot_model_name: %robot_initial_state,
+}
+
+## Controller for Robot
+DrakeSystem.additional_system_builders = [@pid_controller_builder]
+pid_controller_builder.model_name = %robot_model_name
+pid_controller_builder.kp = 10.0
+pid_controller_builder.kd = 10.0

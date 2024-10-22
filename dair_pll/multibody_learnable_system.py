@@ -32,6 +32,7 @@ import torch
 import pdb
 import time
 
+import gin
 # from sappy import SAPSolver  # type: ignore
 from torch import Tensor
 from tensordict.tensordict import TensorDict, TensorDictBase
@@ -66,7 +67,7 @@ JOINT_SCALING = 2 * ELBOW_COM_TO_AXIS_DISTANCE / torch.pi + ROTATION_SCALING
 # Dimension of Measured Force
 DIMENSION = 3
 
-
+@gin.configurable
 class MultibodyLearnableSystem(DrakeSystem):
     """:py:class:`System` interface for dynamics associated with
     :py:class:`MultibodyTerms`."""
@@ -853,7 +854,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             traj_x = torch.stack(
                 [
                     torch.hstack((self.trajectory_q[int(i)], self.trajectory_v[int(i)]))
-                    for i in data_state["time"].flatten()
+                    for i in (data_state["time"].flatten() / self.dt)
                 ]
             )
             traj_x = traj_x.reshape(

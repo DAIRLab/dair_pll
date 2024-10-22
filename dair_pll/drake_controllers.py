@@ -6,11 +6,13 @@ control loops.
 
 from __future__ import annotations
 
+import gin
 import numpy as np
 
 from pydrake.multibody.plant import MultibodyPlant  # type: ignore
 from pydrake.systems.framework import DiagramBuilder  # type: ignore
 from pydrake.systems.controllers import PidController
+from pydrake.systems.framework import Context  # type: ignore
 from pydrake.systems.primitives import (
     ConstantVectorSource,
     TrajectorySource,
@@ -19,19 +21,48 @@ from pydrake.systems.primitives import (
 from pydrake.trajectories import Trajectory, PiecewisePolynomial
 
 
+@gin.configurable(denylist=['system'])
+def update_pid_reference(
+    system: DrakeSystem,
+    desired_state: np.ndarray,
+    reference_name: str = "pid_reference"
+):
+    # Get underlying drake system and context
+    pid_system = system.plant_diagram.diagram.GetSubsystemByName(reference_name)
+    sim_context = system.plant_diagram.sim.get_mutable_context()
+    pid_context = pid_system.GetMyContextFromRoot(sim_context)
+
+    # Update mutable vector source
+    vector_source = pid_system.get_mutable_source_value(pid_context)
+    assert desired_state.size == pid_system.get_output_port().size()
+
+    vector_source.set_value(desired_state)
+
+
+@gin.configurable(denylist=['builder', 'plant'])
 def pid_controller_builder(
     builder: DiagramBuilder,
     plant: MultibodyPlant,
-    desired_state: np.ndarray = np.zeros(2),
+    reference_name: str = "pid_reference",
+    desired_state: Optional[List[float]] = None,
     model_name: str = "robot",
     kp: float = 1.0,
     kd: float = 10.0,
 ):
-    control_size = int(desired_state.size / 2)
-    controller = PidController(
-        kp * np.ones(control_size), np.zeros(control_size), kd * np.zeros(control_size)
-    )
     model = plant.GetModelInstanceByName(model_name)
+    control_size = plant.get_actuation_input_port(model).size() 
+
+    if desired_state is None:
+        desired_state = np.zeros(2*control_size)
+    else:
+        desired_state = np.array(desired_state)
+
+    assert desired_state.size == 2*control_size # Note assumes n_q == n_v
+
+    controller = PidController(
+        kp * np.ones(control_size), np.zeros(control_size), kd * np.ones(control_size)
+    )
+    
 
     controller = builder.AddSystem(controller)
     builder.Connect(
@@ -43,6 +74,7 @@ def pid_controller_builder(
 
     # Desired State
     constant = ConstantVectorSource(desired_state)
+    constant.set_name(reference_name)
     constant = builder.AddSystem(constant)
     builder.Connect(
         constant.get_output_port(), controller.get_input_port_desired_state()

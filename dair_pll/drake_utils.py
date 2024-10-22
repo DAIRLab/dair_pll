@@ -24,13 +24,14 @@ from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, Typ
 
 import pdb
 import math
+import enum
+import gin
 
 # TODO: put in place
 from pydrake.all import (
     MeshcatVisualizer,
     StartMeshcat,
-    Meshcat,
-    DiscreteContactApproximation,
+    Meshcat
 )
 
 import matplotlib.pyplot as plt
@@ -44,9 +45,12 @@ from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
 from pydrake.geometry import SceneGraphInspector_, GeometryId  # type: ignore
 from pydrake.math import RigidTransform, RollPitchYaw, RigidTransform_  # type: ignore
 from pydrake.multibody.parsing import Parser  # type: ignore
+import pydrake.multibody
 from pydrake.multibody.plant import (
     AddMultibodyPlantSceneGraph,
     CoulombFriction_,
+    ContactModel,
+    DiscreteContactApproximation,
 )  # type: ignore
 from pydrake.multibody.plant import CoulombFriction  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant  # type: ignore
@@ -266,7 +270,7 @@ def add_plant_from_urdfs(
 
     return model_ids, plant, scene_graph
 
-
+@gin.configurable('PlantDiagram', allowlist=['g_frac', 'contact_model', 'contact_approx'])
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a visualizer
     for a multibody system described in a list of URDF's.
@@ -289,6 +293,8 @@ class MultibodyPlantDiagram:
     collision_geometry_set: CollisionGeometrySet
     space: state_space.ProductSpace
 
+    gin.constants_from_enum(cast(ContactModel, enum.Enum))
+    gin.constants_from_enum(cast(DiscreteContactApproximation, enum.Enum))
     def __init__(
         self,
         urdfs: Dict[str, str],
@@ -298,6 +304,8 @@ class MultibodyPlantDiagram:
             Callable[[DrakeDiagramBuilder, MultibodyPlant], None]
         ] = [],
         g_frac: Optional[float] = 1.0,
+        contact_model: ContactModel = ContactModel.kPoint,
+        contact_approx: DiscreteContactApproximation = DiscreteContactApproximation.kSimilar,
     ) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
@@ -348,7 +356,12 @@ class MultibodyPlantDiagram:
                 fov_y=CAM_FOV,
             )
 
+        # Set contact model
+        plant.set_contact_model(contact_model)
+        plant.set_discrete_contact_approximation(contact_approx)
+
         # Adds ground plane at ``z = 0``
+
         halfspace_transform = RigidTransform_[float]()
         friction = CoulombFriction_[float](1.0, 1.0)
         plant.RegisterCollisionGeometry(
@@ -374,9 +387,6 @@ class MultibodyPlantDiagram:
         # Edit the gravitational constant.
         new_gravity_vector = np.array([0.0, 0.0, -9.81 * g_frac])
         plant.mutable_gravity_field().set_gravity_vector(new_gravity_vector)
-
-        # TODO: fix contact model
-        plant.set_discrete_contact_approximation(DiscreteContactApproximation.kSap)
 
         # TODO: Document Weld World Frame
         for name in urdfs.keys():
@@ -437,6 +447,7 @@ class MultibodyPlantDiagram:
         self.model_ids = [element for _, element in sorted_pairs]
 
         self.sim = sim
+        self.diagram = diagram
         self.plant = plant
         self.scene_graph = scene_graph
         self.visualizer = visualizer

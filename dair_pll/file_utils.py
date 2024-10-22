@@ -6,12 +6,13 @@ summary information about the content of this directory.
 """
 
 import glob
+import gin
 import json
 import os
 import random
 import pickle
 from os import path
-from typing import List, Callable, BinaryIO, Any, TextIO, Optional
+from typing import Dict, List, Callable, BinaryIO, Any, TextIO, Optional
 import xacro
 
 
@@ -93,8 +94,8 @@ def eval_extension_fixed(s):
 
 xacro.eval_extension = eval_extension_fixed
 
-
-def get_urdf_asset_contents(urdf_file_basename: str, **mappings) -> str:
+@gin.configurable
+def get_urdf_asset_contents(urdf_file_basename: str, mappings: Dict[str, str]) -> str:
     file_name = get_asset(urdf_file_basename)
     return xacro.process_file(file_name, mappings=mappings).toxml()
 

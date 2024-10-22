@@ -390,7 +390,7 @@ def main(
         urdfs=urdfs,
         additional_system_builders=additional_system_builders[0],
         additional_system_kwargs=additional_system_builders[1],
-        use_meshcat=False,
+        use_meshcat=True,
     )
 
     # how to slice trajectories into training datapoints
@@ -519,6 +519,8 @@ def main(
             size = 1
             if subkeys[0] == "contact_forces":
                 size = 3
+            elif subkeys[0] == "time":
+                size = 1
             else:
                 size = plant.GetOutputPort(subkeys[0]).size()
             carry.set(tuple(key.split(".")), torch.zeros(1, size))

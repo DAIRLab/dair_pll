@@ -39,6 +39,7 @@ import numpy as np
 import torch
 import pdb
 
+import gin
 from pydrake.geometry import SceneGraphInspector, GeometryId  # type: ignore
 from pydrake.multibody.plant import MultibodyPlant_  # type: ignore
 from pydrake.multibody.tree import JacobianWrtVariable  # type: ignore
@@ -85,6 +86,7 @@ INERTIA_TENSOR_DOF = 6
 DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 
 
+@gin.configurable
 @dataclass
 class LearnableBodySettings:
     """Class to specify which body parameters to learn"""

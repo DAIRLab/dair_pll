@@ -115,11 +115,6 @@ class TrajectorySet:
         trajectory_list = [
             traj.to(torch.get_default_device()) for traj in trajectory_list
         ]
-        for trajectory in trajectory_list:
-            # TODO: HACK add time manually
-            trajectory["time"] = torch.arange(
-                trajectory.shape[0], dtype=torch.int32
-            ).reshape(trajectory.shape + (1,))
         self.trajectories.extend(trajectory_list)
         for trajectory in trajectory_list:
             self.slices.add_slices_from_trajectory(trajectory)

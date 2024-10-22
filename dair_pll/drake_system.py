@@ -11,6 +11,7 @@ in ``MultibodyPlantDiagram`` in ``drake_utils.py``.
 import time
 from typing import Callable, Tuple, Dict, List, Optional
 
+import gin
 import torch
 from torch import Tensor
 from tensordict.tensordict import TensorDict, TensorDictBase
@@ -23,7 +24,7 @@ from dair_pll.system import System
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import MultibodyPlant
 
-
+@gin.configurable
 class DrakeSystem(System):
     """``System`` wrapper of a Drake simulation environment for a
     ``MultibodyPlant``.
@@ -46,7 +47,6 @@ class DrakeSystem(System):
         additional_system_builders: List[
             Callable[[DiagramBuilder, MultibodyPlant], None]
         ] = [],
-        g_frac: Optional[float] = 1.0,
     ) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
@@ -59,8 +59,7 @@ class DrakeSystem(System):
               Systems to the plant diagram.
         """
         plant_diagram = MultibodyPlantDiagram(
-            urdfs, dt, visualization_file, additional_system_builders, g_frac=g_frac
-        )
+            urdfs, dt, visualization_file, additional_system_builders)
 
         space = plant_diagram.generate_state_space()
         integrator = StateIntegrator(space, self.sim_step, dt)
@@ -69,7 +68,7 @@ class DrakeSystem(System):
         self.plant_diagram = plant_diagram
         self.dt = dt
         self.urdfs = urdfs
-        self.set_carry_sampler(lambda: torch.tensor([False]))
+        self.set_carry_sampler(lambda: torch.tensor([]))
 
         # Drake simulations cannot be batched
         self.max_batch_dim = 0
@@ -168,6 +167,9 @@ class DrakeSystem(System):
                             print(
                                 f"Adding {contact.contact_force()} to {key}.{bodyB_name}"
                             )
+
+                if key == "time":
+                    carry_next[key] = sim.get_mutable_context().get_time() * torch.ones((1,1))
 
                 if plant.HasOutputPort(key):
                     carry_next[key] = (
@@ -306,3 +308,21 @@ class DrakeSystem(System):
 
         # Return full state batch
         return torch.cat((ret_q, ret_v), dim=-1)
+
+@gin.configurable(denylist=['system'])
+def carry_dict_create(system: DrakeSystem, keys: Optional[List[str]] = None) -> Tensor:
+    plant = system.plant_diagram.plant
+    carry = TensorDict({}, [1])
+    if keys is None:
+        keys = []
+    for key in keys:
+        subkeys = tuple(key.split("."))
+        size = 1
+        if subkeys[0] == "contact_forces":
+            size = 3
+        elif subkeys[0] == "time":
+            size = 1
+        else:
+            size = plant.GetOutputPort(subkeys[0]).size()
+        carry.set(tuple(key.split(".")), torch.zeros(1, size))
+    return carry

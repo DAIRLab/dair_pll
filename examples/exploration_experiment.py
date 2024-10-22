@@ -2,10 +2,18 @@
 
 import os
 import sys
+from typing import Dict, List
 
 import gin
 import gin.torch
 import git
+import numpy as np
+import torch
+from torch import Tensor
+from tensordict.tensordict import TensorDict
+
+from dair_pll import file_utils, drake_controllers
+from dair_pll.drake_system import DrakeSystem, carry_dict_create
 
 
 # Repository directory (default for file operations)
@@ -14,29 +22,23 @@ REPO_DIR = os.path.normpath(
 )
 DEFAULT_CONFIG = "default.gin"
 
+# Create Initial State
+@gin.configurable(denylist=['system'])
+def sim_initial_state(
+    system: DrakeSystem, 
+    state: Dict[str, List[float]]
+) -> Tensor:
+    tdict = TensorDict({}, batch_size = (1,))
+    for key, val in state.items():
+        tdict[key + "_state"] = torch.tensor(val).reshape(1, -1)
+    return system.construct_state_tensor(tdict) # Does input validation already
+
+
+# Main Function
 @gin.configurable
 def main(
-    storage_folder_name: str = "storage",
+    storage_name: str = "storage",
     run_name: str = "default_run",
-    system: str = CUBE_SYSTEM,
-    source: str = SIM_SOURCE,
-    structured: bool = True,
-    contactnets: bool = True,
-    geometry: str = BOX_TYPE,
-    regenerate: bool = False,
-    dataset_size: int = 1,
-    learnable_params: int = 0b11000,  # Default no inertia
-    true_sys: bool = True,
-    wandb_project: str = WANDB_DEFAULT_PROJECT,
-    w_pred: float = 1e0,
-    w_comp: float = 1e0,
-    w_diss: float = 1e0,
-    w_pen: float = 2e1,
-    w_res: float = 1e0,
-    w_res_w: float = 1e0,
-    w_dev: float = 2e1,
-    do_residual: bool = False,
-    g_frac: float = 1.0,
 ):
 
     print("ContactNets With Sparse Tactile Sensing")
@@ -44,11 +46,43 @@ def main(
     print(f"Storing results at {file_utils.run_dir(storage_name, run_name)}")
 
     # Load True URDFs into Drake Base System
+    base_system = DrakeSystem()
+    # Constructs initial state vector (if not using prev. trajectory)
+    initial_state = sim_initial_state(base_system)
+    # Determines what data is recorded
+    carry_dict = carry_dict_create(base_system)
+    # Set system to initial state
+    base_system.preprocess_initial_condition(initial_state, carry_dict)
 
     # Start Input Loop
+    def print_help():
+        print("\nUsage:\n" \
+            "c - Collect Sim Data\n" \
+            "h - Print Help\n" \
+            "u - Update PID Ref\n" \
+            "q - Quit\n")
+    print_help()
+    command_char = ' '
+    while command_char != 'q':
+        command_char = input('Command $ ').split(" ")[0]
 
+        if command_char == 'h':
+            print_help()
 
-    # Interpret Input Loop:
+        elif command_char == 'c':
+            seconds = float(input("How long (s)? "))
+            trajectory, _ = base_system.simulate(initial_state, carry_dict, int(seconds/base_system.dt))
+            # Update Initial State
+            initial_state = trajectory[-1:, :]
+
+        elif command_char == 'u':
+            print("Enter comma-space-separated floats.\n")
+            updated_ref = np.array([f for f in map(float, input('New State: ').split(", "))])
+            drake_controllers.update_pid_reference(base_system, updated_ref)
+
+        elif command_char != 'q':
+            print("Warning: Unrecognized command.\n")
+    
     # Collect more Data: ask for amount of time to advance and knot points;
     ## Simulate Trajectory from previous X0
     ## Store new X0 and Trajectory
@@ -66,5 +100,5 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
     
     # Parse config file and start
-    gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file)
+    gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
     main()
