@@ -27,6 +27,7 @@ from os import path
 from typing import List, Tuple, Optional, Dict, cast
 from functools import partial
 
+import gin
 import numpy as np
 import torch
 import pdb
@@ -752,6 +753,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)
 
 
+@gin.configurable
 class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     """:py:class:`MultibodyLearnableSystem` where a model can have
     learnable trajectories."""

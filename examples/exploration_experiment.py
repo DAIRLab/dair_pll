@@ -58,14 +58,17 @@ def main(
     # Start with None current sim_trajectory
     sim_trajectory = None
 
+    # Load False URDFs into Learned System
+
+    ## TODO: Make trajectory class for different parameterizations
+    ## TODO: Make above variable length
+
     # Start Input Loop
     def print_help():
         print("\nUsage:\n" \
             "b - breakpoint()\n" \
             "c - Collect Sim Data\n" \
             "h - Print Help\n" \
-            "l - Load sim trajectory\n" \
-            "s - Save sim trajectory\n" \
             "u - Update PID Ref\n" \
             "q - Quit\n")
     print_help()
@@ -92,9 +95,6 @@ def main(
                 sim_trajectory = torch.cat((sim_trajectory, data))
             # Update Initial State
             initial_state = sim_trajectory[-1:, :]
-
-        elif command_char == 's':
-            traj_file = os.path.join(file_utils.run_dir())
 
         elif command_char == 'u':
             print("Enter comma-space-separated floats.\n")
