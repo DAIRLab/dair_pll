@@ -43,6 +43,7 @@ import torch.nn as nn
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.integrator import VelocityIntegrator
+from dair_pll.learnable_trajectory import LearnableTrajectory
 from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
 from dair_pll.quaternion import quaternion_to_rotmat_vec
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
@@ -98,7 +99,6 @@ class MultibodyLearnableSystem(DrakeSystem):
         network_depth: int = 2,
         represent_geometry_as: str = "box",
         randomize_initialization: bool = False,
-        g_frac: float = 1.0,
     ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
@@ -124,7 +124,6 @@ class MultibodyLearnableSystem(DrakeSystem):
             learnable_body_dict,
             represent_geometry_as,
             randomize_initialization,
-            g_frac=g_frac,
         )
 
         space = multibody_terms.plant_diagram.space
@@ -762,17 +761,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     r"""Map of model name to state space, ignoring spaces where n_x == 0"""
     trajectory_model: str
     r"""Name of the model corresponding to the trajectory"""
-    trajectory: ParameterList
-    r"""List of parameters length == length of trajectory, each param shape == (1, n_x)"""
+    trajectory: LearnableTrajectory
 
     # TODO: Allow multi models to have learnable trajectories
 
     def __init__(
         self,
-        trajectory_model: str,
-        traj_len: int,
-        first_contact: int = 1,  # v=0 fixed before this
-        true_traj: Optional[Tensor] = None,
+        trajectory_model_name: str,
+        init_traj_breaks: List[float],
+        init_traj_samples: Tensor,
         **kwargs,
     ) -> None:
         ## Construct Super System
