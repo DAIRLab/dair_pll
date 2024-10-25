@@ -85,7 +85,7 @@ def main(
         elif command_char == 'c':
             seconds = float(input("How long (s)? "))
             state, data = base_system.simulate(initial_state, carry_dict, int(seconds/base_system.dt))
-            data["state"] = state
+            data["state"] = state.unsqueeze(-2)
             if sim_trajectory is None:
                 sim_trajectory = torch.clone(data)
             else:
@@ -94,12 +94,15 @@ def main(
                     data["time"] += sim_trajectory["time"][-1]
                 sim_trajectory = torch.cat((sim_trajectory, data))
             # Update Initial State
-            initial_state = sim_trajectory[-1:, :]
+            initial_state = state[-1:, :]
 
         elif command_char == 'u':
             print("Enter comma-space-separated floats.\n")
             updated_ref = np.array([f for f in map(float, input('New State: ').split(", "))])
-            drake_controllers.update_pid_reference(base_system, updated_ref)
+            try:
+                drake_controllers.update_pid_reference(base_system, updated_ref)
+            except AssertionError:
+                print("Incorrect state size.")
 
         elif command_char != 'q':
             print("Warning: Unrecognized command.\n")

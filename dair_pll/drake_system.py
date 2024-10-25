@@ -308,7 +308,7 @@ class DrakeSystem(System):
 @gin.configurable(denylist=['system'])
 def carry_dict_create(system: DrakeSystem, keys: Optional[List[str]] = None) -> Tensor:
     plant = system.plant_diagram.plant
-    carry = TensorDict({}, [1])
+    carry = TensorDict({}, batch_size = (1,))
     if keys is None:
         keys = []
     for key in keys:

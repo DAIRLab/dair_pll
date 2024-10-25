@@ -305,7 +305,7 @@ class MultibodyPlantDiagram:
         ] = [],
         g_frac: Optional[float] = 1.0,
         contact_model: ContactModel = ContactModel.kPoint,
-        contact_approx: DiscreteContactApproximation = DiscreteContactApproximation.kSimilar,
+        contact_approx: DiscreteContactApproximation = DiscreteContactApproximation.kSap,
     ) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to

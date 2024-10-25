@@ -1,7 +1,7 @@
 # Default GIN Config File
 
 ## Storage
-main.storage_name = "storage"
+main.storage_folder_name = "storage"
 main.run_name = "default_run"
 
 ## General Config
@@ -27,11 +27,12 @@ carry_dict_create.keys = [
 ## Base URDF and State Config
 object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
-	"length_z": "0.1" # m
+	"length_z": "0.1", # m
+	"mu": "0.15",
 }
 object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.05,     # XYZ
+	0.1, 0.0, 0.05,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -43,7 +44,7 @@ robot/get_urdf_asset_contents.mappings = {
 	"fixed_z": "0.05" # m
 }
 robot_initial_state = [
-	0.5, -0.5, # Robot Q
+	0.3, -0.3, # Robot Q
 	0.0, 0.0,  # Robot V
 ]
 
