@@ -227,7 +227,7 @@ TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 300, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80
 T_PREDICTION = 1
 
 # Optimization configuration.
-CUBE_LR = 1e-3
+CUBE_LR = 1e-2
 ELBOW_LR = 1e-3
 ASYMMETRIC_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR, ASYMMETRIC_SYSTEM: ASYMMETRIC_LR}
@@ -351,14 +351,14 @@ def main(
     # first, select urdfs
     cube_urdf_bad = file_utils.get_urdf_asset_contents(
         "contactnets_cube.urdf.xacro",
-        **{"length_x": "0.01", "length_z": "0.01", "mu": "0.15"},
+        mappings={"length_x": "0.01", "length_z": "0.01", "mu": "0.15"},
     )
     cube_urdf_good = file_utils.get_urdf_asset_contents(
-        "contactnets_cube.urdf.xacro", **{}
+        "contactnets_cube.urdf.xacro", mappings={}
     )
     robot_urdf = file_utils.get_urdf_asset_contents(
         "spherebot.urdf.xacro",
-        **{"num_fingers": "2", "fixed_y": "0.0", "fixed_z": "0.05"},
+        mappings={"num_fingers": "2", "fixed_y": "0.0", "fixed_z": "0.05"},
     )
     urdfs = {"cube": cube_urdf_good, "robot": robot_urdf}
     bad_init_urdfs = {"cube": cube_urdf_bad, "robot": robot_urdf}
@@ -532,6 +532,7 @@ def main(
         partial(
             carry_callback,
             keys=[
+                "time",
                 "net_actuation",
                 "robot_state",
                 "contact_forces.finger_0",

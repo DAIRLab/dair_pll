@@ -314,10 +314,8 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
                 w_comp=1.0,
                 w_diss=1.0,
                 w_pen=1.0,
-                w_res=1.0,
-                w_res_w=1.0,
                 w_dev=1.0,
-                do_residual=False,
+                w_reg_iner=1.0,
                 represent_geometry_as=self.config.learnable_config.represent_geometry_as,
                 randomize_initialization=False,
             )
@@ -382,14 +380,10 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                 w_comp=learnable_config.w_comp.value,
                 w_diss=learnable_config.w_diss.value,
                 w_pen=learnable_config.w_pen.value,
-                w_res=learnable_config.w_res.value,
-                w_res_w=learnable_config.w_res_w.value,
                 w_dev=learnable_config.w_dev.value,
+                w_reg_ineer=1e-5,
                 output_urdfs_dir=output_dir,
-                do_residual=learnable_config.do_residual,
                 represent_geometry_as=learnable_config.represent_geometry_as,
-                randomize_initialization=learnable_config.randomize_initialization,
-                g_frac=learnable_config.g_frac,
             )
         return self.learned_system
 
@@ -431,20 +425,19 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         )
 
         # Calculate the average loss components.
-        losses_pred, losses_comp, losses_pen, losses_diss, losses_dev, losses_q_pred = (
-            [],
+        losses_pred, losses_comp, losses_pen, losses_diss, losses_dev= (
             [],
             [],
             [],
             [],
             [],
         )
-        residual_norm, residual_weight, inertia_cond_num = [], [], []
+        inertia_cond_num = []
         for xy_i in train_dataloader:
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
-            loss_pred, loss_comp, loss_pen, loss_diss, loss_dev, loss_q_pred = (
+            loss_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
                 learned_system.calculate_contactnets_loss_terms(
                     **self.get_loss_args(x_i, y_i, learned_system)
                 )
@@ -459,10 +452,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             losses_pen.append(loss_pen.clone().detach())
             losses_diss.append(loss_diss.clone().detach())
             losses_dev.append(loss_dev.clone().detach())
-            losses_q_pred.append(loss_q_pred.clone().detach())
-            residual_norm.append(regularizers[0].clone().detach())
-            residual_weight.append(regularizers[1].clone().detach())
-            inertia_cond_num.append(regularizers[2].clone().detach())
+            inertia_cond_num.append(regularizers[0].clone().detach())
 
         def really_weird_fix_for_cluster_only(list_of_tensors):
             """For some reason, on the cluster only, the last item in the loss
@@ -483,9 +473,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         losses_pen = really_weird_fix_for_cluster_only(losses_pen)
         losses_diss = really_weird_fix_for_cluster_only(losses_diss)
         losses_dev = really_weird_fix_for_cluster_only(losses_dev)
-        losses_q_pred = really_weird_fix_for_cluster_only(losses_q_pred)
-        residual_norm = really_weird_fix_for_cluster_only(residual_norm)
-        residual_weight = really_weird_fix_for_cluster_only(residual_weight)
         inertia_cond_num = really_weird_fix_for_cluster_only(inertia_cond_num)
 
         # Calculate average and scale by hyperparameter weights.
@@ -493,12 +480,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         w_comp = self.learnable_config.w_comp.value
         w_diss = self.learnable_config.w_diss.value
         w_pen = self.learnable_config.w_pen.value
-        w_res = self.learnable_config.w_res.value
-        w_res_w = self.learnable_config.w_res_w.value
         w_dev = self.learnable_config.w_dev.value
-
-        # TODO: HACK add to config
-        w_q_pred = 1e2
 
         avg_loss_pred = (
             w_pred * cast(Tensor, sum(losses_pred) / len(losses_pred)).mean()
@@ -511,15 +493,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             w_diss * cast(Tensor, sum(losses_diss) / len(losses_diss)).mean()
         )
         avg_loss_dev = w_dev * cast(Tensor, sum(losses_dev) / len(losses_dev)).mean()
-        avg_loss_q_pred = (
-            w_q_pred * cast(Tensor, sum(losses_q_pred) / len(losses_q_pred)).mean()
-        )
-        avg_residual_norm = (
-            w_res * cast(Tensor, sum(residual_norm) / len(residual_norm)).mean()
-        )
-        avg_residual_weight = (
-            w_res * cast(Tensor, sum(residual_weight) / len(residual_weight)).mean()
-        )
         avg_inertia_cond_num = (
             1e-5 * cast(Tensor, sum(inertia_cond_num) / len(inertia_cond_num)).mean()
         )
@@ -530,9 +503,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             + avg_loss_pen
             + avg_loss_diss
             + avg_loss_dev
-            + avg_loss_q_pred
-            + avg_residual_norm
-            + avg_residual_weight
             + avg_inertia_cond_num
         )
 
@@ -543,9 +513,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             "loss_pen": avg_loss_pen,
             "loss_diss": avg_loss_diss,
             "loss_dev": avg_loss_dev,
-            "loss_q_pred": avg_loss_q_pred,
-            #                          'loss_res_norm': avg_residual_norm,
-            #                          'loss_res_weight': avg_residual_weight,
             "loss_inertia_cond": avg_inertia_cond_num,
         }
 
@@ -577,7 +544,6 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             return DrakeSystem(
                 new_urdfs,
                 self.get_drake_system().dt,
-                g_frac=self.config.learnable_config.g_frac,
                 additional_system_builders=[
                     system_builder_from_string(string, **kwargs)
                     for string, kwargs in zip(
@@ -708,10 +674,8 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 )
             )
             self.learned_system = MultibodyLearnableSystemWithTrajectory(
-                trajectory_model=self.trajectory_model_name,
-                traj_len=traj.shape[0],
-                first_contact=first_contact,
-                true_traj=None,
+                trajectory_model_names=self.trajectory_model_name,
+                init_traj_breaks=torch.linspace(start=0.0, end=traj.shape[0]*self.config.data_config.dt, steps = (traj.shape[0]+1)),
                 init_urdfs=learnable_config.urdfs,
                 dt=self.config.data_config.dt,
                 learnable_body_dict=learnable_config.learnable_body_dict,
@@ -719,14 +683,11 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 w_comp=learnable_config.w_comp.value,
                 w_diss=learnable_config.w_diss.value,
                 w_pen=learnable_config.w_pen.value,
-                w_res=learnable_config.w_res.value,
-                w_res_w=learnable_config.w_res_w.value,
                 w_dev=learnable_config.w_dev.value,
+                w_reg_iner=1e-5,
                 output_urdfs_dir=output_dir,
-                do_residual=learnable_config.do_residual,
                 represent_geometry_as=learnable_config.represent_geometry_as,
                 randomize_initialization=learnable_config.randomize_initialization,
-                g_frac=learnable_config.g_frac,
             )
         return self.learned_system
 

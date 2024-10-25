@@ -3,9 +3,8 @@
 """Construction and use of a learnable trajectory.
 """
 
-import bisect
 import enum
-from typing import Callable, Optional, List
+from typing import Callable, Optional
 
 import gin
 import torch
@@ -18,6 +17,7 @@ from dair_pll.state_space import StateSpace, FloatingBaseSpace
 @gin.constants_from_enum
 class TrajectoryType(enum.Enum):
     """Possible interpolation schemes for trajectory"""
+
     FIRST_ORDER = 0
     CUBIC_HERMITE = 1
 
@@ -56,6 +56,10 @@ class LearnableTrajectory(Module):
             raise NotImplementedError("CubicHermite Not Implemented Yet")
         self._interp_fn = self.linear_interp
 
+    @property
+    def space(self):
+        return self._space
+
     def linear_interp(self, idx_left: Tensor, idx_right: Tensor, interp: Tensor):
         """Linear interpolation between samples, samples_dot ignored
 
@@ -67,7 +71,7 @@ class LearnableTrajectory(Module):
         Returns:
             ``(batch, self.space.n_x)`` tensor of interpolated states
         """
-        # Get Velocity. assume velocity == 0 outside trajectory
+        # Get Velocity. assume velocity == 0 before trajectory, velocity = final_velocity afterwards
         # If dt == 0, that implies config_diff should be zero, so just set dt finite
         dt = torch.maximum(
             self._breaks[idx_right] - self._breaks[idx_left],
@@ -75,14 +79,19 @@ class LearnableTrajectory(Module):
         )
         velocity = torch.div(
             self._space.configuration_difference(
-                torch.vstack(self._samples)[idx_left], torch.vstack(self._samples)[idx_right]
-            ),
+                torch.vstack(self._samples)[idx_left],
+                torch.vstack(self._samples)[idx_right],
+            ).transpose(
+                -1, -2
+            ),  # Makes broadcastable with dt
             dt,
-        )
+        ).transpose(-1, -2)
         assert velocity.shape == interp.shape + (self._space.n_v,), str(velocity.shape)
 
         # Get Position, need to use exponential() since euler_step() takes float dt
-        vstep = torch.mul(torch.mul(velocity, dt), interp)
+        vstep = torch.mul(torch.mul(velocity.transpose(-1, -2), dt), interp).transpose(
+            -1, -2
+        )
         assert vstep.shape == velocity.shape
         position = self._space.exponential(torch.vstack(self._samples)[idx_left], vstep)
 
@@ -105,8 +114,8 @@ class LearnableTrajectory(Module):
 
         Args:
             breaks: ``(batch,)`` index of each sample
-            samples: ``(batch, self._space.n_q)`` 
-            samples_dot: ``(batch, self._space.n_v)`` 
+            samples: ``(batch, self._space.n_q)``
+            samples_dot: ``(batch, self._space.n_v)``
         """
         assert breaks is not None
         if samples_dot is not None and self._samples_dot is None:
@@ -125,8 +134,8 @@ class LearnableTrajectory(Module):
         breaks_flat = breaks.flatten()
         samples_flat = samples.flatten(end_dim=-2)
         samples_dot_flat = samples_dot.flatten(end_dim=-2)
-        assert samples_flat.size() == breaks.size() + (self._space.n_q,)
-        assert samples_dot_flat.size() == breaks.size() + (self._space.n_v,)
+        assert samples_flat.size() == breaks_flat.size() + (self._space.n_q,)
+        assert samples_dot_flat.size() == breaks_flat.size() + (self._space.n_v,)
 
         # Insert parameters into trajectory
         for break_idx in range(breaks_flat.numel()):
@@ -136,15 +145,23 @@ class LearnableTrajectory(Module):
             sample_dot_insert = Parameter(
                 torch.clone(samples_dot_flat[break_idx, :]), requires_grad=True
             )
-            idx = bisect.bisect(self._breaks, breaks_flat[break_idx])
+            idx = torch.searchsorted(self._breaks, breaks_flat[break_idx])
             # if already in trajectory, update, else insert
-            if idx > 0 and self._breaks[idx] == breaks_flat[break_idx]:
+            if (
+                0 < idx < len(self._breaks)
+                and self._breaks[idx] == breaks_flat[break_idx]
+            ):
                 self._samples[idx - 1] = sample_insert
                 if self._samples_dot is not None:
                     self._samples_dot[idx - 1] = sample_dot_insert
             else:
                 self._breaks = torch.cat(
-                    [self._breaks[:idx], breaks_flat[break_idx].reshape(1), self._breaks[idx:]], 0
+                    [
+                        self._breaks[:idx],
+                        breaks_flat[break_idx].reshape(1),
+                        self._breaks[idx:],
+                    ],
+                    0,
                 )
                 self._samples.insert(idx, sample_insert)
                 self._samples_registered.append(sample_insert)
@@ -167,7 +184,7 @@ class LearnableTrajectory(Module):
         times_flat = torch.flatten(times)
 
         # Get Index on either side of interp
-        # bisec_left enforces left-polynomial derivative at breaks
+        # searchsorted enforces left-polynomial derivative at breaks
         idx_right = torch.minimum(
             torch.searchsorted(self._breaks, times_flat),
             (len(self._breaks) - 1) * torch.ones_like(times_flat).int(),
@@ -183,6 +200,7 @@ class LearnableTrajectory(Module):
             0.0,
             1.0,
         )
+        interp[interp.isnan()] = 0.0
 
         return self._interp_fn(idx_left, idx_right, interp).reshape(
             times.size() + (self._space.n_x,)
@@ -193,36 +211,76 @@ class LearnableTrajectory(Module):
 if __name__ == "__main__":
     test_space = FloatingBaseSpace(n_joints=0)
     traj = LearnableTrajectory(test_space)
-    
+
     # Test is_empty
     assert traj.empty()
 
     # Test Empty Interpolation
     ret = traj(torch.tensor([1.0, 2.0, 3.0]))
-    assert ret.shape == (3, 7+6), str(ret) # n_x == n_q(7) + n_v(6)
+    assert ret.shape == (3, 7 + 6), str(ret)  # n_x == n_q(7) + n_v(6)
 
     assert torch.all(ret[0, :] == test_space.zero_state())
     assert torch.all(ret[1, :] == test_space.zero_state())
     assert torch.all(ret[2, :] == test_space.zero_state())
 
-    assert len([param for param in traj.parameters()]) == 0
+    assert len(list(traj.parameters())) == 0
+
+    sample0 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+    sample1 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]])
+    sample2 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0]])
 
     # Add single knot point
-    sample0 = torch.tensor([[1., 0., 0., 0., 0., 0., 0.]])
-    sample1 = torch.tensor([[1., 0., 0., 0., 0., 0., 1.]])
-    sample2 = torch.tensor([[1., 0., 0., 0., 0., 0., 2.]])
-    traj.add_breaks(torch.tensor([1.]), sample1)
+    traj.add_breaks(torch.tensor([1.0]), sample1)
 
     # 0 velocity everywhere, all at sample1
-    assert torch.all(traj(torch.tensor([-0.5])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([-0.5])))
-    assert torch.all(traj(torch.tensor([ 0.0])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([ 0.0])))
-    assert torch.all(traj(torch.tensor([ 0.5])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([ 0.5])))
-    assert torch.all(traj(torch.tensor([ 1.0])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([ 1.0])))
-    assert torch.all(traj(torch.tensor([ 1.5])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([ 1.5])))
-    assert torch.all(traj(torch.tensor([ 2.0])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([ 2.0])))
-    assert torch.all(traj(torch.tensor([ 2.5])) == torch.hstack((sample1, torch.tensor([[0., 0., 0., 0., 0., 0.]])))), str(traj(torch.tensor([ 2.5])))
+    assert torch.all(
+        traj(torch.tensor([-0.5]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([-0.5])))
+    assert torch.all(
+        traj(torch.tensor([0.0]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([0.0])))
+    assert torch.all(
+        traj(torch.tensor([0.5]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([0.5])))
+    assert torch.all(
+        traj(torch.tensor([1.0]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([1.0])))
+    assert torch.all(
+        traj(torch.tensor([1.5]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([1.5])))
+    assert torch.all(
+        traj(torch.tensor([2.0]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([2.0])))
+    assert torch.all(
+        traj(torch.tensor([2.5]))
+        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
+    ), str(traj(torch.tensor([2.5])))
 
     # Added a single parameter
-    assert len([param for param in traj.parameters()]) == 1
+    assert len(list(traj.parameters())) == 1
 
+    # Add other 2 knot points
+    traj.add_breaks(torch.tensor([[0.0], [2.0]]), torch.vstack([sample0, sample2]))
+    assert len(list(traj.parameters())) == 3
 
+    got = traj(torch.tensor([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5]))
+    want = torch.tensor(
+        [
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    test = got == want
+    assert torch.all(test), str(f"Got: {got}\n\n Test: {test}")
+    print("All Tests Passed!")

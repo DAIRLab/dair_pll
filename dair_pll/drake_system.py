@@ -271,10 +271,6 @@ class DrakeSystem(System):
         if not isinstance(data_state, TensorDictBase):
             return data_state
 
-        # TODO: HACK "state" is hard-coded, switch to local arg
-        if "state" in data_state:
-            return data_state["state"]
-
         # Construct Model States and Sanitize Input
         model_states = []  # List of Tensors shape (batch, space_n_x)
         for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
