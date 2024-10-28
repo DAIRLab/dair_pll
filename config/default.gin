@@ -7,9 +7,13 @@ main.run_name = "default_run"
 ## General Config
 robot_model_name = "robot"
 object_model_name = "cube"
+# The actual Drake body name within the object model
+object_body_name = "cube_body" 
+delta_t = 0.0068
+get_loss_args.object_body_name = %object_body_name
 
 ## Base Drake System
-DrakeSystem.dt = 0.0068 # seconds
+DrakeSystem.dt = %delta_t # seconds
 DrakeSystem.urdfs = { 
 	%object_model_name: @object/get_urdf_asset_contents(), 
 	%robot_model_name: @robot/get_urdf_asset_contents()
@@ -58,3 +62,53 @@ DrakeSystem.additional_system_builders = [@pid_controller_builder]
 pid_controller_builder.model_name = %robot_model_name
 pid_controller_builder.kp = 10.0
 pid_controller_builder.kd = 10.0
+
+
+## Learnable URDF and State Config
+LearnableSystem.trajectory_model_names = %object_model_name
+LearnableSystem.init_urdfs = { 
+	%object_model_name: @object_init/get_urdf_asset_contents(), 
+	%robot_model_name: @robot/get_urdf_asset_contents()
+}
+LearnableSystem.dt = %delta_t # seconds
+LearnableSystem.learnable_body_dict = { 
+	%object_body_name: @object_init/LearnableBodySettings()
+}
+LearnableSystem.represent_geometry_as = "box"
+
+# Learning Optimizer
+main.optimizer_cls = @SGD
+SGD.lr=5e-4
+
+# Initial guesses
+object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object_init/get_urdf_asset_contents.mappings = {
+	"length_z": "0.1", # m
+	"mu": "0.15",
+}
+LearnableSystem.init_traj_breaks = [0.]
+LearnableSystem.init_traj_samples = [[1., 0., 0., 0., 0., 0., 0.]]
+
+# What is learnable
+object_init/LearnableBodySettings.inertia_mass = False
+object_init/LearnableBodySettings.inertia_com = False
+object_init/LearnableBodySettings.inertia_moments_products = False
+object_init/LearnableBodySettings.geometry = True
+object_init/LearnableBodySettings.friction = True
+
+# Learning weights
+LearnableSystem.w_pred=5e1
+LearnableSystem.w_comp = 1e0
+LearnableSystem.w_diss = 1e0
+LearnableSystem.w_pen = 2e1
+LearnableSystem.w_dev = 2e5
+LearnableSystem.w_reg_iner = 1e-5
+
+# Data Configuration
+TrajectorySliceConfig.shuffle = False
+TrajectorySliceConfig.his_state_keys = [
+	"robot_state", "net_actuation", "contact_forces", "time"
+]
+TrajectorySliceConfig.pred_state_keys = [
+	"robot_state", "time"
+]

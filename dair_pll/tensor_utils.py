@@ -8,13 +8,32 @@ with the following exceptions:
       :py:mod:`dair_pll.quaternion`
 """
 
-from typing import List, cast
+from typing import List, cast, Optional, Any
 
 import torch
 from torch import Tensor
 from torch.autograd import Function
 import numpy as np
 import scipy.linalg
+
+# Enable default_collate for TensorDict
+from tensordict.tensordict import TensorDict
+
+def collate_tensordict_fn(batch, *, collate_fn_map: Optional[Any] = None):
+    out = None
+    if torch.utils.data.get_worker_info() is not None:
+        # If we're in a background process, concatenate directly into a
+        # shared memory tensor to avoid an extra copy
+        numel = sum(x.numel() for x in batch)
+        storage = elem._typed_storage()._new_shared(numel, device=elem.device)
+        out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+    return torch.stack(batch, 0, out=out)
+
+
+torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = (
+    collate_tensordict_fn
+)
+
 
 ####
 #### Batched Sqrt Function from: https://github.com/pytorch/pytorch/issues/25481#issuecomment-576493693

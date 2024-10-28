@@ -106,7 +106,6 @@ class MultibodyLearnableSystem(DrakeSystem):
             init_urdfs,
             learnable_body_dict,
             represent_geometry_as,
-            randomize_initialization,
         )
 
         space = multibody_terms.plant_diagram.space
@@ -131,7 +130,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         self.w_diss = w_diss
         self.w_dev = w_dev
         self.w_pen = w_pen
-        self.w_reg_iner =w_reg_iner
+        self.w_reg_iner = w_reg_iner
 
         # Match DrakeSystem Attributes
         self.urdfs = self.init_urdfs
@@ -193,7 +192,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         if contact_forces is None:
             contact_forces = {}
 
-        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev= (
+        loss_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
             self.calculate_contactnets_loss_terms(x, u, x_plus, contact_forces)
         )
 
@@ -391,9 +390,7 @@ class MultibodyLearnableSystem(DrakeSystem):
                 pbmm(
                     reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
                 ),  # Quadratic Term
-                pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(
-                    -1
-                ),  # Linear Term
+                pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1),  # Linear Term
             )
             .detach()
             .unsqueeze(-1),
@@ -472,9 +469,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             mu_list,
         )
 
-    def forward_dynamics(
-        self, q: Tensor, v: Tensor, u: Tensor
-    ) -> Tensor:
+    def forward_dynamics(self, q: Tensor, v: Tensor, u: Tensor) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
         Implements Anitescu's [1] convex formulation in dual form, derived
@@ -561,9 +556,7 @@ class MultibodyLearnableSystem(DrakeSystem):
                 pbmm(
                     reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)
                 ),  # Quadratic Term
-                pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(
-                    -1
-                ),  # Linear Term
+                pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),  # Linear Term
             )
             .detach()
             .unsqueeze(-1),
@@ -608,7 +601,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         return SystemSummary(scalars=scalars, videos=videos, meshes=meshes)
 
 
-@gin.configurable
+@gin.configurable("LearnableSystem")
 class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     """:py:class:`MultibodyLearnableSystem` where a model can have
     learnable trajectories."""
@@ -622,8 +615,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     def __init__(
         self,
         trajectory_model_names: Union[List[str], str],
-        init_traj_breaks: Tensor,
-        init_traj_samples: Optional[Tensor] = None,
+        init_traj_breaks: Optional[Union[List[float], Tensor]] = None,
+        init_traj_samples: Optional[Union[List[List[float]], Tensor]] = None,
         **kwargs,
     ) -> None:
         ## Construct Super System
@@ -646,7 +639,42 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         ## Create Trajectory Parameters
         self._trajectory = LearnableTrajectory(ProductSpace(traj_spaces))
-        self._trajectory.add_breaks(init_traj_breaks, init_traj_samples)
+        if init_traj_breaks is not None:
+            init_breaks = (
+                init_traj_breaks
+                if isinstance(init_traj_breaks, Tensor)
+                else torch.tensor(init_traj_breaks)
+            )
+            init_samples = init_traj_samples
+            if init_samples is not None:
+                init_samples = (
+                    init_traj_samples
+                    if isinstance(init_traj_samples, Tensor)
+                    else torch.tensor(init_traj_samples)
+                )
+            self._trajectory.add_breaks(init_breaks, init_samples)
+
+    def extend_traj_to(self, new_end_time: float, delta_t: Optional[float] = None):
+        """Append evenly spaced knots to learnable trajectory to new end time"""
+        if delta_t is None:
+            delta_t = self.dt
+        assert delta_t > 0.0, f"Invalid delta_t {delta_t}"
+        old_end_time = self._trajectory.end_time()
+        old_end_x = self._trajectory(torch.tensor([old_end_time])).clone().detach()
+        old_end_q = self._trajectory.space.q(old_end_x)
+        assert len(old_end_q.shape) == 2
+        assert old_end_q.shape[0] == 1
+
+        if new_end_time < old_end_time + delta_t:
+            return
+        n_steps = int((new_end_time - old_end_time) / delta_t)
+        new_breaks = torch.linspace(old_end_time + delta_t, new_end_time, n_steps)
+        new_samples = old_end_q.expand(len(new_breaks), -1)
+        self._trajectory.add_breaks(new_breaks, new_samples)
+
+    def extend_traj_by(self, additional_time: float, delta_t: Optional[float] = None):
+        """Append additional time with evenly spaced knots to learnable trajectory"""
+        self.extend_traj_to(self._trajectory.end_time() + additional_time, delta_t)
 
     def construct_state_tensor(
         self, data_state: Tensor, state_key: Optional[str] = None

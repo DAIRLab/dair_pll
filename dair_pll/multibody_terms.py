@@ -846,7 +846,6 @@ class MultibodyTerms(Module):
         urdfs: Dict[str, str],
         learnable_body_dict: Dict[str, LearnableBodySettings] = {},
         represent_geometry_as: str = "box",
-        randomize_initialization: bool = False,
         g_frac: float = 1.0,
     ) -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs

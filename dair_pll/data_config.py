@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
 from typing import List
 
+import gin
 
+
+@gin.configurable
 @dataclass
 class TrajectorySliceConfig:
     """:func:`~dataclasses.dataclass` for configuring a trajectory slicing
@@ -19,6 +22,8 @@ class TrajectorySliceConfig:
     r"""If set, interpret input as TensorDict and use these keys for prediction."""
     shuffle: bool = True
     r"""Whether to shuffle data during training."""
+    batch_size: int = -1
+    r"""Batch size, set to -1 to use all data in a single batch."""
 
     def __post_init__(self):
         """Method to check validity of parameters."""

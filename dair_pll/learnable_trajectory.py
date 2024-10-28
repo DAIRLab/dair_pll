@@ -101,6 +101,14 @@ class LearnableTrajectory(Module):
         """Does trajectory have any knot points"""
         return len(self._breaks) == 0
 
+    def start_time(self) -> float:
+        """Return first time of trajectory"""
+        return float(self._breaks[0])
+
+    def end_time(self) -> float:
+        """Return last time of trajectory"""
+        return float(self._breaks[-1])
+
     @torch.no_grad()
     def add_breaks(
         self,
