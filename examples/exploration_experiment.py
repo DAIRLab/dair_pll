@@ -55,8 +55,8 @@ def get_loss_args(
 
     # Get last time of past and first of future
     # Remove extraneous dimensions
-    past = x_past[..., -1, :].squeeze(-1)
-    plus = x_future[..., 0, :].squeeze(-1)
+    past = x_past[..., -1]
+    plus = x_future[..., 0]
 
     # Construct State
     x_past = system.construct_state_tensor(past)

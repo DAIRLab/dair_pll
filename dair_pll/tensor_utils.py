@@ -34,6 +34,10 @@ torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = (
     collate_tensordict_fn
 )
 
+def tensor_is_int(tensor: Tensor):
+    """Returns true if tensor is of any torch integral type"""
+    return tensor.dtype == torch.int or tensor.dtype == torch.long or tensor.dtype == torch.short
+
 
 ####
 #### Batched Sqrt Function from: https://github.com/pytorch/pytorch/issues/25481#issuecomment-576493693

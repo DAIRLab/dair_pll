@@ -10,6 +10,7 @@ from typing import List, Tuple, Optional, cast
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+from tensordict import TensorDictBase
 
 from dair_pll import file_utils
 from dair_pll.data_config import TrajectorySliceConfig, DataConfig
@@ -32,6 +33,8 @@ class TrajectorySliceDataset(Dataset):
     r"""Initial conditions of duration ``self.config.t_history`` ."""
     future_states_slices: List[Tensor]
     r"""Future targets of duration ``self.config.t_prediction`` ."""
+    n_trajectories: int
+    r"""Number of distinct trajectories in dataset"""
 
     def __init__(self, config: TrajectorySliceConfig):
         """
@@ -41,6 +44,7 @@ class TrajectorySliceDataset(Dataset):
         self.config = config
         self.previous_states_slices = []  # type: List[Tensor]
         self.future_states_slices = []  # type: List[Tensor]
+        self.n_trajectories = 0
 
     def add_slices_from_trajectory(self, trajectory: Tensor) -> None:
         """Incorporate trajectory into dataset as a set of slices.
@@ -58,7 +62,7 @@ class TrajectorySliceDataset(Dataset):
             his_state = trajectory[(index + 1 - previous_states_length) : (index + 1)]
             if len(self.config.his_state_keys) > 0:
                 # Only keep requested state keys
-                for key in [key for key in his_state.keys()]:
+                for key in list(his_state.keys()):
                     if key not in self.config.his_state_keys:
                         del his_state[key]
             self.previous_states_slices.append(his_state)
@@ -66,10 +70,12 @@ class TrajectorySliceDataset(Dataset):
             pred_state = trajectory[(index + 1) : (index + 1 + future_states_length)]
             if len(self.config.pred_state_keys) > 0:
                 # Only keep requested state keys
-                for key in [key for key in pred_state.keys()]:
+                for key in list(pred_state.keys()):
                     if key not in self.config.pred_state_keys:
                         del pred_state[key]
             self.future_states_slices.append(pred_state)
+
+        self.n_trajectories += 1
 
     def __len__(self) -> int:
         """Length of dataset as number of total slice pairs."""
@@ -115,10 +121,17 @@ class TrajectorySet:
         trajectory_list = [
             traj.to(torch.get_default_device()) for traj in trajectory_list
         ]
+        for traj_num, trajectory in enumerate(trajectory_list):
+            if isinstance(trajectory, TensorDictBase):
+                # Don't lose index or trajectory number
+                trajectory["index"] = torch.arange(
+                    trajectory.shape[0], dtype=torch.int
+                ).reshape(trajectory.shape + (1,))
+                trajectory["traj_num"] = traj_num * torch.ones(
+                    trajectory.shape[0], dtype=torch.int
+                ).reshape(trajectory.shape + (1,))
+            self.slices.add_slices_from_trajectory(trajectory.squeeze())
         self.trajectories.extend(trajectory_list)
-        for trajectory in trajectory_list:
-            self.slices.add_slices_from_trajectory(trajectory)
-        # pylint: disable=no-member
         self.indices = torch.cat([self.indices, indices.to(torch.get_default_device())])
 
 

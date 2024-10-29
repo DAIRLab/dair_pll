@@ -2,9 +2,7 @@
 
 """Construction and use of a learnable trajectory.
 """
-
-import enum
-from typing import Callable, Optional
+from typing import Optional
 
 import gin
 import torch
@@ -12,283 +10,121 @@ from torch import Tensor
 from torch.nn import Module, ParameterList, Parameter
 
 from dair_pll.state_space import StateSpace, FloatingBaseSpace
-
-
-@gin.constants_from_enum
-class TrajectoryType(enum.Enum):
-    """Possible interpolation schemes for trajectory"""
-
-    FIRST_ORDER = 0
-    CUBIC_HERMITE = 1
+from dair_pll.tensor_utils import tensor_is_int
 
 
 @gin.configurable(denylist=["space"])
-class LearnableTrajectory(Module):
+class LearnableTrajectories(Module):
     """
     Piecewise Polynomial Learnable Trajectory
     """
 
-    _breaks: Tensor
-    _samples: Tensor
-    _samples_dot: Tensor
-    _samples_registered: ParameterList
+    _trajectories_xn: ParameterList
+    _trajectories_x0: ParameterList
     _space: StateSpace
-    _type: TrajectoryType
-
-    _interp_fn: Callable[[int, int, float], Tensor]
 
     def __init__(
         self,
         space: StateSpace,
-        traj_type: TrajectoryType = TrajectoryType.FIRST_ORDER,
+        init_state: Optional[Tensor] = None,
     ) -> None:
         super().__init__()
         self._space = space
-        self._type = traj_type
-        self._breaks = torch.tensor([])
-        self._samples = []
-        self._samples_registered = ParameterList([])
+        self._trajectories = ParameterList([])
+        self._trajectories_x0 = ParameterList([])
 
-        self._samples_dot = None
-        if traj_type == TrajectoryType.CUBIC_HERMITE:
-            self._samples_dot = []
-            # TODO: Add cubic interp function
-            raise NotImplementedError("CubicHermite Not Implemented Yet")
-        self._interp_fn = self.linear_interp
+        init_x0 = self._space.zero_state()
+        if init_state is not None:
+            assert init_state.size == (self.n_x,)
+            init_x0 = init_state.detach().clone()
+
+        self._trajectories_x0.append(Parameter(init_x0, requires_grad=True))
 
     @property
     def space(self):
+        """StateSpace of this trajectory"""
         return self._space
 
-    def linear_interp(self, idx_left: Tensor, idx_right: Tensor, interp: Tensor):
-        """Linear interpolation between samples, samples_dot ignored
-
-        Args:
-            idx_left: ``(batch,)`` starting break index
-            idx_right: ``(batch,)`` ending break index
-            interp: ``(batch,)`` floats in [0,1]
-
-        Returns:
-            ``(batch, self.space.n_x)`` tensor of interpolated states
-        """
-        # Get Velocity. assume velocity == 0 before trajectory, velocity = final_velocity afterwards
-        # If dt == 0, that implies config_diff should be zero, so just set dt finite
-        dt = torch.maximum(
-            self._breaks[idx_right] - self._breaks[idx_left],
-            1e-8 * torch.ones_like(idx_left),
-        )
-        velocity = torch.div(
-            self._space.configuration_difference(
-                torch.vstack(self._samples)[idx_left],
-                torch.vstack(self._samples)[idx_right],
-            ).transpose(
-                -1, -2
-            ),  # Makes broadcastable with dt
-            dt,
-        ).transpose(-1, -2)
-        assert velocity.shape == interp.shape + (self._space.n_v,), str(velocity.shape)
-
-        # Get Position, need to use exponential() since euler_step() takes float dt
-        vstep = torch.mul(torch.mul(velocity.transpose(-1, -2), dt), interp).transpose(
-            -1, -2
-        )
-        assert vstep.shape == velocity.shape
-        position = self._space.exponential(torch.vstack(self._samples)[idx_left], vstep)
-
-        return self._space.x(position, velocity)
-
-    def empty(self) -> bool:
-        """Does trajectory have any knot points"""
-        return len(self._breaks) == 0
-
-    def start_time(self) -> float:
-        """Return first time of trajectory"""
-        return float(self._breaks[0])
-
-    def end_time(self) -> float:
-        """Return last time of trajectory"""
-        return float(self._breaks[-1])
-
-    @torch.no_grad()
-    def add_breaks(
+    @torch.no_grad
+    def add_trajectory(
         self,
-        breaks: Tensor,
-        samples: Optional[Tensor] = None,
-        samples_dot: Optional[Tensor] = None,
+        traj_len: int,
+        init_states: Optional[Tensor] = None,
     ):
         """
-        Adds breaks to the trajectory.
-        If no samples are given, defaults to zero-state
+        Registers new trajectory parameters of length `traj_len`
+        If no init_states are given, default to 0-state.
+
+        init_states can be a single state, i.e. ``(n_x,)``
+        Or every state in the trajectory can be defined, i.e. ``(traj_len, n_x)``
+
+        Implementation Note:
+        traj_i[0] maps to self._trajectories_x0[i]
+        traj_i[traj_len_i-1] maps to self._trajectories_x0[i+1]
+        """
+
+        traj_idx = len(self._trajectories)
+        new_x0 = self._trajectories_x0[traj_idx].clone().detach()
+        new_trajectory = new_x0.clone().repeat(traj_len - 2, 1)
+        next_x0 = new_x0.clone()
+        if init_states is None:
+            pass
+        elif init_states.size() == (self._space.n_x,):
+            new_x0 = init_states.clone().detach()
+            new_trajectory = new_x0.clone().repeat(traj_len - 2, 1)
+            next_x0 = new_x0.clone()
+        elif init_states.size() == (
+            traj_len,
+            self._space.n_x,
+        ):
+            new_x0 = init_states[0, :].clone().detach()
+            new_trajectory = init_states[1:-1, :].clone.detach()
+            next_x0 = init_states[-1, :].clone().detach()
+        else:
+            raise ValueError(f"Invalid init_states size: {init_states.size()}")
+
+        assert new_x0.size() == (self._space.n_x,), str(new_x0.size())
+        assert next_x0.size() == (self._space.n_x,), str(next_x0.size())
+        assert new_trajectory.size() == (traj_len - 2, self._space.n_x)
+
+        self._trajectories_x0[traj_idx].copy_(new_x0)
+        self._trajectories.append(Parameter(new_trajectory, requires_grad=True))
+        self._trajectories_x0.append(Parameter(next_x0, requires_grad=True))
+
+    def forward(self, traj_nums: Tensor, indices: Tensor) -> Tensor:
+        """Returns a batch of trajectory states.
 
         Args:
-            breaks: ``(batch,)`` index of each sample
-            samples: ``(batch, self._space.n_q)``
-            samples_dot: ``(batch, self._space.n_v)``
+            traj_nums: torch.int tensor ``(batch,)``
+            indices: torch.int tensor ``(batch,)``
         """
-        assert breaks is not None
-        if samples_dot is not None and self._samples_dot is None:
-            print("WARNING: cannot add samples_dot to trajectory. Ignoring...")
 
-        if samples is None:
-            samples = self._space.q(self._space.zero_state()).expand(
-                breaks.size() + (self._space.n_q,)
-            )
-        if samples_dot is None:
-            samples_dot = self._space.v(self._space.zero_state()).expand(
-                breaks.size() + (self._space.n_v,)
-            )
+        assert tensor_is_int(traj_nums) and tensor_is_int(
+            indices
+        ), "Inputs must be torch.int Tensors"
+        assert (
+            traj_nums.size() == indices.size()
+        ), f"Batch dims don't match: ({traj_nums.size()}), ({indices.size()})"
+        traj_nums_flat = traj_nums.flatten()
+        indices_flat = indices.flatten()
+        ret = torch.zeros(traj_nums.numel(), self._space.n_x)
 
-        # Flatten Tensors
-        breaks_flat = breaks.flatten()
-        samples_flat = samples.flatten(end_dim=-2)
-        samples_dot_flat = samples_dot.flatten(end_dim=-2)
-        assert samples_flat.size() == breaks_flat.size() + (self._space.n_q,)
-        assert samples_dot_flat.size() == breaks_flat.size() + (self._space.n_v,)
-
-        # Insert parameters into trajectory
-        for break_idx in range(breaks_flat.numel()):
-            sample_insert = Parameter(
-                torch.clone(samples_flat[break_idx, :]), requires_grad=True
-            )
-            sample_dot_insert = Parameter(
-                torch.clone(samples_dot_flat[break_idx, :]), requires_grad=True
-            )
-            idx = torch.searchsorted(self._breaks, breaks_flat[break_idx])
-            # if already in trajectory, update, else insert
-            if (
-                0 < idx < len(self._breaks)
-                and self._breaks[idx] == breaks_flat[break_idx]
-            ):
-                self._samples[idx - 1] = sample_insert
-                if self._samples_dot is not None:
-                    self._samples_dot[idx - 1] = sample_dot_insert
+        for idx, (traj_num, traj_index) in enumerate(zip(traj_nums_flat, indices_flat)):
+            assert traj_num >= 0, f"Invalid trajectory number {traj_num}"
+            assert traj_index >= 0, f"Invalid trajectory index {traj_index}"
+            if traj_index == 0:
+                ret[idx] = self._trajectories_x0[traj_num]
+            elif traj_index == len(self._trajectories[traj_num]) + 1:
+                ret[idx] = self._trajectories_x0[traj_num + 1]
             else:
-                self._breaks = torch.cat(
-                    [
-                        self._breaks[:idx],
-                        breaks_flat[break_idx].reshape(1),
-                        self._breaks[idx:],
-                    ],
-                    0,
-                )
-                self._samples.insert(idx, sample_insert)
-                self._samples_registered.append(sample_insert)
-                if self._samples_dot is not None:
-                    self._samples_dot.insert(idx, sample_dot_insert)
-                    self._samples_registered.append(sample_dot_insert)
+                ret[idx] = self._trajectories[traj_num][traj_index - 1, :]
 
-    def forward(self, times: Tensor) -> Tensor:
-        """Returns a set of interpolated trajectory points.
-        times is a batch of scalars, i.e. shape [batch,]
-        """
-        # If empty returns zero-state
-        if self.empty():
-            return (
-                self._space.zero_state()
-                .reshape(len(times.shape) * (1,) + (self._space.n_x,))
-                .expand(times.size() + (-1,))
-            )
-
-        times_flat = torch.flatten(times)
-
-        # Get Index on either side of interp
-        # searchsorted enforces left-polynomial derivative at breaks
-        idx_right = torch.minimum(
-            torch.searchsorted(self._breaks, times_flat),
-            (len(self._breaks) - 1) * torch.ones_like(times_flat).int(),
-        )
-        idx_left = torch.maximum((idx_right - 1), torch.zeros_like(times_flat).int())
-
-        # Interp Param in [0, 1], if idx_left == ide_right, denom = 0 -> div = inf, clamps to 1
-        interp = torch.clamp(
-            torch.div(
-                (times_flat - self._breaks[idx_left]),
-                (self._breaks[idx_right] - self._breaks[idx_left]),
-            ),
-            0.0,
-            1.0,
-        )
-        interp[interp.isnan()] = 0.0
-
-        return self._interp_fn(idx_left, idx_right, interp).reshape(
-            times.size() + (self._space.n_x,)
-        )
+        return ret.reshape(traj_nums.size() + (self._space.n_x,))
 
 
 ### Unit tests
 if __name__ == "__main__":
     test_space = FloatingBaseSpace(n_joints=0)
-    traj = LearnableTrajectory(test_space)
+    traj = LearnableTrajectories(test_space)
 
-    # Test is_empty
-    assert traj.empty()
-
-    # Test Empty Interpolation
-    ret = traj(torch.tensor([1.0, 2.0, 3.0]))
-    assert ret.shape == (3, 7 + 6), str(ret)  # n_x == n_q(7) + n_v(6)
-
-    assert torch.all(ret[0, :] == test_space.zero_state())
-    assert torch.all(ret[1, :] == test_space.zero_state())
-    assert torch.all(ret[2, :] == test_space.zero_state())
-
-    assert len(list(traj.parameters())) == 0
-
-    sample0 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
-    sample1 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]])
-    sample2 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0]])
-
-    # Add single knot point
-    traj.add_breaks(torch.tensor([1.0]), sample1)
-
-    # 0 velocity everywhere, all at sample1
-    assert torch.all(
-        traj(torch.tensor([-0.5]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([-0.5])))
-    assert torch.all(
-        traj(torch.tensor([0.0]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([0.0])))
-    assert torch.all(
-        traj(torch.tensor([0.5]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([0.5])))
-    assert torch.all(
-        traj(torch.tensor([1.0]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([1.0])))
-    assert torch.all(
-        traj(torch.tensor([1.5]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([1.5])))
-    assert torch.all(
-        traj(torch.tensor([2.0]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([2.0])))
-    assert torch.all(
-        traj(torch.tensor([2.5]))
-        == torch.hstack((sample1, torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])))
-    ), str(traj(torch.tensor([2.5])))
-
-    # Added a single parameter
-    assert len(list(traj.parameters())) == 1
-
-    # Add other 2 knot points
-    traj.add_breaks(torch.tensor([[0.0], [2.0]]), torch.vstack([sample0, sample2]))
-    assert len(list(traj.parameters())) == 3
-
-    got = traj(torch.tensor([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5]))
-    want = torch.tensor(
-        [
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-        ]
-    )
-    test = got == want
-    assert torch.all(test), str(f"Got: {got}\n\n Test: {test}")
     print("All Tests Passed!")

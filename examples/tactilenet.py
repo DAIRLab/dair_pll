@@ -227,7 +227,7 @@ TRAJECTORY_LENGTHS = {CUBE_SYSTEM: 300, ELBOW_SYSTEM: 120, ASYMMETRIC_SYSTEM: 80
 T_PREDICTION = 1
 
 # Optimization configuration.
-CUBE_LR = 1e-2
+CUBE_LR = 1e-3
 ELBOW_LR = 1e-3
 ASYMMETRIC_LR = 1e-3
 LRS = {CUBE_SYSTEM: CUBE_LR, ELBOW_SYSTEM: ELBOW_LR, ASYMMETRIC_SYSTEM: ASYMMETRIC_LR}
@@ -256,13 +256,11 @@ def main(
     true_sys: bool = True,
     wandb_project: str = WANDB_DEFAULT_PROJECT,
     w_pred: float = 1e0,
+    w_q_pred: float = 1e2,
     w_comp: float = 1e0,
     w_diss: float = 1e0,
     w_pen: float = 2e1,
-    w_res: float = 1e0,
-    w_res_w: float = 1e0,
     w_dev: float = 2e1,
-    do_residual: bool = False,
     g_frac: float = 1.0,
 ):
     """Execute ContactNets basic example on a system.
@@ -280,12 +278,11 @@ def main(
         true_sys: Whether to start with the "true" URDF or poor initialization.
         wandb_project: What W&B project to store results under.
         w_pred: Weight of prediction term in ContactNets loss.
+        w_q_pred: Weight of q prediction term in ContactNets loss.
         w_comp: Weight of complementarity term in ContactNets loss.
         w_diss: Weight of dissipation term in ContactNets loss.
         w_pen: Weight of penetration term in ContactNets loss.
-        w_res: Weight of residual regularization term in loss.
         w_dev: Weight of deviation from measured contact forces term in loss.
-        do_residual: Whether to add residual physics block.
         g_frac: Fraction of gravity to use with initial model.
     """
     # pylint: disable=too-many-locals, too-many-arguments
@@ -309,9 +306,8 @@ def main(
         + f"\n\twith geometry represented as: {geometry}"
         + f"\n\tregenerate: {regenerate}"
         + f"\n\tlearnable params: {learnable_params} == {learnable_settings}"
-        + f"\n\tloss weights (pred, comp, diss, pen, res, res_w, dev): "
-        + f"({w_pred}, {w_comp}, {w_diss}, {w_pen}, {w_res}, {w_res_w}, {w_dev})"
-        + f"\n\twith residual: {do_residual}"
+        + f"\n\tloss weights (pred, q_pred, comp, diss, pen, dev): "
+        + f"({w_pred}, {w_q_pred}, {w_comp}, {w_diss}, {w_pen}, {w_dev})"
         + f"\n\tand starting with provided true_sys={true_sys}"
         + f"\n\twith gravity fraction (if gravity): {g_frac}"
     )
@@ -398,10 +394,10 @@ def main(
     # Give actuation and contact forces simulated from previous time step
     # NOTE: Simulation goes (calc net actuation/forces -> calc next state), so
     # next state's net_actuation / contact_forces are from the previous time step.
-    # TODO: HACK "time" is needed to index into predicted trajectory
+    # NOTE: need traj_num and index to index trajectory
     slice_config = TrajectorySliceConfig(
-        his_state_keys=["robot_state", "net_actuation", "contact_forces", "time"],
-        pred_state_keys=["robot_state", "time"],
+        his_state_keys=["robot_state", "net_actuation", "contact_forces", "traj_num", "index"],
+        pred_state_keys=["robot_state", "traj_num", "index"],
         shuffle=False,
     )
 
@@ -428,13 +424,11 @@ def main(
             loss=loss,
             learnable_body_dict={"cube_body": learnable_settings},
             w_pred=w_pred,
+            w_q_pred=Float(w_q_pred, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_comp=Float(w_comp, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_diss=Float(w_diss, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_pen=Float(w_pen, log=True, distribution=DEFAULT_WEIGHT_RANGE),
-            w_res=Float(w_res, log=True, distribution=DEFAULT_WEIGHT_RANGE),
-            w_res_w=Float(w_res_w, log=True, distribution=DEFAULT_WEIGHT_RANGE),
             w_dev=Float(w_dev, log=True, distribution=DEFAULT_WEIGHT_RANGE),
-            do_residual=do_residual,
             represent_geometry_as=geometry,
             # TODO: Re-add
             # randomize_initialization = not true_sys,
@@ -618,6 +612,12 @@ def main(
     help="weight of prediction term in ContactNets loss",
 )
 @click.option(
+    "--w-q-pred",
+    type=float,
+    default=1e2,
+    help="weight of q prediction term in ContactNets loss",
+)
+@click.option(
     "--w-comp",
     type=float,
     default=1e0,
@@ -636,27 +636,10 @@ def main(
     help="weight of penetration term in ContactNets loss",
 )
 @click.option(
-    "--w-res",
-    type=float,
-    default=1e0,
-    help="weight of residual norm regularization term in loss",
-)
-@click.option(
-    "--w-res-w",
-    type=float,
-    default=1e0,
-    help="weight of residual weight regularization term in loss",
-)
-@click.option(
     "--w-dev",
     type=float,
     default=2e5,
     help="weight of deviation from measured contact forces in ContactNets loss",
-)
-@click.option(
-    "--residual/--no-residual",
-    default=False,
-    help="whether to include residual physics or not.",
 )
 @click.option(
     "--g-frac", type=float, default=1e0, help="fraction of gravity constant to use."
@@ -675,13 +658,11 @@ def main_command(
     true_sys: bool,
     wandb_project: str,
     w_pred: float,
+    w_q_pred: float,
     w_comp: float,
     w_diss: float,
     w_pen: float,
-    w_res: float,
-    w_res_w: float,
     w_dev: float,
-    residual: bool,
     g_frac: float,
 ):
     """Executes main function with argument interface."""
@@ -702,13 +683,11 @@ def main_command(
         true_sys,
         wandb_project,
         w_pred,
+        w_q_pred,
         w_comp,
         w_diss,
         w_pen,
-        w_res,
-        w_res_w,
         w_dev,
-        residual,
         g_frac,
     )
 

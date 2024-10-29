@@ -79,24 +79,16 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """What body parameters to learn.  Any body not in this dictionary will be considered unlearnable."""
     w_pred: float = 1.0
     """Weight of prediction term in ContactNets loss (suggested keep at 1.0)."""
+    w_q_pred: Float = Float(1e0, log=True)
+    """Weight of q prediction term in ContactNets loss."""
     w_comp: Float = Float(1e0, log=True)  # 1e-1
     """Weight of complementarity term in ContactNets loss."""
     w_diss: Float = Float(1e0, log=True)
     """Weight of dissipation term in ContactNets loss."""
     w_pen: Float = Float(1e0, log=True)  # 1e1
     """Weight of penetration term in ContactNets loss."""
-    w_res: Float = Float(1e0, log=True)
-    """Weight of residual norm in loss."""
-    w_res_w: Float = Float(1e0, log=True)
-    """Weight of residual weights in loss."""
     w_dev: Float = Float(1e0, log=True)
     """Weight of deviation from measured contact forces."""
-    do_residual: bool = False
-    """Whether to include a residual physics block."""
-    network_width: int = 128
-    """Width of residual network."""
-    network_depth: int = 2
-    """Depth of residual network."""
     represent_geometry_as: str = "box"
     """How to represent geometry (box, mesh, or polygon)."""
     randomize_initialization: bool = True
@@ -311,6 +303,7 @@ class DrakeExperiment(SupervisedLearningExperiment, ABC):
                 init_urdfs=urdfs,
                 dt=dt,
                 w_pred=1.0,
+                w_q_pred=1.0,
                 w_comp=1.0,
                 w_diss=1.0,
                 w_pen=1.0,
@@ -377,6 +370,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
                 self.config.data_config.dt,
                 learnable_body_dict=learnable_config.learnable_body_dict,
                 w_pred=learnable_config.w_pred,
+                w_q_pred=learnable_config.w_q_pred.value,
                 w_comp=learnable_config.w_comp.value,
                 w_diss=learnable_config.w_diss.value,
                 w_pen=learnable_config.w_pen.value,
@@ -425,7 +419,8 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         )
 
         # Calculate the average loss components.
-        losses_pred, losses_comp, losses_pen, losses_diss, losses_dev= (
+        losses_pred, losses_q_pred, losses_comp, losses_pen, losses_diss, losses_dev= (
+            [],
             [],
             [],
             [],
@@ -437,7 +432,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             x_i: Tensor = xy_i[0]
             y_i: Tensor = xy_i[1]
 
-            loss_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
+            loss_pred, loss_q_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
                 learned_system.calculate_contactnets_loss_terms(
                     **self.get_loss_args(x_i, y_i, learned_system)
                 )
@@ -448,6 +443,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             )
 
             losses_pred.append(loss_pred.clone().detach())
+            losses_q_pred.append(loss_pred.clone().detach())
             losses_comp.append(loss_comp.clone().detach())
             losses_pen.append(loss_pen.clone().detach())
             losses_diss.append(loss_diss.clone().detach())
@@ -469,6 +465,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
             return list_of_tensors
 
         losses_pred = really_weird_fix_for_cluster_only(losses_pred)
+        losses_q_pred = really_weird_fix_for_cluster_only(losses_q_pred)
         losses_comp = really_weird_fix_for_cluster_only(losses_comp)
         losses_pen = really_weird_fix_for_cluster_only(losses_pen)
         losses_diss = really_weird_fix_for_cluster_only(losses_diss)
@@ -477,6 +474,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         # Calculate average and scale by hyperparameter weights.
         w_pred = self.learnable_config.w_pred
+        w_q_pred = self.learnable_config.w_q_pred.value
         w_comp = self.learnable_config.w_comp.value
         w_diss = self.learnable_config.w_diss.value
         w_pen = self.learnable_config.w_pen.value
@@ -484,6 +482,9 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         avg_loss_pred = (
             w_pred * cast(Tensor, sum(losses_pred) / len(losses_pred)).mean()
+        )
+        avg_loss_q_pred = (
+            w_q_pred * cast(Tensor, sum(losses_q_pred) / len(losses_q_pred)).mean()
         )
         avg_loss_comp = (
             w_comp * cast(Tensor, sum(losses_comp) / len(losses_comp)).mean()
@@ -499,6 +500,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
 
         avg_loss_total = torch.sum(
             avg_loss_pred
+            + avg_loss_q_pred
             + avg_loss_comp
             + avg_loss_pen
             + avg_loss_diss
@@ -509,6 +511,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         loss_breakdown = {
             "loss_total": avg_loss_total,
             "loss_pred": avg_loss_pred,
+            "loss_q_pred": avg_loss_q_pred,
             "loss_comp": avg_loss_comp,
             "loss_pen": avg_loss_pen,
             "loss_diss": avg_loss_diss,
@@ -675,11 +678,11 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             )
             self.learned_system = MultibodyLearnableSystemWithTrajectory(
                 trajectory_model_names=self.trajectory_model_name,
-                init_traj_breaks=torch.linspace(start=0.0, end=traj.shape[0]*self.config.data_config.dt, steps = (traj.shape[0]+1)),
                 init_urdfs=learnable_config.urdfs,
                 dt=self.config.data_config.dt,
                 learnable_body_dict=learnable_config.learnable_body_dict,
                 w_pred=learnable_config.w_pred,
+                w_q_pred=learnable_config.w_q_pred.value,
                 w_comp=learnable_config.w_comp.value,
                 w_diss=learnable_config.w_diss.value,
                 w_pen=learnable_config.w_pen.value,
@@ -689,6 +692,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 represent_geometry_as=learnable_config.represent_geometry_as,
                 randomize_initialization=learnable_config.randomize_initialization,
             )
+            self.learned_system.add_trajectories(traj_lens=[traj.shape[0]])
         return self.learned_system
 
     def trajectory_predict(
@@ -797,7 +801,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
                 continue
 
             for system_name, system in systems.items():
-                trajectories = [t.unsqueeze(0).squeeze(-1) for t in trajectories]
+                trajectories = [traj.unsqueeze(0).squeeze(-1) for traj in trajectories]
                 traj_pred, traj_target = self.trajectory_predict(
                     trajectories, system, True
                 )
@@ -959,17 +963,12 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
     ) -> Dict[str, Any]:
 
         # Get last time of past and first of future
-        # Remove extraneous dimensions
-        # TODO: HACK remove squeeze in case batch dim == 1
-        # TODO: Check that 2nd to last is the slice index and not the extraneous 1.
-        past = x_past[..., -1, :].squeeze()
-        plus = x_future[..., 0, :].squeeze()
+        past = x_past[..., -1]
+        plus = x_future[..., 0]
 
         # Construct State
         x_past = system.construct_state_tensor(past)
         x_plus = system.construct_state_tensor(plus)
-
-        # breakpoint()
 
         # Actuation
         control = past["net_actuation"]

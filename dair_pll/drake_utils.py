@@ -80,6 +80,9 @@ CAM_FOV = np.pi / 6
 VIDEO_PIXELS = [480, 640]
 FPS = 30
 
+# dt of underlying sim (unrelated to data collection dt passed in)
+SIM_DT = 1e-4
+
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
 # to fit the actual trajectory.
 SENSOR_RPY = np.array([-np.pi / 2, 0.0, -0.1])
@@ -253,7 +256,7 @@ def add_plant_from_urdfs(
         New plant, which has been added to builder.
         Scene graph associated with new plant.
     """
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, dt)
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, SIM_DT)
     parser = Parser(plant)
     parser.SetAutoRenaming(True)
 

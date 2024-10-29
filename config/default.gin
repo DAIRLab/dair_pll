@@ -32,11 +32,11 @@ carry_dict_create.keys = [
 object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
 	"length_z": "0.1", # m
-	"mu": "0.15",
+	"mu": "0.05",
 }
 object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.05,     # XYZ
+	0.1, 0.0, 0.05,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -86,7 +86,7 @@ object_init/get_urdf_asset_contents.mappings = {
 	"length_x": "0.1",
 	"length_y": "0.1",
 	"length_z": "0.1", # m
-	"mu": "0.15",
+	"mu": "0.05",
 }
 LearnableSystem.init_traj_breaks = [0.]
 LearnableSystem.init_traj_samples = [[1., 0., 0., 0., 0., 0., 0.05]]
@@ -99,7 +99,8 @@ object_init/LearnableBodySettings.geometry = True
 object_init/LearnableBodySettings.friction = True
 
 # Learning weights
-LearnableSystem.w_pred=5e1
+LearnableSystem.w_pred = 5e1
+LearnableSystem.w_q_pred = 1e2
 LearnableSystem.w_comp = 1e0
 LearnableSystem.w_diss = 1e0
 LearnableSystem.w_pen = 2e1
