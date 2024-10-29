@@ -36,7 +36,7 @@ object/get_urdf_asset_contents.mappings = {
 }
 object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.1, 0.0, 0.05,     # XYZ
+	0.0, 0.0, 0.05,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -77,17 +77,19 @@ LearnableSystem.learnable_body_dict = {
 LearnableSystem.represent_geometry_as = "box"
 
 # Learning Optimizer
-main.optimizer_cls = @SGD
-SGD.lr=5e-4
+main.optimizer_cls = @Adam
+Adam.lr=1e-4
 
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
+	"length_x": "0.1",
+	"length_y": "0.1",
 	"length_z": "0.1", # m
 	"mu": "0.15",
 }
 LearnableSystem.init_traj_breaks = [0.]
-LearnableSystem.init_traj_samples = [[1., 0., 0., 0., 0., 0., 0.]]
+LearnableSystem.init_traj_samples = [[1., 0., 0., 0., 0., 0., 0.05]]
 
 # What is learnable
 object_init/LearnableBodySettings.inertia_mass = False

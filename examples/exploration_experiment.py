@@ -155,6 +155,7 @@ def main(
     learned_system = MultibodyLearnableSystemWithTrajectory(
         output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
     )
+    learned_summary = learned_system.summary({})
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
     data_config = TrajectorySliceConfig()
@@ -234,6 +235,8 @@ def main(
                 train_loss = train_epoch(traj_dataloader, learned_system, optimizer)
                 total_epochs += 1
                 print(total_epochs, train_loss)
+
+            learned_summary = learned_system.summary({})
 
             print("Training done!")
 
