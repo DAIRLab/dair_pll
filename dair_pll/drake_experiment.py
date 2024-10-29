@@ -652,30 +652,6 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
             output_dir = file_utils.get_learned_urdf_dir(
                 self.config.storage, self.config.run_name
             )
-            # Get first_contact time
-            # TODO: set force threshold
-            first_contact = int(
-                np.min(
-                    np.array(
-                        [
-                            np.argmax(
-                                np.any(
-                                    ~np.isclose(
-                                        traj["contact_forces"][key]
-                                        .detach()
-                                        .cpu()
-                                        .numpy()
-                                        .squeeze(),
-                                        0.0,
-                                    ),
-                                    axis=1,
-                                )
-                            )
-                            for key in traj["contact_forces"].keys()
-                        ]
-                    )
-                )
-            )
             self.learned_system = MultibodyLearnableSystemWithTrajectory(
                 trajectory_model_names=self.trajectory_model_name,
                 init_urdfs=learnable_config.urdfs,
