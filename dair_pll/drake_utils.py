@@ -22,30 +22,22 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Tuple, Dict, List, Optional, Union, Type, cast, TypeAlias
 
-import pdb
 import math
 import enum
 import gin
 
-# TODO: put in place
-from pydrake.all import (
-    MeshcatVisualizer,
-    StartMeshcat,
-    Meshcat
-)
-
-import matplotlib.pyplot as plt
 import numpy as np
-from pydrake.autodiffutils import AutoDiffXd  # type: ignore
 
-# pylint: disable-next=import-error
+# TODO: put in place
+from pydrake.all import MeshcatVisualizer, StartMeshcat, BodyIndex, ContactResults, Value  # type: ignore
+
+from pydrake.autodiffutils import AutoDiffXd  # type: ignore
 from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
 
 # pylint: disable-next=import-error
 from pydrake.geometry import SceneGraphInspector_, GeometryId  # type: ignore
 from pydrake.math import RigidTransform, RollPitchYaw, RigidTransform_  # type: ignore
 from pydrake.multibody.parsing import Parser  # type: ignore
-import pydrake.multibody
 from pydrake.multibody.plant import (
     AddMultibodyPlantSceneGraph,
     CoulombFriction_,
@@ -60,8 +52,7 @@ from pydrake.multibody.tree import SpatialInertia_  # type: ignore
 from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
-from pydrake.systems.drawing import plot_system_graphviz
-from pydrake.systems.framework import DiagramBuilder, DiagramBuilder_  # type: ignore
+from pydrake.systems.framework import DiagramBuilder, DiagramBuilder_, LeafSystem  # type: ignore
 
 # pylint: disable-next=import-error
 from pydrake.visualization import VideoWriter  # type: ignore
@@ -72,7 +63,6 @@ WORLD_GROUND_PLANE_NAME = "world_ground_plane"
 DRAKE_MATERIAL_GROUP = "material"
 DRAKE_FRICTION_PROPERTY = "coulomb_friction"
 N_DRAKE_FLOATING_BODY_VELOCITIES = 6
-DEFAULT_DT = 1e-3
 
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
@@ -80,7 +70,7 @@ CAM_FOV = np.pi / 6
 VIDEO_PIXELS = [480, 640]
 FPS = 30
 
-# dt of underlying sim (unrelated to data collection dt passed in)
+# dt of underlying sim
 SIM_DT = 1e-4
 
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
@@ -239,7 +229,7 @@ def get_collision_geometry_set(
 
 
 def add_plant_from_urdfs(
-    builder: DrakeDiagramBuilder, urdfs: Dict[str, str], dt: float
+    builder: DrakeDiagramBuilder, urdfs: Dict[str, str], delta_t: float
 ) -> Tuple[List[ModelInstanceIndex], MultibodyPlant, SceneGraph]:
     """Add plant to builder with prescribed URDF models.
 
@@ -248,7 +238,7 @@ def add_plant_from_urdfs(
     Args:
         builder: Diagram builder to add plant to
         urdfs: Names and corresponding URDFs to add as models to plant.
-        dt: Time step of plant in seconds.
+        delta_t: Time step of plant in seconds.
 
     Returns:
         Named dictionary of model instances returned by
@@ -256,7 +246,7 @@ def add_plant_from_urdfs(
         New plant, which has been added to builder.
         Scene graph associated with new plant.
     """
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, SIM_DT)
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, delta_t)
     parser = Parser(plant)
     parser.SetAutoRenaming(True)
 
@@ -273,7 +263,82 @@ def add_plant_from_urdfs(
 
     return model_ids, plant, scene_graph
 
-@gin.configurable('PlantDiagram', allowlist=['g_frac', 'contact_model', 'contact_approx'])
+
+class ContactForceAveragerLeafSystem(LeafSystem):
+    """Create a Drake ``LeafSystem`` which can average all point-point
+    contact in the contact results between resets.
+    """
+
+    _average_index: int  # Abstract State Index
+    _n_index: int  # Discrete State Index
+
+    def __init__(self, contact_body_indices: List[BodyIndex]):
+        super().__init__()
+
+        # Create an input port for the current state of the system.
+        self._contact_results_input_port = self.DeclareAbstractInputPort(
+            "contact_results", Value(ContactResults())
+        )
+
+        self.DeclarePerStepUnrestrictedUpdateEvent(self.integrate_contact_results)
+        forces_dict = {}
+        for body_idx in contact_body_indices:
+            forces_dict[int(body_idx)] = np.zeros(3)
+        self._average_index = self.DeclareAbstractState(
+            Value(forces_dict)
+        )  # Averaged Forces
+        self._n_index = self.DeclareDiscreteState(1)  # Number of samples in average
+
+    def get_value(self, context):
+        self.ValidateContext(context)
+        return context.get_abstract_state(self._average_index).get_value()
+
+    def reset(self, context):
+        self.ValidateContext(context)
+
+        old_n = context.get_mutable_discrete_state(self._n_index)
+        old_n[0] = 0
+
+        old_averages = context.get_mutable_abstract_state(
+            self._average_index
+        ).get_mutable_value()
+        for key in old_averages.keys():
+            old_averages[key] = np.zeros(3)
+
+    def integrate_contact_results(self, context, state_next):
+        self.ValidateContext(context)
+        # Evaluate the input ports to obtain the current multibody plant state.
+        contact_results = self._contact_results_input_port.Eval(context)
+        old_n = context.get_mutable_discrete_state(self._n_index)
+        old_averages = context.get_mutable_abstract_state(
+            self._average_index
+        ).get_mutable_value()
+        new_val = {}
+        for key in old_averages.keys():
+            new_val[key] = np.zeros(3)
+
+        for idx in range(contact_results.num_point_pair_contacts()):
+            contact = contact_results.point_pair_contact_info(idx)
+            a_idx = int(contact.bodyA_index())
+            b_idx = int(contact.bodyB_index())
+            new_val[a_idx] = new_val[a_idx] - contact.contact_force()
+            new_val[b_idx] = new_val[b_idx] + contact.contact_force()
+
+        for key in old_averages.keys():
+            old_averages[key] = (
+                old_averages[key] * float(old_n[0]) + new_val[key]
+            ) / float(old_n[0] + 1)
+
+        # State updates
+        old_n[0] = old_n[0] + 1
+        state_next.get_mutable_discrete_state().set_value(np.array([old_n[0]]))
+        state_next.get_mutable_abstract_state().get_mutable_value(self._average_index).SetFrom(Value(old_averages))
+        
+
+
+@gin.configurable(
+    "PlantDiagram", allowlist=["g_frac", "contact_model", "contact_approx", "delta_t"]
+)
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a visualizer
     for a multibody system described in a list of URDF's.
@@ -290,6 +355,7 @@ class MultibodyPlantDiagram:
     # pylint: disable=too-few-public-methods
     sim: Simulator
     plant: MultibodyPlant
+    averager: ContactForceAveragerLeafSystem
     scene_graph: SceneGraph
     visualizer: Optional[Union[VideoWriter, MeshcatVisualizer]]
     model_ids: List[ModelInstanceIndex]
@@ -298,34 +364,37 @@ class MultibodyPlantDiagram:
 
     gin.constants_from_enum(cast(ContactModel, enum.Enum))
     gin.constants_from_enum(cast(DiscreteContactApproximation, enum.Enum))
+
     def __init__(
         self,
         urdfs: Dict[str, str],
-        dt: float = DEFAULT_DT,
         visualization_file: Optional[str] = None,
-        additional_system_builders: List[
-            Callable[[DrakeDiagramBuilder, MultibodyPlant], None]
-        ] = [],
+        additional_system_builders: Optional[
+            List[Callable[[DrakeDiagramBuilder, MultibodyPlant], None]]
+        ] = None,
+        delta_t: float = SIM_DT,
         g_frac: Optional[float] = 1.0,
         contact_model: ContactModel = ContactModel.kPoint,
         contact_approx: DiscreteContactApproximation = DiscreteContactApproximation.kSap,
     ) -> None:
         r"""Initialization generates a world containing each given URDF as a
         model instance, and a corresponding Drake ``Simulator`` set up to
-        trigger a state update every ``dt``.
+        trigger a state update every ``delta_t``.
 
         By default, a ground plane is added at world height ``z = 0``.
 
         Args:
             urdfs: Names and corresponding URDFs to add as models to plant.
-            dt: Time step of plant in seconds.
+            delta_t: Time step of plant in seconds.
             visualization_file: Optional output GIF filename for trajectory
               visualization.
             additional_system_builders: Optional functions that add additional Drake
               Systems to the plant diagram.
         """
+        if additional_system_builders is None:
+            additional_system_builders = []
         builder = DiagramBuilder()
-        model_ids, plant, scene_graph = add_plant_from_urdfs(builder, urdfs, dt)
+        model_ids, plant, scene_graph = add_plant_from_urdfs(builder, urdfs, delta_t)
 
         # Add visualizer to diagram if enabled. Sets ``delete_prefix_on_load``
         # to False, in the hopes of saving computation time; may cause
@@ -383,9 +452,8 @@ class MultibodyPlantDiagram:
         )
 
         # get collision candidates before default context filters for proximity.
-        self.collision_geometry_set = get_collision_geometry_set(
-            scene_graph.model_inspector()
-        )
+        inspector = scene_graph.model_inspector()
+        self.collision_geometry_set = get_collision_geometry_set(inspector)
 
         # Edit the gravitational constant.
         new_gravity_vector = np.array([0.0, 0.0, -9.81 * g_frac])
@@ -405,6 +473,18 @@ class MultibodyPlantDiagram:
 
         # Finalize multibody plant.
         plant.Finalize()
+
+        # Create Contact Forces Averager
+        contact_body_indices = [
+            get_body_from_geometry_id(plant, inspector, geom_id).index()
+            for geom_id in self.collision_geometry_set.ids
+        ]
+        self.averager = builder.AddSystem(
+            ContactForceAveragerLeafSystem(contact_body_indices)
+        )
+        builder.Connect(
+            plant.get_contact_results_output_port(), self.averager.get_input_port()
+        )
 
         # Call Additional System Builders
         for additional_system in additional_system_builders:

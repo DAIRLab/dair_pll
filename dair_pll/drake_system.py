@@ -12,6 +12,8 @@ import time
 from typing import Callable, Tuple, Dict, List, Optional
 
 import gin
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.multibody.plant import MultibodyPlant
 import torch
 from torch import Tensor
 from tensordict.tensordict import TensorDict, TensorDictBase
@@ -21,8 +23,7 @@ from dair_pll.drake_utils import MultibodyPlantDiagram
 from dair_pll.integrator import StateIntegrator
 from dair_pll.state_space import ProductSpace
 from dair_pll.system import System
-from pydrake.systems.framework import DiagramBuilder
-from pydrake.multibody.plant import MultibodyPlant
+
 
 @gin.configurable
 class DrakeSystem(System):
@@ -44,9 +45,9 @@ class DrakeSystem(System):
         urdfs: Dict[str, str],
         dt: float,
         visualization_file: Optional[str] = "meshcat",
-        additional_system_builders: List[
-            Callable[[DiagramBuilder, MultibodyPlant], None]
-        ] = [],
+        additional_system_builders: Optional[
+            List[Callable[[DiagramBuilder, MultibodyPlant], None]]
+        ] = None,
     ) -> None:
         """Inits ``DrakeSystem`` with provided model URDFs.
 
@@ -58,8 +59,12 @@ class DrakeSystem(System):
             additional_system_builders: Optional functions that add additional Drake
               Systems to the plant diagram.
         """
+        if additional_system_builders is None:
+            additional_system_builders = []
+
         plant_diagram = MultibodyPlantDiagram(
-            urdfs, dt, visualization_file, additional_system_builders)
+            urdfs, visualization_file, additional_system_builders
+        )
 
         space = plant_diagram.generate_state_space()
         integrator = StateIntegrator(space, self.sim_step, dt)
@@ -72,6 +77,8 @@ class DrakeSystem(System):
 
         # Drake simulations cannot be batched
         self.max_batch_dim = 0
+
+        self.prev_time = time.time()
 
     def preprocess_initial_condition(
         self, x_0: Tensor, carry_0: Tensor
@@ -137,39 +144,32 @@ class DrakeSystem(System):
         return cur_time_quantized
 
     def populate_carry(self, carry: Tensor) -> Tensor:
+        """
+        Populate the carry tensor with the requested plant state
+        """
         sim = self.plant_diagram.sim
         plant = self.plant_diagram.plant
+        cf_averager = self.plant_diagram.averager
         new_plant_context = plant.GetMyMutableContextFromRoot(sim.get_mutable_context())
+        new_cf_context = cf_averager.GetMyMutableContextFromRoot(
+            sim.get_mutable_context()
+        )
         carry_next = torch.clone(carry.detach())
-        if type(carry) == TensorDict:
+        if isinstance(carry, TensorDict):
             for key in carry.keys():
                 if key == "contact_forces":
+                    cf_averages = cf_averager.get_value(new_cf_context)
                     for body_name in carry[key].keys():
-                        carry_next[key][body_name] = torch.zeros(3).reshape(1, -1)
-                    contact_results = plant.get_contact_results_output_port().Eval(
-                        new_plant_context
-                    )
-                    for idx in range(contact_results.num_point_pair_contacts()):
-                        contact = contact_results.point_pair_contact_info(idx)
-                        bodyA_name = plant.get_body(contact.bodyA_index()).name()
-                        bodyB_name = plant.get_body(contact.bodyB_index()).name()
-                        if bodyA_name in carry[key].keys():
-                            carry_next[key][bodyA_name] -= torch.tensor(
-                                contact.contact_force()
-                            ).reshape(1, -1)
-                            print(
-                                f"Subtracting {contact.contact_force()} from {key}.{bodyA_name}"
-                            )
-                        elif bodyB_name in carry[key].keys():
-                            carry_next[key][bodyB_name] += torch.tensor(
-                                contact.contact_force()
-                            ).reshape(1, -1)
-                            print(
-                                f"Adding {contact.contact_force()} to {key}.{bodyB_name}"
-                            )
+                        body_idx = int(plant.GetBodyByName(body_name).index())
+                        carry_next[key][body_name] = torch.tensor(
+                            cf_averages[body_idx].copy()
+                        ).reshape(1, 3)
+                    cf_averager.reset(new_cf_context)
 
                 if key == "time":
-                    carry_next[key] = sim.get_mutable_context().get_time() * torch.ones((1,1))
+                    carry_next[key] = sim.get_mutable_context().get_time() * torch.ones(
+                        (1, 1)
+                    )
 
                 if plant.HasOutputPort(key):
                     carry_next[key] = (
@@ -212,7 +212,8 @@ class DrakeSystem(System):
         # input("Step...")
         # Real Time Sim
         sleep_time = max(self.dt - (time.time() - self.prev_time), 0.0)
-        time.sleep(sleep_time)
+        if sleep_time > 0.:
+            time.sleep(sleep_time)
         self.prev_time = time.time()
 
         return torch.tensor(x_next), carry_next
@@ -305,10 +306,14 @@ class DrakeSystem(System):
         # Return full state batch
         return torch.cat((ret_q, ret_v), dim=-1)
 
-@gin.configurable(denylist=['system'])
+
+@gin.configurable(denylist=["system"])
 def carry_dict_create(system: DrakeSystem, keys: Optional[List[str]] = None) -> Tensor:
+    """
+    Create an empty carry dictionary given the keys
+    """
     plant = system.plant_diagram.plant
-    carry = TensorDict({}, batch_size = (1,))
+    carry = TensorDict({}, batch_size=(1,))
     if keys is None:
         keys = []
     for key in keys:

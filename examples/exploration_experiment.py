@@ -18,11 +18,11 @@ from torch.utils.data import DataLoader
 from tensordict.tensordict import TensorDict
 
 # tensor_utils required for TensorDict's collate_fn
-from dair_pll import file_utils, drake_controllers, tensor_utils
-from dair_pll.data_config import TrajectorySliceConfig
-from dair_pll.dataset_management import TrajectorySliceDataset
+# pylint: disable-next=unused-import
+from dair_pll import tensor_utils
+from dair_pll import file_utils, drake_controllers
+from dair_pll.dataset_management import TrajectorySet
 from dair_pll.drake_system import DrakeSystem, carry_dict_create
-from dair_pll.drake_utils import get_body_names_in_model_instance
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
 
 
@@ -125,6 +125,7 @@ def main(
     storage_folder_name: str = "storage",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
+    use_true_traj: bool = False,
 ):
     """Main function for online learning loop"""
     # pylint: disable=R0915, R0912, R0914
@@ -147,8 +148,8 @@ def main(
     # Set system to initial state
     base_system.preprocess_initial_condition(initial_state, carry_dict)
 
-    # Start with None current sim_trajectory
-    sim_trajectory = None
+    # Set of Simulated Trajectories
+    sim_trajectories = TrajectorySet()
 
     # Load False URDFs into Learned System
     print("Loading Learned System...")
@@ -158,7 +159,6 @@ def main(
     learned_summary = learned_system.summary({})
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
-    data_config = TrajectorySliceConfig()
     traj_dataloader = None
     total_epochs = 0
 
@@ -183,6 +183,7 @@ def main(
             print_help()
 
         elif command_char == "b":
+            # pylint: disable-next=forgotten-debug-statement
             breakpoint()
 
         elif command_char == "c":
@@ -193,29 +194,31 @@ def main(
                 initial_state, carry_dict, int(seconds / base_system.dt)
             )
             data["state"] = state.unsqueeze(-2)
-            if sim_trajectory is None:
-                sim_trajectory = torch.clone(data)
-            else:
-                # Adjust time and append
+            if len(sim_trajectories.trajectories) > 0:
+                # Adjust time to be after previous trajectory
                 if "time" in data:
-                    data["time"] += sim_trajectory["time"][-1]
-                sim_trajectory = torch.cat((sim_trajectory, data))
+                    data["time"] += sim_trajectories.trajectories[-1]["time"][-1]
+            sim_trajectories.add_trajectories(
+                [data.clone().detach()],
+                torch.tensor([len(sim_trajectories.trajectories)], dtype=torch.int),
+            )
 
             # Extend Learnable Trajectory
-            learned_system.extend_traj_to(float(sim_trajectory[-1]["time"]))
+            learned_system.add_trajectories(
+                traj_lens=[state.shape[0]],
+                traj_data=[state] if use_true_traj else None,
+            )
 
             # Re-init optimizer and data-loader
-            traj_dataset = TrajectorySliceDataset(data_config)
-            traj_dataset.add_slices_from_trajectory(sim_trajectory)
             batch_size = (
-                len(traj_dataset)
-                if data_config.batch_size == -1
-                else data_config.batch_size
+                len(sim_trajectories.slices)
+                if sim_trajectories.slices.config.batch_size == -1
+                else sim_trajectories.slices.config.batch_size
             )
             traj_dataloader = DataLoader(
-                traj_dataset,
+                sim_trajectories.slices,
                 batch_size=batch_size,
-                shuffle=data_config.shuffle,
+                shuffle=sim_trajectories.slices.config.shuffle,
                 generator=torch.Generator(device=torch.get_default_device()),
             )
             optimizer = optimizer_cls(learned_system.parameters())
@@ -224,7 +227,7 @@ def main(
             initial_state = state[-1:, :]
 
         elif command_char == "t":
-            if sim_trajectory is None or traj_dataloader is None:
+            if traj_dataloader is None:
                 print("Cannot train without sim data.\n")
                 continue
 

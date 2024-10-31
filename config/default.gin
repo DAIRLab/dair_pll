@@ -88,8 +88,10 @@ object_init/get_urdf_asset_contents.mappings = {
 	"length_z": "0.1", # m
 	"mu": "0.05",
 }
-LearnableSystem.init_traj_breaks = [0.]
-LearnableSystem.init_traj_samples = [[1., 0., 0., 0., 0., 0., 0.05]]
+LearnableSystem.init_traj_state = [
+	1., 0., 0., 0., 0., 0., 0.05, # Q
+	0., 0., 0., 0., 0., 0.,
+]
 
 # What is learnable
 object_init/LearnableBodySettings.inertia_mass = False
@@ -108,10 +110,12 @@ LearnableSystem.w_dev = 2e5
 LearnableSystem.w_reg_iner = 1e-5
 
 # Data Configuration
+# traj_num, index required for proper learned trajectory indexing
+# Added by default in TrajectorySet()
 TrajectorySliceConfig.shuffle = False
 TrajectorySliceConfig.his_state_keys = [
-	"robot_state", "net_actuation", "contact_forces", "time"
+	"robot_state", "net_actuation", "contact_forces", "traj_num", "index"
 ]
 TrajectorySliceConfig.pred_state_keys = [
-	"robot_state", "time"
+	"robot_state", "traj_num", "index"
 ]

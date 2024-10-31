@@ -36,12 +36,12 @@ class TrajectorySliceDataset(Dataset):
     n_trajectories: int
     r"""Number of distinct trajectories in dataset"""
 
-    def __init__(self, config: TrajectorySliceConfig):
+    def __init__(self, config: Optional[TrajectorySliceConfig] = None):
         """
         Args:
             config: configuration object for slice dataset.
         """
-        self.config = config
+        self.config = config if config is not None else TrajectorySliceConfig()
         self.previous_states_slices = []  # type: List[Tensor]
         self.future_states_slices = []  # type: List[Tensor]
         self.n_trajectories = 0
@@ -97,7 +97,7 @@ class TrajectorySet:
         * Indices associated with on-disk location for experiment resumption.
     """
 
-    slices: TrajectorySliceDataset
+    slices: TrajectorySliceDataset = field(default_factory=TrajectorySliceDataset)
     """Trajectories rendered as a dataset of time slices."""
     trajectories: List[Tensor] = field(default_factory=lambda: [])
     """Trajectories in their raw format."""

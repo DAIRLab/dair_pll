@@ -35,7 +35,7 @@ class LearnableTrajectories(Module):
 
         init_x0 = self._space.zero_state()
         if init_state is not None:
-            assert init_state.size == (self.n_x,)
+            assert init_state.size() == (self._space.n_x,), str(init_state)
             init_x0 = init_state.detach().clone()
 
         self._trajectories_x0.append(Parameter(init_x0, requires_grad=True))
