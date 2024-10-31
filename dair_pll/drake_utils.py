@@ -29,7 +29,7 @@ import gin
 import numpy as np
 
 # TODO: put in place
-from pydrake.all import MeshcatVisualizer, StartMeshcat, BodyIndex, ContactResults, Value  # type: ignore
+from pydrake.all import MeshcatVisualizerParams, StartMeshcat, BodyIndex, ContactResults, Value  # type: ignore
 
 from pydrake.autodiffutils import AutoDiffXd  # type: ignore
 from pydrake.geometry import HalfSpace, SceneGraph  # type: ignore
@@ -53,6 +53,7 @@ from pydrake.multibody.tree import world_model_instance, Body_  # type: ignore
 from pydrake.symbolic import Expression  # type: ignore
 from pydrake.systems.analysis import Simulator  # type: ignore
 from pydrake.systems.framework import DiagramBuilder, DiagramBuilder_, LeafSystem  # type: ignore
+from pydrake.geometry import MeshcatVisualizer, Role
 
 # pylint: disable-next=import-error
 from pydrake.visualization import VideoWriter  # type: ignore
@@ -415,7 +416,7 @@ class MultibodyPlantDiagram:
             self.meshcat.SetCamera(ortho_camera)
             """
             visualizer = MeshcatVisualizer.AddToBuilder(
-                builder, scene_graph, self.meshcat
+                builder, scene_graph, self.meshcat, params=MeshcatVisualizerParams(role=Role.kPerception)
             )
         elif visualization_file:
             visualizer = VideoWriter.AddToBuilder(

@@ -24,6 +24,7 @@ from dair_pll import file_utils, drake_controllers
 from dair_pll.dataset_management import TrajectorySet
 from dair_pll.drake_system import DrakeSystem, carry_dict_create
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
+from dair_pll import vis_utils
 
 
 # Repository directory (default for file operations)
@@ -157,6 +158,10 @@ def main(
         output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
     )
     learned_summary = learned_system.summary({})
+
+    # Set Up Visualization System
+    vis_system = None
+
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
     traj_dataloader = None
@@ -169,8 +174,10 @@ def main(
             "b - breakpoint()\n"
             "c - Collect Sim Data\n"
             "h - Print Help\n"
+            "m - Meshcat Visualize\n"
             "t - Train\n"
             "u - Update PID Ref\n"
+            "v - Visualize\n"
             "q - Quit\n"
         )
 
@@ -240,6 +247,7 @@ def main(
                 print(total_epochs, train_loss)
 
             learned_summary = learned_system.summary({})
+            vis_system = None  # Invalidate
 
             print("Training done!")
 
@@ -250,6 +258,56 @@ def main(
                 drake_controllers.update_pid_reference(base_system, updated_ref)
             except AssertionError:
                 print("Incorrect state size.")
+
+        elif command_char in ("v", "m"):
+            if traj_dataloader is None:
+                print("Cannot visualize without sim data.\n")
+                continue
+
+            # (Re)Create Vis System
+            if vis_system is None:
+                vis_system = vis_utils.generate_visualization_system(
+                    base_system=base_system,
+                    learned_system=DrakeSystem(
+                        urdfs=learned_system.generate_updated_urdfs("vis"),
+                        dt=base_system.dt,
+                        visualization_file=None,
+                    ),
+                    visualization_file=(
+                        "meshcat"
+                        if command_char == "m"
+                        else file_utils.get_trajectory_video_filename(
+                            storage_name, run_name, total_epochs
+                        )
+                    ),
+                )
+
+            # Visualize joint Trajectory
+            joint_traj = torch.cat(
+                [
+                    base_system.model_states_from_state_tensor(traj["state"])
+                    for traj in sim_trajectories.trajectories
+                ]
+            )
+            learned_traj = torch.cat(
+                [
+                    learned_system.model_states_from_state_tensor(
+                        learned_system.construct_state_tensor(traj),
+                        vis_utils.LEARNED_TAG,
+                    )
+                    for traj in sim_trajectories.trajectories
+                ]
+            )
+
+            for key, val in learned_traj.items():
+                joint_traj[key] = val
+
+            joint_traj = vis_system.construct_state_tensor(joint_traj).squeeze(-2)
+            vis_utils.visualize_trajectory(vis_system, joint_traj)
+            if command_char == "v":
+                print(
+                    f"Trajectory Written to: {file_utils.get_trajectory_video_filename(storage_name, run_name, total_epochs)}"
+                )
 
         elif command_char != "q":
             print("Warning: Unrecognized command.\n")

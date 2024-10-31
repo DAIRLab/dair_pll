@@ -13,6 +13,7 @@ The main contents of this file are as follows:
 """
 
 from copy import deepcopy
+import time
 from typing import Tuple, Optional
 
 import numpy as np
@@ -21,7 +22,7 @@ from torch import Tensor
 from PIL import Image
 
 # pylint: disable-next=import-error
-from pydrake.geometry import Role, RoleAssign, Rgba  # type: ignore
+from pydrake.geometry import MeshcatVisualizer, Role, RoleAssign, Rgba  # type: ignore
 from torch import Tensor
 
 from dair_pll.drake_system import DrakeSystem
@@ -256,17 +257,26 @@ def visualize_trajectory(
 
     # Clear the images before iterating through the trajectory (by default the
     # video starts with one image of the systems at the origin).
-    vis._pil_images = []  # type: ignore
+    if not isinstance(vis, MeshcatVisualizer):  
+        vis._pil_images = []  # type: ignore
 
     # Simulate the system according to the provided data.
-    _, carry = drake_system.sample_initial_condition()
+    drake_system.write_state_to_sim(x_trajectory[0].unsqueeze(0))
+    if isinstance(vis, MeshcatVisualizer):
+        time.sleep(0.5)
     for x_current in x_trajectory:
-        drake_system.preprocess_initial_condition(x_current.unsqueeze(0), carry)
+        drake_system.write_state_to_sim(x_current.unsqueeze(0))
 
-        # Force publish video frame.
-        sim_context = sim.get_mutable_context()
-        video_context = vis.GetMyContextFromRoot(sim_context)
-        vis._publish(video_context)
+        if isinstance(vis, MeshcatVisualizer):
+            time.sleep(drake_system.dt)
+        else:
+            # Force publish video frame.
+            sim_context = sim.get_mutable_context()
+            video_context = vis.GetMyContextFromRoot(sim_context)
+            vis._publish(video_context)
+
+    if isinstance(vis, MeshcatVisualizer):
+        return None, actual_framerate
 
     # Compose a video ndarray of shape (T, H, W, 4[rgba]).
     video = np.stack([np.asarray(frame) for frame in vis._pil_images])  # type: ignore

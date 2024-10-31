@@ -80,6 +80,21 @@ class DrakeSystem(System):
 
         self.prev_time = time.time()
 
+    def write_state_to_sim(self, state: Tensor):
+        """Write a state to the plant without re-initializing sim"""
+        plant = self.plant_diagram.plant
+        sim = self.plant_diagram.sim
+        plant_context = plant.GetMyMutableContextFromRoot(sim.get_mutable_context())
+        DrakeStateConverter.state_to_context(
+            plant,
+            plant_context,
+            state.detach().cpu().numpy(),
+            self.plant_diagram.model_ids,
+            self.space,
+        )
+        sim.Initialize()
+
+
     def preprocess_initial_condition(
         self, x_0: Tensor, carry_0: Tensor
     ) -> Tuple[Tensor, Tensor]:

@@ -90,7 +90,7 @@ object_init/get_urdf_asset_contents.mappings = {
 }
 LearnableSystem.init_traj_state = [
 	1., 0., 0., 0., 0., 0., 0.05, # Q
-	0., 0., 0., 0., 0., 0.,
+	0., 0., 0., 0., 0., 0., # V
 ]
 
 # What is learnable
