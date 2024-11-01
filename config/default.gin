@@ -1,8 +1,16 @@
 # Default GIN Config File
 
-## Storage
+## Main Config
 main.storage_folder_name = "storage"
-main.run_name = "default_run"
+main.run_name = "optimization_run"
+main.torch_default_device = "cuda"
+
+# Paralellism in cvxpylayers (added manually)
+CvxpyLayer.n_proc=-1
+DynamicCvxpyLCQPLayer.solver_args = {
+    "solve_method": "Clarabel",
+    "n_jobs_forward": -1,
+}
 
 ## General Config
 robot_model_name = "robot"
@@ -24,7 +32,7 @@ carry_dict_create.keys = [
 	"net_actuation",
     "robot_state",
     "contact_forces.finger_0", # Newtons
-    "contact_forces.finger_1", # Newtons
+#    "contact_forces.finger_1", # Newtons
     "time", # s
 ]
 
@@ -36,20 +44,20 @@ object/get_urdf_asset_contents.mappings = {
 }
 object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.1, 0.0, 0.05,     # XYZ
+	0.0, 0.0, 0.05,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
 
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
 robot/get_urdf_asset_contents.mappings = {
-	"num_fingers": "2", 
-	"fixed_y": "0.0", # m
-	"fixed_z": "0.05" # m
+	"num_fingers": "1", 
+#	"fixed_y": "0.0", # m
+#	"fixed_z": "0.05" # m
 }
 robot_initial_state = [
-	0.3, -0.3, # Robot Q
-	0.0, 0.0,  # Robot V
+	0.0, 0., 0.2, #-0.3, 0., 0.05, # Robot Q
+	0.0, 0., 0., #0.0, 0., 0.,  # Robot V
 ]
 
 sim_initial_state.state = {
@@ -59,9 +67,13 @@ sim_initial_state.state = {
 
 ## Controller for Robot
 DrakeSystem.additional_system_builders = [@pid_controller_builder]
+pid_controller_builder.desired_state = [
+	0., 0., 0., #0., 0., 0.05, # Robot Q
+	0., 0., 0., #0., 0., 0., # Robot V
+]
 pid_controller_builder.model_name = %robot_model_name
 pid_controller_builder.kp = 10.0
-pid_controller_builder.kd = 10.0
+pid_controller_builder.kd = 5.0
 
 
 ## Learnable URDF and State Config
@@ -78,18 +90,22 @@ LearnableSystem.represent_geometry_as = "box"
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
-Adam.lr=1e-4
+SGD.lr=8e-4
+SGD.momentum=2e-4
+Adam.lr=1e-3
+Adam.amsgrad=True
+Adam.fused=True
 
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": "0.1",
-	"length_y": "0.1",
-	"length_z": "0.1", # m
-	"mu": "0.05",
+	"length_x": "0.01",
+	"length_y": "0.01",
+	"length_z": "0.01", # m
+	"mu": "0.1",
 }
 LearnableSystem.init_traj_state = [
-	1., 0., 0., 0., 0., 0., 0.05, # Q
+	1., 0., 0., 0., 0., 0., 0., # Q
 	0., 0., 0., 0., 0., 0., # V
 ]
 
@@ -112,6 +128,7 @@ LearnableSystem.w_reg_iner = 1e-5
 # Data Configuration
 # traj_num, index required for proper learned trajectory indexing
 # Added by default in TrajectorySet()
+TrajectorySliceConfig.batch_size = -1
 TrajectorySliceConfig.shuffle = False
 TrajectorySliceConfig.his_state_keys = [
 	"robot_state", "net_actuation", "contact_forces", "traj_num", "index"

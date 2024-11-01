@@ -314,7 +314,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J, dv.transpose(-1, -2))
-        q_comp = (1.0 / dt) * torch.abs(phi_then_zero).unsqueeze(-1)
+        q_comp = (1.0 / dt) * torch.maximum(phi_then_zero, torch.zeros_like(phi_then_zero)).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
 
         # Penalize Deviation from measured contact impulses
@@ -388,17 +388,17 @@ class MultibodyLearnableSystem(DrakeSystem):
         # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
         # Therefore, we can detach ``impulses`` from pytorch's computation graph
         # without causing error in the overall loss gradient.
-        impulses = pbmm(
-            reorder_mat,
-            self.solver(
-                pbmm(
-                    reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
-                ),  # Quadratic Term
-                pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1),  # Linear Term
+        with torch.no_grad():
+            impulses = pbmm(
+                reorder_mat,
+                self.solver(
+                    pbmm(
+                        reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
+                    ),  # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1),  # Linear Term
+                )
+                .unsqueeze(-1),
             )
-            .detach()
-            .unsqueeze(-1),
-        )
 
         # Hack: remove elements of ``impulses`` where solver likely failed.
         invalid = torch.any(

@@ -21,7 +21,8 @@ install_reqs = [
     "python-fcl",
     "gitpython",
     "protobuf==3.20.*",
-    "cvxpylayers",
+    "cvxpylayers @ git+https://github.com/healeyq3/cvxpylayers", # includes solve_only for no_grad
+    "diffcp @ git+https://github.com/cvxgrp/diffcp.git@v1.0.25", # includes solve_only
     "gin-config",
     # documentation
     "networkx",
@@ -38,7 +39,6 @@ install_reqs = [
     "mypy",
     # git
     "drake-pytorch @ git+https://github.com/DAIRLab/drake-pytorch.git#egg=drake-pytorch-0.1",
-    "sappy @ git+https://github.com/mshalm/sappy.git#egg=sappy-0.0.1",
     # parse URDF
     "xacro",
     "roslaunch @ git+https://github.com/ros/ros_comm.git#egg=roslaunch&subdirectory=tools/roslaunch",

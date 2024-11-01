@@ -61,7 +61,7 @@ _ROT_Z_45 = torch.tensor(
 )
 
 # TODO: HACK adjust based on trajectory length
-_NOMINAL_HALF_LENGTH = 1e-2  # Note: matches Box/Polygon space to trajectory space (m)
+_NOMINAL_HALF_LENGTH = 1e-1  # Note: matches Box/Polygon space to trajectory space (m)
 
 _total_ordering = ["Plane", "Polygon", "Box", "Sphere", "DeepSupportConvex"]
 

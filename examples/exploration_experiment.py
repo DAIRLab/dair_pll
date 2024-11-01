@@ -5,6 +5,7 @@ Run a simulated online learning experiment
 
 import os
 import sys
+import time
 from typing import cast, Any, Dict, List, Type, Optional
 
 import gin
@@ -109,12 +110,25 @@ def train_epoch(
             optimizer.zero_grad()
         # pylint: disable=E1120
         # Expect gin to handle missing arguments
+        ### Profiling
+        #import cProfile, pstats, io
+        #from pstats import SortKey
+        #pr = cProfile.Profile()
+        #pr.enable()
         loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
         losses.append(loss.clone().detach())
 
         if optimizer is not None:
             loss.backward()
             optimizer.step()
+
+        ### Profiling
+        #s = io.StringIO()
+        #sortby = SortKey.CUMULATIVE
+        #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        #ps.print_stats()
+        #print(s.getvalue())
+        #breakpoint()
 
     avg_loss = cast(Tensor, sum(losses) / len(losses))
     return avg_loss
@@ -127,12 +141,14 @@ def main(
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
     use_true_traj: bool = False,
+    torch_default_device: str = "cpu",
 ):
     """Main function for online learning loop"""
     # pylint: disable=R0915, R0912, R0914
     # Expect main function to have a lot of statements and branches and variables
     # pylint: disable=E1120
     # Expect gin to handle missing arguments
+    torch.set_default_device(torch_default_device)
 
     print("ContactNets With Sparse Tactile Sensing")
     storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
@@ -157,7 +173,7 @@ def main(
     learned_system = MultibodyLearnableSystemWithTrajectory(
         output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
     )
-    learned_summary = learned_system.summary({})
+    learned_summaries = [learned_system.summary({})]
 
     # Set Up Visualization System
     vis_system = None
@@ -238,22 +254,31 @@ def main(
                 print("Cannot train without sim data.\n")
                 continue
 
-            epochs = int(input("How many epochs? "))
+            try:
+                epochs = int(input("How many epochs? "))
+            except ValueError:
+                print("Cancelling...")
+                continue
             print("Training...")
 
+            start_time = time.time()
             for _ in range(epochs):
                 train_loss = train_epoch(traj_dataloader, learned_system, optimizer)
                 total_epochs += 1
                 print(total_epochs, train_loss)
 
-            learned_summary = learned_system.summary({})
+            learned_summaries.append(learned_system.summary({}))
             vis_system = None  # Invalidate
 
-            print("Training done!")
+            print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
 
         elif command_char == "u":
             print("Enter comma-space-separated floats.\n")
-            updated_ref = np.array(list(map(float, input("New State: ").split(", "))))
+            try:
+                updated_ref = np.array(list(map(float, input("New State: ").split(", "))))
+            except ValueError:
+                print("Could not interpret as comma-space-separated float list")
+                continue
             try:
                 drake_controllers.update_pid_reference(base_system, updated_ref)
             except AssertionError:

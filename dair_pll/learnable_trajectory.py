@@ -19,7 +19,7 @@ class LearnableTrajectories(Module):
     Piecewise Polynomial Learnable Trajectory
     """
 
-    _trajectories_xn: ParameterList
+    _trajectories: ParameterList
     _trajectories_x0: ParameterList
     _space: StateSpace
 
@@ -114,7 +114,7 @@ class LearnableTrajectories(Module):
             assert traj_index >= 0, f"Invalid trajectory index {traj_index}"
             if traj_index == 0:
                 ret[idx] = self._trajectories_x0[traj_num]
-            elif traj_index == len(self._trajectories[traj_num]) + 1:
+            elif traj_index == self._trajectories[traj_num].shape[0] + 1:
                 ret[idx] = self._trajectories_x0[traj_num + 1]
             else:
                 ret[idx] = self._trajectories[traj_num][traj_index - 1, :]

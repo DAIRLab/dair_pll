@@ -127,9 +127,11 @@ class TrajectorySet:
                 trajectory["index"] = torch.arange(
                     trajectory.shape[0], dtype=torch.int
                 ).reshape(trajectory.shape + (1,))
-                trajectory["traj_num"] = traj_num * torch.ones(
-                    trajectory.shape[0], dtype=torch.int
-                ).reshape(trajectory.shape + (1,))
+                trajectory["traj_num"] = (
+                    traj_num + len(self.trajectories)
+                ) * torch.ones(trajectory.shape[0], dtype=torch.int).reshape(
+                    trajectory.shape + (1,)
+                )
             self.slices.add_slices_from_trajectory(trajectory.squeeze())
         self.trajectories.extend(trajectory_list)
         self.indices = torch.cat([self.indices, indices.to(torch.get_default_device())])
