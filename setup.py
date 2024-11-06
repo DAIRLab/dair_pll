@@ -21,8 +21,8 @@ install_reqs = [
     "python-fcl",
     "gitpython",
     "protobuf==3.20.*",
-    "cvxpylayers @ git+https://github.com/healeyq3/cvxpylayers", # includes solve_only for no_grad
-    "diffcp @ git+https://github.com/cvxgrp/diffcp.git@v1.0.25", # includes solve_only
+    "cvxpylayers @ git+https://github.com/egordon/cvxpylayers", # includes solve_only for no_grad + multiprocessing
+    "diffcp @ git+https://github.com/egordon/diffcp.git@v1.0.25/fix_pool", # includes solve_only + fixed multiprocessing
     "gin-config",
     # documentation
     "networkx",
@@ -40,9 +40,7 @@ install_reqs = [
     # git
     "drake-pytorch @ git+https://github.com/DAIRLab/drake-pytorch.git#egg=drake-pytorch-0.1",
     # parse URDF
-    "xacro",
-    "roslaunch @ git+https://github.com/ros/ros_comm.git#egg=roslaunch&subdirectory=tools/roslaunch",
-    "rosgraph @ git+https://github.com/ros/ros_comm.git#egg=rosgraph&subdirectory=tools/rosgraph",
+    "xacro @ git+https://github.com/ros/xacro@ros2#egg=xacro",
 ]
 
 try:
