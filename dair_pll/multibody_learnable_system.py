@@ -23,7 +23,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 """
 
 from os import path
-from typing import List, Tuple, Optional, Dict, cast, Union
+from typing import Any, List, Tuple, Optional, Dict, cast, Union
 
 import gin
 import numpy as np
@@ -65,6 +65,7 @@ class MultibodyLearnableSystem(DrakeSystem):
     visualization_system: Optional[DrakeSystem]
     solver: DynamicCvxpyLCQPLayer
     dt: float
+    loss_cache: Dict[str, Any]
 
     def __init__(
         self,
@@ -137,6 +138,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Match DrakeSystem Attributes
         self.urdfs = self.init_urdfs
         self.plant_diagram = multibody_terms.plant_diagram
+
+        self.loss_cache = {}
 
     def generate_updated_urdfs(self, suffix: str = None) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
@@ -211,8 +214,17 @@ class MultibodyLearnableSystem(DrakeSystem):
             + (self.w_pen * loss_pen)
             + (self.w_diss * loss_diss)
             + (self.w_dev * loss_dev)
-            + (self.w_reg_iner * reg_inertia_cond)
+            # TODO: HACK re-add later
+#            + (self.w_reg_iner * reg_inertia_cond)
         )
+
+        # Cache Losses
+        self.loss_cache["loss_pred"] = loss_pred.clone().detach()
+        self.loss_cache["loss_q_pred"] = loss_q_pred.clone().detach()
+        self.loss_cache["loss_comp"] = loss_comp.clone().detach()
+        self.loss_cache["loss_pen"] = loss_pen.clone().detach()
+        self.loss_cache["loss_diss"] = loss_diss.clone().detach()
+        self.loss_cache["loss_dev"] = loss_dev.clone().detach()
 
         return loss
 
@@ -227,7 +239,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         q_plus, v_plus = self.space.q_v(x_plus)
         _, M, _, _, _, _, _, _ = self.get_multibody_terms(q_plus, v_plus, u)
         # TODO HACK: hard-coded. rows/cols in M should match  model_body_qw in GetStateNames()
-        I_BBcm_B = M[..., 2:5, 2:5]
+        I_BBcm_B = M[..., 3:6, 3:6]
         # pylint doesn't know about torch functions
         # pylint: disable=E1102
         regularizers.append(torch.linalg.cond(I_BBcm_B))

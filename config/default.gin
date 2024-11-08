@@ -2,8 +2,9 @@
 
 ## Main Config
 main.storage_folder_name = "storage"
-main.run_name = "optimization_run"
+main.run_name = "visualization_explore"
 main.torch_default_device = "cuda"
+main.use_true_traj = False
 
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
@@ -39,14 +40,18 @@ carry_dict_create.keys = [
 ## Base URDF and State Config
 object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
+	"length_x": "0.1", # m
+	"length_y": "0.1", # m
 	"length_z": "0.1", # m
 	"mu": "0.05",
+	"planar_xz": "true",
 }
 object_initial_state = [
-	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.05,     # XYZ
-	0.0, 0.0, 0.0,      # omega_XYZ
-	0.0, 0.0, 0.0,		# dXYZ
+	0., 0.05, 0., 0., 0., 0.,
+#	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
+#	0.1, 0.0, 0.05,     # XYZ
+#	0.0, 0.0, 0.0,      # omega_XYZ
+#	0.0, 0.0, 0.0,		# dXYZ
 ]
 
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
@@ -56,8 +61,8 @@ robot/get_urdf_asset_contents.mappings = {
 #	"fixed_z": "0.05" # m
 }
 robot_initial_state = [
-	0.0, 0., 0.2, #-0.3, 0., 0.05, # Robot Q
-	0.0, 0., 0., #0.0, 0., 0.,  # Robot V
+	0., 0., 0.2, # -0.2, 0., 0.05, # Robot Q
+	0., 0., 0., #0.0, 0., 0.,  # Robot V
 ]
 
 sim_initial_state.state = {
@@ -68,12 +73,12 @@ sim_initial_state.state = {
 ## Controller for Robot
 DrakeSystem.additional_system_builders = [@pid_controller_builder]
 pid_controller_builder.desired_state = [
-	0., 0., 0., #0., 0., 0.05, # Robot Q
+	0., 0., 0., #-0.2, 0., 0.05, # Robot Q
 	0., 0., 0., #0., 0., 0., # Robot V
 ]
 pid_controller_builder.model_name = %robot_model_name
-pid_controller_builder.kp = 10.0
-pid_controller_builder.kd = 5.0
+pid_controller_builder.kp = 20.0
+pid_controller_builder.kd = 10.0
 
 
 ## Learnable URDF and State Config
@@ -99,14 +104,16 @@ Adam.fused=True
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": "0.01",
-	"length_y": "0.01",
+	"length_x": "0.01", # m
+	"length_y": "0.01", # m
 	"length_z": "0.01", # m
-	"mu": "0.1",
+	"mu": "0.05",
+	"planar_xz": "true",
 }
 LearnableSystem.init_traj_state = [
-	1., 0., 0., 0., 0., 0., 0., # Q
-	0., 0., 0., 0., 0., 0., # V
+	0., 0., 0., 0., 0., 0.,
+#	1., 0., 0., 0., 0., 0., 0., # Q
+#	0., 0., 0., 0., 0., 0., # V
 ]
 
 # What is learnable
@@ -114,7 +121,7 @@ object_init/LearnableBodySettings.inertia_mass = False
 object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
-object_init/LearnableBodySettings.friction = True
+object_init/LearnableBodySettings.friction = False
 
 # Learning weights
 LearnableSystem.w_pred = 5e1

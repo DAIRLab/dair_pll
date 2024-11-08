@@ -78,7 +78,7 @@ class LearnableTrajectories(Module):
             self._space.n_x,
         ):
             new_x0 = init_states[0, :].clone().detach()
-            new_trajectory = init_states[1:-1, :].clone.detach()
+            new_trajectory = init_states[1:-1, :].clone().detach()
             next_x0 = init_states[-1, :].clone().detach()
         else:
             raise ValueError(f"Invalid init_states size: {init_states.size()}")

@@ -84,7 +84,8 @@ class DrakeSystem(System):
         """Write a state to the plant without re-initializing sim"""
         plant = self.plant_diagram.plant
         sim = self.plant_diagram.sim
-        plant_context = plant.GetMyMutableContextFromRoot(sim.get_mutable_context())
+        sim_context = sim.get_mutable_context()
+        plant_context = plant.GetMyMutableContextFromRoot(sim_context)
         DrakeStateConverter.state_to_context(
             plant,
             plant_context,
@@ -92,7 +93,7 @@ class DrakeSystem(System):
             self.plant_diagram.model_ids,
             self.space,
         )
-        sim.Initialize()
+        sim.AdvancePendingEvents()
 
 
     def preprocess_initial_condition(

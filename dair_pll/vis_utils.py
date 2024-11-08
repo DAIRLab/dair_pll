@@ -28,7 +28,7 @@ from torch import Tensor
 from dair_pll.drake_system import DrakeSystem
 from dair_pll import file_utils
 
-RESOLUTION = [640, 480]
+RESOLUTION = [1280, 960]
 RED = Rgba(0.6, 0.0, 0.0, 0.5)
 BLUE = Rgba(0.0, 0.0, 0.6, 0.7)
 BASE_SYSTEM_DEFAULT_COLOR = RED
@@ -262,13 +262,11 @@ def visualize_trajectory(
 
     # Simulate the system according to the provided data.
     drake_system.write_state_to_sim(x_trajectory[0].unsqueeze(0))
-    if isinstance(vis, MeshcatVisualizer):
-        time.sleep(0.5)
     for x_current in x_trajectory:
         drake_system.write_state_to_sim(x_current.unsqueeze(0))
 
         if isinstance(vis, MeshcatVisualizer):
-            time.sleep(drake_system.dt)
+            time.sleep(2.0*drake_system.dt)
         else:
             # Force publish video frame.
             sim_context = sim.get_mutable_context()

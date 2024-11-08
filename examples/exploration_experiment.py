@@ -4,6 +4,8 @@ Run a simulated online learning experiment
 """
 
 import os
+import pdb
+import signal
 import sys
 import time
 from typing import cast, Any, Dict, List, Type, Optional
@@ -102,6 +104,7 @@ def train_epoch(
         Scalar average training loss observed during epoch.
     """
     losses = []
+    loss_elements = {}
     for xy_i in data:
         x_past: Tensor = xy_i[0]
         x_plus: Tensor = xy_i[1]
@@ -118,6 +121,11 @@ def train_epoch(
         loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
         losses.append(loss.clone().detach())
 
+        for key, val in system.loss_cache.items():
+            if key not in loss_elements:
+                loss_elements[key] = []
+            loss_elements[key].append(val)
+
         if optimizer is not None:
             loss.backward()
             optimizer.step()
@@ -130,9 +138,19 @@ def train_epoch(
         #print(s.getvalue())
         #breakpoint()
 
+    # Compute Epoch Average
     avg_loss = cast(Tensor, sum(losses) / len(losses))
-    return avg_loss
+    loss_elements_ret = {}
+    for key, val in loss_elements.items():
+        loss_elements_ret[key] = cast(Tensor, sum(val) / len(val))
+    return avg_loss, loss_elements_ret
 
+
+signal_pressed = False
+def signal_handler(sig, frame):
+    """ Handle SIGINT"""
+    global signal_pressed
+    signal_pressed = True
 
 ## Main Function
 @gin.configurable
@@ -144,6 +162,8 @@ def main(
     torch_default_device: str = "cpu",
 ):
     """Main function for online learning loop"""
+    global signal_pressed
+    signal.signal(signal.SIGINT, signal_handler)
     # pylint: disable=R0915, R0912, R0914
     # Expect main function to have a lot of statements and branches and variables
     # pylint: disable=E1120
@@ -174,6 +194,8 @@ def main(
         output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
     )
     learned_summaries = [learned_system.summary({})]
+    train_losses = []
+    train_loss_data = []
 
     # Set Up Visualization System
     vis_system = None
@@ -207,7 +229,7 @@ def main(
 
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
-            breakpoint()
+            pdb.Pdb(nosigint=True).set_trace()
 
         elif command_char == "c":
             seconds = float(input("How long (s)? "))
@@ -229,7 +251,7 @@ def main(
             # Extend Learnable Trajectory
             learned_system.add_trajectories(
                 traj_lens=[state.shape[0]],
-                traj_data=[state] if use_true_traj else None,
+                traj_data=[learned_system.model_states_from_state_tensor(state)[learned_system._trajectory_model_names[0] + "_state"]] if use_true_traj else None,
             )
 
             # Re-init optimizer and data-loader
@@ -262,12 +284,19 @@ def main(
             print("Training...")
 
             start_time = time.time()
-            for _ in range(epochs):
-                train_loss = train_epoch(traj_dataloader, learned_system, optimizer)
+            for idx in range(epochs):
+                train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
                 total_epochs += 1
                 print(total_epochs, train_loss)
+                train_losses.append(train_loss)
+                train_loss_data.append(loss_data)
+                learned_summaries.append(learned_system.summary({}))
+                if signal_pressed:
+                    signal_pressed = False
+                    print("Training cancelled...")
+                    epochs = idx + 1
+                    break
 
-            learned_summaries.append(learned_system.summary({}))
             vis_system = None  # Invalidate
 
             print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")

@@ -68,7 +68,7 @@ N_DRAKE_FLOATING_BODY_VELOCITIES = 6
 GROUND_COLOR = np.array([0.5, 0.5, 0.5, 0.1])
 
 CAM_FOV = np.pi / 6
-VIDEO_PIXELS = [480, 640]
+VIDEO_PIXELS = [960, 1280]
 FPS = 30
 
 # dt of underlying sim
@@ -76,7 +76,7 @@ SIM_DT = 1e-4
 
 # TODO currently hard-coded camera pose could eventually be dynamically chosen
 # to fit the actual trajectory.
-SENSOR_RPY = np.array([-np.pi / 2, 0.0, -0.1])
+SENSOR_RPY = np.array([-np.pi / 2, 0.0, 0.0])
 SENSOR_POSITION = np.array([0.0, -1.0, 0.2])
 SENSOR_POSE = RigidTransform(RollPitchYaw(SENSOR_RPY).ToQuaternion(), SENSOR_POSITION)
 
