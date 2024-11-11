@@ -209,8 +209,10 @@ def main(
     def print_help():
         print(
             "\nUsage:\n"
+            "a - Adjust learned traj\n"
             "b - breakpoint()\n"
             "c - Collect Sim Data\n"
+            "d - Debug Toggle\n"
             "h - Print Help\n"
             "m - Meshcat Visualize\n"
             "t - Train\n"
@@ -227,9 +229,20 @@ def main(
         if command_char == "h":
             print_help()
 
+        elif command_char == "a":
+            # 
+            pass
+
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
+
+        elif command_char == "d":
+            learned_system.set_debug(not learned_system.debug)
+            if learned_system.debug:
+                print("Debug enabled")
+            else:
+                print("Debug disabled")
 
         elif command_char == "c":
             seconds = float(input("How long (s)? "))
@@ -319,7 +332,8 @@ def main(
                 continue
 
             # (Re)Create Vis System
-            if vis_system is None:
+            recreate_vis = (vis_system is None) or (bool(command_char == "m") != vis_system.plant_diagram.vis_is_meshcat())
+            if recreate_vis:
                 vis_system = vis_utils.generate_visualization_system(
                     base_system=base_system,
                     learned_system=DrakeSystem(

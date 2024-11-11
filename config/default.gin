@@ -2,7 +2,7 @@
 
 ## Main Config
 main.storage_folder_name = "storage"
-main.run_name = "visualization_explore"
+main.run_name = "test_notouch_reg"
 main.torch_default_device = "cuda"
 main.use_true_traj = False
 
@@ -42,12 +42,12 @@ object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro
 object/get_urdf_asset_contents.mappings = {
 	"length_x": "0.1", # m
 	"length_y": "0.1", # m
-	"length_z": "0.1", # m
-	"mu": "0.05",
+	"length_z": "0.02", # m
+	"mu": "0.2",
 	"planar_xz": "true",
 }
 object_initial_state = [
-	0., 0.05, 0., 0., 0., 0.,
+	0., 0.07, 0., 0., 0., 0.,
 #	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
 #	0.1, 0.0, 0.05,     # XYZ
 #	0.0, 0.0, 0.0,      # omega_XYZ
@@ -61,7 +61,7 @@ robot/get_urdf_asset_contents.mappings = {
 #	"fixed_z": "0.05" # m
 }
 robot_initial_state = [
-	0., 0., 0.2, # -0.2, 0., 0.05, # Robot Q
+	0.1, 0., 0.05, # -0.2, 0., 0.05, # Robot Q
 	0., 0., 0., #0.0, 0., 0.,  # Robot V
 ]
 
@@ -73,7 +73,7 @@ sim_initial_state.state = {
 ## Controller for Robot
 DrakeSystem.additional_system_builders = [@pid_controller_builder]
 pid_controller_builder.desired_state = [
-	0., 0., 0., #-0.2, 0., 0.05, # Robot Q
+	0.1, 0., 0.05, #-0.2, 0., 0.05, # Robot Q
 	0., 0., 0., #0., 0., 0., # Robot V
 ]
 pid_controller_builder.model_name = %robot_model_name
@@ -104,14 +104,14 @@ Adam.fused=True
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": "0.01", # m
-	"length_y": "0.01", # m
-	"length_z": "0.01", # m
-	"mu": "0.05",
+	"length_x": "0.1", # m
+	"length_y": "0.1", # m
+	"length_z": "0.02", # m
+	"mu": "0.2",
 	"planar_xz": "true",
 }
 LearnableSystem.init_traj_state = [
-	0., 0., 0., 0., 0., 0.,
+	0., 0.07, 0.0, 0., 0., 0.,
 #	1., 0., 0., 0., 0., 0., 0., # Q
 #	0., 0., 0., 0., 0., 0., # V
 ]
@@ -128,8 +128,8 @@ LearnableSystem.w_pred = 5e1
 LearnableSystem.w_q_pred = 1e2
 LearnableSystem.w_comp = 1e0
 LearnableSystem.w_diss = 1e0
-LearnableSystem.w_pen = 2e1
-LearnableSystem.w_dev = 2e5
+LearnableSystem.w_pen = 5e1
+LearnableSystem.w_dev = 2e6
 LearnableSystem.w_reg_iner = 1e-5
 
 # Data Configuration

@@ -61,7 +61,7 @@ _ROT_Z_45 = torch.tensor(
 )
 
 # TODO: HACK adjust based on trajectory length
-_NOMINAL_HALF_LENGTH = 1e-1  # Note: matches Box/Polygon space to trajectory space (m)
+_NOMINAL_HALF_LENGTH = 1e-2  # Note: matches Box/Polygon space to trajectory space (m)
 
 _total_ordering = ["Plane", "Polygon", "Box", "Sphere", "DeepSupportConvex"]
 
@@ -769,7 +769,7 @@ class GeometryCollider:
         assert p_AoBo_A.shape == batch_dim + (3,)
         assert isinstance(box_a, Box)
         assert isinstance(sphere_b, Sphere)
-        n_c = 2
+        n_c = 1
 
         ## Get nearest point on box
         # Expand box lengths to batch size
@@ -811,8 +811,8 @@ class GeometryCollider:
         )  # (..., n_c == 1, 3)
 
         # Add estimated normal if they exist
-        if estimated_normals_A is not None:
-            # if False:
+        #if estimated_normals_A is not None:
+        if False:
             assert estimated_normals_A.shape == batch_dim + (3,)
             directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
             zeros_idx = torch.isclose(
@@ -836,7 +836,7 @@ class GeometryCollider:
         directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB.unsqueeze(-3)).squeeze(-2)
 
         # get support point of sphere
-        # It adds n_c==1 which we can squeeze
+        # It adds n_c==1 which we can squeezephi
         p_BoBc_B = sphere_b.support_points(directions_B).squeeze(-2)
         assert p_BoBc_B.shape == batch_dim + (n_c, 3)  # (..., n_c == 2, 3)
 

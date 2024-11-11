@@ -23,6 +23,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 """
 
 from os import path
+import pdb
 from typing import Any, List, Tuple, Optional, Dict, cast, Union
 
 import gin
@@ -139,7 +140,11 @@ class MultibodyLearnableSystem(DrakeSystem):
         self.urdfs = self.init_urdfs
         self.plant_diagram = multibody_terms.plant_diagram
 
+        self.debug = False
         self.loss_cache = {}
+
+    def set_debug(self, debug: bool = True):
+        self.debug = debug
 
     def generate_updated_urdfs(self, suffix: str = None) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
@@ -442,8 +447,16 @@ class MultibodyLearnableSystem(DrakeSystem):
             + constant_dev
         )
 
+        if self.debug:
+            # pylint: disable-next=forgotten-debug-statement
+            pdb.Pdb(nosigint=True).set_trace()
+
         # Check for positive definite deviation loss
-        assert np.all(loss_dev.detach().cpu().numpy() > 0.0)
+        try:
+            assert np.all(loss_dev.detach().cpu().numpy() > 0.0)
+        except AssertionError:
+            # pylint: disable-next=forgotten-debug-statement
+            pdb.Pdb(nosigint=True).set_trace()
 
         return (
             loss_pred.reshape(-1),
@@ -571,17 +584,17 @@ class MultibodyLearnableSystem(DrakeSystem):
         v_minus = v + dt * non_contact_acceleration
         q_full = pbmm(J, v_minus.unsqueeze(-1)) + (1 / dt) * phi_then_zero
 
-        impulse_full = pbmm(
-            reorder_mat,
-            self.solver(
-                pbmm(
-                    reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)
-                ),  # Quadratic Term
-                pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),  # Linear Term
+        with torch.no_grad():
+            impulse_full = pbmm(
+                reorder_mat,
+                self.solver(
+                    pbmm(
+                        reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)
+                    ),  # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),  # Linear Term
+                )
+                .unsqueeze(-1),
             )
-            .detach()
-            .unsqueeze(-1),
-        )
 
         impulse = torch.zeros_like(impulse_full)
         impulse[contact_filter] += impulse_full[contact_filter]
@@ -591,6 +604,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         return v_minus + torch.linalg.solve(
             M, pbmm(J.transpose(-1, -2), impulse)
         ).squeeze(-1)
+
 
     def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
         """``Integrator.partial_step`` wrapper for

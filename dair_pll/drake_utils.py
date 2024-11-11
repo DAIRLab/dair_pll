@@ -537,6 +537,9 @@ class MultibodyPlantDiagram:
         self.visualizer = visualizer
         self.space = self.generate_state_space()
 
+    def vis_is_meshcat(self) -> bool:
+        return isinstance(self.visualizer, MeshcatVisualizer)
+
     def generate_state_space(self) -> state_space.ProductSpace:
         """Generate ``StateSpace`` object for plant.
 
