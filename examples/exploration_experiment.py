@@ -230,7 +230,7 @@ def main(
             print_help()
 
         elif command_char == "a":
-            # 
+            # Gather initial s
             pass
 
         elif command_char == "b":

@@ -317,6 +317,10 @@ class MultibodyLearnableSystem(DrakeSystem):
             phi.shape[:-1] + (n_contacts, 2)
         ).norm(dim=-1, keepdim=True)
 
+        J_n = J[..., :n_contacts, :]
+        normal_velocities = pbmm(J_n, v_plus.unsqueeze(-1))
+        normal_velocities = torch.maximum(normal_velocities, torch.zeros_like(normal_velocities))
+
         # Units: Energy
         Q_delassus = delassus + eps * torch.eye(3 * n_contacts)  # Force PD
 
@@ -333,6 +337,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         q_pred = -pbmm(J, dv.transpose(-1, -2))
         q_comp = (1.0 / dt) * torch.maximum(phi_then_zero, torch.zeros_like(phi_then_zero)).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q_n_diss = torch.cat((normal_velocities, double_zero_vector.unsqueeze(-1)), dim=-2)
 
         # Penalize Deviation from measured contact impulses
         # This is in impulse^2, but take deviation w.r.t. Delassus to
@@ -398,6 +403,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             q_pred
             + (self.w_comp / self.w_pred) * q_comp
             + (self.w_diss / self.w_pred) * q_diss
+            + (self.w_diss / self.w_pred) * q_n_diss
             + (self.w_dev / self.w_pred) * q_dev
         )
 
@@ -440,7 +446,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         )
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
-        loss_diss = pbmm(impulses.transpose(-1, -2), q_diss)
+        loss_diss = pbmm(impulses.transpose(-1, -2), q_diss) + pbmm(impulses.transpose(-1, -2), q_n_diss)
         loss_dev = (
             0.5 * pbmm(impulses.transpose(-1, -2), pbmm(Q_dev, impulses))
             + pbmm(impulses.transpose(-1, -2), q_dev)
