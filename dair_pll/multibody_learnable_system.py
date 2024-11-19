@@ -178,6 +178,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         u: Tensor,
         x_plus: Tensor,
         contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
+        impulses: Optional[Tensor] = None,
     ) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
@@ -203,7 +204,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             contact_forces = {}
 
         loss_pred, loss_q_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
-            self.calculate_contactnets_loss_terms(x, u, x_plus, contact_forces)
+            self.calculate_contactnets_loss_terms(x, u, x_plus, contact_forces, impulses)
         )
 
         regularizers = self.get_regularization_terms(x, u, x_plus)
@@ -252,12 +253,154 @@ class MultibodyLearnableSystem(DrakeSystem):
         # TODO: Use the believed geometry to help supervise the learned CoM.
         return regularizers
 
+    @torch.no_grad()
+    def calculate_contactnets_impulses(
+        self,
+        x: Tensor,
+        u: Tensor,
+        x_plus: Tensor,
+        contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
+    ) -> Tensor:
+        """Helper function that returns only the optimized impulses
+        """
+
+        if contact_forces is None:
+            contact_forces = {}
+
+        v = self.space.v(x)
+        q_plus, v_plus = self.space.q_v(x_plus)
+        dt = self.dt
+        eps = 1e-8  # TODO: HACK, make a hyperparameter
+
+        # Begin loss calculation.
+        (
+            delassus,
+            M,
+            J,
+            phi,
+            non_contact_acceleration,
+            obj_pair_list,
+            R_FW_list,
+            mu_list,
+        ) = self.get_multibody_terms(q_plus, v_plus, u, contact_forces)
+
+        # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
+        n_contacts = phi.shape[-1]
+        reorder_mat = tensor_utils.sappy_reorder_mat(n_contacts)
+        reorder_mat = reorder_mat.reshape(
+            (1,) * (delassus.dim() - 2) + reorder_mat.shape
+        ).expand(delassus.shape)
+
+        double_zero_vector = torch.zeros(phi.shape[:-1] + (2 * n_contacts,))
+        phi_then_zero = torch.cat((phi, double_zero_vector), dim=-1)
+
+        J_t = J[..., n_contacts:, :]
+        sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
+        sliding_speeds = sliding_velocities.reshape(
+            phi.shape[:-1] + (n_contacts, 2)
+        ).norm(dim=-1, keepdim=True)
+
+        J_n = J[..., :n_contacts, :]
+        normal_velocities = pbmm(J_n, v_plus.unsqueeze(-1))
+        normal_velocities = torch.maximum(normal_velocities, torch.zeros_like(normal_velocities))
+
+        # Units: Energy
+        Q_delassus = delassus + eps * torch.eye(3 * n_contacts)  # Force PD
+
+        dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
+
+        # Calculate q vectors
+        # Final Units: Energy -> q units velocity
+        q_pred = -pbmm(J, dv.transpose(-1, -2))
+        q_comp = (1.0 / dt) * torch.maximum(phi_then_zero, torch.zeros_like(phi_then_zero)).unsqueeze(-1)
+        q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+        q_n_diss = torch.cat((normal_velocities, double_zero_vector.unsqueeze(-1)), dim=-2)
+
+        # Penalize Deviation from measured contact impulses
+        # This is in impulse^2, but take deviation w.r.t. Delassus to
+        # add 1/mass term to bring into Energy.
+        q_dev = torch.zeros_like(q_pred)
+        Q_dev = torch.zeros_like(Q_delassus)
+
+        for key in contact_forces.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            mu_i = mu_list[indices[0]]
+            # Q_dev = diag(mu)RS^TSR^Tdiag(mu)^T; diag(mu) = 1 if normal, mu otherwise
+            # R is block diagonal rotation matrices, S is summation matrix
+            diag_F_mu = torch.zeros(
+                q_dev.shape[:-1] + ((len(indices) * 3),)
+            )  # (batch x (n_c_tot*3) x (n_c_obj*3))
+            R_FW_mat = torch.zeros(
+                q_dev.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))
+            )  # (batch x (n_c_obj*3) x (n_c_obj*3))
+            sum_W_mat = torch.zeros(
+                q_dev.shape[:-2] + (3, (len(indices) * 3))
+            )  # (batch x 3 x (n_c_obj*3))
+            for contact, idx in enumerate(indices):
+
+                # Map Normal Force
+                diag_F_mu[..., idx, contact * 3 + 2] = 1.0
+                # Map Tangent Forces
+                diag_F_mu[..., len(obj_pair_list) + 2 * idx, contact * 3] = mu_i
+                diag_F_mu[..., len(obj_pair_list) + 2 * idx + 1, contact * 3 + 1] = mu_i
+
+                # Create Block diagonal matrix (note torch.block_diag isn't vectorized)
+                R_FW_mat[
+                    ...,
+                    contact * 3 : (contact + 1) * 3,
+                    contact * 3 : (contact + 1) * 3,
+                ] = R_FW_list[idx]
+
+                # Summation
+                sum_W_mat[..., 0, contact * 3] = 1.0
+                sum_W_mat[..., 1, contact * 3 + 1] = 1.0
+                sum_W_mat[..., 2, contact * 3 + 2] = 1.0
+            q_dev_part = pbmm(
+                sum_W_mat, pbmm(R_FW_mat.transpose(-1, -2), diag_F_mu.transpose(-1, -2))
+            )  # (batch, 3, (n_c_tot*3))
+            Q_dev += pbmm(q_dev_part.transpose(-1, -2), q_dev_part)
+
+            # Linear Term is lambda_mSR^Tdiag(mu)^T
+            impulse_measured_W = contact_forces[key].unsqueeze(-2) * dt  # (batch, 1, 3)
+            q_dev -= pbmm(impulse_measured_W, q_dev_part).transpose(
+                -1, -2
+            )  # (batch, n_c_tot*3, 1)
+
+        Q_final = Q_delassus + (self.w_dev / self.w_pred) * Q_dev
+
+        q_final = (
+            q_pred
+            + (self.w_comp / self.w_pred) * q_comp
+            + (self.w_diss / self.w_pred) * q_diss
+            + (self.w_diss / self.w_pred) * q_n_diss
+            + (self.w_dev / self.w_pred) * q_dev
+        )
+
+        # Envelope theorem guarantees that gradient of loss w.r.t. parameters
+        # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
+        # Therefore, we can detach ``impulses`` from pytorch's computation graph
+        # without causing error in the overall loss gradient.
+        return pbmm(
+                reorder_mat,
+                self.solver(
+                    pbmm(
+                        reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
+                    ),  # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1),  # Linear Term
+                )
+                .unsqueeze(-1),
+            ).detach().clone()
+
+
     def calculate_contactnets_loss_terms(
         self,
         x: Tensor,
         u: Tensor,
         x_plus: Tensor,
         contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
+        impulses: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
         :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
@@ -340,7 +483,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         q_n_diss = torch.cat((normal_velocities, double_zero_vector.unsqueeze(-1)), dim=-2)
 
         # Penalize Deviation from measured contact impulses
-        # This is in impulse^2, but take deviation w.r.t. Delassus to
+        # This is in impulse^2. TODO: take deviation w.r.t. Delassus to
         # add 1/mass term to bring into Energy.
         q_dev = torch.zeros_like(q_pred)
         Q_dev = torch.zeros_like(Q_delassus)
@@ -411,17 +554,18 @@ class MultibodyLearnableSystem(DrakeSystem):
         # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
         # Therefore, we can detach ``impulses`` from pytorch's computation graph
         # without causing error in the overall loss gradient.
-        with torch.no_grad():
-            impulses = pbmm(
-                reorder_mat,
-                self.solver(
-                    pbmm(
-                        reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
-                    ),  # Quadratic Term
-                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1),  # Linear Term
+        if impulses is None:
+            with torch.no_grad():
+                impulses = pbmm(
+                    reorder_mat,
+                    self.solver(
+                        pbmm(
+                            reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
+                        ),  # Quadratic Term
+                        pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(-1),  # Linear Term
+                    )
+                    .unsqueeze(-1),
                 )
-                .unsqueeze(-1),
-            )
 
         # Hack: remove elements of ``impulses`` where solver likely failed.
         invalid = torch.any(
@@ -440,10 +584,8 @@ class MultibodyLearnableSystem(DrakeSystem):
             + pbmm(impulses.transpose(-1, -2), q_pred)
             + constant_pred
         )
-        loss_q_pred = self.space.config_square_error(
-            self.space.euler_step(self.space.q(x), self.space.v(x), self.dt),
-            self.space.q(x_plus),
-        )
+        vel_err = (self.space.configuration_difference(self.space.q(x), self.space.q(x_plus)) / dt - self.space.v(x)).unsqueeze(-1)
+        loss_q_pred = pbmm(vel_err.transpose(-1, -2), pbmm(M, vel_err))
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
         loss_diss = pbmm(impulses.transpose(-1, -2), q_diss) + pbmm(impulses.transpose(-1, -2), q_n_diss)
@@ -452,6 +594,14 @@ class MultibodyLearnableSystem(DrakeSystem):
             + pbmm(impulses.transpose(-1, -2), q_dev)
             + constant_dev
         )
+
+        # Interpretable Loss Terms
+        self.loss_cache["mean_dev_N"] = torch.sqrt(loss_dev.clone().detach().mean()) / self.dt
+        self.loss_cache["mean_diss_Jps"] = loss_diss.clone().detach().mean() / self.dt
+        self.loss_cache["mean_comp_Nm"] = loss_comp.clone().detach().mean()
+        self.loss_cache["mean_pen_m"] = torch.sqrt(loss_pen.clone().detach().mean())
+        self.loss_cache["mean_q_pred_mps"] = torch.sqrt(pbmm(vel_err.transpose(-1, -2), vel_err).clone().detach().mean())
+        self.loss_cache["mean_pred_Nm"] = loss_pred.clone().detach().mean()
 
         if self.debug:
             # pylint: disable-next=forgotten-debug-statement

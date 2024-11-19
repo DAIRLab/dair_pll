@@ -14,6 +14,7 @@ import gin
 import gin.torch.external_configurables
 import git
 import numpy as np
+import scipy
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
@@ -53,7 +54,8 @@ def get_loss_args(
     x_past: Tensor,
     x_future: Tensor,
     system: DrakeSystem,
-    object_body_name: str,
+    impulses: Optional[Tensor] = None,
+    object_body_name: str = "cube",
 ) -> Dict[str, Any]:
     """Convert dataloader trajectory slices into arguments for contactnets loss"""
 
@@ -79,12 +81,75 @@ def get_loss_args(
         for key in past["contact_forces"].keys():
             contact_forces[(object_body_name, key)] = past["contact_forces"][key]
 
-    return {
+    ret = {
         "x": x_past,
         "u": control,
         "x_plus": x_plus,
         "contact_forces": contact_forces,
     }
+    if impulses is not None:
+        ret["impulses"] = impulses
+
+    return ret
+
+def direct_loss_impulses(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory):
+    """
+    Return the impulses
+    """
+    assert len(system._trajectory_model_names) == 1
+    traj_model_name = system._trajectory_model_names[0] + "_state"
+    traj_data = [d for d in data][0]
+    assert len(traj) == (traj_data[0].shape[0] + 1) * system._trajectory.space.n_x
+    traj_state = torch.tensor(np.copy(traj)).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+    traj_data[0][traj_model_name] = traj_state[:-1].clone()
+    traj_data[1][traj_model_name] = traj_state[1:].clone()
+
+    return system.calculate_contactnets_impulses(**get_loss_args(traj_data[0], traj_data[1], system))
+
+def direct_loss_jacobian(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory, impulses: Optional[Tensor] = None):
+    """
+    Direct compute of the loss for the purpose of scipy minimize
+    """
+    traj_model_name = system._trajectory_model_names[0] + "_state"
+    traj_data = [d for d in data][0]
+    traj_state = torch.tensor(traj).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+
+    def loss_from_tensor_jac(traj_tensor):
+        traj_data[0][traj_model_name] = traj_tensor[:-1]
+        traj_data[1][traj_model_name] = traj_tensor[1:]
+        return system.contactnets_loss(**get_loss_args(traj_data[0], traj_data[1], system, impulses)).mean()
+
+    return torch.autograd.functional.jacobian(loss_from_tensor_jac, traj_state).flatten().cpu().numpy()
+
+def direct_loss_hessian(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory, impulses: Optional[Tensor] = None):
+    """
+    Direct compute of the loss for the purpose of scipy minimize
+    """
+    traj_model_name = system._trajectory_model_names[0] + "_state"
+    traj_data = [d for d in data][0]
+    traj_state = torch.tensor(traj).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+
+    def loss_from_tensor_hes(traj_tensor):
+        traj_data[0][traj_model_name] = traj_tensor[:-1]
+        traj_data[1][traj_model_name] = traj_tensor[1:]
+        return system.contactnets_loss(**get_loss_args(traj_data[0], traj_data[1], system, impulses)).mean()
+
+    return torch.autograd.functional.hessian(loss_from_tensor_hes, traj_state).cpu().numpy()
+
+def direct_loss(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory, impulses: Optional[Tensor] = None):
+    """
+    Direct compute of the loss for the purpose of scipy minimize
+    """
+    assert len(system._trajectory_model_names) == 1
+    traj_model_name = system._trajectory_model_names[0] + "_state"
+    traj_data = [d for d in data][0]
+    assert len(traj) == (traj_data[0].shape[0] + 1) * system._trajectory.space.n_x
+    traj_state = torch.tensor(traj).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+    traj_data[0][traj_model_name] = traj_state[:-1]
+    traj_data[1][traj_model_name] = traj_state[1:]
+
+    return float(system.contactnets_loss(**get_loss_args(traj_data[0], traj_data[1], system, impulses)).mean())
+
 
 
 def train_epoch(
@@ -209,12 +274,12 @@ def main(
     def print_help():
         print(
             "\nUsage:\n"
-            "a - Adjust learned traj\n"
             "b - breakpoint()\n"
             "c - Collect Sim Data\n"
             "d - Debug Toggle\n"
             "h - Print Help\n"
             "m - Meshcat Visualize\n"
+            "o - Optimize traj directly\n"
             "t - Train\n"
             "u - Update PID Ref\n"
             "v - Visualize\n"
@@ -229,9 +294,18 @@ def main(
         if command_char == "h":
             print_help()
 
-        elif command_char == "a":
-            # Gather initial s
-            pass
+        elif command_char == "o":
+            if traj_dataloader is None:
+                print("Cannot optimize without sim data.\n")
+                continue
+
+            init_state = np.array([0., 0.05, 0., 0., 0., 0.])
+            traj_0 = np.tile(init_state, len(sim_trajectories.slices) + 1)
+
+            #impulses = direct_loss_impulses(traj_0, traj_dataloader, learned_system)
+
+            res = scipy.optimize.minimize(direct_loss, traj_0, tol=1e-10, args=(traj_dataloader, learned_system), jac=direct_loss_jacobian, method='L-BFGS-B', options={"iprint": 100})
+            breakpoint()
 
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
@@ -300,7 +374,15 @@ def main(
             for idx in range(epochs):
                 train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
                 total_epochs += 1
-                print(total_epochs, train_loss)
+                print(total_epochs, 
+                    f"Loss (J): {train_loss:.3e};", 
+                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};", 
+                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};", 
+                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};", 
+                    f"Pen (m): {loss_data['mean_pen_m']:.3e};", 
+                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
+                    f"Dev (N): {loss_data['mean_dev_N']:.3e};",
+                )
                 train_losses.append(train_loss)
                 train_loss_data.append(loss_data)
                 learned_summaries.append(learned_system.summary({}))
