@@ -20,7 +20,7 @@ general purpose converter is implemented in
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Dict, cast, Union
+from typing import Tuple, Dict, cast, Union, Optional
 
 import fcl  # type: ignore
 import numpy as np
@@ -159,11 +159,11 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
         However,
 
         Args:
-            directions: (\*, 3) batch of unit-length directions.
-            hint: (\*, 3) batch of expected contact point
+            directions: (batch, 3) batch of unit-length directions.
+            hint: (batch, 3) batch of expected contact point
 
         Returns:
-            (\*, N, 3) sets of corresponding witness points of cardinality N.
+            (batch, N, 3) sets of corresponding witness points of cardinality N.
             If hint is defined, then N == 1.
         """
 
@@ -174,6 +174,7 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
         Returns:
             :py:mod:`fcl` bounding volume
         """
+
 
 
 class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
@@ -212,12 +213,12 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         directions``.
 
         Args:
-            directions: (\*, 3) batch of directions
-            hint: (\*, 3) expected contact point, should be on convex set
+            directions: (batch, 3) batch of directions
+            hint: (batch, 3) expected contact point, should be on convex set
             of the witness points. Used if n_query > 1
 
         Returns:
-            (\*, n_query, 3) sets of corresponding witness points.
+            (batch, n_query, 3) sets of corresponding witness points.
         """
         assert directions.shape[-1] == 3
         original_shape = directions.shape
@@ -260,9 +261,9 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
             argmax_{s \\in S} s \\cdot directions \\subset convexHull(S_v).
 
         Args:
-            directions: (\*, 3) batch of unit-length directions.
+            directions: (batch, 3) batch of unit-length directions.
         Returns:
-            (\*, N, 3) witness point convex hull vertices.
+            (batch, N, 3) witness point convex hull vertices.
         """
 
 
@@ -312,6 +313,18 @@ class Polygon(SparseVertexConvexCollisionGeometry):
             for vertex_index, value in enumerate(values):
                 scalars[f"v{vertex_index}_{axis}"] = value.item()
         return scalars
+
+    def get_fcl_geometry(self) -> fcl.CollisionGeometry:
+        """Retrieves :py:mod:`fcl` mesh collision geometry representation.
+
+        If evaluation mode is set, retrieves precalculated version.
+
+        Returns:
+            :py:mod:`fcl` bounding volume hierarchy for mesh.
+        """
+
+        # TODO: add FCL to polygon
+        raise NotImplementedError("Polygon doesn't support FCL")
 
 
 class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
@@ -534,10 +547,10 @@ class Sphere(BoundedConvexCollisionGeometry):
             argmax_{s \\in S} s \\cdot directions = directions * radius.
 
         Args:
-            directions: (\*, 3) batch of directions.
+            directions: (batch, 3) batch of directions.
 
         Returns:
-            (\*, 1, 3) corresponding witness point sets of cardinality 1.
+            (batch, 1, 3) corresponding witness point sets of cardinality 1.
         """
         return (directions.clone() * self.get_radius()).unsqueeze(-2)
 
@@ -621,7 +634,7 @@ class PydrakeToCollisionGeometryFactory:
             pass  # TODO
 
         raise NotImplementedError(
-            f"Cannot presently represent a DrakeBox()"
+            "Cannot presently represent a DrakeBox()"
             + f"as {represent_geometry_as} type."
         )
 
@@ -637,7 +650,7 @@ class PydrakeToCollisionGeometryFactory:
             pass  # TODO
 
         raise NotImplementedError(
-            f"Cannot presently represent a DrakeBox()"
+            "Cannot presently represent a DrakeBox()"
             + f"as {represent_geometry_as} type."
         )
 
@@ -663,7 +676,7 @@ class PydrakeToCollisionGeometryFactory:
             return Polygon(vertices, learnable)
 
         raise NotImplementedError(
-            f"Cannot presently represent a "
+            "Cannot presently represent a "
             + f"DrakeMesh() as {represent_geometry_as} type."
         )
 
@@ -690,17 +703,17 @@ class GeometryCollider:
             geometry_a: first collision geometry
             geometry_b: second collision geometry, with type
               ordering ``not geometry_A > geometry_B``.
-            R_AB: (\*,3,3) rotation between geometry frames
-            p_AoBo_A: (\*, 3) offset of geometry frame origins
-            estimated_normals_A: (\*, 3) estimate of contact normal from A
+            R_AB: (batch,3,3) rotation between geometry frames
+            p_AoBo_A: (batch, 3) offset of geometry frame origins
+            estimated_normals_A: (batch, 3) estimate of contact normal from A
 
         Returns:
-            (\*, N) batch of witness point pair distances
-            (\*, N, 3, 3) contact frame C rotation in A, R_AC, where the z
+            (batch, N) batch of witness point pair distances
+            (batch), N, 3, 3) contact frame C rotation in A, R_AC, where the z
             axis of C is contained in the normal cone of body A at contact
             point Ac and is parallel (or antiparallel) to AcBc.
-            (\*, N, 3) witness points Ac on A, p_AoAc_A
-            (\*, N, 3) witness points Bc on B, p_BoBc_B
+            (batch, N, 3) witness points Ac on A, p_AoAc_A
+            (batch, N, 3) witness points Bc on B, p_BoBc_B
         """
         assert not geometry_a > geometry_b
 
@@ -738,10 +751,37 @@ class GeometryCollider:
                 geometry_a, geometry_b, R_AB, p_AoBo_A
             )
         raise TypeError(
-            "No type-specific implementation for geometry " "pair of following types:",
+            "No type-specific implementation for geometry pair of following types:",
             type(geometry_a).__name__,
             type(geometry_b).__name__,
         )
+
+    @staticmethod
+    # Simplex closest point on line
+    def closest_point_to_origin(line_O: Tensor) -> Tensor:
+        """
+        Returns the closest point on a line segment to the origin.
+
+        line_O (batch, 2, 3): 2 points defining the line segment
+
+        Returns:
+        p_closest (batch, 3): 1 closest point to origin
+
+        Reference:
+        https://stackoverflow.com/questions/28931007/how-to-find-the-closest-point-on-a-line-segment-to-an-arbitrary-point
+        """
+        batch_dim = line_O.shape[:-2]
+        assert line_O.shape == batch_dim + (2, 3)
+
+        dx = line_O[..., 1, :] - line_O[..., 0, :]
+        nx = -(line_O[..., 0, :] * dx[..., :]).sum(dim=-1) / torch.norm(dx, dim=-1)
+        assert nx.shape == batch_dim
+        nx[torch.isnan(nx)] = 0.0
+        nx = torch.clamp(nx, 0.0, 1.0)
+        ret = dx * nx.unsqueeze(-1) + line_O[..., 0, :]
+        assert ret.shape == batch_dim + (3,)
+
+        return ret
 
     @staticmethod
     def gjk_geometry_origin(
@@ -776,11 +816,11 @@ class GeometryCollider:
         """
 
         # Input sanitation
-        batch_dim = p_AoBo_A.shape[:-1]
+        batch_dim = p_AoO_A.shape[:-1]
         assert p_AoO_A.shape[-1] == 3
         assert shape_a is not None
-        assert inside_thresh > 0.
-        assert gjk_thresh > 0.
+        assert inside_thresh > 0.0
+        assert gjk_thresh > 0.0
         p_OAo_A = -p_AoO_A
 
         # GJK Initialization
@@ -790,48 +830,26 @@ class GeometryCollider:
         # (batch, 1, 3) point
         p_OSimplex_A = p_OAc_A.reshape(batch_dim + (1, 3))
 
-        # Simplex closest point on line
-        def closest_point_to_origin(line_O):
-            """
-            Returns the closest point on a line segment to the origin.
-
-            line_O (batch, 2, 3): 2 points defining the line segment
-
-            Returns:
-            p_closest (batch, 3): 1 closest point to origin
-
-            Reference:
-            https://stackoverflow.com/questions/28931007/how-to-find-the-closest-point-on-a-line-segment-to-an-arbitrary-point
-            """
-            batch_dim = line_O.shape[:-2]
-            assert line_O.shape == batch_dim + (2, 3)
-
-            dx = line_O[..., 1, :] - line_O[..., 0, :]
-            nx = -(line_O[..., 0, :]*dx[..., :]).sum(dim=-1) / torch.norm(dx, dim=-1)
-            assert nx.shape = batch_dim + (1,)
-            nx[torch.isnan(nx)] = 0.
-            nx = torch.clamp(nx, 0., 1.)
-            ret = dx * nx + line_O[..., 0, :]
-            assert ret.shape == batch_dim + (3,)
-
-            return ret
-
-
         for cur_iter in range(gjk_max_iter):
-            assert p_OSimplex_A.shape == batch_dims + (1, 3)
+            assert p_OSimplex_A.shape == batch_dim + (1, 3)
 
             # Get new support points, repeat previous for small vectors
             new_supports = p_OSimplex_A.clone()
             nonzero_norms = torch.norm(p_OSimplex_A, dim=-1) > inside_thresh
-            new_supports[zero_norms] = shape_a.support_points(-p_OSimplex_A[nonzero_norms])[..., :1, :] + p_OAo_A.reshape(batch_dim + (1, 3))[nonzero_norms]
+            new_supports[nonzero_norms] = (
+                shape_a.support_points(-p_OSimplex_A[nonzero_norms])[..., 0, :]
+                + p_OAo_A.reshape(batch_dim + (1, 3))[nonzero_norms]
+            )
 
             # Concat into line segment simplices
-            p_OSimplex_A = torch.cat([p_OSimplex_A, new_supports], dim=-2) # (batch, 2, 3) line segment
-            assert p_OSimplex_A.shape == batch_dims + (2, 3) 
+            p_OSimplex_A = torch.cat(
+                [p_OSimplex_A, new_supports], dim=-2
+            )  # (batch, 2, 3) line segment
+            assert p_OSimplex_A.shape == batch_dim + (2, 3)
 
             # Get closest point on line segment to origin and new displacement vector
             # Displacement vector of closest point on line segment == normal vector
-            new_p_OAc_A = closest_point_to_origin(p_OSimplex_A)
+            new_p_OAc_A = GeometryCollider.closest_point_to_origin(p_OSimplex_A)
 
             # Check if changes in normals are <thresh
             if torch.all(torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh):
@@ -844,36 +862,39 @@ class GeometryCollider:
         if cur_iter == gjk_max_iter:
             print("Warning: Reached max GJK iterations")
 
-
         # p_OAc_A is location of closest point to origin in object
-        assert p_OAc_A.shape == batch_dims + (3,)
+        assert p_OAc_A.shape == batch_dim + (3,)
         normals_A = -p_OAc_A
         p_AoAc_A = p_AoO_A + p_OAc_A
+        phi = torch.norm(normals_A, dim=-1)
 
         # Handle inside-object case
-        inside_object = (phi < inside_thresh)
+        inside_object = phi < inside_thresh
         normals_A[inside_object] = p_AoO_A[inside_object]
-        p_AoAc_A[inside_object] = p_AoAc_A_init
+        p_AoAc_A[inside_object] = p_AoAc_A_init[inside_object]
         p_OAc_A[inside_object] = p_OAo_A[inside_object] + p_AoAc_A[inside_object]
 
+        # Handle exact middle corner case, just arbitrary normal
+        exact_middle = torch.norm(normals_A, dim=-1) < inside_thresh
+        normals_A[exact_middle] = torch.tensor([1., 0., 0.])
+
         # Actually normalize normal vectors and calculate phi
-        phi = torch.norm(normals_A, dim=-1)
         normals_A = torch.nn.functional.normalize(normals_A, dim=-1)
 
         # Handle inside-object case for phi (project O->Ac onto normal)
         R_AC = rotation_matrix_from_one_vector(normals_A[inside_object], 2)
         phi[inside_object] = (-p_OAc_A[inside_object] * R_AC[..., 2]).sum(dim=-1)
 
-        assert p_AoAc_A.shape = batch_dims + (3,)
-        assert phi.shape = batch_dims
-        assert normals_A.shape = batch_dims + (3,)
+        assert p_AoAc_A.shape == batch_dim + (3,)
+        assert phi.shape == batch_dim
+        assert normals_A.shape == batch_dim + (3,)
 
         return p_AoAc_A, phi, normals_A
 
     @staticmethod
     def collide_convex_sphere(
         shape_a: BoundedConvexCollisionGeometry,
-        sphere_b: sphere,
+        sphere_b: Sphere,
         R_AB: Tensor,
         p_AoBo_A: Tensor,
         estimated_normals_A: Optional[Tensor],
@@ -905,8 +926,14 @@ class GeometryCollider:
 
         ## Get nearest point on object
         phi = torch.zeros(batch_dim + (n_c,))
-        p_AoAc_A, phi[..., :1], directions_A = gjk_geometry_origin(shape_a=shape_a, p_AoO_A=p_AoBo_A)
-        directions_A = directions_A.reshape(batch_dim + (1, 3))
+        p_AoAc_A, phi[..., 0], directions_A = GeometryCollider.gjk_geometry_origin(
+            shape_a=shape_a, p_AoO_A=p_AoBo_A
+        )
+        # Subtract sphere radius
+        phi[..., 0] -= sphere_b.get_radius()
+        # Unsqueeze n_c dimension
+        directions_A = directions_A.unsqueeze(-2)
+        p_AoAc_A = p_AoAc_A.unsqueeze(-2)
 
         # Add estimated normal if they exist
         if estimated_normals_A is not None:
@@ -916,7 +943,7 @@ class GeometryCollider:
                 torch.norm(directions_A2, dim=-1), torch.zeros(batch_dim)
             )
             directions_A2[zeros_idx, :] = directions_A[zeros_idx, 0, :]
-            p_AoAc_A2 = box_a.support_points(directions_A2)[..., :1, :]
+            p_AoAc_A2 = shape_a.support_points(directions_A2)[..., :1, :]
             p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
             directions_A = torch.cat(
                 [directions_A, directions_A2.unsqueeze(-2)], dim=-2
@@ -949,7 +976,7 @@ class GeometryCollider:
             R_AB.unsqueeze(-3).expand(batch_dim + (n_c, 3, 3)).transpose(-1, -2),
         ).squeeze(-2)
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
-        
+
         # Vector Norm
         # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
@@ -966,7 +993,7 @@ class GeometryCollider:
     @staticmethod
     def collide_box_sphere(
         box_a: Box,
-        sphere_b: sphere,
+        sphere_b: Sphere,
         R_AB: Tensor,
         p_AoBo_A: Tensor,
         estimated_normals_A: Optional[Tensor],
@@ -1117,7 +1144,7 @@ class GeometryCollider:
             (p_AoBc_A[..., :2], torch.zeros_like(p_AoBc_A[..., 2:])), -1
         )
 
-        # ``R_AC`` (\*, N, 3, 3) is simply a batch of identities, as the z
+        # ``R_AC`` (batch, N, 3, 3) is simply a batch of identities, as the z
         # axis of A points out of the plane.
         # pylint: disable=E1103
         R_AC = torch.eye(3).expand(p_AoAc_A.shape + (3,))
@@ -1131,7 +1158,7 @@ class GeometryCollider:
         p_AoBo_A: Tensor,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Implementation of ``GeometryCollider.collide()`` when
-        both geometries are ``BoundedConvexCollisionGeometry``\es."""
+        both geometries are ``BoundedConvexCollisionGeometry``s."""
 
         # Call network directly for DeepSupportConvex objects
         support_fn_a = geometry_a.support_points
@@ -1143,7 +1170,6 @@ class GeometryCollider:
 
         # pylint: disable=too-many-locals
         p_AoBo_A = p_AoBo_A.unsqueeze(-2)
-        original_batch_dims = p_AoBo_A.shape[:-2]
         p_AoBo_A = p_AoBo_A.view(-1, 3)
         R_AB = R_AB.view(-1, 3, 3)
         batch_range = p_AoBo_A.shape[0]
@@ -1231,6 +1257,7 @@ class GeometryCollider:
         phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)
 
         # No longer necessary
+        # original_batch_dims = p_AoBo_A.shape[:-2]
         # phi = phi.reshape(original_batch_dims + (1,))
         # R_AC = R_AC.reshape(original_batch_dims + (1, 3, 3))
         # p_AoAc_A = p_AoAc_A.reshape(original_batch_dims + (1, 3))

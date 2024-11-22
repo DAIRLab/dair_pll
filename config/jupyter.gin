@@ -1,0 +1,66 @@
+# Config file for Jupyter Notebook
+
+# Paralellism in cvxpylayers / diffcp
+CvxpyLayer.n_proc=-1
+DynamicCvxpyLCQPLayer.solver_args = {
+    "solve_method": "Clarabel",
+    "n_jobs_forward": -1,
+}
+
+## General Config
+robot_model_name = "robot"
+object_model_name = "cube"
+# The actual Drake body name within the object model
+object_body_name = "cube_body" 
+delta_t = 0.0068
+
+robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
+robot/get_urdf_asset_contents.mappings = {
+	"num_fingers": "1",
+	"radius": "0.01",
+	"fixed_y": "0.0", # m
+#	"fixed_z": "0.05" # m
+}
+
+
+## Learnable URDF and State Config
+LearnableSystem.trajectory_model_names = %object_model_name
+LearnableSystem.init_urdfs = { 
+	%object_model_name: @object_init/get_urdf_asset_contents(), 
+	%robot_model_name: @robot/get_urdf_asset_contents()
+}
+LearnableSystem.dt = %delta_t # seconds
+LearnableSystem.learnable_body_dict = { 
+	%object_body_name: @object_init/LearnableBodySettings()
+}
+LearnableSystem.represent_geometry_as = "box"
+
+# Initial guesses
+object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object_init/get_urdf_asset_contents.mappings = {
+	"length_x": "0.1", # m
+	"length_y": "0.1", # m
+	"length_z": "0.1", # m
+	"planar_xz": "true",
+}
+LearnableSystem.init_traj_state = [
+	0., 0.05, 0., 0., 0., 0.,
+#	1., 0., 0., 0., 0., 0., 0., # Q
+#	0., 0., 0., 0., 0., 0., # V
+]
+
+# What is learnable
+object_init/LearnableBodySettings.inertia_mass = False
+object_init/LearnableBodySettings.inertia_com = False
+object_init/LearnableBodySettings.inertia_moments_products = False
+object_init/LearnableBodySettings.geometry = True
+object_init/LearnableBodySettings.friction = False
+
+# Learning weights
+LearnableSystem.w_pred = 5e1
+LearnableSystem.w_q_pred = 5e1
+LearnableSystem.w_comp = 1e0
+LearnableSystem.w_diss = 1e0
+LearnableSystem.w_pen = 5e1
+LearnableSystem.w_dev = 2e6
+LearnableSystem.w_reg_iner = 1e-5
