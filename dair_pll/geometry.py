@@ -741,6 +741,103 @@ class GeometryCollider:
         )
 
     @staticmethod
+    def gjk_geometry_origin(
+        shape_a: BoundedConvexCollisionGeometry,
+        p_AoO_A: Tensor,
+        inside_thresh: float = 1e-8,
+        gjk_thresh: float = 1e-8,
+        gjk_max_iter: int = 10,
+    ) -> Tuple[Tensor, Tensor, Tensor]:
+        """
+        Use GJK to find the point in shape_a closest to the origin.
+        Return this point + the normal vector + phi.
+        If the distance of the origin to the object < inside_thresh:
+            Then GJK won't be on the surface and the normal vector will be
+            undefined; use p_AoO_A as the normal vector instead.
+
+        GJK Details:
+        https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
+
+        shape_a: any convex shape which implements support_points()
+        p_AoO_A: vector of shape center to the origin in shape's frame
+        inside_thresh: see above, determines when to switch to p_AoO_A as normal
+        gjk_thresh: threshold in distance change to stop GJK iterations
+        gjk_max_iter: Maximum number of GJK iterations
+
+        GJK will run until all points do not exceed threshold
+
+        Returns:
+        p_AoAc_A (batch, 3): closest point to origin in A's frame
+        phi (batch,): distance from contact point to origin along normal
+        normals_A (batch, 3): Contact normal in A's frame
+        """
+
+        # Input sanitation
+        batch_dim = p_AoBo_A.shape[:-1]
+        assert p_AoO_A.shape[-1] == 3
+        assert shape_a is not None
+        assert inside_thresh > 0.
+        assert gjk_thresh > 0.
+        p_OAo_A = -p_AoO_A
+
+        # GJK Initialization
+        # (batch, 3); cached for inside_thresh
+        p_AoAc_A_init = shape_a.support_points(p_AoO_A)[..., 0, :]
+        p_OAc_A = p_AoAc_A_init + p_OAo_A
+        # (batch, 1, 3) point
+        p_OSimplex_A = p_OAc_A.reshape(batch_dim + (1, 3))
+
+        for _ in range(gjk_max_iter):
+            assert p_OSimplex_A.shape == batch_dims + (1, 3)
+
+            # Get new support points, repeat for small vectors
+            new_supports = p_OSimplex_A
+            nonzero_norms = torch.norm(p_OSimplex_A, dim=-1) > inside_thresh
+            new_supports[zero_norms] = shape_a.support_points(-p_OSimplex_A[nonzero_norms])[..., :1, :] + p_OAo_A.reshape(batch_dim + (1, 3))[nonzero_norms]
+
+            # Concat into line segment simplices
+            p_OSimplex_A = torch.cat([p_OSimplex_A, new_supports], dim=-2) # (batch, 2, 3) line segment
+            assert p_OSimplex_A.shape == batch_dims + (2, 3) 
+
+            # Get closest point on line segment to origin and new displacement vector
+            # Displacement vector of closest point on line segment == normal vector
+            new_p_OAc_A = closest_point_to_origin(p_OSimplex_A)
+
+            # Check if changes in normals are <thresh
+            if torch.all(torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh):
+                p_OAc_A = new_p_OAc_A
+                break
+
+            # Next iteration
+            p_OAc_A = new_p_OAc_A
+            p_OSimplex_A = p_OAc_A.unsqueeze(-2)
+
+        # p_OAc_A is location of closest point to origin in object
+        assert p_OAc_A.shape == batch_dims + (3,)
+        normals_A = -p_OAc_A
+        p_AoAc_A = p_AoO_A + p_OAc_A
+
+        # Handle inside-object case
+        inside_object = (phi < inside_thresh)
+        normals_A[inside_object] = p_AoO_A[inside_object]
+        p_AoAc_A[inside_object] = p_AoAc_A_init
+        p_OAc_A[inside_object] = p_OAo_A[inside_object] + p_AoAc_A[inside_object]
+
+        # Actually normalize normal vectors and calculate phi
+        phi = torch.norm(normals_A, dim=-1)
+        normals_A = torch.nn.functional.normalize(normals_A, dim=-1)
+
+        # Handle inside-object case for phi (project O->Ac onto normal)
+        R_AC = rotation_matrix_from_one_vector(normals_A[inside_object], 2)
+        phi[inside_object] = (-p_OAc_A[inside_object] * R_AC[..., 2]).sum(dim=-1)
+
+        assert p_AoAc_A.shape = batch_dims + (3,)
+        assert phi.shape = batch_dims
+        assert normals_A.shape = batch_dims + (3,)
+
+        return p_AoAc_A, phi, normals_A
+
+    @staticmethod
     def collide_box_sphere(
         box_a: Box,
         sphere_b: sphere,
@@ -769,7 +866,7 @@ class GeometryCollider:
         assert p_AoBo_A.shape == batch_dim + (3,)
         assert isinstance(box_a, Box)
         assert isinstance(sphere_b, Sphere)
-        n_c = 1
+        n_c = 2
 
         ## Get nearest point on box
         # Expand box lengths to batch size
@@ -811,8 +908,7 @@ class GeometryCollider:
         )  # (..., n_c == 1, 3)
 
         # Add estimated normal if they exist
-        #if estimated_normals_A is not None:
-        if False:
+        if estimated_normals_A is not None:
             assert estimated_normals_A.shape == batch_dim + (3,)
             directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
             zeros_idx = torch.isclose(

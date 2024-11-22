@@ -45,6 +45,12 @@ class TrajectorySliceDataset(Dataset):
         self.previous_states_slices = []  # type: List[Tensor]
         self.future_states_slices = []  # type: List[Tensor]
         self.n_trajectories = 0
+        self.first_idx = 0
+
+    def cull_oldest_slices(self, n_slices) -> None:
+        """Remove oldest n slices from training"""
+        self.first_idx += n_slices
+
 
     def add_slices_from_trajectory(self, trajectory: Tensor) -> None:
         """Incorporate trajectory into dataset as a set of slices.
@@ -79,11 +85,11 @@ class TrajectorySliceDataset(Dataset):
 
     def __len__(self) -> int:
         """Length of dataset as number of total slice pairs."""
-        return len(self.previous_states_slices)
+        return len(self.previous_states_slices) - self.first_idx
 
     def __getitem__(self, idx) -> Tuple[Tensor, Tensor]:
         """Retrieve slice pair at index."""
-        return self.previous_states_slices[idx], self.future_states_slices[idx]
+        return self.previous_states_slices[idx + self.first_idx], self.future_states_slices[idx + self.first_idx]
 
 
 @dataclass
@@ -103,12 +109,21 @@ class TrajectorySet:
     """Trajectories in their raw format."""
     indices: Tensor = field(default_factory=lambda: torch.tensor([]).long())
     """Indices associated with on-disk filenames."""
+    first_traj: int = 0
 
     def __post_init__(self):
         """Validate correspondence between trajectories and indices."""
         assert self.indices.nelement() == len(self.trajectories)
         # assure all indices are unique
         assert self.indices.unique().nelement() == self.indices.nelement()
+
+
+    def cull_oldest_trajectory(self) -> None:
+        """Remove oldest trajectory from training"""
+        if self.first_traj >= len(self.trajectories):
+            return
+        self.slices.cull_oldest_slices(self.trajectories[self.first_traj].shape[0] - 1)
+        self.first_traj += 1
 
     def add_trajectories(self, trajectory_list: List[Tensor], indices: Tensor) -> None:
         """Add new subset of trajectories to set.

@@ -280,6 +280,7 @@ def main(
             "h - Print Help\n"
             "m - Meshcat Visualize\n"
             "o - Optimize traj directly\n"
+            "r - Remove oldest trajectory\n"
             "t - Train\n"
             "u - Update PID Ref\n"
             "v - Visualize\n"
@@ -305,7 +306,19 @@ def main(
             #impulses = direct_loss_impulses(traj_0, traj_dataloader, learned_system)
 
             res = scipy.optimize.minimize(direct_loss, traj_0, tol=1e-10, args=(traj_dataloader, learned_system), jac=direct_loss_jacobian, method='L-BFGS-B', options={"iprint": 100})
-            breakpoint()
+
+        elif command_char == "r":
+            if traj_dataloader is None or len(traj_dataloader) == 0:
+                print("No data to remove")
+                continue
+            print("Removing oldest trajectory from training...")
+            sim_trajectories.cull_oldest_trajectory()
+            traj_dataloader = DataLoader(
+                sim_trajectories.slices,
+                batch_size=batch_size,
+                shuffle=sim_trajectories.slices.config.shuffle,
+                generator=torch.Generator(device=torch.get_default_device()),
+            )
 
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
@@ -319,8 +332,13 @@ def main(
                 print("Debug disabled")
 
         elif command_char == "c":
-            seconds = float(input("How long (s)? "))
+            try:
+                seconds = float(input("How long (s)? "))
+            except ValueError:
+                print("Cancelling...")
+                continue
             if seconds <= 0.0:
+                print("Cancelling...")
                 continue
             state, data = base_system.simulate(
                 initial_state, carry_dict, int(seconds / base_system.dt)
@@ -359,7 +377,7 @@ def main(
             initial_state = state[-1:, :]
 
         elif command_char == "t":
-            if traj_dataloader is None:
+            if traj_dataloader is None or len(traj_dataloader) == 0:
                 print("Cannot train without sim data.\n")
                 continue
 
