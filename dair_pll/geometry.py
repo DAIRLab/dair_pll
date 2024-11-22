@@ -704,8 +704,7 @@ class GeometryCollider:
         """
         assert not geometry_a > geometry_b
 
-        # case 1: half-space to compact-convex collision
-        # TODO: make function allow planes in general, not just in 1st slot
+        # case 1: half-space to compact-convex collision (e.g. ground)
         if isinstance(geometry_a, Plane) and isinstance(
             geometry_b, BoundedConvexCollisionGeometry
         ):
@@ -716,18 +715,22 @@ class GeometryCollider:
             return GeometryCollider.collide_plane_convex(
                 geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB)
             )
+
+        # case 2: compact-convex to sphere collision (e.g. robot)
         if isinstance(geometry_a, Box) and isinstance(geometry_b, Sphere):
-            return GeometryCollider.collide_box_sphere(
+            return GeometryCollider.collide_convex_sphere(
                 geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A
             )
         if isinstance(geometry_a, Sphere) and isinstance(geometry_b, Box):
-            return GeometryCollider.collide_box_sphere(
+            return GeometryCollider.collide_convex_sphere(
                 geometry_b,
                 geometry_a,
                 R_AB.transpose(-1, -2),
                 -pbmm(p_AoBo_A, R_AB),
                 -pbmm(estimated_normals_A, R_AB),
             )
+
+        # case 3: compact-convex to compact-convex collision (NOTE: unstable)
         if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
             geometry_b, BoundedConvexCollisionGeometry
         ):
@@ -759,7 +762,7 @@ class GeometryCollider:
         https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm
 
         shape_a: any convex shape which implements support_points()
-        p_AoO_A: vector of shape center to the origin in shape's frame
+        p_AoO_A (batch, 3): vector of shape center to the origin in shape's frame
         inside_thresh: see above, determines when to switch to p_AoO_A as normal
         gjk_thresh: threshold in distance change to stop GJK iterations
         gjk_max_iter: Maximum number of GJK iterations
@@ -787,11 +790,38 @@ class GeometryCollider:
         # (batch, 1, 3) point
         p_OSimplex_A = p_OAc_A.reshape(batch_dim + (1, 3))
 
-        for _ in range(gjk_max_iter):
+        # Simplex closest point on line
+        def closest_point_to_origin(line_O):
+            """
+            Returns the closest point on a line segment to the origin.
+
+            line_O (batch, 2, 3): 2 points defining the line segment
+
+            Returns:
+            p_closest (batch, 3): 1 closest point to origin
+
+            Reference:
+            https://stackoverflow.com/questions/28931007/how-to-find-the-closest-point-on-a-line-segment-to-an-arbitrary-point
+            """
+            batch_dim = line_O.shape[:-2]
+            assert line_O.shape == batch_dim + (2, 3)
+
+            dx = line_O[..., 1, :] - line_O[..., 0, :]
+            nx = -(line_O[..., 0, :]*dx[..., :]).sum(dim=-1) / torch.norm(dx, dim=-1)
+            assert nx.shape = batch_dim + (1,)
+            nx[torch.isnan(nx)] = 0.
+            nx = torch.clamp(nx, 0., 1.)
+            ret = dx * nx + line_O[..., 0, :]
+            assert ret.shape == batch_dim + (3,)
+
+            return ret
+
+
+        for cur_iter in range(gjk_max_iter):
             assert p_OSimplex_A.shape == batch_dims + (1, 3)
 
-            # Get new support points, repeat for small vectors
-            new_supports = p_OSimplex_A
+            # Get new support points, repeat previous for small vectors
+            new_supports = p_OSimplex_A.clone()
             nonzero_norms = torch.norm(p_OSimplex_A, dim=-1) > inside_thresh
             new_supports[zero_norms] = shape_a.support_points(-p_OSimplex_A[nonzero_norms])[..., :1, :] + p_OAo_A.reshape(batch_dim + (1, 3))[nonzero_norms]
 
@@ -811,6 +841,9 @@ class GeometryCollider:
             # Next iteration
             p_OAc_A = new_p_OAc_A
             p_OSimplex_A = p_OAc_A.unsqueeze(-2)
+        if cur_iter == gjk_max_iter:
+            print("Warning: Reached max GJK iterations")
+
 
         # p_OAc_A is location of closest point to origin in object
         assert p_OAc_A.shape == batch_dims + (3,)
@@ -836,6 +869,99 @@ class GeometryCollider:
         assert normals_A.shape = batch_dims + (3,)
 
         return p_AoAc_A, phi, normals_A
+
+    @staticmethod
+    def collide_convex_sphere(
+        shape_a: BoundedConvexCollisionGeometry,
+        sphere_b: sphere,
+        R_AB: Tensor,
+        p_AoBo_A: Tensor,
+        estimated_normals_A: Optional[Tensor],
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        """
+        Implementation of ``GeometryCollider.collide()`` when
+        ``geometry_a`` is any convex geometry and ``geometry_b`` is a
+        ``Sphere``.
+
+        shape_a: Convex object
+        sphere_b: Sphere object
+        R_AB (batch, 3, 3): rotation from box to sphere model frames
+        p_AoBo_A (batch, 3): vector from box to sphere in box frame
+
+        Returns:
+        phi (batch, n_c=2): distance between objects
+        R_AC (batch, n_c=2, 3, 3): A model frame to contact frame [i.e. z == contact normal]
+        p_AoAc_A (batch, n_c=2, 3): A's contact in A's frame
+        p_BoBc_B (batch, n_c=2, 3): B's contact in B's frame
+        """
+
+        # Input Sanitation
+        batch_dim = R_AB.shape[:-2]
+        assert R_AB.shape == batch_dim + (3, 3)
+        assert p_AoBo_A.shape == batch_dim + (3,)
+        assert isinstance(shape_a, BoundedConvexCollisionGeometry)
+        assert isinstance(sphere_b, Sphere)
+        n_c = 2
+
+        ## Get nearest point on object
+        phi = torch.zeros(batch_dim + (n_c,))
+        p_AoAc_A, phi[..., :1], directions_A = gjk_geometry_origin(shape_a=shape_a, p_AoO_A=p_AoBo_A)
+        directions_A = directions_A.reshape(batch_dim + (1, 3))
+
+        # Add estimated normal if they exist
+        if estimated_normals_A is not None:
+            assert estimated_normals_A.shape == batch_dim + (3,)
+            directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
+            zeros_idx = torch.isclose(
+                torch.norm(directions_A2, dim=-1), torch.zeros(batch_dim)
+            )
+            directions_A2[zeros_idx, :] = directions_A[zeros_idx, 0, :]
+            p_AoAc_A2 = box_a.support_points(directions_A2)[..., :1, :]
+            p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
+            directions_A = torch.cat(
+                [directions_A, directions_A2.unsqueeze(-2)], dim=-2
+            )
+        else:
+            p_AoAc_A = p_AoAc_A.expand(batch_dim + (n_c, 3))
+            directions_A = directions_A.expand(batch_dim + (n_c, 3))
+
+        assert (
+            p_AoAc_A.shape == directions_A.shape == batch_dim + (n_c, 3)
+        )  # (..., n_c == 2, 3)
+
+        # directions needs to be (..., 1, 3) for pbmm, then re-squeezed
+        directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB.unsqueeze(-3)).squeeze(-2)
+
+        # get support point of sphere
+        # It adds n_c==1 which we can squeezephi
+        p_BoBc_B = sphere_b.support_points(directions_B).squeeze(-2)
+        assert p_BoBc_B.shape == batch_dim + (n_c, 3)  # (..., n_c == 2, 3)
+
+        # Get R_AC by taking directions_a
+        # Unsqueeze witness point dimension to 1
+        R_AC = rotation_matrix_from_one_vector(directions_A, 2)
+        assert R_AC.shape == batch_dim + (n_c, 3, 3)  # (..., n_c == 2, 3, 3)
+
+        # 2nd Witness Point
+        # Get length of witness point distance
+        p_BoBc_A = pbmm(
+            p_BoBc_B.unsqueeze(-2),
+            R_AB.unsqueeze(-3).expand(batch_dim + (n_c, 3, 3)).transpose(-1, -2),
+        ).squeeze(-2)
+        p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
+        
+        # Vector Norm
+        # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        # Projected onto Normal
+        # phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        # Projected onto Normal, Abs
+        # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
+        # Projected onto Normal, Abs, Max with previous phi
+        temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
+        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
+
+        return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod
     def collide_box_sphere(
