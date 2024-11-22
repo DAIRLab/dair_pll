@@ -787,9 +787,9 @@ class GeometryCollider:
     def gjk_geometry_origin(
         shape_a: BoundedConvexCollisionGeometry,
         p_AoO_A: Tensor,
-        inside_thresh: float = 1e-8,
-        gjk_thresh: float = 1e-8,
-        gjk_max_iter: int = 10,
+        inside_thresh: float = 1e-4,
+        gjk_thresh: float = 8e-6,
+        gjk_max_iter: int = 2000,
     ) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Use GJK to find the point in shape_a closest to the origin.
@@ -852,15 +852,17 @@ class GeometryCollider:
             new_p_OAc_A = GeometryCollider.closest_point_to_origin(p_OSimplex_A)
 
             # Check if changes in normals are <thresh
-            if torch.all(torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh):
+            diff = (torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh).unsqueeze(-1)
+            if torch.all(diff):
                 p_OAc_A = new_p_OAc_A
                 break
 
             # Next iteration
             p_OAc_A = new_p_OAc_A
             p_OSimplex_A = p_OAc_A.unsqueeze(-2)
-        if cur_iter == gjk_max_iter:
+        if cur_iter == (gjk_max_iter-1):
             print("Warning: Reached max GJK iterations")
+            import ipdb; ipdb.set_trace()
 
         # p_OAc_A is location of closest point to origin in object
         assert p_OAc_A.shape == batch_dim + (3,)

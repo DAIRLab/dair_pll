@@ -61,6 +61,6 @@ LearnableSystem.w_pred = 5e1
 LearnableSystem.w_q_pred = 5e1
 LearnableSystem.w_comp = 1e0
 LearnableSystem.w_diss = 1e0
-LearnableSystem.w_pen = 5e1
+LearnableSystem.w_pen = 1e2
 LearnableSystem.w_dev = 2e6
 LearnableSystem.w_reg_iner = 1e-5
