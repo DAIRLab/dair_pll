@@ -1,0 +1,59 @@
+# Default GIN Config File for sim_with_lcm.py
+
+## General Config
+object_model_name = "cube"
+object_body_name = "cube_body" 
+robot_model_name = "robot"
+sim_dt = 0.0001 # seconds
+io_dt = 0.068 # time between sim output lcm pubs
+
+## Simulation Plant
+PlantDiagram.delta_t = %sim_dt # seconds
+PlantDiagram.visualization_file = "meshcat"
+PlantDiagram.urdfs = { 
+	%object_model_name: @object/get_urdf_asset_contents(), 
+	%robot_model_name: @robot/get_urdf_asset_contents()
+}
+
+## Base URDF and State Config
+object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_urdf_asset_contents.mappings = {
+	"length_x": "0.1", # m
+	"length_y": "0.1", # m
+	"length_z": "0.1", # m
+	"mu": "0.2",
+	"planar_xz": "false",
+}
+object_initial_state = [
+	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
+	0.0, 0.0, 1.05,     # XYZ
+	0.0, 0.0, 0.0,      # omega_XYZ
+	0.0, 0.0, 0.0,		# dXYZ
+]
+
+robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
+robot/get_urdf_asset_contents.mappings = {
+	"num_fingers": "3", 
+}
+robot_initial_state = [
+	0.1, 0., 0.05, # Finger 0 q
+	-0.1, 0., 0.05, # Finger 1 q
+	0., 0.1, 0.05, # Finger 2 q
+	0., 0., 0.,   # Finger 0 v
+	0., 0., 0.,   # Finger 1 v
+	0., 0., 0.,   # Finger 2 v
+]
+
+main.init_sim_state = {
+	%object_model_name: %object_initial_state,
+	%robot_model_name: %robot_initial_state,
+}
+
+# Configure Rest of Diagram
+PlantDiagram.additional_system_builders = [@sim_diagram_builder]
+sim_diagram_builder.lcm_pub_dt = %io_dt
+sim_diagram_builder.lcm_channels = {
+	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
+	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+}
+sim_diagram_builder.robot_model_name = %robot_model_name

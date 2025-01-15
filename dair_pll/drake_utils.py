@@ -337,9 +337,7 @@ class ContactForceAveragerLeafSystem(LeafSystem):
         
 
 
-@gin.configurable(
-    "PlantDiagram", allowlist=["g_frac", "contact_model", "contact_approx", "delta_t"]
-)
+@gin.configurable("PlantDiagram")
 class MultibodyPlantDiagram:
     """Constructs and manages a diagram, simulator, and optionally a visualizer
     for a multibody system described in a list of URDF's.
@@ -500,7 +498,7 @@ class MultibodyPlantDiagram:
         # plt.figure(figsize=(11,8.5), dpi=300)
         # plot_system_graphviz(diagram)
         # from pathlib import Path
-        # plt.savefig(str(Path.home() / "Desktop" / "graphviz_example.png"))
+        # plt.savefig(str(Path.home() / "Desktop" / "plant_diagram.png"))
         # plt.close()
 
         # Initialize simulator from diagram.
