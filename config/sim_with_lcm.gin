@@ -7,7 +7,7 @@ robot_model_name = "robot"
 robot_sensor_bodies = ["finger_0", "finger_1", "finger_2"]
 sim_dt = 0.0001 # seconds
 io_dt = 0.001 # time between sim output lcm pubs
-densetact_io_dt = 0.02 # time between sim output lcm pubs
+densetact_io_dt = 0.02 # time between densetact lcm pubs
 
 ## Simulation Plant
 PlantDiagram.delta_t = %sim_dt # seconds
@@ -30,7 +30,7 @@ object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
 	0.0, 0.0, 0.06,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
-	0.0, 0.0, 0.5,		# dXYZ
+	0.0, 0.0, 0.0,		# dXYZ
 ]
 
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
@@ -40,7 +40,7 @@ robot/get_urdf_asset_contents.mappings = {
 robot_initial_state = [
 	0., 0.1, 0.05, # Finger 2 q
 	-0.1, 0., 0.05, # Finger 1 q
-	0.06, 0., 0.05, # Finger 0 q
+	0.055, 0., 0.05, # Finger 0 q
 	0., 0., 0.,   # Finger 2 v
 	0., 0., 0.,   # Finger 1 v
 	0., 0., 0.,   # Finger 0 v
@@ -59,10 +59,14 @@ sim_diagram_builder.lcm_channels = {
 	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
 }
 sim_diagram_builder.robot_model_name = %robot_model_name
 sim_diagram_builder.object_model_name = %object_model_name
+sim_diagram_builder.pid_gains = [20.0, 0., 10.0]
 FingerTipIOSystem.fingertip_body_names = %robot_sensor_bodies
 DensetactIOSystem.densetact_body_names = %robot_sensor_bodies
 DensetactIOSystem.normal_scale = 1.0
 DensetactIOSystem.friction_scale = 1.0
+SetpointFromTargetSystem.traj_time_len = 2.0
+SetpointFromTargetSystem.fingertip_body_names = %robot_sensor_bodies

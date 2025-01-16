@@ -16,12 +16,14 @@ from pydrake.lcm import DrakeLcm
 from pydrake.math import RigidTransform
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.multibody.tree import ModelInstanceIndex
+from pydrake.systems.controllers import PidController
 from pydrake.systems.drawing import plot_system_graphviz
-from pydrake.systems.framework import BasicVector, DiagramBuilder, LeafSystem
-from pydrake.systems.lcm import LcmInterfaceSystem, LcmPublisherSystem, PySerializer
+from pydrake.systems.framework import BasicVector, DiagramBuilder, LeafSystem, EventStatus
+from pydrake.systems.lcm import LcmInterfaceSystem, LcmPublisherSystem, LcmSubscriberSystem, PySerializer
+from pydrake.trajectories import PiecewisePolynomial
 
 from dair_pll.drake_utils import MultibodyPlantDiagram, ContactForceAveragerLeafSystem, get_bodies_in_model_instance
-from dair_pll.lcmtypes.dairlib import lcmt_fingertips_position, lcmt_object_state, lcmt_densetact_measurement, lcmt_densetact_measurement_data
+from dair_pll.lcmtypes.dairlib import lcmt_fingertips_position, lcmt_object_state, lcmt_densetact_measurement, lcmt_densetact_measurement_data, lcmt_fingertips_target_kinematics
 from dair_pll import file_utils
 
 # Repository directory (default for file operations)
@@ -30,18 +32,118 @@ REPO_DIR = os.path.normpath(
 )
 DEFAULT_CONFIG = "sim_with_lcm.gin"
 
+def finger_idx_from_body_name(plant: MultibodyPlant, robot_id: ModelInstanceIndex, body_names: List[str]) -> List[int]:
+  state_names = plant.GetStateNames(robot_id)
+  ret = [-1] * len(body_names)
+  for idx in range(len(state_names)//2): # ignore velocity
+    for body_idx, body_name in enumerate(body_names):
+      if body_name in state_names[idx]:
+        ret[body_idx] = idx // 3
+        break
+  assert np.all(np.array(ret) >= 0) and np.all(np.array(ret) < len(body_names))
+  return ret
+
 
 ## Diagram Builder
+@gin.configurable(denylist=['plant', 'robot_id'])
+class SetpointFromTargetSystem(LeafSystem):
+  """Create a Drake ``LeafSystem`` which converts an incoming target
+  into a CubicSpline trajectory. Then outputs a setpoint given sim time."""
+
+  def __init__(self, plant: MultibodyPlant, robot_id: ModelInstanceIndex, fingertip_body_names: List[str], traj_time_len: float = 1.0):
+    super().__init__()
+
+    self._body_names = fingertip_body_names
+    self._plant = plant
+    self._robot_id = robot_id
+    self._traj_time_len = traj_time_len
+
+    # Input for LCM Target Message
+    self._target_kinematics_input_port = self.DeclareAbstractInputPort(
+        "lcmt_fingertips_target_kinematics", Value(lcmt_fingertips_target_kinematics())
+    )
+
+    # Input for Robot State
+    self._robot_state_input_port = self.DeclareVectorInputPort(
+      "robot_state", BasicVector(self._plant.num_multibody_states(self._robot_id))
+    )
+
+    # Output setpoint state for controller
+    self.DeclareVectorOutputPort("robot_setpoint",
+         self._plant.num_multibody_states(robot_id),
+         self.calc_setpoint)
+
+    # Abstract state to hold CubicSpline trajectory
+    self._trajectory_index = self.DeclareAbstractState(
+            Value(PiecewisePolynomial())
+        )
+
+    # Update event to poll LCM subscriber
+    self.DeclarePerStepUnrestrictedUpdateEvent(self.poll_lcm_target)
+
+    self._prev_target_timestamp_idx = self.DeclareDiscreteState(np.ones(1) * -1)
+
+  def calc_setpoint(self, context, robot_setpoint):
+    self.ValidateContext(context)
+    time = context.get_time()
+    traj = context.get_abstract_state(self._trajectory_index).get_value()
+    # Handle Empty Trajectory
+    if traj.get_number_of_segments() < 1:
+      robot_setpoint.get_mutable_value()[:] = self.EvalVectorInput(context, self._robot_state_input_port.get_index()).get_value()[:]
+    else: 
+      n_pos = robot_setpoint.get_mutable_value()
+      robot_setpoint.get_mutable_value()[:robot_setpoint.size()//2] = traj.value(time).flatten()
+      robot_setpoint.get_mutable_value()[robot_setpoint.size()//2:] = traj.derivative().value(time).flatten()
+
+  def poll_lcm_target(self, context, state_next):
+        self.ValidateContext(context)
+        # Evaluate the input ports to obtain the current command
+        target_kinematics = self._target_kinematics_input_port.Eval(context)
+        target_timestamp = context.get_mutable_discrete_state(self._prev_target_timestamp_idx)
+        # Do Nothing if command didn't change
+        if target_timestamp[0] >= target_kinematics.utime:
+          return EventStatus.DidNothing()
+
+        # If command did change, re-calculate the target trajectory
+        knots = np.array([context.get_time(), context.get_time() + self._traj_time_len])
+        cur_state = self.EvalVectorInput(context, self._robot_state_input_port.get_index()).get_value()
+
+        # Generate target state
+        target_state = np.copy(cur_state)
+        # Use current state as target state in trajectory at first loop
+        if target_timestamp[0] >= 0:
+          for finger_idx, state_idx in enumerate(finger_idx_from_body_name(self._plant, self._robot_id, self._body_names)):
+            pos_idx = 3*state_idx
+            vel_idx = len(target_state) // 2 + pos_idx
+            target_state[pos_idx:pos_idx+3] = target_kinematics.targetPos[3*finger_idx:3*finger_idx+3]
+            target_state[vel_idx:vel_idx+3] = target_kinematics.targetVel[3*finger_idx:3*finger_idx+3]
+          # If relative to current state:
+          if not target_kinematics.isAbsoluteTargetPos:
+            target_state[:len(target_state)//2] += cur_state[:len(target_state)//2]
+
+        # Generate Trajectory
+        samples = np.vstack([cur_state[:len(target_state)//2], target_state[:len(target_state)//2]]).T
+        samples_dot = np.vstack([cur_state[len(target_state)//2:], target_state[len(target_state)//2:]]).T
+        traj = PiecewisePolynomial.CubicHermite(knots, samples, samples_dot)
+
+        # State updates
+        target_timestamp[0] = target_kinematics.utime
+        state_next.get_mutable_discrete_state().set_value(np.array([target_timestamp[0]]))
+        state_next.get_mutable_abstract_state().get_mutable_value(self._trajectory_index).SetFrom(Value(traj))
+        return EventStatus.Succeeded()
+
+
 @gin.configurable(denylist=['plant'])
 class DensetactIOSystem(LeafSystem):
   """Create a Drake ``LeafSystem`` which converts contact data
   to LCM Messages
   """
-  def __init__(self, plant: MultibodyPlant, densetact_body_names: List[str], normal_scale: float = 1.0, friction_scale: float = 1.0):
+  def __init__(self, plant: MultibodyPlant, robot_id: ModelInstanceIndex, densetact_body_names: List[str], normal_scale: float = 1.0, friction_scale: float = 1.0):
     super().__init__()
 
     self._body_names = densetact_body_names
     self._plant = plant
+    self._robot_id = robot_id
     self._normal_scale = normal_scale
     self._friction_scale = friction_scale
 
@@ -50,7 +152,7 @@ class DensetactIOSystem(LeafSystem):
         "averaged_contact_data", Value({"force": dict(),"point": dict(),"normal": dict()})
     )
     self._robot_state_input_port = self.DeclareVectorInputPort(
-      "robot_state", BasicVector(18)
+      "robot_state", BasicVector(self._plant.num_multibody_states(self._robot_id))
     )
 
     self.DeclareAbstractOutputPort("lcmt_densetact_measurement_data",
@@ -65,10 +167,8 @@ class DensetactIOSystem(LeafSystem):
       densetact_msg.get_mutable_value().numSensors = len(self._body_names)
       densetact_msg.get_mutable_value().sensorData.clear()
       utime = int(context.get_time() * 1e6)
-
-      for fingertip_idx, body_name in enumerate(self._body_names):
+      for fingertip_idx, body_name in zip(finger_idx_from_body_name(self._plant, self._robot_id, self._body_names), self._body_names):
         body_idx = int(self._plant.GetBodyByName(body_name).index())
-        # TODO: HACK assumes robot_state is in same order as body_names
         fingertip_pose_W = np.array([robot_state[fingertip_idx * 3], robot_state[fingertip_idx * 3 + 1], robot_state[fingertip_idx * 3 + 2]])
         measurement = lcmt_densetact_measurement()
         force = np.array(avg_contact["force"][body_idx])
@@ -85,6 +185,7 @@ class DensetactIOSystem(LeafSystem):
               measurement.contactFrame[idx][jdx] = contact_frame_rot[idx][jdx]
             # Copy Translation, i.e., contact point in body frame
             measurement.contactFrame[idx][3] = point[idx]
+          measurement.contactFrame[3][3] = 1.0 # Valid affine transform
           # Force in contact frame
           measurement.scaledNormal = self._normal_scale * force_in_contact_frame[2]
           measurement.scaledFriction[0] = self._friction_scale * force_in_contact_frame[0]
@@ -174,6 +275,10 @@ class FingerTipIOSystem(LeafSystem):
         object_msg.get_mutable_value().num_positions = self._object_nq
         object_msg.get_mutable_value().num_velocities = self._object_nv
         # Populate position / velocity
+        object_msg.get_mutable_value().position.clear()
+        object_msg.get_mutable_value().position_names.clear()
+        object_msg.get_mutable_value().velocity.clear()
+        object_msg.get_mutable_value().velocity_names.clear()
         for idx in range(self._object_nq):
           object_msg.get_mutable_value().position.append(state.GetAtIndex(idx))
           object_msg.get_mutable_value().position_names.append(self._object_state_names[idx])
@@ -191,6 +296,7 @@ def sim_diagram_builder(
     lcm_pub_dt: float,
     lcm_densetact_dt: float,
     lcm_channels: Dict[str, str],
+    pid_gains: List[float],
 ):
   print("sim_diagram_builder called")
   lcm = builder.AddSystem(LcmInterfaceSystem(DrakeLcm()))
@@ -219,7 +325,7 @@ def sim_diagram_builder(
 
   # Contact Force Systems
   cf_averager = builder.GetMutableSubsystemByName("averager")
-  densetact_io_system = builder.AddSystem(DensetactIOSystem(plant))
+  densetact_io_system = builder.AddSystem(DensetactIOSystem(plant, robot_model_id))
   densetact_pub = builder.AddSystem(LcmPublisherSystem(lcm_channels["densetact"], PySerializer(lcmt_densetact_measurement_data), lcm, lcm_densetact_dt))
   builder.Connect(
         cf_averager.get_output_port(), densetact_io_system.GetInputPort("averaged_contact_data")
@@ -229,6 +335,29 @@ def sim_diagram_builder(
   )
   builder.Connect(
         densetact_io_system.GetOutputPort("lcmt_densetact_measurement_data"), densetact_pub.get_input_port()
+  )
+
+  # PID Robot Controller
+  fingertips_target_sub = builder.AddSystem(LcmSubscriberSystem(lcm_channels["fingertips_target"], PySerializer(lcmt_fingertips_target_kinematics), lcm))
+  fingertips_target_to_setpoint = builder.AddSystem(SetpointFromTargetSystem(plant, robot_model_id))
+  control_size = plant.get_actuation_input_port(robot_model_id).size()
+  pid_controller = builder.AddSystem(PidController(
+        pid_gains[0] * np.ones(control_size), pid_gains[1] * np.ones(control_size), pid_gains[2] * np.ones(control_size)
+    ))
+  builder.Connect(
+        fingertips_target_sub.get_output_port(), fingertips_target_to_setpoint.GetInputPort("lcmt_fingertips_target_kinematics")
+  )
+  builder.Connect(
+        plant.get_state_output_port(robot_model_id), fingertips_target_to_setpoint.GetInputPort("robot_state")
+  )
+  builder.Connect(
+        plant.get_state_output_port(robot_model_id), pid_controller.get_input_port_estimated_state()
+  )
+  builder.Connect(
+        fingertips_target_to_setpoint.get_output_port(), pid_controller.get_input_port_desired_state()
+  )
+  builder.Connect(
+        pid_controller.get_output_port_control(), plant.get_actuation_input_port(robot_model_id)
   )
 
 
