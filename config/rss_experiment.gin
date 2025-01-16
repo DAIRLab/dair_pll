@@ -1,0 +1,10 @@
+# Default GIN Config File for rss_experiment.py
+
+## LCM Trajectory Execution
+TrifingerLCMService.traj_time_len = 2.0
+TrifingerLCMService.lcm_channels = {
+	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
+	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+}

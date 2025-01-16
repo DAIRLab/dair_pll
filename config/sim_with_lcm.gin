@@ -5,9 +5,9 @@ object_model_name = "cube"
 object_body_name = "cube_body" 
 robot_model_name = "robot"
 robot_sensor_bodies = ["finger_0", "finger_1", "finger_2"]
-sim_dt = 0.0001 # seconds
+sim_dt = 0.001 # seconds
 io_dt = 0.001 # time between sim output lcm pubs
-densetact_io_dt = 0.02 # time between densetact lcm pubs
+densetact_io_dt = 0.0333 # time between densetact lcm pubs
 
 ## Simulation Plant
 PlantDiagram.delta_t = %sim_dt # seconds

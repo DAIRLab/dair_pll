@@ -35,7 +35,7 @@ from dair_pll import vis_utils
 REPO_DIR = os.path.normpath(
     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
 )
-DEFAULT_CONFIG = "default.gin"
+DEFAULT_CONFIG = "exploration_experiment.gin"
 
 
 # Create Initial State
