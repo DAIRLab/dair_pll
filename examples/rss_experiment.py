@@ -7,8 +7,11 @@ TODOs:
 * Given data, train an object estimate.
 * * Run forward_dynamics to create initial trajectory guess
 * * Pytorch AutoDiff for SGD
-* Given a learned system and proposed robot trajectory:
-* * Generate a 
+* Given a learned system
+* * Generate the Fisher Information
+* * Sample robot trajectory
+* Given a learned system + ground truth object data:
+* * calculate accuracy metrics (Chamfer distance + co-located chamfer distance + position error)
 """
 
 import os
