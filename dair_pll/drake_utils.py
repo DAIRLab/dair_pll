@@ -273,8 +273,9 @@ class ContactForceAveragerLeafSystem(LeafSystem):
     _average_index: int  # Abstract State Index
     _n_index: int  # Discrete State Index
 
-    def __init__(self, contact_body_indices: List[BodyIndex]):
+    def __init__(self, contact_body_indices: List[BodyIndex], reset_on_output: bool = True):
         super().__init__()
+        self._reset_on_output = reset_on_output
 
         # Create an input port for the current state of the system.
         self._contact_results_input_port = self.DeclareAbstractInputPort(
@@ -283,12 +284,36 @@ class ContactForceAveragerLeafSystem(LeafSystem):
 
         self.DeclarePerStepUnrestrictedUpdateEvent(self.integrate_contact_results)
         forces_dict = {}
+        point_normal_pair_dict = {}
         for body_idx in contact_body_indices:
             forces_dict[int(body_idx)] = np.zeros(3)
+            point_normal_pair_dict[int(body_idx)] = [np.zeros(3), np.zeros(3)]
         self._average_index = self.DeclareAbstractState(
             Value(forces_dict)
         )  # Averaged Forces
+        self._point_normal_index = self.DeclareAbstractState(
+            Value(point_normal_pair_dict)
+        )  # Averaged Forces
         self._n_index = self.DeclareDiscreteState(1)  # Number of samples in average
+
+        self.DeclareAbstractOutputPort("averaged_contact_data",
+                                       lambda: Value({"force": dict(),"point": dict(),"normal": dict()}),
+                                       self.calc_average_output)
+
+    def calc_average_output(self, context, forces_data):
+        averages = self.get_value(context)
+        point_normals = self.get_point_normals(context)
+        for key, val in averages.items():
+            forces_data.get_mutable_value()["force"][key] = val
+            forces_data.get_mutable_value()["point"][key] = point_normals[key][0]
+            forces_data.get_mutable_value()["normal"][key] = point_normals[key][1]
+
+        if self._reset_on_output:
+            self.reset(context)
+
+    def get_point_normals(self, context):
+        self.ValidateContext(context)
+        return context.get_abstract_state(self._point_normal_index).get_value()
 
     def get_value(self, context):
         self.ValidateContext(context)
@@ -303,8 +328,14 @@ class ContactForceAveragerLeafSystem(LeafSystem):
         old_averages = context.get_mutable_abstract_state(
             self._average_index
         ).get_mutable_value()
+
+        old_point_normals = context.get_mutable_abstract_state(
+            self._point_normal_index
+        ).get_mutable_value()
+
         for key in old_averages.keys():
             old_averages[key] = np.zeros(3)
+            old_point_normals[key] = [np.zeros(3), np.zeros(3)]
 
     def integrate_contact_results(self, context, state_next):
         self.ValidateContext(context)
@@ -313,6 +344,9 @@ class ContactForceAveragerLeafSystem(LeafSystem):
         old_n = context.get_mutable_discrete_state(self._n_index)
         old_averages = context.get_mutable_abstract_state(
             self._average_index
+        ).get_mutable_value()
+        old_point_normals = context.get_mutable_abstract_state(
+            self._point_normal_index
         ).get_mutable_value()
         new_val = {}
         for key in old_averages.keys():
@@ -325,6 +359,9 @@ class ContactForceAveragerLeafSystem(LeafSystem):
             new_val[a_idx] = new_val[a_idx] - contact.contact_force()
             new_val[b_idx] = new_val[b_idx] + contact.contact_force()
 
+            old_point_normals[a_idx] = [contact.contact_point(), contact.point_pair().nhat_BA_W]
+            old_point_normals[b_idx] = [contact.contact_point(), -contact.point_pair().nhat_BA_W]
+
         for key in old_averages.keys():
             old_averages[key] = (
                 old_averages[key] * float(old_n[0]) + new_val[key]
@@ -334,6 +371,7 @@ class ContactForceAveragerLeafSystem(LeafSystem):
         old_n[0] = old_n[0] + 1
         state_next.get_mutable_discrete_state().set_value(np.array([old_n[0]]))
         state_next.get_mutable_abstract_state().get_mutable_value(self._average_index).SetFrom(Value(old_averages))
+        state_next.get_mutable_abstract_state().get_mutable_value(self._point_normal_index).SetFrom(Value(old_point_normals))
         
 
 
@@ -478,7 +516,8 @@ class MultibodyPlantDiagram:
             get_body_from_geometry_id(plant, inspector, geom_id).index()
             for geom_id in self.collision_geometry_set.ids
         ]
-        self.averager = builder.AddSystem(
+        self.averager = builder.AddNamedSystem(
+            "averager",
             ContactForceAveragerLeafSystem(contact_body_indices)
         )
         builder.Connect(

@@ -10,16 +10,17 @@ except ImportError:
 import struct
 
 class lcmt_fingertips_position(object):
-    __slots__ = ["utime", "curPos", "curVel"]
+    __slots__ = ["utime", "curPos", "curVel", "curQuat"]
 
-    __typenames__ = ["int64_t", "double", "double"]
+    __typenames__ = ["int64_t", "double", "double", "double"]
 
-    __dimensions__ = [None, [9], [9]]
+    __dimensions__ = [None, [9], [9], [12]]
 
     def __init__(self):
         self.utime = 0
         self.curPos = [ 0.0 for dim0 in range(9) ]
         self.curVel = [ 0.0 for dim0 in range(9) ]
+        self.curQuat = [ 0.0 for dim0 in range(12) ]
 
     def encode(self):
         buf = BytesIO()
@@ -31,6 +32,7 @@ class lcmt_fingertips_position(object):
         buf.write(struct.pack(">q", self.utime))
         buf.write(struct.pack('>9d', *self.curPos[:9]))
         buf.write(struct.pack('>9d', *self.curVel[:9]))
+        buf.write(struct.pack('>12d', *self.curQuat[:12]))
 
     def decode(data):
         if hasattr(data, 'read'):
@@ -47,12 +49,13 @@ class lcmt_fingertips_position(object):
         self.utime = struct.unpack(">q", buf.read(8))[0]
         self.curPos = struct.unpack('>9d', buf.read(72))
         self.curVel = struct.unpack('>9d', buf.read(72))
+        self.curQuat = struct.unpack('>12d', buf.read(96))
         return self
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
         if lcmt_fingertips_position in parents: return 0
-        tmphash = (0xe998f9203eb4ceb2) & 0xffffffffffffffff
+        tmphash = (0xfdd623e28803b4e2) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _get_hash_recursive = staticmethod(_get_hash_recursive)

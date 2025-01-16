@@ -14,7 +14,7 @@ from . import lcmt_densetact_measurement
 class lcmt_densetact_measurement_data(object):
     __slots__ = ["numSensors", "sensorData"]
 
-    __typenames__ = ["int8_t", "dairlib.lcmt_densetact_measurement"]
+    __typenames__ = ["int8_t", "lcmt_densetact_measurement"]
 
     __dimensions__ = [None, ["numSensors"]]
 
@@ -31,7 +31,7 @@ class lcmt_densetact_measurement_data(object):
     def _encode_one(self, buf):
         buf.write(struct.pack(">b", self.numSensors))
         for i0 in range(self.numSensors):
-            assert self.sensorData[i0]._get_packed_fingerprint() == dairlib.lcmt_densetact_measurement._get_packed_fingerprint()
+            assert self.sensorData[i0]._get_packed_fingerprint() == lcmt_densetact_measurement._get_packed_fingerprint()
             self.sensorData[i0]._encode_one(buf)
 
     def decode(data):
@@ -49,14 +49,14 @@ class lcmt_densetact_measurement_data(object):
         self.numSensors = struct.unpack(">b", buf.read(1))[0]
         self.sensorData = []
         for i0 in range(self.numSensors):
-            self.sensorData.append(dairlib.lcmt_densetact_measurement._decode_one(buf))
+            self.sensorData.append(lcmt_densetact_measurement._decode_one(buf))
         return self
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
         if lcmt_densetact_measurement_data in parents: return 0
         newparents = parents + [lcmt_densetact_measurement_data]
-        tmphash = (0x5eb95ea8bc9c69bf+ dairlib.lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
+        tmphash = (0x5eb95ea8bc9c69bf+ lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _get_hash_recursive = staticmethod(_get_hash_recursive)
