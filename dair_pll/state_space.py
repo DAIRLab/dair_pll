@@ -20,6 +20,7 @@ tensor, and when states are batched in time, time is the second-to-last index.
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Callable, Dict, cast
 
+import gin
 import torch
 from torch import Tensor
 
@@ -952,6 +953,7 @@ class CenteredSampler(StateSpaceSampler):
         return self.noiser.covariance(self.ranges)
 
 
+@gin.configurable
 class UniformSampler(CenteredSampler):
     """Convenience :py:class:`CenteredSampler` for uniform noise."""
 
@@ -959,6 +961,7 @@ class UniformSampler(CenteredSampler):
         super().__init__(space, ranges, centered_uniform, x_0)
 
 
+@gin.configurable
 class GaussianSampler(CenteredSampler):
     """Convenience :py:class:`CenteredSampler` for Gaussian noise."""
 

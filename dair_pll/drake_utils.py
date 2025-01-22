@@ -411,6 +411,7 @@ class MultibodyPlantDiagram:
         ] = None,
         delta_t: float = SIM_DT,
         g_frac: Optional[float] = 1.0,
+        ground_mu: Optional[float] = 1.0,
         contact_model: ContactModel = ContactModel.kPoint,
         contact_approx: DiscreteContactApproximation = DiscreteContactApproximation.kSap,
     ) -> None:
@@ -472,7 +473,7 @@ class MultibodyPlantDiagram:
         # Adds ground plane at ``z = 0``
 
         halfspace_transform = RigidTransform_[float]()
-        friction = CoulombFriction_[float](1.0, 1.0)
+        friction = CoulombFriction_[float](ground_mu, ground_mu)
         plant.RegisterCollisionGeometry(
             plant.world_body(),
             halfspace_transform,

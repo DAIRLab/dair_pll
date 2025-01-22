@@ -70,9 +70,9 @@ def get_asset(asset_file_basename: str) -> str:
     return os.path.join(ASSETS_DIR, asset_file_basename)
 
 @gin.configurable
-def get_urdf_asset_contents(urdf_file_basename: str, mappings: Dict[str, str]) -> str:
+def get_urdf_asset_contents(urdf_file_basename: str, mappings: Dict[str, Any]) -> str:
     file_name = get_asset(urdf_file_basename)
-    return xacro.process_file(file_name, mappings=mappings).toxml()
+    return xacro.process_file(file_name, mappings={key: str(value) for key, value in mappings.items()}).toxml()
 
 
 def assure_storage_tree_created(storage_name: str) -> None:
