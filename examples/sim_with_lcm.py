@@ -178,6 +178,7 @@ class DensetactIOSystem(LeafSystem):
         measurement.inContact = not np.all(np.isclose(normal_W, np.zeros_like(normal_W)))
         if measurement.inContact:
           R_CW = DensetactIOSystem.rotation_matrix_from_vectors(np.array([0., 0., 1.]), normal_W)
+          assert not np.any(np.isnan(R_CW))
           force_C = R_CW.T.dot(force_W)
           for idx in range(3):
             for jdx in range(3):
@@ -205,12 +206,19 @@ class DensetactIOSystem(LeafSystem):
     :param vec2: A 3d "destination" vector
     :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
     """
-    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
-    v = np.cross(a, b)
-    c = np.dot(a, b)
-    s = np.linalg.norm(v)
-    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+    vec1_norm, vec2_norm = (vec1 / (np.linalg.norm(vec1))).reshape(3), (vec2 / (np.linalg.norm(vec2))).reshape(3)
+    # Special case: same vector
+    if np.all(np.isclose(vec1_norm, vec2_norm)):
+      return np.eye(3)
+    # Special case: opposite vectors (use x rotation)
+    if np.all(np.isclose(vec1_norm, -vec2_norm)):
+      vec1_norm += np.finfo(vec1_norm.dtype).eps * np.random.rand(3)
+      vec1_norm = (vec1_norm / np.linalg.norm(vec1_norm)).reshape(3)
+    cross = np.cross(vec1_norm, vec2_norm)
+    dot = np.dot(vec1_norm, vec2_norm)
+    norm = np.linalg.norm(cross)
+    kmat = np.array([[0, -cross[2], cross[1]], [cross[2], 0, -cross[0]], [-cross[1], cross[0], 0]])
+    rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - dot) / (norm ** 2))
     return rotation_matrix
 
 

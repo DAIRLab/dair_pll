@@ -74,7 +74,7 @@ class TrifingerLCMService:
         if channel == self._lcm_channels["object_state"]:
             self._object_raw_data.append(lcmt_object_state.decode(data))
 
-    def execute_trajectory(self, target_state: np.ndarray, pos_is_absolute: bool = True, ) -> TensorDictBase:
+    def execute_trajectory(self, target_state: np.ndarray, pos_is_absolute: bool = True, no_data: bool = False) -> TensorDictBase:
         """
         Direct the robot to go to target_state.
         Record all incoming data over the next traj_time_len seconds.
@@ -96,10 +96,9 @@ class TrifingerLCMService:
         print(f"Finished at: {time.time()}")
         print(f"Collected {len(self._fingertip_pose_raw_data)} / {len(self._force_raw_data)} / {len(self._object_raw_data)} samples.")
 
-        breakpoint()
         # Return empty if not any force data
         ret = TensorDict({}, batch_size = len(self._force_raw_data))
-        if len(self._force_raw_data) < 1:
+        if no_data or len(self._force_raw_data) < 1:
             return ret
 
         assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
@@ -140,13 +139,16 @@ class TrifingerLCMService:
             body_R_BW = R.from_quat(body_quat_interp)
             
             # Record normal and force in world frame
-            body_R_CB = R.from_matrix(np.stack([np.array(measurement.sensorData[body_idx].contactFrame)[:3,:3] for measurement in self._force_raw_data]))
-            normal_C = np.broadcast_to(np.array([0., 0., 1.]), (len(densetact_time_s), 3))
-            body_R_CW = body_R_BW.inv() * body_R_CB
-            fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
-            force_C = np.array([(list(measurement.sensorData[body_idx].scaledFriction) + [measurement.sensorData[body_idx].scaledNormal]) for measurement in self._force_raw_data])
-            assert force_C.shape == (len(densetact_time_s), 3)
-            fingertip_force_C[body_name] = force_C
+            try:
+                body_R_CB = R.from_matrix(np.stack([np.array(measurement.sensorData[body_idx].contactFrame)[:3,:3] for measurement in self._force_raw_data]))
+                normal_C = np.broadcast_to(np.array([0., 0., 1.]), (len(densetact_time_s), 3))
+                body_R_CW = body_R_BW.inv() * body_R_CB
+                fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
+                force_C = np.array([(list(measurement.sensorData[body_idx].scaledFriction) + [measurement.sensorData[body_idx].scaledNormal]) for measurement in self._force_raw_data])
+                assert force_C.shape == (len(densetact_time_s), 3)
+                fingertip_force_C[body_name] = force_C
+            except ValueError:
+                breakpoint()
 
         
         ret["time"] = torch.from_numpy(densetact_time_s)
@@ -204,7 +206,9 @@ def sample_action(workspace_xy_center: Tuple[float, float], workspace_z_rot: flo
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0., np.pi/2.0)
         start_azimuth = rng.uniform(-np.pi/2.0, np.pi/2.0)
-        start_S = (workspace_radius-sphere_radius) * np.array([flip_factor * (sphere_radius + np.sin(start_polar)*np.cos(start_azimuth)), np.sin(start_polar)*np.sin(start_azimuth), sphere_radius + np.cos(start_polar)])
+        start_S = (workspace_radius-sphere_radius) * np.array([(np.sin(start_polar)*np.cos(start_azimuth)), np.sin(start_polar)*np.sin(start_azimuth), sphere_radius + np.cos(start_polar)])
+        start_S[0] += sphere_radius
+        start_S[0] *= flip_factor
         end_radius = rng.uniform(0., workspace_radius-sphere_radius)
         end_angle = rng.uniform(0., np.pi)
         end_S = np.array([flip_factor * sphere_radius, end_radius * np.cos(end_angle), sphere_radius + end_radius * np.sin(end_angle)])
@@ -233,7 +237,7 @@ def main(init_trifinger_state: List[float], safe_trifinger_height: float):
     trifinger_lcm = TrifingerLCMService()
 
     print("Move to initial trifinger state")
-    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state))
+    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
 
     print("Sample Initial Random Action...")
     selected_action = sample_action()
@@ -263,16 +267,18 @@ def main(init_trifinger_state: List[float], safe_trifinger_height: float):
 
         elif command_char == "e":
             # Move to start state
-            trifinger_lcm.execute_trajectory(selected_action[0])
+            trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
 
             # Execute and collect data
             new_data = trifinger_lcm.execute_trajectory(selected_action[1])
 
             # Move straight up
-            #safe_state = np.copy(selected_action[0])
-            #safe_state[2] = safe_trifinger_height
-            #safe_state[5] = safe_trifinger_height
-            trifinger_lcm.execute_trajectory(selected_action[0])
+            safe_state = np.copy(selected_action[0])
+            safe_state[:3] = new_data["finger_0"]["position"][-1].cpu().clone().numpy()
+            safe_state[2] = safe_trifinger_height
+            safe_state[3:6] = new_data["finger_1"]["position"][-1].cpu().clone().numpy()
+            safe_state[5] = safe_trifinger_height
+            trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
         elif command_char == "s":
             print("Sampling random action...")
