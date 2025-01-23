@@ -11,6 +11,7 @@ densetact_io_dt = 0.0333 # time between densetact lcm pubs
 
 ## Simulation Plant
 PlantDiagram.delta_t = %sim_dt # seconds
+PlantDiagram.ground_mu = 0.5
 PlantDiagram.visualization_file = "meshcat"
 PlantDiagram.urdfs = { 
 	%object_model_name: @object/get_urdf_asset_contents(), 
@@ -20,10 +21,10 @@ PlantDiagram.urdfs = {
 ## Base URDF and State Config
 object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
-	"length_x": "0.1", # m
-	"length_y": "0.1", # m
-	"length_z": "0.1", # m
-	"mu": "0.2",
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
+	"mu": "0.1",
 	"planar_xz": "false",
 }
 object_initial_state = [
@@ -35,12 +36,14 @@ object_initial_state = [
 
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
 robot/get_urdf_asset_contents.mappings = {
-	"num_fingers": "3", 
+	"num_fingers": 3,
+	"mu": 1.0,
+	"radius": 0.01575,
 }
 robot_initial_state = [
-	0., 0.1, 0.05, # Finger 2 q
+	0., 0.15, 0.15, # Finger 2 q
 	-0.1, 0., 0.05, # Finger 1 q
-	0.055, 0., 0.05, # Finger 0 q
+	0.1, 0., 0.05, # Finger 0 q
 	0., 0., 0.,   # Finger 2 v
 	0., 0., 0.,   # Finger 1 v
 	0., 0., 0.,   # Finger 0 v

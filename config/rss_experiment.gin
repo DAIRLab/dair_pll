@@ -1,5 +1,22 @@
 # Default GIN Config File for rss_experiment.py
 
+## General Config
+robot_radius = 0.01575 # From trifingeredu.urdf
+robot_radius_buffer = 0.016
+workspace_radius = 0.15
+
+## Main Config
+main.init_trifinger_state = [
+	0.1, 0., 0.05, # Finger 0 q
+	-0.1, 0., 0.05, # Finger 120 q
+	0., 0.15, 0.15, # Finger 240 q
+	0., 0., 0.,   # Finger 0 v
+	0., 0., 0.,   # Finger 120 v
+	0., 0., 0.,   # Finger 240 v
+]
+
+main.safe_trifinger_height = %workspace_radius
+
 ## LCM Trajectory Execution
 TrifingerLCMService.fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
 TrifingerLCMService.traj_time_len = 2.0
@@ -9,3 +26,10 @@ TrifingerLCMService.lcm_channels = {
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
 	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
 }
+
+## Action Sampling
+sample_action.workspace_xy_center = (0., 0.)
+sample_action.workspace_z_rot = 0.
+sample_action.workspace_radius = %workspace_radius
+sample_action.sphere_radius = %robot_radius_buffer
+sample_action.fixed_240_W = (0., %workspace_radius, %workspace_radius)

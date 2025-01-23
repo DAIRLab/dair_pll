@@ -18,7 +18,7 @@ import os
 import pdb
 import sys
 import time
-from typing import cast, Any, Dict, List, Type, Optional
+from typing import cast, Any, Dict, List, Type, Tuple, Optional
 
 import gin
 #import gin.torch.external_configurables
@@ -32,6 +32,7 @@ import torch
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
 from dair_pll import tensor_utils
+from dair_pll.state_space import CenteredSampler
 from dair_pll.lcmtypes.dairlib import lcmt_fingertips_position, lcmt_object_state, lcmt_densetact_measurement, lcmt_densetact_measurement_data, lcmt_fingertips_target_kinematics
 
 
@@ -44,6 +45,9 @@ DEFAULT_CONFIG = "rss_experiment.gin"
 ## Execute Robot Trajectory
 @gin.configurable
 class TrifingerLCMService:
+    """
+    Command robot and collect data over LCM
+    """
     def __init__(self, lcm_channels: Dict[str, str], fingertip_body_names: List[str], traj_time_len=2.0):
         self._lcm_channels = lcm_channels
         self._traj_time_len = traj_time_len
@@ -177,26 +181,69 @@ class TrifingerLCMService:
         self._object_raw_data.clear()
         return ret
 
+@gin.configurable
+def sample_action(workspace_xy_center: Tuple[float, float], workspace_z_rot: float, workspace_radius: float, sphere_radius: float, fixed_240_W: List[float]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Sample a straight line action
+    Params:
+    workspace_xy_center: offset the workspace from world origin
+    workspaxe_z_rot: world rotation so finger_0 is towards +X axis
+    workspace_radius: start will be along edge of radius above ground
+    sphere_radius: radius of robot fingertip
+    fixed_240: 3d position 
+    """
+
+    assert workspace_radius > 0.
+    assert sphere_radius > 0. and sphere_radius < workspace_radius
+    assert len(fixed_240_W) == 3
+    fixed_240_traj = np.array(fixed_240_W)
+    rng = np.random.default_rng()
+
+    # Start in workspace frame
+    def sample_finger(flip_x: bool = False):
+        flip_factor = -1.0 if flip_x else 1.0
+        start_polar = rng.uniform(0., np.pi/2.0)
+        start_azimuth = rng.uniform(-np.pi/2.0, np.pi/2.0)
+        start_S = (workspace_radius-sphere_radius) * np.array([flip_factor * (sphere_radius + np.sin(start_polar)*np.cos(start_azimuth)), np.sin(start_polar)*np.sin(start_azimuth), sphere_radius + np.cos(start_polar)])
+        end_radius = rng.uniform(0., workspace_radius-sphere_radius)
+        end_angle = rng.uniform(0., np.pi)
+        end_S = np.array([flip_factor * sphere_radius, end_radius * np.cos(end_angle), sphere_radius + end_radius * np.sin(end_angle)])
+        return (start_S, end_S)
+
+    finger_0_traj = sample_finger(False)
+    finger_120_traj = sample_finger(True)
+
+    ret = (np.zeros(18), np.zeros(18))
+    z_rot = np.array([[np.cos(workspace_z_rot), -np.sin(workspace_z_rot), 0.],
+        [np.sin(workspace_z_rot), np.cos(workspace_z_rot), 0.],
+        [0., 0., 1.]])
+    xy_trans = np.array([workspace_xy_center[0], workspace_xy_center[1], 0.])
+    for idx in [0, 1]:
+        ret[idx][:3] = z_rot @ finger_0_traj[idx].T + xy_trans
+        ret[idx][3:6] = z_rot @ finger_120_traj[idx].T + xy_trans
+        ret[idx][6:9] = fixed_240_traj[:]
+    return ret
+
+
+
 ## Main Function
 @gin.configurable
-def main():
+def main(init_trifinger_state: List[float], safe_trifinger_height: float):
     """Main function for online learning loop"""
     trifinger_lcm = TrifingerLCMService()
 
-    target_state = np.array([
-        0.055, 0., 0.05, # Finger 0 q
-        -0.1, 0., 0.05, # Finger 120 q
-        0., 0.1, 0.05, # Finger 240 q
-        0., 0., 0.,   # Finger 0 v
-        0., 0., 0.,   # Finger 120 v
-        0., 0., 0.,   # Finger 240 v
-    ])
-    init_data = trifinger_lcm.execute_trajectory(target_state)
+    print("Move to initial trifinger state")
+    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state))
+
+    print("Sample Initial Random Action...")
+    selected_action = sample_action()
 
     # Start Input Loop
     def print_help():
         print(
             "\nUsage:\n"
+            "e - Execute selected action + collect data\n"
+            "s - Sample random action\n"
             "b - breakpoint()\n"
             "h - Print Help\n"
             "q - Quit\n"
@@ -214,6 +261,22 @@ def main():
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
 
+        elif command_char == "e":
+            # Move to start state
+            trifinger_lcm.execute_trajectory(selected_action[0])
+
+            # Execute and collect data
+            new_data = trifinger_lcm.execute_trajectory(selected_action[1])
+
+            # Move straight up
+            #safe_state = np.copy(selected_action[0])
+            #safe_state[2] = safe_trifinger_height
+            #safe_state[5] = safe_trifinger_height
+            trifinger_lcm.execute_trajectory(selected_action[0])
+
+        elif command_char == "s":
+            print("Sampling random action...")
+            selected_action = sample_action()
 
     # Quit
 
