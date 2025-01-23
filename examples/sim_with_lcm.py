@@ -171,25 +171,25 @@ class DensetactIOSystem(LeafSystem):
         body_idx = int(self._plant.GetBodyByName(body_name).index())
         fingertip_pose_W = np.array([robot_state[fingertip_idx * 3], robot_state[fingertip_idx * 3 + 1], robot_state[fingertip_idx * 3 + 2]])
         measurement = lcmt_densetact_measurement()
-        force = np.array(avg_contact["force"][body_idx])
+        force_W = np.array(avg_contact["force"][body_idx])
         point = np.array(avg_contact["point"][body_idx]) - fingertip_pose_W
-        normal = np.array(avg_contact["normal"][body_idx])
+        normal_W = np.array(avg_contact["normal"][body_idx])
         measurement.timestamp = utime
-        measurement.inContact = not np.all(np.isclose(normal, np.zeros_like(normal)))
+        measurement.inContact = not np.all(np.isclose(normal_W, np.zeros_like(normal_W)))
         if measurement.inContact:
-          contact_frame_rot = DensetactIOSystem.rotation_matrix_from_vectors(np.array([0., 0., 1.]), normal)
-          force_in_contact_frame = force @ contact_frame_rot
+          R_CW = DensetactIOSystem.rotation_matrix_from_vectors(np.array([0., 0., 1.]), normal_W)
+          force_C = R_CW.T.dot(force_W)
           for idx in range(3):
             for jdx in range(3):
               # Copy Rotation of body frame -> contact frame
-              measurement.contactFrame[idx][jdx] = contact_frame_rot[idx][jdx]
+              measurement.contactFrame[idx][jdx] = R_CW[idx][jdx]
             # Copy Translation, i.e., contact point in body frame
             measurement.contactFrame[idx][3] = point[idx]
           measurement.contactFrame[3][3] = 1.0 # Valid affine transform
           # Force in contact frame
-          measurement.scaledNormal = self._normal_scale * force_in_contact_frame[2]
-          measurement.scaledFriction[0] = self._friction_scale * force_in_contact_frame[0]
-          measurement.scaledFriction[1] = self._friction_scale * force_in_contact_frame[1]
+          measurement.scaledNormal = self._normal_scale * force_C[2]
+          measurement.scaledFriction[0] = self._friction_scale * force_C[0]
+          measurement.scaledFriction[1] = self._friction_scale * force_C[1]
         else:
           # Identity Transform, leave 0 forces
           for idx in range(4):

@@ -1,6 +1,7 @@
 # Default GIN Config File for rss_experiment.py
 
 ## LCM Trajectory Execution
+TrifingerLCMService.fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
 TrifingerLCMService.traj_time_len = 2.0
 TrifingerLCMService.lcm_channels = {
 	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position

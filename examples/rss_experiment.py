@@ -25,7 +25,9 @@ import gin
 import git
 import lcm
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from tensordict import TensorDictBase, TensorDict
+import torch
 
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
@@ -42,9 +44,10 @@ DEFAULT_CONFIG = "rss_experiment.gin"
 ## Execute Robot Trajectory
 @gin.configurable
 class TrifingerLCMService:
-    def __init__(self, lcm_channels: Dict[str, str], traj_time_len=2.0):
+    def __init__(self, lcm_channels: Dict[str, str], fingertip_body_names: List[str], traj_time_len=2.0):
         self._lcm_channels = lcm_channels
         self._traj_time_len = traj_time_len
+        self._fingertip_body_names = fingertip_body_names
 
         self._force_raw_data = []
         self._fingertip_pose_raw_data = []
@@ -67,7 +70,7 @@ class TrifingerLCMService:
         if channel == self._lcm_channels["object_state"]:
             self._object_raw_data.append(lcmt_object_state.decode(data))
 
-    def execute_trajectory(self, target_state: np.ndarray, pos_is_absolute: bool = True) -> TensorDictBase:
+    def execute_trajectory(self, target_state: np.ndarray, pos_is_absolute: bool = True, ) -> TensorDictBase:
         """
         Direct the robot to go to target_state.
         Record all incoming data over the next traj_time_len seconds.
@@ -89,8 +92,84 @@ class TrifingerLCMService:
         print(f"Finished at: {time.time()}")
         print(f"Collected {len(self._fingertip_pose_raw_data)} / {len(self._force_raw_data)} / {len(self._object_raw_data)} samples.")
 
-        # TODO: convert data into TensorDict
-        ret = TensorDict()
+        breakpoint()
+        # Return empty if not any force data
+        ret = TensorDict({}, batch_size = len(self._force_raw_data))
+        if len(self._force_raw_data) < 1:
+            return ret
+
+        assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
+        assert len(self._fingertip_pose_raw_data) >= len(self._force_raw_data)
+        is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+        densetact_time_s = np.array([float(measurement.sensorData[0].timestamp)/1e6 for measurement in self._force_raw_data]).flatten()
+        assert is_sorted(densetact_time_s)
+        fingerpos_time_s = np.array([float(measurement.utime)/1e6 for measurement in self._fingertip_pose_raw_data]).flatten()
+        assert is_sorted(fingerpos_time_s)
+        object_time_s = np.array([float(measurement.utime)/1e6 for measurement in self._object_raw_data]).flatten()
+        assert is_sorted(object_time_s)
+
+        # Interp fingertip data
+        fingertip_pos_W = {}
+        fingertip_vel_W = {}
+        fingertip_force_C = {}
+        fingertip_normal_W = {}
+        for body_idx, body_name in enumerate(self._fingertip_body_names):
+            # Position Interpolation
+            body_pos = np.array([measurement.curPos[3*body_idx:3*body_idx+3] for measurement in self._fingertip_pose_raw_data])
+            assert body_pos.shape == (len(fingerpos_time_s), 3)
+            body_pos_interp = np.vstack([np.interp(densetact_time_s, fingerpos_time_s, body_pos[:, idx]) for idx in range(3)]).T
+            assert body_pos_interp.shape == (len(densetact_time_s), 3)
+            fingertip_pos_W[body_name] = body_pos_interp
+
+            # Velocity Interpolation
+            body_vel = np.array([measurement.curVel[3*body_idx:3*body_idx+3] for measurement in self._fingertip_pose_raw_data])
+            assert body_vel.shape == (len(fingerpos_time_s), 3)
+            body_vel_interp = np.vstack([np.interp(densetact_time_s, fingerpos_time_s, body_vel[:, idx]) for idx in range(3)]).T
+            assert body_vel_interp.shape == (len(densetact_time_s), 3)
+            fingertip_vel_W[body_name] = body_vel_interp
+
+            # Quat Interpolation
+            body_quat = np.array([measurement.curQuat[3*body_idx:3*body_idx+4] for measurement in self._fingertip_pose_raw_data])
+            assert body_quat.shape == (len(fingerpos_time_s), 4)
+            body_quat_interp = np.vstack([np.interp(densetact_time_s, fingerpos_time_s, body_quat[:, idx]) for idx in range(4)]).T
+            assert body_quat_interp.shape == (len(densetact_time_s), 4)
+            body_R_BW = R.from_quat(body_quat_interp)
+            
+            # Record normal and force in world frame
+            body_R_CB = R.from_matrix(np.stack([np.array(measurement.sensorData[body_idx].contactFrame)[:3,:3] for measurement in self._force_raw_data]))
+            normal_C = np.broadcast_to(np.array([0., 0., 1.]), (len(densetact_time_s), 3))
+            body_R_CW = body_R_BW.inv() * body_R_CB
+            fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
+            force_C = np.array([(list(measurement.sensorData[body_idx].scaledFriction) + [measurement.sensorData[body_idx].scaledNormal]) for measurement in self._force_raw_data])
+            assert force_C.shape == (len(densetact_time_s), 3)
+            fingertip_force_C[body_name] = force_C
+
+        
+        ret["time"] = torch.from_numpy(densetact_time_s)
+        for body_name in self._fingertip_body_names:
+            ret[body_name, "position"] = torch.from_numpy(fingertip_pos_W[body_name]).clone()
+            ret[body_name, "velocity"] = torch.from_numpy(fingertip_vel_W[body_name]).clone()
+            ret[body_name, "contact_force_C"] = torch.from_numpy(fingertip_force_C[body_name]).clone()
+            ret[body_name, "contact_normal_W"] = torch.from_numpy(fingertip_normal_W[body_name]).clone()
+
+        # Interp ground-truth object data
+        if len(self._object_raw_data) > 0:
+            # Position Interpolation
+            num_positions = self._object_raw_data[0].num_positions
+            object_pos = np.array([measurement.position[:] for measurement in self._object_raw_data])
+            assert object_pos.shape == (len(object_time_s), num_positions)
+            object_pos_interp = np.vstack([np.interp(densetact_time_s, object_time_s, object_pos[:, idx]) for idx in range(num_positions)]).T
+            assert object_pos_interp.shape == (len(densetact_time_s), num_positions)
+            ret[self._object_raw_data[0].object_name, "position"] = torch.from_numpy(object_pos_interp).clone()
+
+            # Velocity Interpolation
+            num_velocities = self._object_raw_data[0].num_velocities
+            object_vel = np.array([measurement.velocity[:] for measurement in self._object_raw_data])
+            assert object_vel.shape == (len(object_time_s), num_velocities)
+            object_vel_interp = np.vstack([np.interp(densetact_time_s, object_time_s, object_vel[:, idx]) for idx in range(num_velocities)]).T
+            assert object_vel_interp.shape == (len(densetact_time_s), num_velocities)
+            ret[self._object_raw_data[0].object_name, "velocity"] = torch.from_numpy(object_vel_interp).clone()
+
 
         # Clear data and return
         self._force_raw_data.clear()
@@ -105,14 +184,14 @@ def main():
     trifinger_lcm = TrifingerLCMService()
 
     target_state = np.array([
-        0.2, 0., 0.05, # Finger 0 q
+        0.055, 0., 0.05, # Finger 0 q
         -0.1, 0., 0.05, # Finger 120 q
         0., 0.1, 0.05, # Finger 240 q
         0., 0., 0.,   # Finger 0 v
         0., 0., 0.,   # Finger 120 v
         0., 0., 0.,   # Finger 240 v
     ])
-    trifinger_lcm.execute_trajectory(target_state)
+    init_data = trifinger_lcm.execute_trajectory(target_state)
 
     # Start Input Loop
     def print_help():
