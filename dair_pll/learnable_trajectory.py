@@ -91,6 +91,12 @@ class LearnableTrajectories(Module):
         self._trajectories.append(Parameter(new_trajectory, requires_grad=True))
         self._trajectories_x0.append(Parameter(next_x0, requires_grad=True))
 
+    def current_state(self) -> Tensor:
+        """
+        Get the current state / latest time state estimate.
+        """
+        return self._trajectories_x0[-1]
+
     def forward(self, traj_nums: Tensor, indices: Tensor) -> Tensor:
         """Returns a batch of trajectory states.
 

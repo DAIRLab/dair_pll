@@ -28,13 +28,16 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from tensordict import TensorDictBase, TensorDict
 import torch
+from torch import Tensor
 
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
 from dair_pll import tensor_utils
+from dair_pll import file_utils
+from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
 from dair_pll.state_space import CenteredSampler
 from dair_pll.lcmtypes.dairlib import lcmt_fingertips_position, lcmt_object_state, lcmt_densetact_measurement, lcmt_densetact_measurement_data, lcmt_fingertips_target_kinematics
-
+from dair_pll.hack_utils import finger_idx_from_body_name
 
 # Repository directory (default for file operations)
 REPO_DIR = os.path.normpath(
@@ -99,6 +102,9 @@ class TrifingerLCMService:
         # Return empty if not any force data
         ret = TensorDict({}, batch_size = len(self._force_raw_data))
         if no_data or len(self._force_raw_data) < 1:
+            self._force_raw_data.clear()
+            self._fingertip_pose_raw_data.clear()
+            self._object_raw_data.clear()
             return ret
 
         assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
@@ -139,16 +145,13 @@ class TrifingerLCMService:
             body_R_BW = R.from_quat(body_quat_interp)
             
             # Record normal and force in world frame
-            try:
-                body_R_CB = R.from_matrix(np.stack([np.array(measurement.sensorData[body_idx].contactFrame)[:3,:3] for measurement in self._force_raw_data]))
-                normal_C = np.broadcast_to(np.array([0., 0., 1.]), (len(densetact_time_s), 3))
-                body_R_CW = body_R_BW.inv() * body_R_CB
-                fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
-                force_C = np.array([(list(measurement.sensorData[body_idx].scaledFriction) + [measurement.sensorData[body_idx].scaledNormal]) for measurement in self._force_raw_data])
-                assert force_C.shape == (len(densetact_time_s), 3)
-                fingertip_force_C[body_name] = force_C
-            except ValueError:
-                breakpoint()
+            body_R_CB = R.from_matrix(np.stack([np.array(measurement.sensorData[body_idx].contactFrame)[:3,:3] for measurement in self._force_raw_data]))
+            normal_C = np.broadcast_to(np.array([0., 0., 1.]), (len(densetact_time_s), 3))
+            body_R_CW = body_R_BW.inv() * body_R_CB
+            fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
+            force_C = np.array([(list(measurement.sensorData[body_idx].scaledFriction) + [measurement.sensorData[body_idx].scaledNormal]) for measurement in self._force_raw_data])
+            assert force_C.shape == (len(densetact_time_s), 3)
+            fingertip_force_C[body_name] = force_C
 
         
         ret["time"] = torch.from_numpy(densetact_time_s)
@@ -228,19 +231,58 @@ def sample_action(workspace_xy_center: Tuple[float, float], workspace_z_rot: flo
         ret[idx][6:9] = fixed_240_traj[:]
     return ret
 
+@gin.configurable(denylist=['system', 'data'])
+def extract_robot_trajectory(system: MultibodyLearnableSystemWithTrajectory, data: TensorDictBase, robot_model_name: str, fingertip_body_names: List[str]) -> Tensor:
+    """
+    Params:
+        data: return from execute_trajectory()
 
+    Returns:
+        (traj_len, robot_space_nx)
+    """
+    assert len(data.size()) == 1
+    traj_len = data.size()[0]
+    plant = system.plant_diagram.plant
+    robot_space = system._model_spaces[robot_model_name]
+    ret = torch.zeros((traj_len, robot_space.n_x))
+
+    for finger_name, state_idx in zip(fingertip_body_names, finger_idx_from_body_name(plant, plant.GetModelInstanceByName(robot_model_name), fingertip_body_names)):
+        pos_idx = 3*state_idx
+        vel_idx = robot_space.n_x // 2 + pos_idx
+        ret[:, pos_idx:pos_idx+3] = data[finger_name]["position"]
+        ret[:, vel_idx:vel_idx+3] = data[finger_name]["velocity"]
+
+    return ret
 
 ## Main Function
 @gin.configurable
-def main(init_trifinger_state: List[float], safe_trifinger_height: float):
+def main(
+    init_trifinger_state: List[float], 
+    safe_trifinger_height: float,
+    robot_model_name: str,
+    storage_folder_name: str = "storage_rss",
+    run_name: str = "default_run",
+):
     """Main function for online learning loop"""
-    trifinger_lcm = TrifingerLCMService()
 
+    # Create run directory
+    print("Active Tactile Exploration")
+    storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
+    print(f"Storing data and results at {file_utils.run_dir(storage_name, run_name)}")
+    
+    # Initialize LCM
+    trifinger_lcm = TrifingerLCMService()
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
-
     print("Sample Initial Random Action...")
     selected_action = sample_action()
+    current_trajectory = None
+
+    # Create learnable system
+    print("Loading Learned System...")
+    learned_system = MultibodyLearnableSystemWithTrajectory(
+        output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
+    )
 
     # Start Input Loop
     def print_help():
@@ -248,6 +290,7 @@ def main(init_trifinger_state: List[float], safe_trifinger_height: float):
             "\nUsage:\n"
             "e - Execute selected action + collect data\n"
             "s - Sample random action\n"
+            "t - Testing (reserved)\n"
             "b - breakpoint()\n"
             "h - Print Help\n"
             "q - Quit\n"
@@ -270,19 +313,30 @@ def main(init_trifinger_state: List[float], safe_trifinger_height: float):
             trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
 
             # Execute and collect data
-            new_data = trifinger_lcm.execute_trajectory(selected_action[1])
+            current_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
 
             # Move straight up
             safe_state = np.copy(selected_action[0])
-            safe_state[:3] = new_data["finger_0"]["position"][-1].cpu().clone().numpy()
+            safe_state[:3] = current_trajectory["finger_0"]["position"][-1].cpu().clone().numpy()
             safe_state[2] = safe_trifinger_height
-            safe_state[3:6] = new_data["finger_1"]["position"][-1].cpu().clone().numpy()
+            safe_state[3:6] = current_trajectory["finger_1"]["position"][-1].cpu().clone().numpy()
             safe_state[5] = safe_trifinger_height
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
         elif command_char == "s":
             print("Sampling random action...")
             selected_action = sample_action()
+
+        elif command_char == "t":
+            if current_trajectory is None:
+                print("Requires a trajectory to be run first...")
+                continue
+            print("Simulating trajectory")
+            timestamps = current_trajectory["time"]
+            assert len(timestamps.size()) == 1
+            robot_target_trajectory = extract_robot_trajectory(learned_system, current_trajectory, robot_model_name).unsqueeze(0)
+            assert len(robot_target_trajectory.size()) == 3
+            sim_traj = learned_system.diff_simulate(robot_model_name, robot_target_trajectory, timestamps)
 
     # Quit
 

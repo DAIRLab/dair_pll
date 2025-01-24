@@ -30,7 +30,7 @@ import gin
 import numpy as np
 import torch
 from torch import Tensor
-from tensordict.tensordict import TensorDictBase
+from tensordict.tensordict import TensorDictBase, TensorDict
 
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
@@ -659,7 +659,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             mu_list,
         )
 
-    def forward_dynamics(self, q: Tensor, v: Tensor, u: Tensor) -> Tensor:
+    def forward_dynamics(self, q: Tensor, v: Tensor, u: Tensor, dts: Optional[Union[float, Tensor]] = None) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
         Implements Anitescu's [1] convex formulation in dual form, derived
@@ -717,10 +717,10 @@ class MultibodyLearnableSystem(DrakeSystem):
             (\*, space.n_v) delta velocity batch.
         """
         # pylint: disable=too-many-locals
-        dt = self.dt
+        dt = self.dt if dts is None else dts
         phi_eps = 1e6
         eps = 1e-8  # TODO: HACK make this a hyperparameter
-        delassus, M, J, phi, non_contact_acceleration, _, _ = self.get_multibody_terms(
+        delassus, M, J, phi, non_contact_acceleration, _, _, _ = self.get_multibody_terms(
             q, v, u
         )
         n_contacts = phi.shape[-1]
@@ -819,12 +819,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         )
 
         ## Populate Model Spaces
-        self.model_spaces = {}
+        self._model_spaces = {}
         traj_spaces = []
         plant_diagram = self.multibody_terms.plant_diagram
         for model_id, space in zip(plant_diagram.model_ids, plant_diagram.space.spaces):
             name = plant_diagram.plant.GetModelInstanceName(model_id)
-            self.model_spaces[name] = space
+            self._model_spaces[name] = space
             if name in self._trajectory_model_names:
                 traj_spaces.append(space)
 
@@ -837,6 +837,67 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 else torch.tensor(init_traj_state)
             )
         self._trajectory = LearnableTrajectories(ProductSpace(traj_spaces), init_state)
+
+    def diff_simulate(self, robot_model_name: str, robot_target_trajectories: Tensor, timestamps: Tensor, kp: float = 20., kd: float = 10., steps_per_timestep = 33) -> Tensor:
+        """
+        From the current estimated model state, simulate a batch of robots on the target trajectories.
+
+        Args:
+            robot_target_trajectories: (batch, traj_len, robot_nx)
+            timestamps: (traj_len,)
+        Returns:
+            - model_states_from_state_tensor() of (batch, traj_len, plant.n_x)
+        """
+
+        # Input Validation
+        robot_space = self._model_spaces[robot_model_name]
+        assert len(robot_target_trajectories.size()) >= 3
+        batch_dims = robot_target_trajectories.size()[:-2]
+        traj_len = robot_target_trajectories.size()[-2]
+        assert robot_target_trajectories.size() == batch_dims + (traj_len, robot_space.n_x), str(robot_target_trajectories.size())
+        assert timestamps.size() == (traj_len,)
+
+        # Populate Initial State
+        data_state = TensorDict({}, batch_size = batch_dims + (traj_len,))
+        data_state[robot_model_name + "_state"] = torch.zeros_like(robot_target_trajectories)
+        data_state[robot_model_name + "_state"][..., 0, :] = robot_target_trajectories[..., 0, :]
+        traj_splits = self._trajectory.space.x_split(self._trajectory.current_state())
+        for traj_model_idx, traj_model_name in enumerate(
+                self._trajectory_model_names
+            ):
+                model_x = traj_splits[traj_model_idx]
+                assert len(model_x.size()) == 1
+                data_state[traj_model_name + "_state"] = torch.zeros(batch_dims + (traj_len, model_x.size()[0]))
+                data_state[traj_model_name + "_state"][..., 0, :] = model_x
+
+        plant_states = super().construct_state_tensor(data_state)
+        assert plant_states.size() == batch_dims + (traj_len, self.space.n_x)
+
+        ## Simulation Loop
+        for sim_idx in range(1, traj_len):
+            print(f"Step {sim_idx} / {traj_len}...")
+            sim_dt = timestamps[sim_idx] - timestamps[sim_idx-1]
+            step_dt = sim_dt / float(steps_per_timestep)
+            step_states = torch.zeros(batch_dims + (steps_per_timestep, self.space.n_x))
+            step_states[..., 0, :] = plant_states[..., sim_idx-1, :]
+            for step_idx in range(1, steps_per_timestep):
+                # Calculate u from PID
+                robot_step_states = self.model_states_from_state_tensor(step_states[..., step_idx-1, :])[robot_model_name + "_state"]
+                assert robot_step_states.size() == batch_dims + (robot_space.n_x,)
+                interp_val = ((step_idx-1.) / steps_per_timestep)
+                robot_target_states = interp_val * robot_target_trajectories[..., sim_idx-1, :] + (1.0-interp_val) * robot_target_trajectories[..., sim_idx, :]
+                assert robot_target_states.size() == batch_dims + (robot_space.n_x,)
+                step_u = kp * (robot_space.q(robot_target_states) - robot_space.q(robot_step_states)) + kd * (robot_space.v(robot_target_states) - robot_space.v(robot_step_states))
+                # Run Forward Dynamics
+                step_q = self.space.q(step_states[..., step_idx-1, :])
+                step_v = self.space.v(step_states[..., step_idx-1, :])
+                step_vplus = self.forward_dynamics(step_q, step_v, step_u, step_dt)
+                step_states[..., step_idx, :] = self.space.x(self.space.euler_step(step_q, step_v, step_dt), step_vplus)
+            plant_states[..., sim_idx, :] = step_states[..., -1, :]
+
+        ret = self.model_states_from_state_tensor(plant_states)
+        return ret
+
 
     def add_trajectories(
         self, traj_lens: List[int], traj_data: Optional[List[Optional[Tensor]]] = None
