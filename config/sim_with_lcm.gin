@@ -24,7 +24,7 @@ object/get_urdf_asset_contents.mappings = {
 	"length_x": 0.065, # m
 	"length_y": 0.065, # m
 	"length_z": 0.065, # m
-	"mu": "0.1",
+	"mu": 0.1,
 	"planar_xz": "false",
 }
 object_initial_state = [

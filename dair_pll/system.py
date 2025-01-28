@@ -14,6 +14,7 @@ such as a UKF estimator or an RNN.
 """
 
 from abc import ABC
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Tuple, Callable, Optional, Dict, List
 
@@ -21,6 +22,7 @@ import numpy as np
 import torch
 from torch import Tensor
 from torch.nn import Module
+from torch.nn.parameter import Parameter
 from tensordict.tensordict import TensorDict, TensorDictBase
 
 from dair_pll import state_space
@@ -88,6 +90,12 @@ class System(ABC, Module):
         # pylint: disable=E1103
         self.carry_callback = lambda: torch.zeros((1, 1))
         self.max_batch_dim = max_batch_dim
+
+    def exploration_parameters(self) -> Iterable[Parameter]:
+        """
+        Parameters specifically used for exploration
+        """
+        return self.parameters()
 
     def sample_trajectory(self, length: int) -> Tuple[Tensor, Tensor]:
         """Sample

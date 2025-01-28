@@ -731,11 +731,11 @@ class GeometryCollider:
 
         # case 2: compact-convex to sphere collision (e.g. robot)
         if isinstance(geometry_a, Box) and isinstance(geometry_b, Sphere):
-            return GeometryCollider.collide_convex_sphere(
+            return GeometryCollider.collide_box_sphere(
                 geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A
             )
         if isinstance(geometry_a, Sphere) and isinstance(geometry_b, Box):
-            return GeometryCollider.collide_convex_sphere(
+            return GeometryCollider.collide_box_sphere(
                 geometry_b,
                 geometry_a,
                 R_AB.transpose(-1, -2),
@@ -1038,7 +1038,7 @@ class GeometryCollider:
         mask[
             ...,
             torch.arange(mask.shape[-2]),
-            torch.argmin(torch.abs(p_AoBo_A_diffs), dim=1),
+            torch.argmin(torch.abs(p_AoBo_A_diffs), dim=-1),
         ] = 1.0
         p_AoBo_A_diffs_masked = p_AoBo_A_diffs * mask
         # Actual projection to get nearest point
@@ -1049,9 +1049,9 @@ class GeometryCollider:
         # Calculate directions (use torch nn functional normalize)
         directions_A = torch.nn.functional.normalize(p_AcBo_A, dim=-1)
         # Check if internal, if so, flip directions_A
-        directions_A[torch.norm(p_AoBo_A, dim=1) < torch.norm(p_AoAc_A, dim=1)] *= -1.0
+        directions_A[torch.norm(p_AoBo_A, dim=-1) < torch.norm(p_AoAc_A, dim=-1)] *= -1.0
         # In the unlikely event p_AcBo_A == 0, use an arbitrary surface normal
-        on_surface_idxs = torch.norm(directions_A, dim=1) == 0
+        on_surface_idxs = torch.norm(directions_A, dim=-1) == 0
         directions_A[on_surface_idxs] = (
             -mask[on_surface_idxs] * p_AoBo_A_clamp_sign[on_surface_idxs]
         )

@@ -24,6 +24,7 @@ main.init_trifinger_state = [
 ]
 main.safe_trifinger_height = %workspace_radius
 extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
+interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
 
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
@@ -72,15 +73,17 @@ LearnableSystem.represent_geometry_as = "box"
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.02, # m
-	"length_y": 0.1, # m
-	"length_z": 0.1, # m
-	"mu": 0.2,
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
+	"mu": 0.1,
 	"planar_xz": "false",
 }
 LearnableSystem.init_traj_state = [
-	1., 0., 0., 0., 0., 0., 0., # Q
-	0., 0., 0., 0., 0., 0., # V
+	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
+	0.0, 0.0, 0.06,     # XYZ
+	0.0, 0.0, 0.0,      # omega_XYZ
+	0.0, 0.0, 0.0,		# dXYZ
 ]
 
 # What is learnable
