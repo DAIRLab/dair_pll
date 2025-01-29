@@ -1023,8 +1023,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self.zero_grad()
 
         # Simulate batch of robot actions
+        # TODO: HACK don't hardcode this
+        steps_per_timestep = 3
         plant_states_dict, impulse_star, robot_u = self.diff_simulate(
-            robot_trajectories, robot_timestamps, robot_model_name, steps_per_timestep=3
+            robot_trajectories, robot_timestamps, robot_model_name, steps_per_timestep=steps_per_timestep
         )
         plant_states = super().construct_state_tensor(plant_states_dict)
         plant_x = plant_states[..., : traj_len - 1, :]
@@ -1033,15 +1035,23 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         assert plant_x.size() == plant_xplus.size()
 
         # Sample impulses
+        # TODO: HACK Don't hardcode this
+        # cube_body -> fingers are object pair IDs 0 and 1
+        # corresponding to indices 0, 1, 2, 3, 4, 5
+        # Those are the only forces where we want to add noise.
+        cov_vec = torch.zeros_like(impulse_star)
+        cov_vec[..., :5] = 1e-2
         sampler = MultivariateNormal(
-            loc=impulse_star.flatten(),
-            covariance_matrix=torch.eye(impulse_star.numel()),
+            loc=impulse_star[..., :5].flatten(),
+            covariance_matrix=torch.diag(cov_vec[..., :5].flatten()),
         )
         ret = torch.zeros(batch_dims)
         for sample_idx in range(n_samples):
             print(f"Processing Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
-            impulse_sample = sampler.sample().reshape(impulse_star.size())[..., : traj_len-1, :].unsqueeze(-1)
+            impulse_sample_full = impulse_star.clone()
+            impulse_sample_full[..., :5] = sampler.sample().reshape(impulse_sample_full[..., :5].size())
+            impulse_sample = impulse_sample_full[..., : traj_len-1, :].unsqueeze(-1)
 
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
@@ -1052,12 +1062,19 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
             # Compute Gradient (i.e. score)
             n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
+            n_params -= len(self._trajectory.current_state())
+            n_params += 3
             score_batch = torch.zeros(loss_batch.numel(), n_params)
             for score_idx in range(loss_batch.numel()):
-                # TODO: Disable accumulation
                 loss_batch[score_idx].backward(retain_graph=True)
                 grads = [param.grad.flatten() for param in self.exploration_parameters() if param.requires_grad]
+                # TODO: HACK Don't hardcode this
+                # De-emphasize gradient of pose due to dynamics sensitivity
+                grads[0] /= float(steps_per_timestep * traj_len)
+                # Only Position, Not Rotation or Velocity
+                grads[0] = grads[0][4:7]
                 print(f"Grads: {grads}")
+                self.zero_grad(set_to_none=True)
                 param_grad = torch.cat(grads)
                 assert param_grad.size() == (n_params,)
                 score_batch[score_idx, :] = param_grad

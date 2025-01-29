@@ -1021,7 +1021,6 @@ class GeometryCollider:
         assert p_AoBo_A.shape == batch_dim + (3,)
         assert isinstance(box_a, Box)
         assert isinstance(sphere_b, Sphere)
-        n_c = 2
 
         ## Get nearest point on box
         # Expand box lengths to batch size
@@ -1064,6 +1063,7 @@ class GeometryCollider:
 
         # Add estimated normal if they exist
         if estimated_normals_A is not None:
+            n_c = 2
             assert estimated_normals_A.shape == batch_dim + (3,)
             directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
             zeros_idx = torch.isclose(
@@ -1076,6 +1076,7 @@ class GeometryCollider:
                 [directions_A, directions_A2.unsqueeze(-2)], dim=-2
             )
         else:
+            n_c = 1
             p_AoAc_A = p_AoAc_A.expand(batch_dim + (n_c, 3))
             directions_A = directions_A.expand(batch_dim + (n_c, 3))
 
