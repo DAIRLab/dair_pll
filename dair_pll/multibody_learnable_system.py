@@ -986,13 +986,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return chain(
-            [self._trajectory.current_state()],
-            self.multibody_terms.parameters(),
-        )
+        return self.multibody_terms.parameters()
 
     @gin.register
-    def trace_fisher_info(
+    def expected_fisher_info(
         self,
         robot_trajectories: Tensor,
         robot_timestamps: Tensor,
@@ -1007,7 +1004,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             robot_timestamps: Tensor (traj_len,)
 
         Returns:
-            Fisher Information Trace: Tensor (batch,)
+            Fisher Information Trace: Tensor (batch, n_params, n_params)
         """
 
         # Input Validation
@@ -1037,20 +1034,22 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         # Sample impulses
         # TODO: HACK Don't hardcode this
         # cube_body -> fingers are object pair IDs 0 and 1
-        # corresponding to indices 0, 1, 2, 3, 4, 5
+        # corresponding to indices 0, 6, 7 (finger_0); 1, 7, 8 (finger_1)
+        force_indices = [0, 6, 7, 1, 7, 8]
         # Those are the only forces where we want to add noise.
         cov_vec = torch.zeros_like(impulse_star)
-        cov_vec[..., :5] = 1e-2
+        cov_vec[..., force_indices] = 1e-2
         sampler = MultivariateNormal(
-            loc=impulse_star[..., :5].flatten(),
-            covariance_matrix=torch.diag(cov_vec[..., :5].flatten()),
+            loc=impulse_star[..., force_indices].flatten(),
+            covariance_matrix=torch.diag(cov_vec[..., force_indices].flatten()),
         )
-        ret = torch.zeros(batch_dims)
+        n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
+        ret = torch.zeros(batch_dims + (n_params, n_params))
         for sample_idx in range(n_samples):
             print(f"Processing Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             impulse_sample_full = impulse_star.clone()
-            impulse_sample_full[..., :5] = sampler.sample().reshape(impulse_sample_full[..., :5].size())
+            impulse_sample_full[..., force_indices] = sampler.sample().reshape(impulse_sample_full[..., force_indices].size())
             impulse_sample = impulse_sample_full[..., : traj_len-1, :].unsqueeze(-1)
 
             # Compute Loss (i.e. log-likelihood)
@@ -1061,31 +1060,21 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             loss_batch = torch.sum(loss_trajlen_batch, dim=-1).flatten()
 
             # Compute Gradient (i.e. score)
-            n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
-            n_params -= len(self._trajectory.current_state())
-            n_params += 3
             score_batch = torch.zeros(loss_batch.numel(), n_params)
             for score_idx in range(loss_batch.numel()):
                 loss_batch[score_idx].backward(retain_graph=True)
                 grads = [param.grad.flatten() for param in self.exploration_parameters() if param.requires_grad]
-                # TODO: HACK Don't hardcode this
-                # De-emphasize gradient of pose due to dynamics sensitivity
-                grads[0] /= float(steps_per_timestep * traj_len)
-                # Only Position, Not Rotation or Velocity
-                grads[0] = grads[0][4:7]
                 print(f"Grads: {grads}")
                 self.zero_grad(set_to_none=True)
                 param_grad = torch.cat(grads)
                 assert param_grad.size() == (n_params,)
                 score_batch[score_idx, :] = param_grad
 
-            # Compute Trace of outer product (i.e. square then sum, trace can happen inside sample by linearity)
-            sample_trace = torch.sum(torch.square(score_batch), dim=-1).reshape(
-                batch_dims
-            )
-            assert ret.size() == sample_trace.size()
-            ret += sample_trace
-            print(f"Got Trace: {sample_trace}")
+            # Compute Fisher Info as outer product
+            sample_fisher = pbmm(score_batch.unsqueeze(-1), score_batch.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+            assert ret.size() == sample_fisher.size()
+            ret += sample_fisher
+            print(f"Got Fisher: {sample_fisher}")
 
         ret /= n_samples
         return ret
