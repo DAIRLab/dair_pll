@@ -1038,7 +1038,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         force_indices = [0, 6, 7, 1, 7, 8]
         # Those are the only forces where we want to add noise.
         cov_vec = torch.zeros_like(impulse_star)
-        cov_vec[..., force_indices] = 1e-2
+        cov_vec[..., force_indices] = 1e-1 # N, on the order of 10g equiv.
         sampler = MultivariateNormal(
             loc=impulse_star[..., force_indices].flatten(),
             covariance_matrix=torch.diag(cov_vec[..., force_indices].flatten()),
@@ -1049,7 +1049,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             print(f"Processing Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             impulse_sample_full = impulse_star.clone()
-            impulse_sample_full[..., force_indices] = sampler.sample().reshape(impulse_sample_full[..., force_indices].size())
+            impulse_sample_full[..., force_indices] = torch.max(sampler.sample().reshape(impulse_sample_full[..., force_indices].size()), torch.zeros_like(impulse_sample_full[..., force_indices]))
             impulse_sample = impulse_sample_full[..., : traj_len-1, :].unsqueeze(-1)
 
             # Compute Loss (i.e. log-likelihood)
