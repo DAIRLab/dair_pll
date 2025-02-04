@@ -2,7 +2,7 @@
 
 ## General Config
 robot_radius = 0.01575 # From trifingeredu.urdf
-robot_radius_buffer = 0.016
+robot_radius_buffer = 0.02
 workspace_radius = 0.15
 robot_model_name = "robot"
 object_model_name = "cube"
@@ -81,7 +81,7 @@ object_init/get_urdf_asset_contents.mappings = {
 }
 LearnableSystem.init_traj_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.06,     # XYZ
+	0.0, 0.0, 0.0325,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -101,3 +101,23 @@ LearnableSystem.w_diss = 1e0
 LearnableSystem.w_pen = 5e1
 LearnableSystem.w_dev = 2e6
 LearnableSystem.w_reg_iner = 1e-5
+
+# Learning Optimizer
+main.optimizer_cls = @Adam
+SGD.lr=8e-4
+SGD.momentum=2e-4
+Adam.lr=1e-3
+Adam.amsgrad=True
+Adam.fused=True
+
+# Data Configuration
+# traj_num, index required for proper learned trajectory indexing
+# Added by default in TrajectorySet()
+TrajectorySliceConfig.batch_size = -1
+TrajectorySliceConfig.shuffle = False
+TrajectorySliceConfig.his_state_keys = [
+	"robot_state", "contact_forces", "traj_num", "index", "time",
+]
+TrajectorySliceConfig.pred_state_keys = [
+	"robot_state", "traj_num", "index", "time",
+]

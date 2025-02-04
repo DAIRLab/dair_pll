@@ -667,6 +667,10 @@ class ContactTerms(Module):
                 estimated_normals_A = pbmm(
                     R_AiW, estimated_normals_W[key].unsqueeze(-1)
                 ).squeeze(-1)
+            elif (geo_b.name, geo_a.name) in estimated_normals_W:
+                estimated_normals_A = -pbmm(
+                    R_AiW, estimated_normals_W[key].unsqueeze(-1)
+                ).squeeze(-1)
             # relative rotation between Ai and Bi, (*, 3, 3)
             R_AiBi = pbmm(R_AiW, R_BiW.transpose(-1, -2))
 

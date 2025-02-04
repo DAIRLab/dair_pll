@@ -18,25 +18,29 @@ TODOs:
 
 import os
 import pdb
+import signal
 import sys
 import time
-from typing import Any, Dict, List, Tuple
+from typing import cast, Any, Dict, List, Optional, Tuple, Type
 
 import gin
-
-# import gin.torch.external_configurables
+import gin.torch.external_configurables
 import git
 import lcm
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from tensordict import TensorDictBase, TensorDict
 import torch
+from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 from torch import Tensor
 
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
 from dair_pll import tensor_utils
 from dair_pll import file_utils
+from dair_pll.drake_system import DrakeSystem
+from dair_pll.dataset_management import TrajectorySet
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
 from dair_pll.lcmtypes.dairlib import (
     lcmt_fingertips_position,
@@ -51,6 +55,116 @@ REPO_DIR = os.path.normpath(
     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
 )
 DEFAULT_CONFIG = "rss_experiment.gin"
+
+## Training Functions
+@gin.configurable
+def get_loss_args(
+    x_past: Tensor,
+    x_future: Tensor,
+    system: DrakeSystem,
+    impulses: Optional[Tensor] = None,
+    object_body_name: str = "cube",
+) -> Dict[str, Any]:
+    """Convert dataloader trajectory slices into arguments for contactnets loss"""
+
+    # Get last time of past and first of future
+    # Remove extraneous dimensions
+    past = x_past[..., -1]
+    plus = x_future[..., 0]
+
+    # Construct State
+    x_past = system.construct_state_tensor(past)
+    x_plus = system.construct_state_tensor(plus)
+
+    # Actuation
+    n_control = system.plant_diagram.plant.num_actuated_dofs()
+    control = torch.zeros(past.batch_size + (n_control,))
+    if "net_actuation" in past.keys():
+        control = past["net_actuation"]
+        if len(control.shape) == 1:
+            control = control.unsqueeze(-1)
+
+    # Construct measured contact forces on obj_b from obj_a
+    # Defined as Dict: {(str(obj_a_name), str(obj_b_name)) -> R^3 force on obj_b in World Frame}
+    # TODO: specify incoming data reference frame, default World
+    contact_forces = {}
+    if "contact_forces" in past.keys():
+        for key in past["contact_forces"].keys():
+            contact_forces[(object_body_name, key)] = past["contact_forces"][key]
+    contact_normals = {}
+    if "contact_normals" in past.keys():
+        for key in past["contact_normals"].keys():
+            contact_normals[(object_body_name, key)] = past["contact_normals"][key]
+
+    ret = {
+        "x": x_past,
+        "u": control,
+        "x_plus": x_plus,
+        "contact_forces": contact_forces,
+        "contact_normals": contact_normals,
+    }
+    if impulses is not None:
+        ret["impulses"] = impulses
+
+    return ret
+
+def train_epoch(
+    data: DataLoader,
+    system: MultibodyLearnableSystemWithTrajectory,
+    optimizer: Optional[Optimizer] = None,
+) -> Tensor:
+    """Train learned model for a single epoch.  Takes gradient steps in the
+    learned parameters if ``optimizer`` is provided.
+
+    Args:
+        data: Training dataset.
+        system: System to be trained.
+        optimizer: Optimizer which trains system.
+
+    Returns:
+        Scalar average training loss observed during epoch.
+    """
+    losses = []
+    loss_elements = {}
+    for xy_i in data:
+        x_past: Tensor = xy_i[0]
+        x_plus: Tensor = xy_i[1]
+
+        if optimizer is not None:
+            optimizer.zero_grad()
+        # pylint: disable=E1120
+        # Expect gin to handle missing arguments
+        ### Profiling
+        #import cProfile, pstats, io
+        #from pstats import SortKey
+        #pr = cProfile.Profile()
+        #pr.enable()
+        loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
+        losses.append(loss.clone().detach())
+
+        for key, val in system.loss_cache.items():
+            if key not in loss_elements:
+                loss_elements[key] = []
+            loss_elements[key].append(val)
+
+        if optimizer is not None:
+            loss.backward()
+            optimizer.step()
+
+        ### Profiling
+        #s = io.StringIO()
+        #sortby = SortKey.CUMULATIVE
+        #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        #ps.print_stats()
+        #print(s.getvalue())
+        #breakpoint()
+
+    # Compute Epoch Average
+    avg_loss = cast(Tensor, sum(losses) / len(losses))
+    loss_elements_ret = {}
+    for key, val in loss_elements.items():
+        loss_elements_ret[key] = cast(Tensor, sum(val) / len(val))
+    return avg_loss, loss_elements_ret
 
 
 ## Execute Robot Trajectory
@@ -132,7 +246,7 @@ class TrifingerLCMService:
         print(f"Finished at: {time.time()}")
         print(
             f"Collected {len(self._fingertip_pose_raw_data)}" +
-            f"/ {len(self._force_raw_data)} / {len(self._object_raw_data)} samples."
+            f" / {len(self._force_raw_data)} / {len(self._object_raw_data)} samples."
         )
 
         # Return empty if not any force data
@@ -170,6 +284,7 @@ class TrifingerLCMService:
         fingertip_pos_W = {}
         fingertip_vel_W = {}
         fingertip_force_C = {}
+        fingertip_force_W = {}
         fingertip_normal_W = {}
         for body_idx, body_name in enumerate(self._fingertip_body_names):
             # Position Interpolation
@@ -221,7 +336,7 @@ class TrifingerLCMService:
                 ]
             ).T
             assert body_quat_interp.shape == (len(densetact_time_s), 4)
-            body_R_BW = R.from_quat(body_quat_interp)
+            body_R_BW = R.from_quat(body_quat_interp, scalar_first=True)
 
             # Record normal and force in world frame
             body_R_CB = R.from_matrix(
@@ -247,6 +362,7 @@ class TrifingerLCMService:
                 ]
             )
             assert force_C.shape == (len(densetact_time_s), 3)
+            fingertip_force_W[body_name] = body_R_CW.apply(force_C)
             fingertip_force_C[body_name] = force_C
 
         ret["time"] = torch.from_numpy(densetact_time_s)
@@ -259,6 +375,9 @@ class TrifingerLCMService:
             ).clone()
             ret[body_name, "contact_force_C"] = torch.from_numpy(
                 fingertip_force_C[body_name]
+            ).clone()
+            ret[body_name, "contact_force_W"] = torch.from_numpy(
+                fingertip_force_W[body_name]
             ).clone()
             ret[body_name, "contact_normal_W"] = torch.from_numpy(
                 fingertip_normal_W[body_name]
@@ -332,21 +451,28 @@ def sample_action(
     rng = np.random.default_rng()
 
     # Start in workspace frame
-    def sample_finger(flip_x: bool = False):
+    def sample_finger(flip_x: bool = False, fixed_pinch = False):
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0.0, np.pi / 2.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
+        if fixed_pinch:
+            start_polar = np.pi / 2.0
+            start_azimuth = 0.
         start_S = (workspace_radius - sphere_radius) * np.array(
             [
                 (np.sin(start_polar) * np.cos(start_azimuth)),
                 np.sin(start_polar) * np.sin(start_azimuth),
-                sphere_radius + np.cos(start_polar),
+                np.cos(start_polar),
             ]
         )
         start_S[0] += sphere_radius
+        start_S[2] += sphere_radius
         start_S[0] *= flip_factor
         end_radius = rng.uniform(0.0, workspace_radius - sphere_radius)
         end_angle = rng.uniform(0.0, np.pi)
+        if fixed_pinch:
+            end_radius = 0.
+            end_angle = 0.
         end_S = np.array(
             [
                 flip_factor * sphere_radius,
@@ -409,7 +535,6 @@ def interpolate_sampled_action(
 
     return ret, ret_timestamps
 
-
 @gin.configurable(denylist=["system", "data"])
 def extract_robot_trajectory(
     system: MultibodyLearnableSystemWithTrajectory,
@@ -444,6 +569,11 @@ def extract_robot_trajectory(
 
     return ret
 
+signal_pressed = False
+def signal_handler(sig, frame):
+    """ Handle SIGINT"""
+    global signal_pressed
+    signal_pressed = True
 
 ## Main Function
 @gin.configurable
@@ -453,8 +583,11 @@ def main(
     robot_model_name: str,
     storage_folder_name: str = "storage_rss",
     run_name: str = "default_run",
+    optimizer_cls: Type = torch.optim.SGD,
 ):
     """Main function for online learning loop"""
+    global signal_pressed
+    signal.signal(signal.SIGINT, signal_handler)
     #torch.autograd.set_detect_anomaly(True)
     #torch.set_default_device("cuda")
 
@@ -478,6 +611,17 @@ def main(
     learned_system = MultibodyLearnableSystemWithTrajectory(
         output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
     )
+    learned_summaries = [learned_system.summary({})]
+    train_losses = []
+    train_loss_data = []
+
+    # Create Dataset
+    data_trajectories = TrajectorySet()
+
+    # Initialize Optimizer and Data config
+    optimizer = optimizer_cls(learned_system.parameters())
+    traj_dataloader = None
+    total_epochs = 0
 
     # Start Input Loop
     def print_help():
@@ -485,7 +629,7 @@ def main(
             "\nUsage:\n"
             "e - Execute selected action + collect data\n"
             "s - Sample random action\n"
-            "t - Testing (reserved)\n"
+            "t - Train\n"
             "b - breakpoint()\n"
             "h - Print Help\n"
             "q - Quit\n"
@@ -511,6 +655,10 @@ def main(
             # Execute and collect data
             new_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
 
+            if len(new_trajectory) < 1:
+                print("WARNING: No data collected")
+                continue
+
             # Move straight up
             safe_state = np.copy(selected_action[0])
             safe_state[:3] = (
@@ -523,12 +671,90 @@ def main(
             safe_state[5] = safe_trifinger_height
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
-            ## TODO: Add data to trajectory set
+            # Add data to dataset
+            add_trajectory = TensorDict({}, batch_size = new_trajectory.batch_size)
+            add_trajectory["robot_state"] = extract_robot_trajectory(learned_system, new_trajectory, robot_model_name)
+            for finger_name in new_trajectory.keys():
+                try:
+                    add_trajectory["contact_forces", finger_name] = new_trajectory[finger_name]["contact_force_W"]
+                    add_trajectory["contact_normals", finger_name] = new_trajectory[finger_name]["contact_normal_W"]
+                except (IndexError, KeyError): # e.g. object, time
+                    continue
+            add_trajectory["time"] = new_trajectory["time"]
+            data_trajectories.add_trajectories(
+                [add_trajectory.clone().detach()],
+                torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
+            )
+
+            # Simulate and Extend Learnable Trajectory
+            print("Simulating init trajectory")
+            with torch.no_grad():
+                plant_states_dict, _, _ = learned_system.diff_simulate(
+                    add_trajectory["robot_state"].unsqueeze(0), add_trajectory["time"]
+                )
+            # TODO: HACK don't hardcode object model name
+            learned_system.add_trajectories(
+                traj_lens=[len(plant_states_dict.squeeze())],
+                traj_data=[plant_states_dict.squeeze()["cube_state"]],
+            )
+
+            # Re-init optimizer and data-loader
+            batch_size = (
+                len(data_trajectories.slices)
+                if data_trajectories.slices.config.batch_size == -1
+                else data_trajectories.slices.config.batch_size
+            )
+            traj_dataloader = DataLoader(
+                data_trajectories.slices,
+                batch_size=batch_size,
+                shuffle=data_trajectories.slices.config.shuffle,
+                generator=torch.Generator(device=torch.get_default_device()),
+            )
+            optimizer = optimizer_cls(learned_system.parameters())
 
         elif command_char == "s":
             print("Sampling random action...")
             selected_action = sample_action()
 
+        elif command_char == "t":
+            if traj_dataloader is None or len(traj_dataloader) == 0:
+                print("Cannot train without data.\n")
+                continue
+
+            try:
+                epochs = int(input("How many epochs? "))
+            except ValueError:
+                print("Cancelling...")
+                continue
+            print("Training...")
+
+            start_time = time.time()
+            for idx in range(epochs):
+                train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
+                total_epochs += 1
+                print(total_epochs, 
+                    f"Loss (J): {train_loss:.3e};", 
+                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};", 
+                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};", 
+                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};", 
+                    f"Pen (m): {loss_data['mean_pen_m']:.3e};", 
+                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
+                    f"Dev (N): {loss_data['mean_dev_N']:.3e};",
+                )
+                train_losses.append(train_loss)
+                train_loss_data.append(loss_data)
+                learned_summaries.append(learned_system.summary({}))
+                if signal_pressed:
+                    signal_pressed = False
+                    print("Training cancelled...")
+                    epochs = idx + 1
+                    break
+
+            vis_system = None  # Invalidate
+
+            print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
+
+"""
         elif command_char == "t":
             print("Calculating Fisher Info")
             stationary_action = (selected_action[0], selected_action[0])
@@ -537,6 +763,7 @@ def main(
             robot_trajectory = extract_robot_trajectory(learned_system, interpolated_action, robot_model_name)
 
             fisher = learned_system.expected_fisher_info(robot_trajectory.unsqueeze(0), timestamps, robot_model_name)
+"""
 
     # Quit
 

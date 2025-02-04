@@ -182,6 +182,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         u: Tensor,
         x_plus: Tensor,
         contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
+        contact_normals: Optional[Dict[Tuple[str, str], Tensor]] = None,
         impulses: Optional[Tensor] = None,
     ) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
@@ -200,13 +201,14 @@ class MultibodyLearnableSystem(DrakeSystem):
             u: (\*, ?) input batch.
             x_plus: (\*, space.n_x) current state batch.
             contact_forces: mapping (obj_a_name, obj_b_name) to force on obj_b in World Frame
+            contact_normals: mapping (obj_a_name, obj_b_name) to surface normal towards obj_b in World Frame
 
         Returns:
             (\*,) loss batch.
         """
         loss_pred, loss_q_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
             self.calculate_contactnets_loss_terms(
-                x, u, x_plus, contact_forces, impulses
+                x, u, x_plus, contact_forces, contact_normals, impulses
             )
         )
 
@@ -263,6 +265,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         u: Tensor,
         x_plus: Tensor,
         contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
+        contact_normals: Optional[Dict[Tuple[str, str], Tensor]] = None,
     ) -> Tensor:
         """Helper function that returns only the optimized impulses"""
 
@@ -276,15 +279,25 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         # Begin loss calculation.
         (
-            delassus,
-            _,  # M
+            _, # Full Delassus
+            M,
             J,
             phi,
             non_contact_acceleration,
             obj_pair_list,
             R_FW_list,
             mu_list,
-        ) = self.get_multibody_terms(q_plus, v_plus, u, contact_forces)
+        ) = self.get_multibody_terms(q_plus, v_plus, u, contact_normals)
+
+        # Prepare to exclude the robot predictions from the prediction loss.
+        # First n_q of self.state_map_for_learnable_bodies: states; the rest (last n_v): velocities.
+        # velocity_mask: 1 for object velocities, 0 for robot velocities.
+        # object velocities: wx, wy, wz, vx, vy, vz
+        velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q:].detach().clone()
+        J_small = J[..., velocity_mask] # (*, n_contacts*3, n_v_object)
+        M_small = M[..., velocity_mask, :][..., velocity_mask]
+        M_inv_small = torch.inverse(M_small)
+        delassus = pbmm(J_small, pbmm(M_inv_small, J_small.transpose(-1, -2)))
 
         # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
         n_contacts = phi.shape[-1]
@@ -312,10 +325,11 @@ class MultibodyLearnableSystem(DrakeSystem):
         Q_delassus = delassus + eps * torch.eye(3 * n_contacts)  # Force PD
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
+        dv_small = dv[..., velocity_mask]
 
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
-        q_pred = -pbmm(J, dv.transpose(-1, -2))
+        q_pred = -pbmm(J_small, dv_small.transpose(-1, -2))
         q_comp = (1.0 / dt) * torch.maximum(
             phi_then_zero, torch.zeros_like(phi_then_zero)
         ).unsqueeze(-1)
@@ -412,6 +426,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         u: Tensor,
         x_plus: Tensor,
         contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
+        contact_normals: Optional[Dict[Tuple[str, str], Tensor]] = None,
         impulses: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
@@ -444,7 +459,7 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         # Begin loss calculation.
         (
-            delassus,
+            _, # Delassus
             M,
             J,
             phi,
@@ -452,7 +467,17 @@ class MultibodyLearnableSystem(DrakeSystem):
             obj_pair_list,
             R_FW_list,
             mu_list,
-        ) = self.get_multibody_terms(q_plus, v_plus, u, contact_forces)
+        ) = self.get_multibody_terms(q_plus, v_plus, u, contact_normals)
+
+        # Prepare to exclude the robot predictions from the prediction loss.
+        # First n_q of self.state_map_for_learnable_bodies: states; the rest (last n_v): velocities.
+        # velocity_mask: 1 for object velocities, 0 for robot velocities.
+        # object velocities: wx, wy, wz, vx, vy, vz
+        velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q:].detach().clone()
+        J_small = J[..., velocity_mask] # (*, n_contacts*3, n_v_object)
+        M_small = M[..., velocity_mask, :][..., velocity_mask]
+        M_inv_small = torch.inverse(M_small)
+        delassus = pbmm(J_small, pbmm(M_inv_small, J_small.transpose(-1, -2)))
 
         if contact_forces is None:
             contact_forces = {}
@@ -483,10 +508,11 @@ class MultibodyLearnableSystem(DrakeSystem):
         Q_delassus = delassus + eps * torch.eye(3 * n_contacts)  # Force PD
 
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
+        dv_small = dv[..., velocity_mask]
 
         # Constant Terms
         # Calculate the prediction constant based on loss formulation mode.
-        constant_pred = 0.5 * pbmm(dv, pbmm(M, dv.transpose(-1, -2)))
+        constant_pred = 0.5 * pbmm(dv_small, pbmm(M_small, dv_small.transpose(-1, -2)))
         constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
 
@@ -877,6 +903,19 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         if model_name in self._model_spaces:
             return self._model_spaces[model_name]
         return None
+
+    @gin.register
+    def state_map_for_learnable_bodies(
+        self,
+        robot_model_name: str = "robot"
+    ) -> Tensor:
+        """Returns a boolean tensor indicating which states correspond to
+        learnable bodies.
+        """
+        # state_names: robot joint states, object states, 
+        # robot joint velocities, object velocities
+        state_names = self.multibody_terms.plant_diagram.plant.GetStateNames()
+        return torch.tensor([not s.startswith(robot_model_name) for s in state_names])
 
     @gin.register
     def diff_simulate(
