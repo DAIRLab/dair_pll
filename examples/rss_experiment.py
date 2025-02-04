@@ -754,16 +754,14 @@ def main(
 
             print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
 
-"""
-        elif command_char == "t":
+        elif command_char == "v":
             print("Calculating Fisher Info")
             stationary_action = (selected_action[0], selected_action[0])
-            torch_action = torch.vstack([torch.from_numpy(action).clone() for action in stationary_action])
+            torch_action = torch.vstack([torch.from_numpy(action).clone() for action in selected_action])
             interpolated_action, timestamps = interpolate_sampled_action(torch_action)
             robot_trajectory = extract_robot_trajectory(learned_system, interpolated_action, robot_model_name)
 
             fisher = learned_system.expected_fisher_info(robot_trajectory.unsqueeze(0), timestamps, robot_model_name)
-"""
 
     # Quit
 

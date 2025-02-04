@@ -34,9 +34,12 @@ import gin
 import numpy as np
 import torch
 from torch import Tensor
+from torch.autograd.functional import hessian
 from torch.nn import Parameter
-from torch.distributions.multivariate_normal import MultivariateNormal
+from torch.distributions.normal import Normal
+from torch.distributions.gamma import Gamma
 from tensordict.tensordict import TensorDictBase, TensorDict
+from torch.utils.data import DataLoader
 
 from dair_pll import urdf_utils, tensor_utils, file_utils
 from dair_pll.drake_system import DrakeSystem
@@ -812,6 +815,8 @@ class MultibodyLearnableSystem(DrakeSystem):
             )
 
         impulse = torch.zeros_like(impulse_full)
+        # Clamp to avoid small negative normal force
+        impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
         impulse[contact_filter] += impulse_full[contact_filter]
 
         # pylint doesn't know about torch functions
@@ -1028,12 +1033,25 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         return self.multibody_terms.parameters()
 
     @gin.register
+    def observed_info(
+        self,
+        data: DataLoader,
+    ):
+        """
+        Calculate the Observed Information in previously taken actions
+
+        This is the Hessian of the Loss function at the current estimate
+        given past data.
+        """
+        pass
+
+    @gin.register
     def expected_fisher_info(
         self,
         robot_trajectories: Tensor,
         robot_timestamps: Tensor,
         robot_model_name: str,
-        n_samples: int = 100,
+        n_samples: int = 20,
     ) -> Tensor:
         """
         Calculate the trace of the fisher information matrix for each robot action.
@@ -1060,9 +1078,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Simulate batch of robot actions
         # TODO: HACK don't hardcode this
-        steps_per_timestep = 3
+        steps_per_timestep = 5
         plant_states_dict, impulse_star, robot_u = self.diff_simulate(
-            robot_trajectories, robot_timestamps, robot_model_name, steps_per_timestep=steps_per_timestep
+            robot_trajectories, robot_timestamps, robot_model_name, 
+            kp=600.,
+            kd=5.,
+            steps_per_timestep=steps_per_timestep
         )
         plant_states = super().construct_state_tensor(plant_states_dict)
         plant_x = plant_states[..., : traj_len - 1, :]
@@ -1073,14 +1094,32 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         # Sample impulses
         # TODO: HACK Don't hardcode this
         # cube_body -> fingers are object pair IDs 0 and 1
-        # corresponding to indices 0, 6, 7 (finger_0); 1, 7, 8 (finger_1)
-        force_indices = [0, 6, 7, 1, 7, 8]
+        # corresponding to indices 0, 6, 7 (finger_0); 1, 8, 9 (finger_1)
+        normal_indices = [0, 1]
+        friction_x_indices = [6, 8]
+        friction_y_indices = [7, 9]
+
         # Those are the only forces where we want to add noise.
-        cov_vec = torch.zeros_like(impulse_star)
-        cov_vec[..., force_indices] = 1e-1 # N, on the order of 10g equiv.
-        sampler = MultivariateNormal(
-            loc=impulse_star[..., force_indices].flatten(),
-            covariance_matrix=torch.diag(cov_vec[..., force_indices].flatten()),
+        # See https://en.wikipedia.org/wiki/Gamma_distribution
+        gamma_rate = 10.0
+        gamma_eps = 1e-8
+        normal_mean = impulse_star[..., normal_indices].flatten()
+        normal_alpha = normal_mean * gamma_rate + gamma_eps
+        sampler_normal = Gamma(
+            concentration=normal_alpha,
+            rate=gamma_rate * torch.ones_like(normal_alpha),
+        )
+        fric_norm_mean = torch.sqrt(torch.square(impulse_star[..., friction_x_indices].flatten()) + torch.square(impulse_star[..., friction_y_indices].flatten()))
+        fric_norm_alpha = fric_norm_mean * gamma_rate + gamma_eps
+        sampler_fric_norm = Gamma(
+            concentration=fric_norm_alpha,
+            rate=gamma_rate * torch.ones_like(fric_norm_alpha),
+        )
+        fric_angle_mean = torch.atan2(impulse_star[..., friction_y_indices].flatten(), impulse_star[..., friction_x_indices].flatten())
+        fric_angle_std = 0.174533 # 10 degrees
+        sampler_fric_angle = Normal(
+            loc = fric_angle_mean,
+            scale = fric_angle_std,
         )
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         ret = torch.zeros(batch_dims + (n_params, n_params))
@@ -1088,7 +1127,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             print(f"Processing Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             impulse_sample_full = impulse_star.clone()
-            impulse_sample_full[..., force_indices] = torch.max(sampler.sample().reshape(impulse_sample_full[..., force_indices].size()), torch.zeros_like(impulse_sample_full[..., force_indices]))
+            impulse_sample_full[..., normal_indices] = sampler_normal.sample().reshape(impulse_sample_full[..., normal_indices].size())
+            sampled_fric_norm = sampler_fric_norm.sample()
+            sampled_fric_angle = sampler_fric_angle.sample()
+            impulse_sample_full[..., friction_x_indices] = (sampled_fric_norm * torch.cos(sampled_fric_angle)).reshape(impulse_sample_full[..., friction_x_indices].size())
+            impulse_sample_full[..., friction_y_indices] = (sampled_fric_norm * torch.sin(sampled_fric_angle)).reshape(impulse_sample_full[..., friction_y_indices].size())
             impulse_sample = impulse_sample_full[..., : traj_len-1, :].unsqueeze(-1)
 
             # Compute Loss (i.e. log-likelihood)
@@ -1101,11 +1144,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Compute Gradient (i.e. score)
             score_batch = torch.zeros(loss_batch.numel(), n_params)
             for score_idx in range(loss_batch.numel()):
-                loss_batch[score_idx].backward(retain_graph=True)
-                grads = [param.grad.flatten() for param in self.exploration_parameters() if param.requires_grad]
+                grads = torch.autograd.grad(loss_batch[score_idx], [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True)
                 print(f"Grads: {grads}")
-                self.zero_grad(set_to_none=True)
-                param_grad = torch.cat(grads)
+                param_grad = torch.cat([grad.flatten() for grad in grads])
                 assert param_grad.size() == (n_params,)
                 score_batch[score_idx, :] = param_grad
 
