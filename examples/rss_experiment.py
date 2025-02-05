@@ -451,7 +451,7 @@ def sample_action(
     rng = np.random.default_rng()
 
     # Start in workspace frame
-    def sample_finger(flip_x: bool = False, fixed_pinch = False):
+    def sample_finger(flip_x: bool = False, fixed_pinch = True):
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0.0, np.pi / 2.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
@@ -506,32 +506,41 @@ def interpolate_sampled_action(
     data: Tensor, fingertip_body_names: List[str], traj_len_s=2.0, traj_n_steps=61
 ) -> TensorDictBase:
     """
+    Interpolates a start/end action using a cubic spline.
+
     Params:
         data: outputs of sample_action size (batch, 2, 18)
 
     Returns:
         TensorDict input of extract_robot_trajectory, batch_size=(batch, traj_n_steps), keys = fingertip_body_names
-        Timestamps = Tensor size (batch, traj_n_steps)
+        Timestamps = Tensor size (traj_n_steps,)
     """
     assert len(data.size()) >= 2
     batch_dims = data.size()[:-2]
     assert data.size() == batch_dims + (2, 18)
     ret = TensorDict({}, batch_size=batch_dims + (traj_n_steps,))
-    ret_timestamps = torch.linspace(0.0, traj_len_s, traj_n_steps)
+    ret_timestamps = torch.linspace(0.0, traj_len_s, traj_n_steps) # (traj_n_steps,)
+    rel_timestamps = ((ret_timestamps - ret_timestamps[0]) / (ret_timestamps[-1] - ret_timestamps[0])).unsqueeze(0) # (1, traj_n_steps)
+    samples = data[..., :, :9] # (batch, 2, 9)
+    samples_dot = data[..., :, 9:] # (batch, 2, 9)
+    spline_a = samples[..., 0, :].unsqueeze(-1) # (batch, 9, 1)
+    spline_b = samples_dot[..., 0, :].unsqueeze(-1) # (batch, 9, 1)
+    spline_c = (3.*(samples[..., 1, :]-samples[..., 0, :]) - 2.*samples_dot[..., 0, :] - samples_dot[..., 1, :]).unsqueeze(-1) # (batch, 9, 1)
+    spline_d = (2.*(samples[..., 0, :]-samples[..., 1, :]) + samples_dot[..., 0, :] + samples_dot[..., 1, :]).unsqueeze(-1) # (batch, 9, 1)
+
+    # (batch, traj_n_steps, 9)
+    data_lerp = spline_a @ torch.pow(rel_timestamps, 0.) + spline_b @ torch.pow(rel_timestamps, 1.) + spline_c @ torch.pow(rel_timestamps, 2.) + spline_d @ torch.pow(rel_timestamps, 3.)
+    data_lerp = torch.transpose(data_lerp, -1, -2)
+    data_lerp_dot = spline_b @ torch.pow(rel_timestamps, 0.) + 2.*spline_c @ torch.pow(rel_timestamps, 1.) + 3.*spline_d @ torch.pow(rel_timestamps, 2.)
+    data_lerp_dot = torch.transpose(data_lerp_dot, -1, -2)
 
     for fingertip in fingertip_body_names:
         ret[fingertip, "position"] = torch.zeros(batch_dims + (traj_n_steps, 3))
         ret[fingertip, "velocity"] = torch.zeros(batch_dims + (traj_n_steps, 3))
-
-    for idx in range(traj_n_steps):
-        data_lerp = torch.lerp(
-            data[..., 0, :], data[..., 1, :], float(idx) / float(traj_n_steps)
-        )
-        for finger_idx, fingertip in enumerate(fingertip_body_names):
-            pos_idx = 3 * finger_idx
-            vel_idx = 9 + pos_idx
-            ret[fingertip, "position"][..., idx, :] = data_lerp[..., pos_idx : pos_idx + 3]
-            ret[fingertip, "velocity"][..., idx, :] = data_lerp[..., vel_idx : vel_idx + 3]
+    for finger_idx, fingertip in enumerate(fingertip_body_names):
+        pos_idx = 3 * finger_idx
+        ret[fingertip, "position"][..., :] = data_lerp[..., pos_idx : pos_idx + 3]
+        ret[fingertip, "velocity"][..., :] = data_lerp_dot[..., pos_idx : pos_idx + 3]
 
     return ret, ret_timestamps
 
@@ -628,6 +637,7 @@ def main(
         print(
             "\nUsage:\n"
             "e - Execute selected action + collect data\n"
+            "o - Observed info\n"
             "s - Sample random action\n"
             "t - Train\n"
             "b - breakpoint()\n"
@@ -715,6 +725,13 @@ def main(
         elif command_char == "s":
             print("Sampling random action...")
             selected_action = sample_action()
+
+        elif command_char == "o":
+            if traj_dataloader is None or len(traj_dataloader) == 0:
+                print("Data required for observed info\n")
+                continue
+
+            obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
 
         elif command_char == "t":
             if traj_dataloader is None or len(traj_dataloader) == 0:

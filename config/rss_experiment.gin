@@ -10,7 +10,7 @@ object_model_name = "cube"
 object_body_name = "cube_body" 
 fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
 fingertip_body_names_ctrl = ["finger_0", "finger_1"]
-delta_t = 0.0068 # TODO: HACK remove
+delta_t = 0.033 # TODO: HACK remove and use timestamps; 33ms == 30Hz
 
 ## Main Config
 main.robot_model_name = %robot_model_name
