@@ -33,6 +33,8 @@ from tensordict import TensorDictBase, TensorDict
 import torch
 from torch import Tensor
 
+from scipy.spatial import geometric_slerp
+
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
 from dair_pll import tensor_utils
@@ -65,7 +67,7 @@ class TrifingerLCMService:
         self,
         lcm_channels: Dict[str, str],
         fingertip_body_names: List[str],
-        traj_time_len=2.0,
+        traj_time_len = 2.0,
     ):
         self._lcm_channels = lcm_channels
         self._traj_time_len = traj_time_len
@@ -103,11 +105,66 @@ class TrifingerLCMService:
         if channel == self._lcm_channels["object_state"]:
             self._object_raw_data.append(lcmt_object_state.decode(data))
 
+    def traj_interpolation(self,
+        init_state: np.ndarray, 
+        target_state: np.ndarray,
+        steps: int = 100):
+
+        dt = self._traj_time_len/steps
+        command = lcmt_fingertips_target_kinematics()
+
+        # num x 18 array
+        init_state = init_state[:9]
+        target_state = target_state[:9]
+
+        traj_interp_lin = np.linspace(init_state, target_state, num = steps)
+
+        command.utime = int(time.time() * 1e6)
+        command.isAbsoluteTargetPos = True
+        command.targetPos[:] = target_state
+        command.targetVel[:] = np.zeros_like(target_state)
+
+        self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
+
+        start_time = time.time()
+        while time.time() < start_time + self._traj_time_len:
+            self._lcm.handle_timeout(int((start_time + self._traj_time_len - time.time()) * 1e3))
+
+
+
+        # traj_interp_circ = geometric_slerp(init_state/np.linalg.norm(init_state), target_state/np.linalg.norm(target_state), t = np.linspace(0,1, steps))
+        # mag = np.linspace(np.linalg.norm(init_state), np.linalg.norm(target_state), num=steps)
+        # mag *= np.ones_like(mag) + 1.25*np.sin(np.linspace(0, np.pi, steps))**2
+        # traj_interp = np.multiply(traj_interp_circ, mag[:, np.newaxis])
+
+
+        #print(np.round(traj_interp_circ,2), np.round(traj_interp,2))
+
+        # violation = np.any(traj_interp_lin < 0.025, axis=0) & np.any(traj_interp_lin > -0.025, axis=0)
+        # print(violation)
+
+        # for waypoint_p in np.split(traj_interp_lin, steps, axis = 0):
+        #     #print(waypoint_p)
+        #     start_time = time.time()
+
+        #     command.utime = int(time.time() * 1e6)
+        #     command.isAbsoluteTargetPos = True
+        #     command.targetPos[:] = waypoint_p[0]
+        #     command.targetVel[:] = np.zeros_like(waypoint_p)[0]
+
+        #     self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
+
+        #     while time.time() < start_time + dt:
+        #         self._lcm.handle_timeout(int(dt * 1e3))
+
+
+
     def execute_trajectory(
         self,
         target_state: np.ndarray,
         pos_is_absolute: bool = True,
         no_data: bool = False,
+        no_collision: bool = False
     ) -> TensorDictBase:
         """
         Direct the robot to go to target_state.
@@ -117,18 +174,28 @@ class TrifingerLCMService:
             (finger_0q, finger_120q, finger_240q, finger_0v, finger_120v, finger_240v)
         """
         # pylint: disable=too-many-locals
-        command = lcmt_fingertips_target_kinematics()
-        assert target_state.shape == (len(command.targetPos) + len(command.targetVel),)
-        command.utime = int(time.time() * 1e6)
-        command.isAbsoluteTargetPos = pos_is_absolute
-        command.targetPos[:] = target_state[: len(command.targetPos)]
-        command.targetVel[:] = target_state[len(command.targetPos) :]
+
+
 
         print(f"Sending Command at: {time.time()}")
-        self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
-        end_time = time.time() + self._traj_time_len
-        while time.time() < end_time:
-            self._lcm.handle_timeout(int((end_time - time.time()) * 1e3))
+        # if no_collision:
+        #     command.targetPos[:]
+        #     self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
+        # else:
+        #     self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
+        self._lcm.handle()
+
+        trifinger_state = self._fingertip_pose_raw_data
+        init_state = np.concatenate([np.array(trifinger_state[-1].curPos), np.array(trifinger_state[-1].curVel)])
+
+        self.traj_interpolation(init_state, target_state, 50)
+
+
+
+        # end_time = time.time() + self._traj_time_len
+
+        # while time.time() < end_time:
+        #     self._lcm.handle_timeout(int((end_time - time.time()) * 1e3))
         print(f"Finished at: {time.time()}")
         print(
             f"Collected {len(self._fingertip_pose_raw_data)}" +
@@ -144,12 +211,14 @@ class TrifingerLCMService:
             return ret
 
         assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
+
         assert len(self._fingertip_pose_raw_data) >= len(self._force_raw_data)
+
         def is_sorted(a: np.ndarray) -> bool:
             return np.all(a[:-1] <= a[1:])
         densetact_time_s = np.array(
             [
-                float(measurement.sensorData[0].timestamp) / 1e6
+                float(measurement.sensorData[0].utime) / 1e6
                 for measurement in self._force_raw_data
             ]
         ).flatten()
@@ -171,6 +240,8 @@ class TrifingerLCMService:
         fingertip_vel_W = {}
         fingertip_force_C = {}
         fingertip_normal_W = {}
+
+        # enumerate each fingertip ie 1,2,3 with its name
         for body_idx, body_name in enumerate(self._fingertip_body_names):
             # Position Interpolation
             body_pos = np.array(
@@ -227,7 +298,7 @@ class TrifingerLCMService:
             body_R_CB = R.from_matrix(
                 np.stack(
                     [
-                        np.array(measurement.sensorData[body_idx].contactFrame)[:3, :3]
+                        np.array(measurement.sensorData[body_idx].contactPose)[:3, :3]
                         for measurement in self._force_raw_data
                     ]
                 )
@@ -468,7 +539,7 @@ def main(
     # pylint: disable=no-value-for-parameter
     trifinger_lcm = TrifingerLCMService()
     print("Move to initial trifinger state")
-    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
+    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True, no_collision = True)
     print("Sample Initial Random Action...")
     selected_action = sample_action()
     new_trajectory = None
@@ -510,7 +581,7 @@ def main(
 
             # Execute and collect data
             new_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
-
+            
             # Move straight up
             safe_state = np.copy(selected_action[0])
             safe_state[:3] = (
