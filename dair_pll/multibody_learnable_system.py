@@ -965,7 +965,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Simulate batch of robot actions
         # TODO: HACK don't hardcode this
-        steps_per_timestep = 50
+        steps_per_timestep = 5
         plant_states_dict, impulse_star, robot_u = self.diff_simulate(
             robot_trajectories, robot_timestamps, robot_model_name, 
             kp=20.,
@@ -985,8 +985,6 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         normal_indices = [0, 1]
         friction_x_indices = [6, 8]
         friction_y_indices = [7, 9]
-
-        breakpoint()
 
         # Those are the only forces where we want to add noise.
         # See https://en.wikipedia.org/wiki/Gamma_distribution
@@ -1039,7 +1037,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 print(f"Grads: {grads}")
                 param_grad = torch.cat([grad.flatten() for grad in grads])
                 # TODO: HACK should we do this? Divide out trajectory length
-                param_grads /= (steps_per_timestep * traj_len)
+                # param_grad /= (steps_per_timestep * traj_len)
                 assert param_grad.size() == (n_params,)
                 score_batch[score_idx, :] = param_grad
 
