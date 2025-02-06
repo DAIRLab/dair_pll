@@ -541,7 +541,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True, no_collision = True)
     print("Sample Initial Random Action...")
-    selected_action = sample_action()
+    selected_action = sample_action(workspace_z_rot = np.pi/4)
     new_trajectory = None
 
     # Create learnable system
@@ -595,6 +595,7 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
             ## TODO: Add data to trajectory set
+            
 
         elif command_char == "s":
             print("Sampling random action...")
