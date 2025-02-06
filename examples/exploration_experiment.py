@@ -69,23 +69,31 @@ def get_loss_args(
     x_plus = system.construct_state_tensor(plus)
 
     # Actuation
-    control = past["net_actuation"]
-    if len(control.shape) == 1:
-        control = control.reshape(control.shape[0], 1)
+    n_control = system.plant_diagram.plant.num_actuated_dofs()
+    control = torch.zeros(past.batch_size + (n_conrol, 1))
+    if "net_actuation" in past.keys():
+        control = past["net_actuation"]
+        if len(control.shape) == 1:
+            control = control.reshape(control.shape[0], 1)
 
     # Construct measured contact forces on obj_b from obj_a
     # Defined as Dict: {(str(obj_a_name), str(obj_b_name)) -> R^3 force on obj_b in World Frame}
-    # TODO: specify incoming data reference frame
+    # TODO: specify incoming data reference frame, default World
     contact_forces = {}
     if "contact_forces" in past.keys():
         for key in past["contact_forces"].keys():
             contact_forces[(object_body_name, key)] = past["contact_forces"][key]
+    contact_normals = {}
+    if "contact_normals" in past.keys():
+        for key in past["contact_normals"].keys():
+            contact_normals[(object_body_name, key)] = past["contact_normals"][key]
 
     ret = {
         "x": x_past,
         "u": control,
         "x_plus": x_plus,
         "contact_forces": contact_forces,
+        "contact_normals": contact_normals,
     }
     if impulses is not None:
         ret["impulses"] = impulses

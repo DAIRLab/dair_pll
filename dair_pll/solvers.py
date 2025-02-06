@@ -77,10 +77,13 @@ class DynamicCvxpyLCQPLayer:
         Returns:
             LCQP solution impulses.
         """
-        assert Q.shape[-2] % 3 == 0
-        assert Q.shape[-1] == Q.shape[-2]
-        assert q.shape[-1] == Q.shape[-2]
+        Q_solve = Q.reshape((-1,) + Q.size()[-2:])
+        q_solve = q.reshape((-1,) + q.size()[-1:])
+        assert Q_solve.shape[-2] % 3 == 0
+        assert Q_solve.shape[-1] == Q_solve.shape[-2]
+        assert q_solve.shape[-1] == Q_solve.shape[-2]
 
-        layer = self.get_sized_layer(Q.shape[-2] // 3)
-        Q_sqrt = sqrtm(Q)
-        return layer(Q_sqrt, q, solver_args=self._solver_args)[0]
+        layer = self.get_sized_layer(Q_solve.shape[-2] // 3)
+        Q_sqrt = sqrtm(Q_solve)
+        soln = layer(Q_sqrt, q_solve, solver_args=self._solver_args)[0]
+        return soln.reshape(q_solve.size())
