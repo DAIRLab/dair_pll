@@ -28,6 +28,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 from os import path
 import pdb
 from itertools import chain
+from multiprocess import Pool # Note: NOT multiprocessing, to enable dill serialization
 from typing import Any, Callable, List, Iterable, Tuple, Optional, Dict, cast, Union
 
 import gin
@@ -477,9 +478,8 @@ class MultibodyLearnableSystem(DrakeSystem):
             + constant_pred
         )
         vel_err = (
-            self.space.configuration_difference(self.space.q(x), self.space.q(x_plus))
+            self.space.configuration_difference(self.space.euler_step(self.space.q(x), self.space.v(x), dt), self.space.q(x_plus))
             / dt
-            - self.space.v(x)
         ).unsqueeze(-1)
         loss_q_pred = pbmm(vel_err.transpose(-1, -2), pbmm(M, vel_err))
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
@@ -774,7 +774,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         robot_model_name: str = "robot",
         kp: float = 20.0,
         kd: float = 10.0,
-        steps_per_timestep=33,
+        steps_per_timestep=1,
     ) -> Tensor:
         """
         From the current estimated model state, simulate a batch of robots on the target trajectories.
@@ -828,12 +828,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ret_impulse = None
         ret_u = torch.zeros(batch_dims + (traj_len, robot_space.n_v))
         for sim_idx in range(1, traj_len):
-            print(f"Step {sim_idx} / {traj_len}...")
+            print(f"Sim Step {sim_idx} / {traj_len}...")
             sim_dt = timestamps[sim_idx] - timestamps[sim_idx - 1]
             step_dt = sim_dt / float(steps_per_timestep)
-            step_states = torch.zeros(batch_dims + (steps_per_timestep, self.space.n_x))
+            step_states = torch.zeros(batch_dims + (steps_per_timestep+1, self.space.n_x))
             step_states[..., 0, :] = plant_states[..., sim_idx - 1, :]
-            for step_idx in range(1, steps_per_timestep):
+            for step_idx in range(1, steps_per_timestep+1):
                 # Calculate u from PID
                 robot_step_states = self.model_states_from_state_tensor(
                     step_states[..., step_idx - 1, :]
@@ -902,34 +902,19 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             x_past: Tensor = xy_i[0]
             x_plus: Tensor = xy_i[1]
 
-            # pylint: disable=E1120
-            # Expect gin to handle missing arguments
-            ### Profiling
-            #import cProfile, pstats, io
-            #from pstats import SortKey
-            #pr = cProfile.Profile()
-            #pr.enable()
-            loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self)).sum()
+            loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self)).mean()
             losses.append(loss.clone())
 
-            ### Profiling
-            #s = io.StringIO()
-            #sortby = SortKey.CUMULATIVE
-            #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            #ps.print_stats()
-            #print(s.getvalue())
-            #breakpoint()
         # Compute Epoch Average
-        sum_loss = cast(Tensor, sum(losses))
+        avg_loss = cast(Tensor, sum(losses) / len(losses))
 
-        grads = torch.autograd.grad(sum_loss, [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True, create_graph=True)
+        grads = torch.autograd.grad(avg_loss, [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True, create_graph=True)
         flattened_grads = torch.cat([grad.flatten() for grad in grads])
         assert len(flattened_grads) == n_params
         for idx in range(n_params):
             hess_row_grads = torch.autograd.grad(flattened_grads[idx], [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True)
             ret[idx, :] = torch.cat([hess.flatten() for hess in hess_row_grads])
 
-        breakpoint()
         return ret
 
     @gin.register
@@ -938,7 +923,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         robot_trajectories: Tensor,
         robot_timestamps: Tensor,
         robot_model_name: str,
-        n_samples: int = 20,
+        n_samples: int = 3,
     ) -> Tensor:
         """
         Calculate the trace of the fisher information matrix for each robot action.
@@ -965,13 +950,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Simulate batch of robot actions
         # TODO: HACK don't hardcode this
-        steps_per_timestep = 5
-        plant_states_dict, impulse_star, robot_u = self.diff_simulate(
-            robot_trajectories, robot_timestamps, robot_model_name, 
-            kp=20.,
-            kd=10.,
-            steps_per_timestep=steps_per_timestep
-        )
+        steps_per_timestep = 1
+        with torch.no_grad():
+            plant_states_dict, impulse_star, robot_u = self.diff_simulate(
+                robot_trajectories, robot_timestamps, robot_model_name, 
+                kp=20.,
+                kd=10.,
+                steps_per_timestep=steps_per_timestep
+            )
         plant_states = super().construct_state_tensor(plant_states_dict)
         plant_x = plant_states[..., : traj_len - 1, :]
         plant_xplus = plant_states[..., 1:, :]
@@ -1010,11 +996,13 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         )
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         ret = torch.zeros(batch_dims + (n_params, n_params))
-        for sample_idx in range(n_samples + 1):
-            print(f"Processing Sample {sample_idx-1} / {n_samples}...")
+
+        sample_fishers = []
+        for sample_idx in range(-1, n_samples):
+            print(f"Processing Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             impulse_sample_full = impulse_star.clone()
-            if sample_idx > 0:
+            if sample_idx >= 0:
                 impulse_sample_full[..., normal_indices] = sampler_normal.sample().reshape(impulse_sample_full[..., normal_indices].size())
                 sampled_fric_norm = sampler_fric_norm.sample()
                 sampled_fric_angle = sampler_fric_angle.sample()
@@ -1034,22 +1022,20 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             score_batch = torch.zeros(loss_batch.numel(), n_params)
             for score_idx in range(loss_batch.numel()):
                 grads = torch.autograd.grad(loss_batch[score_idx], [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True)
-                print(f"Grads: {grads}")
                 param_grad = torch.cat([grad.flatten() for grad in grads])
-                # TODO: HACK should we do this? Divide out trajectory length
-                # param_grad /= (steps_per_timestep * traj_len)
                 assert param_grad.size() == (n_params,)
                 score_batch[score_idx, :] = param_grad
 
             # Compute Fisher Info as outer product
             sample_fisher = pbmm(score_batch.unsqueeze(-1), score_batch.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
-            assert ret.size() == sample_fisher.size()
-            if sample_idx > 0:
-                ret += sample_fisher
-                print(f"Got Fisher: {sample_fisher}")
+            assert sample_fisher.size() == batch_dims + (n_params, n_params)
+            if sample_idx >= 0:
+                sample_fishers.append(sample_fisher)
             else:
-                print(f"Expected Score Outer Product: {sample_fisher}")
+                print(f"True force loss: {loss_batch}")
+                print(f"True force grads: {grads}")
 
+        ret += torch.stack(sample_fishers, dim=0).sum(dim=0)
         ret /= n_samples
         return ret
 
