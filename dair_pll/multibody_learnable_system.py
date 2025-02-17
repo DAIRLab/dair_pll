@@ -883,9 +883,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     @gin.register
     def observed_info(
         self,
-        data: DataLoader,
+        data: Optional[DataLoader],
         get_loss_args: Callable[[Tensor, Tensor, MultibodyLearnableSystem], Tensor]
-    ):
+    ) -> Tensor:
         """
         Calculate the Observed Information in previously taken actions
 
@@ -895,7 +895,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Use: https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
-        ret = np.zeros((n_params, n_params))
+        if data is None:
+            return torch.eye(n_params)
+        ret = torch.zeros((n_params, n_params))
 
         losses = []
         for xy_i in data:
@@ -907,14 +909,13 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Compute Epoch Average
         avg_loss = cast(Tensor, sum(losses) / len(losses))
+        param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
-        grads = torch.autograd.grad(avg_loss, [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True, create_graph=True)
+        grads = torch.autograd.grad(avg_loss, param_list, retain_graph=True, create_graph=True)
         flattened_grads = torch.cat([grad.flatten() for grad in grads])
         assert len(flattened_grads) == n_params
-        for idx in range(n_params):
-            hess_row_grads = torch.autograd.grad(flattened_grads[idx], [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True)
-            ret[idx, :] = torch.cat([hess.flatten() for hess in hess_row_grads])
-
+        hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
+        ret = torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
         return ret
 
     @gin.register
@@ -923,7 +924,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         robot_trajectories: Tensor,
         robot_timestamps: Tensor,
         robot_model_name: str,
-        n_samples: int = 3,
+        n_samples: int = 10,
     ) -> Tensor:
         """
         Calculate the trace of the fisher information matrix for each robot action.
@@ -995,10 +996,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             scale = fric_angle_std,
         )
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
+        param_list = [param for param in self.exploration_parameters() if param.requires_grad]
         ret = torch.zeros(batch_dims + (n_params, n_params))
 
         sample_fishers = []
-        for sample_idx in range(-1, n_samples):
+        for sample_idx in range(n_samples):
             print(f"Processing Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             impulse_sample_full = impulse_star.clone()
@@ -1019,12 +1021,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             loss_batch = torch.sum(loss_trajlen_batch, dim=-1).flatten()
 
             # Compute Gradient (i.e. score)
-            score_batch = torch.zeros(loss_batch.numel(), n_params)
-            for score_idx in range(loss_batch.numel()):
-                grads = torch.autograd.grad(loss_batch[score_idx], [param for param in self.exploration_parameters() if param.requires_grad], retain_graph=True)
-                param_grad = torch.cat([grad.flatten() for grad in grads])
-                assert param_grad.size() == (n_params,)
-                score_batch[score_idx, :] = param_grad
+            grads = torch.autograd.grad(loss_batch, param_list, grad_outputs=torch.eye(loss_batch.numel()), is_grads_batched=True, retain_graph=True)
+            score_batch = torch.cat([grad.reshape((loss_batch.numel(), -1)) for grad in grads], dim=-1)
+            assert score_batch.size() == (loss_batch.numel(), n_params)
 
             # Compute Fisher Info as outer product
             sample_fisher = pbmm(score_batch.unsqueeze(-1), score_batch.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))

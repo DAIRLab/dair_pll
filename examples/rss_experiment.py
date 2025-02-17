@@ -48,6 +48,7 @@ from dair_pll.lcmtypes.dairlib import (
     lcmt_densetact_measurement_data,
     lcmt_fingertips_target_kinematics,
 )
+from dair_pll.tensor_utils import pbmm
 from dair_pll.hack_utils import finger_idx_from_body_name
 
 # Repository directory (default for file operations)
@@ -451,7 +452,7 @@ def sample_action(
     rng = np.random.default_rng()
 
     # Start in workspace frame
-    def sample_finger(flip_x: bool = False, fixed_pinch = True):
+    def sample_finger(flip_x: bool = False, fixed_pinch = False):
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0.0, np.pi / 2.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
@@ -590,6 +591,7 @@ def main(
     init_trifinger_state: List[float],
     safe_trifinger_height: float,
     robot_model_name: str,
+    n_actions_optimized: int = 100,
     storage_folder_name: str = "storage_rss",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
@@ -598,7 +600,7 @@ def main(
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
     #torch.autograd.set_detect_anomaly(True)
-    #torch.set_default_device("cuda")
+    torch.set_default_device("cuda")
 
     # Create run directory
     print("Active Tactile Exploration")
@@ -630,12 +632,14 @@ def main(
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
     traj_dataloader = None
+    obs_info_inv = None
     total_epochs = 0
 
     # Start Input Loop
     def print_help():
         print(
             "\nUsage:\n"
+            "a - Action Selection\n"
             "e - Execute selected action + collect data\n"
             "o - Observed info\n"
             "s - Sample random action\n"
@@ -721,10 +725,33 @@ def main(
                 generator=torch.Generator(device=torch.get_default_device()),
             )
             optimizer = optimizer_cls(learned_system.parameters())
+            obs_info_inv = None
 
         elif command_char == "s":
             print("Sampling random action...")
             selected_action = sample_action()
+
+        elif command_char == "a":
+            print("Recording Inverse Observed Info")
+            if obs_info_inv is None:
+                obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
+                obs_info_inv = torch.linalg.inv(obs_info)
+
+            print(f"Previously Observed Information: {obs_info}")
+
+            print(f"Sampling {n_actions_optimized} actions to optimize...")
+            action_samples = torch.stack([
+                torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action()])
+                for _ in range(n_actions_optimized)
+            ])
+            interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
+            robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)
+            fishers = learned_system.expected_fisher_info(robot_trajectories, timestamps, robot_model_name)
+            fishers_obs_weighted = torch.matmul(fishers, obs_info_inv)
+            fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
+            best_action = action_samples[torch.argmax(fishers_traces)]
+            print(f"Best Action Fisher: {fishers[torch.argmax(fishers_traces)]}")
+            selected_action = (best_action[0, :].detach().cpu().numpy(), best_action[1, :].detach().cpu().numpy())
 
         elif command_char == "o":
             if traj_dataloader is None or len(traj_dataloader) == 0:
@@ -770,6 +797,7 @@ def main(
             vis_system = None  # Invalidate
 
             print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
+            obs_info_inv = None
 
         elif command_char == "v":
             print("Calculating Fisher Info")
