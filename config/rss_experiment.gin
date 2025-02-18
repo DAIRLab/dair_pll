@@ -121,3 +121,8 @@ TrajectorySliceConfig.his_state_keys = [
 TrajectorySliceConfig.pred_state_keys = [
 	"robot_state", "traj_num", "index", "time",
 ]
+
+## Exploration Params
+# Note: 30 / 10 uses 10GB VRAM
+main.n_actions_optimized = 30
+LearnableSystem.n_fisher_samples=10

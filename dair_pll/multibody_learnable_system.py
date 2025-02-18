@@ -28,7 +28,6 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 from os import path
 import pdb
 from itertools import chain
-from multiprocess import Pool # Note: NOT multiprocessing, to enable dill serialization
 from typing import Any, Callable, List, Iterable, Tuple, Optional, Dict, cast, Union
 
 import gin
@@ -658,16 +657,18 @@ class MultibodyLearnableSystem(DrakeSystem):
                 ).unsqueeze(-1),
             )
 
-        impulse = torch.zeros_like(impulse_full)
-        # Clamp to avoid small negative normal force
-        impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
-        impulse[contact_filter] += impulse_full[contact_filter]
+            impulse = torch.zeros_like(impulse_full)
+            # Clamp to avoid small negative normal force
+            impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
+            impulse[contact_filter] += impulse_full[contact_filter]
+
+            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1)
 
         # pylint doesn't know about torch functions
         # pylint: disable=E1102
+        ## TODO: HACK Only differentiate euler steps.
         return (
-            v_minus
-            + torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1),
+            v_minus + v_add,
             impulse.squeeze(-1), # Flatten last 2 dims
         )
 
@@ -717,8 +718,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self,
         trajectory_model_names: Union[List[str], str],
         init_traj_state: Optional[Union[List[float], Tensor]] = None,
+        n_fisher_samples: int = 10,
         **kwargs,
     ) -> None:
+        self.n_fisher_samples = n_fisher_samples
         ## Construct Super System
         super().__init__(**kwargs)
         self._trajectory_model_names = (
@@ -766,7 +769,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         state_names = self.multibody_terms.plant_diagram.plant.GetStateNames()
         return torch.tensor([not s.startswith(robot_model_name) for s in state_names])
 
-    @gin.register
+    @gin.configurable
     def diff_simulate(
         self,
         robot_target_trajectories: Tensor,
@@ -878,9 +881,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return self.multibody_terms.parameters()
+        return chain([self._trajectory.current_state()],
+            self.multibody_terms.parameters()
+        )
 
-    @gin.register
+    @gin.configurable
     def observed_info(
         self,
         data: Optional[DataLoader],
@@ -895,9 +900,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Use: https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
+        ret = torch.eye(n_params)
         if data is None:
-            return torch.eye(n_params)
-        ret = torch.zeros((n_params, n_params))
+            return ret
 
         losses = []
         for xy_i in data:
@@ -915,16 +920,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         flattened_grads = torch.cat([grad.flatten() for grad in grads])
         assert len(flattened_grads) == n_params
         hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
-        ret = torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
         return ret
 
-    @gin.register
     def expected_fisher_info(
         self,
         robot_trajectories: Tensor,
         robot_timestamps: Tensor,
         robot_model_name: str,
-        n_samples: int = 10,
     ) -> Tensor:
         """
         Calculate the trace of the fisher information matrix for each robot action.
@@ -936,7 +939,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Returns:
             Fisher Information Trace: Tensor (batch, n_params, n_params)
         """
-
+        n_samples = self.n_fisher_samples
         # Input Validation
         assert len(robot_trajectories.size()) >= 3
         batch_dims = robot_trajectories.size()[:-2]
@@ -952,13 +955,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         # Simulate batch of robot actions
         # TODO: HACK don't hardcode this
         steps_per_timestep = 1
-        with torch.no_grad():
-            plant_states_dict, impulse_star, robot_u = self.diff_simulate(
-                robot_trajectories, robot_timestamps, robot_model_name, 
-                kp=20.,
-                kd=10.,
-                steps_per_timestep=steps_per_timestep
-            )
+        plant_states_dict, impulse_star, robot_u = self.diff_simulate(
+            robot_trajectories, robot_timestamps, robot_model_name, 
+            kp=20.,
+            kd=10.,
+            steps_per_timestep=steps_per_timestep
+        )
         plant_states = super().construct_state_tensor(plant_states_dict)
         plant_x = plant_states[..., : traj_len - 1, :]
         plant_xplus = plant_states[..., 1:, :]
@@ -1000,8 +1002,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ret = torch.zeros(batch_dims + (n_params, n_params))
 
         sample_fishers = []
+        loss_batches = torch.zeros(batch_dims + (n_samples,))
         for sample_idx in range(n_samples):
-            print(f"Processing Sample {sample_idx} / {n_samples}...")
+            print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
             # Impulses need to be a column vector
             impulse_sample_full = impulse_star.clone()
             if sample_idx >= 0:
@@ -1018,24 +1021,19 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 plant_x, robot_u_cropped, plant_xplus, impulses=impulse_sample
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            loss_batch = torch.sum(loss_trajlen_batch, dim=-1).flatten()
+            loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
 
-            # Compute Gradient (i.e. score)
-            grads = torch.autograd.grad(loss_batch, param_list, grad_outputs=torch.eye(loss_batch.numel()), is_grads_batched=True, retain_graph=True)
-            score_batch = torch.cat([grad.reshape((loss_batch.numel(), -1)) for grad in grads], dim=-1)
-            assert score_batch.size() == (loss_batch.numel(), n_params)
-
-            # Compute Fisher Info as outer product
-            sample_fisher = pbmm(score_batch.unsqueeze(-1), score_batch.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
-            assert sample_fisher.size() == batch_dims + (n_params, n_params)
-            if sample_idx >= 0:
-                sample_fishers.append(sample_fisher)
-            else:
-                print(f"True force loss: {loss_batch}")
-                print(f"True force grads: {grads}")
-
-        ret += torch.stack(sample_fishers, dim=0).sum(dim=0)
+        # Compute Gradients (i.e. score)
+        print("Computing Gradients...")
+        grads = torch.autograd.grad(loss_batches.flatten(), param_list, grad_outputs=torch.eye(loss_batches.numel()), is_grads_batched=True, retain_graph=True)
+        score_batches = torch.cat([grad.reshape((loss_batches.numel(), -1)) for grad in grads], dim=-1)
+        assert score_batches.size() == (loss_batches.numel(), n_params)
+        # Compute Fisher Info as outer product
+        sample_fishers = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_samples, n_params, n_params))
+        ret = sample_fishers.sum(dim=-3)
         ret /= n_samples
+        # clear gradients
+        self.zero_grad()
         return ret
 
     def add_trajectories(

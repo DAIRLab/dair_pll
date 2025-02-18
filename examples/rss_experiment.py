@@ -591,7 +591,7 @@ def main(
     init_trifinger_state: List[float],
     safe_trifinger_height: float,
     robot_model_name: str,
-    n_actions_optimized: int = 100,
+    n_actions_optimized: int = 30,
     storage_folder_name: str = "storage_rss",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
