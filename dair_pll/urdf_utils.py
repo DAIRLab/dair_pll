@@ -268,7 +268,6 @@ class UrdfGeometryRepresentationFactory:
 
         return _MESH, {_FILENAME: mesh_name}
 
-
 def fill_link_with_parameterization(
     element: ElementTree.Element,
     pi_cm: Tensor,

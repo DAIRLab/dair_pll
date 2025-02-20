@@ -23,6 +23,8 @@ import sys
 import time
 from typing import cast, Any, Dict, List, Optional, Tuple, Type
 
+import dair_pll.vis_utils as vis_utils
+
 import gin
 import gin.torch.external_configurables
 import git
@@ -217,6 +219,9 @@ class TrifingerLCMService:
             self._fingertip_pose_raw_data.append(lcmt_fingertips_position.decode(data))
         if channel == self._lcm_channels["densetact"]:
             self._force_raw_data.append(lcmt_densetact_measurement_data.decode(data))
+        # be careful with this info
+        if channel == self._lcm_channels["object_state"]:
+            self._object_raw_data.append(lcmt_object_state.decode(data))
 
 
     def send_traj_to_lcm(self, waypoints_pos, waypoints_vel):
@@ -237,6 +242,9 @@ class TrifingerLCMService:
             while time.time() < start_time + dt:
                 self._lcm.handle_timeout(int(dt * 1e3))
 
+    def lcm_stall(self, lcm_type):
+            while len(lcm_type) == 0:
+                self._lcm.handle_timeout(int(10))
 
     def execute_trajectory(
         self,
@@ -256,8 +264,7 @@ class TrifingerLCMService:
         print(f"Sending Command at: {time.time()}")
         
         # wait until the fingertop_pose_raw_data is not empty
-        while len(self._fingertip_pose_raw_data) == 0:
-            self._lcm.handle_timeout(int(10))
+        self.lcm_stall(self._fingertip_pose_raw_data)
 
         init_state = np.array(self._fingertip_pose_raw_data[-1].curPos)
 
@@ -469,6 +476,11 @@ class TrifingerLCMService:
         self._fingertip_pose_raw_data.clear()
         self._object_raw_data.clear()
         return ret
+    
+    def update_cube_sim(self, 
+                drake_sim: DrakeSystem):
+        self.lcm_stall(self._object_raw_data)
+        drake_sim.write_state_to_sim(state = torch.tensor(self._object_raw_data[-1].position + self._object_raw_data[-1].velocity))
 
 
 @gin.configurable
@@ -522,10 +534,9 @@ def sample_action(
 
         end_radius = rng.uniform(0.0, workspace_radius - sphere_radius)
         end_angle = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
-        if fixed_pinch:
-            end_radius = 0.
-            end_angle = 0.
-
+        # if fixed_pinch:
+        #     end_radius = 0.
+        #     end_angle = 0.
         # end_S = np.array(
         #     # [
         #     #     flip_factor * sphere_radius,
@@ -645,6 +656,7 @@ def main(
     storage_folder_name: str = "storage_rss",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
+    ground_truth_urdf: str = "examples/urdf/cube_v2.urdf",
 ):
     """Main function for online learning loop"""
     global signal_pressed
@@ -669,9 +681,8 @@ def main(
 
     # Create learnable system
     print("Loading Learned System...")
-    learned_system = MultibodyLearnableSystemWithTrajectory(
-        output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
-    )
+    learned_system = MultibodyLearnableSystemWithTrajectory(output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name))
+
     learned_summaries = [learned_system.summary({})]
     train_losses = []
     train_loss_data = []
@@ -683,6 +694,25 @@ def main(
     optimizer = optimizer_cls(learned_system.parameters())
     traj_dataloader = None
     total_epochs = 0
+
+    #print(learned_system.generate_updated_urdfs("vis")['cube'])
+    
+    base_system = DrakeSystem(
+                urdfs = learned_system.generate_updated_urdfs("vis"),
+                dt=0.005,
+                visualization_file=None)
+
+    vis_system = vis_utils.generate_visualization_system(
+                base_system=base_system,
+                learned_system=DrakeSystem(
+                    urdfs=learned_system.generate_updated_urdfs("vis"),
+                    dt=base_system.dt,
+                    visualization_file=None,
+                ),
+                visualization_file=(
+                    "meshcat"
+                    )
+                )
 
     # Start Input Loop
     def print_help():
@@ -702,12 +732,55 @@ def main(
     while command_char != "q":
         command_char = input("Command $ ").split(" ")[0]
 
+        #trifinger_lcm.update_cube_sim(drake_sim = base_system)
+
+        # base_system.model_states_from_state_tensor(torch.from_numpy(np.ones((1,25))))
+        
         if command_char == "h":
             print_help()
+
 
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
+
+        # base_system = DrakeSystem(
+        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf),
+        #                 urdfs = learned_system.generate_updated_urdfs("vis"),
+        #                 dt=0.0005,
+        #                 visualization_file=None)
+
+        # if command_char == "d":
+        #     base_system = DrakeSystem(
+        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf),
+        #                 urdfs = learned_system.generate_updated_urdfs("vis"),
+        #                 dt=0.0005,
+        #                 visualization_file=None)
+        
+        #trifinger_lcm.update_cube_sim(drake_sim = base_system)
+        #base_system.sim_step()
+
+
+
+        # if command_char == "d":
+        #     print(learned_system.generate_updated_urdfs("vis"))
+        #     base_system = DrakeSystem(
+        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf),
+        #                 urdfs = learned_system.generate_updated_urdfs("vis"),
+        #                 dt=None,
+        #                 visualization_file=None)
+            
+        #     vis_system = vis_utils.generate_visualization_system(
+        #             base_system=base_system,
+        #             learned_system=DrakeSystem(
+        #                 urdfs=learned_system.generate_updated_urdfs("vis"),
+        #                 dt=base_system.dt,
+        #                 visualization_file=None,
+        #             ),
+        #             visualization_file=(
+        #                 "meshcat"
+        #                 )
+        #             )
 
         elif command_char == "e":
             ## Execute selected action
@@ -720,7 +793,7 @@ def main(
             if len(new_trajectory) < 1:
                 print("WARNING: No data collected")
                 continue
-            # input("Testing Densetact")
+            input("Testing Densetact")
             # Move straight up
             safe_state = np.copy(selected_action[0])
             safe_state[:3] = (new_trajectory["finger_0"]["position"][-1].cpu().clone().numpy())
@@ -732,6 +805,7 @@ def main(
             # Add data to dataset
             add_trajectory = TensorDict({}, batch_size = new_trajectory.batch_size)
             add_trajectory["robot_state"] = extract_robot_trajectory(learned_system, new_trajectory, robot_model_name)
+
             for finger_name in new_trajectory.keys():
                 try:
                     add_trajectory["contact_forces", finger_name] = new_trajectory[finger_name]["contact_force_W"]
@@ -739,6 +813,7 @@ def main(
                 except (IndexError, KeyError): # e.g. object, time
                     continue
             add_trajectory["time"] = new_trajectory["time"]
+
             data_trajectories.add_trajectories(
                 [add_trajectory.clone().detach()],
                 torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
@@ -748,13 +823,29 @@ def main(
             print("Simulating init trajectory")
             with torch.no_grad():
                 plant_states_dict, _, _ = learned_system.diff_simulate(
-                    add_trajectory["robot_state"].unsqueeze(0), add_trajectory["time"]
+                    add_trajectory["robot_state"].unsqueeze(0), 
+                    add_trajectory["time"]
                 )
             # TODO: HACK don't hardcode object model name
             learned_system.add_trajectories(
                 traj_lens=[len(plant_states_dict.squeeze())],
                 traj_data=[plant_states_dict.squeeze()["cube_state"]],
             )
+
+            cube_traj = plant_states_dict.squeeze()["cube_state"]
+            robot_traj = plant_states_dict.squeeze()["robot_state"]
+            print(cube_traj.shape)
+            q_obj = cube_traj[:, :6]
+            v_obj = cube_traj[:, 6:]
+            q_robo, v_robo = np.array_split(robot_traj, 2, axis = 1)
+            print(q_obj.shape, q_robo.shape)
+
+            n = 1e8
+            # HACK push the robot far away
+            joint = torch.cat([q_obj, q_robo*n, v_obj, v_robo,
+                               q_obj, q_robo*n, v_obj, v_robo], dim = 1)
+            
+            vis_utils.visualize_trajectory(vis_system, joint)
 
             # Re-init optimizer and data-loader
             batch_size = (
@@ -769,6 +860,7 @@ def main(
                 generator=torch.Generator(device=torch.get_default_device()),
             )
             optimizer = optimizer_cls(learned_system.parameters())
+
 
         elif command_char == "s":
             print("Sampling random action...")
@@ -793,6 +885,17 @@ def main(
                 continue
             print("Training...")
 
+            from dair_pll.geometry import (
+            GeometryCollider,
+            PydrakeToCollisionGeometryFactory,
+            CollisionGeometry,
+            DeepSupportConvex,
+            Polygon,
+            Box,
+            Plane,
+            _NOMINAL_HALF_LENGTH,
+            )
+
             start_time = time.time()
             for idx in range(epochs):
                 train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
@@ -808,7 +911,12 @@ def main(
                 )
                 train_losses.append(train_loss)
                 train_loss_data.append(loss_data)
-                learned_summaries.append(learned_system.summary({}))
+
+                summary = learned_system.summary({})
+                learned_summaries.append(summary)
+                learned_mesh_geometry = summary.meshes
+                print(learned_mesh_geometry)
+
                 if signal_pressed:
                     signal_pressed = False
                     print("Training cancelled...")
@@ -816,6 +924,7 @@ def main(
                     break
 
             vis_system = None  # Invalidate
+            
 
             print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot
+  name="HE_convex_terrain">
+  <link name="cube">
+    <inertial>
+      <origin
+        xyz="-0.0317966030507747 -0.000959227161374764 0.015774813620662"
+        rpy="0 0 0" />
+      <mass
+        value="0.233431934550168" />
+      <inertia
+        ixx="0.000145249133958156"
+        ixy="-5.62619490180081E-13"
+        ixz="-7.45535891097632E-06"
+        iyy="0.000151130754865822"
+        iyz="5.62619487079135E-13"
+        izz="0.000145249121187025" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="HE_convex_terrain.obj"/>
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="HE_convex_terrain.obj"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

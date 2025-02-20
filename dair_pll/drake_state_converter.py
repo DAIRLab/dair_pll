@@ -204,6 +204,8 @@ class DrakeStateConverter:
             model_ids: Mapping from plant's model names to instances
             space: state space of output state.
         """
+        print(x.shape, space.n_x)
+        print(space.n_q)
         assert x.shape[-1] == space.n_x
         qs = np.array_split(x[..., : space.n_q], space.q_splits, -1)
         vs = np.array_split(x[..., space.n_q :], space.v_splits, -1)

@@ -77,7 +77,6 @@ class DrakeSystem(System):
 
         # Drake simulations cannot be batched
         self.max_batch_dim = 0
-
         self.prev_time = time.time()
 
     def write_state_to_sim(self, state: Tensor):

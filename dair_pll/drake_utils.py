@@ -254,7 +254,9 @@ def add_plant_from_urdfs(
     # Build [model instance index] list, starting with world model, which is
     # always added by default.
     model_ids = [world_model_instance()]
+    print(urdfs, "\n")
     for name, urdf in urdfs.items():
+        print(urdf)
         new_ids = parser.AddModelsFromString(urdf, "urdf")
         if len(new_ids) < 1:
             continue

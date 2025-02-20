@@ -5,14 +5,24 @@ robot_radius = 0.01575 # From trifingeredu.urdf
 robot_radius_buffer = 0.016
 workspace_radius = 0.1
 robot_model_name = "robot"
+
 object_model_name = "cube"
 # The actual Drake body name within the object model
-object_body_name = "cube_body" 
+
+#object_body_name = "cube_body"
+object_body_name = "cube" 
+
 fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
 fingertip_body_names_ctrl = ["finger_0", "finger_1"]
 #fingertip_body_names = ["densetact_0", "densetact_120", "finger_240"]
 #fingertip_body_names_ctrl = ["densetact_0", "densetact_120"]
 delta_t = 0.0068 # TODO: HACK remove
+
+object_urdf = "HE_convex_terrain.urdf"
+object_obj = "HE_convex_terrain.obj"
+
+#object_urdf = "contactnets_cube.urdf.xacro"
+#object_obj = "contactnets_cube.obj"
 
 ## Main Config
 main.robot_model_name = %robot_model_name
@@ -25,6 +35,7 @@ main.init_trifinger_state = [
 	0., 0., 0.,   # Finger 240 v
 ]
 main.safe_trifinger_height = %workspace_radius
+
 extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
 interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
 
@@ -60,6 +71,8 @@ robot/get_urdf_asset_contents.mappings = {
 	"radius": 0.01575,
 }
 
+
+
 ## Learnable URDF and State Config
 LearnableSystem.trajectory_model_names = %object_model_name
 LearnableSystem.init_urdfs = { 
@@ -70,10 +83,10 @@ LearnableSystem.dt = %delta_t # seconds
 LearnableSystem.learnable_body_dict = { 
 	%object_body_name: @object_init/LearnableBodySettings()
 }
-LearnableSystem.represent_geometry_as = "box"
+LearnableSystem.represent_geometry_as = "DeepSupportConvex"
 
 # Initial guesses
-object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object_init/get_urdf_asset_contents.urdf_file_basename = %object_urdf
 object_init/get_urdf_asset_contents.mappings = {
 	"length_x": 0.065, # m
 	"length_y": 0.065, # m

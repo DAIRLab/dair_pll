@@ -360,7 +360,7 @@ class ContactTerms(Module):
     def __init__(
         self,
         plant_diagram: MultibodyPlantDiagram,
-        represent_geometry_as: str = "box",
+        represent_geometry_as: str = "mesh",
         learnable_body_dict: Dict[str, LearnableBodySettings] = {},
     ) -> None:
         """Inits :py:class:`ContactTerms` with prescribed kinematics and
@@ -774,14 +774,14 @@ class MultibodyTerms(Module):
                         for scalar_name, scalar in geometry_scalars.items()
                     }
                 )
-
+                print(geometry)
                 geometry_mesh = None
                 if isinstance(geometry, DeepSupportConvex):
                     geometry_mesh = extract_mesh_from_support_function(geometry.network)
 
                 elif isinstance(geometry, Polygon):
                     geometry_mesh = get_mesh_summary_from_polygon(geometry)
-
+                print(geometry_mesh)
                 if geometry_mesh != None:
                     meshes[body_id] = geometry_mesh
                     vertices = geometry_mesh.vertices

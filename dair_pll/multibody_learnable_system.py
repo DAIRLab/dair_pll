@@ -90,7 +90,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         w_reg_iner: float,
         learnable_body_dict: Optional[Dict[str, LearnableBodySettings]] = None,
         output_urdfs_dir: Optional[str] = None,
-        represent_geometry_as: str = "box",
+        represent_geometry_as: str = "mesh",
         randomize_initialization: bool = False,
     ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
@@ -805,9 +805,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         data_state[robot_model_name + "_state"] = torch.zeros_like(
             robot_target_trajectories
         )
-        data_state[robot_model_name + "_state"][..., 0, :] = robot_target_trajectories[
-            ..., 0, :
-        ]
+        data_state[robot_model_name + "_state"][..., 0, :] = robot_target_trajectories[..., 0, :]
+        
         # Zero out current state velocity
         # TODO: HACK make an argument
         current_q, current_v = self._trajectory.space.q_v(self._trajectory.current_state())

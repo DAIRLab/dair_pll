@@ -89,7 +89,7 @@ class MultibodyLearnableSystemConfig(DrakeSystemConfig):
     """Weight of penetration term in ContactNets loss."""
     w_dev: Float = Float(1e0, log=True)
     """Weight of deviation from measured contact forces."""
-    represent_geometry_as: str = "box"
+    represent_geometry_as: str = "mesh"
     """How to represent geometry (box, mesh, or polygon)."""
     randomize_initialization: bool = True
     """Whether to randomize initialization."""
@@ -703,9 +703,7 @@ class DrakeMultibodyLearnableTactileExperiment(DrakeMultibodyLearnableExperiment
         predictions = []
         if isinstance(system, MultibodyLearnableSystemWithTrajectory):
             # Prediction is directly in system
-            predictions.extend(
-                [system.construct_state_tensor(x_i[..., t_begin:]) for x_i in x]
-            )
+            predictions.extend([system.construct_state_tensor(x_i[..., t_begin:]) for x_i in x])
         else:
             # Simulate for prediction
             assert system.carry_callback is not None

@@ -163,7 +163,7 @@ class DensetactIOSystem(LeafSystem):
         force_W = np.array(avg_contact["force"][body_idx])
         point = np.array(avg_contact["point"][body_idx]) - fingertip_pose_W
         normal_W = np.array(avg_contact["normal"][body_idx])
-        measurement.timestamp = utime
+        measurement.utime = utime
         measurement.inContact = not np.all(np.isclose(normal_W, np.zeros_like(normal_W)))
         if measurement.inContact:
           R_CW = DensetactIOSystem.rotation_matrix_from_vectors(np.array([0., 0., 1.]), normal_W)
@@ -183,7 +183,7 @@ class DensetactIOSystem(LeafSystem):
         else:
           # Identity Transform, leave 0 forces
           for idx in range(4):
-            measurement.contactFrame[idx][idx] = 1.0
+            measurement.contactPose[idx][idx] = 1.0
         # Add Measurement data
         densetact_msg.get_mutable_value().sensorData.append(measurement)
 
