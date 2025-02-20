@@ -51,6 +51,14 @@ from dair_pll.state_space import StateSpace, ProductSpace
 from dair_pll.system import SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz
 
+from dair_pll.drake_utils import (
+    unique_body_identifier,
+    get_bodies_in_model_instance,
+)
+
+from dair_pll.geometry import CollisionGeometry, PydrakeToCollisionGeometryFactory
+from pydrake.all import Shape
+
 # Scaling factors to equalize translation and rotation errors.
 # For rotation versus linear scaling:  penalize 0.1 meters same as 90 degrees.
 ROTATION_SCALING = 0.2 / torch.pi
@@ -884,6 +892,25 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         return chain([self._trajectory.current_state()],
             self.multibody_terms.parameters()
         )
+
+    @torch.no_grad
+    def get_learned_pose(self) -> Tensor:
+        """ Current pose for the learned object """
+        return self._trajectory.space.q(self._trajectory.current_state().detach().clone())
+
+    @torch.no_grad
+    def get_learned_geometry(self) -> Shape:
+        """ Current geometry as a Drake Shape. """
+        assert len(self._trajectory_model_names) == 1, "Only 1 learnable object supported"
+        model_name = self._trajectory_model_names[0]
+        plant = self.plant_diagram.plant
+        bodies = get_bodies_in_model_instance(plant, plant.GetModelInstanceByName(model_name))
+        assert len(bodies) == 1, "Only 1 learnable body supported"
+        body_id = unique_body_identifier(plant, bodies[0])
+        body_geometry_indices = self.multibody_terms.geometry_body_assignment[body_id]
+        assert len(body_geometry_indices) == 1, "Only 1 learnable geometry"
+        body_geometry = cast(CollisionGeometry, self.multibody_terms.contact_terms.geometries[body_geometry_indices[0]])
+        return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
 
     @gin.configurable
     def observed_info(

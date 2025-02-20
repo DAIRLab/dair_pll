@@ -28,6 +28,8 @@ import gin.torch.external_configurables
 import git
 import lcm
 import numpy as np
+from pydrake.all import StartMeshcat, Rgba, Shape
+from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from scipy.spatial.transform import Rotation as R
 from tensordict import TensorDictBase, TensorDict
 import torch
@@ -579,6 +581,43 @@ def extract_robot_trajectory(
 
     return ret
 
+
+### Visualization
+
+def visualize_geometries(meshcat, system, true_geometry, true_pose):
+    """ Visualize the learned and true geometries """
+
+    geom = system.get_learned_geometry()
+    pose = system.get_learned_pose().cpu().numpy()
+    assert len(pose) == 7, "Only Free Floating State Accepted"
+    transform = np.eye(4)
+    transform[:3, :3] = R.from_quat(pose[:4], scalar_first=True).as_matrix()
+    transform[:3, 3] = pose[4:]
+    meshcat.SetObject("/learned", geom, Rgba(0.1, 0.1, 0.9, 0.5))
+    meshcat.SetTransform("/learned", transform)
+
+    assert len(true_pose) == 7, "Only Free Floating State Accepted"
+    true_transform = np.eye(4)
+    true_transform[:3, :3] = R.from_quat(true_pose[:4], scalar_first=True).as_matrix()
+    true_transform[:3, 3] = true_pose[4:]
+    meshcat.SetObject("/true", true_geometry, Rgba(0.9, 0.1, 0.1, 1.0))
+    meshcat.SetTransform("/true", true_transform)
+
+def get_true_geometry() -> Shape:
+    """Get True Geometry from configured base system"""
+    system = DrakeSystem()
+    inspector = system.plant_diagram.scene_graph.model_inspector()
+    all_geom_ids = inspector.GetAllGeometryIds()
+    for geom_id in all_geom_ids:
+        true_geom = inspector.GetShape(geom_id)
+        if isinstance(true_geom, DrakeHalfSpace):
+            continue
+        return true_geom
+    assert False, "Could not find true geometry"
+    return None
+
+
+### Signal Handling
 signal_pressed = False
 def signal_handler(sig, frame):
     """ Handle SIGINT"""
@@ -635,6 +674,13 @@ def main(
     obs_info_inv = None
     total_epochs = 0
 
+    # Visualization
+    print("Starting Meshcat")
+    vis_meshcat = StartMeshcat()
+
+    ## True Geometry
+    true_geom = get_true_geometry()
+
     # Start Input Loop
     def print_help():
         print(
@@ -645,6 +691,7 @@ def main(
             "s - Sample random action\n"
             "t - Train\n"
             "b - breakpoint()\n"
+            "v - Visualize\n"
             "h - Print Help\n"
             "q - Quit\n"
         )
@@ -800,13 +847,13 @@ def main(
             obs_info_inv = None
 
         elif command_char == "v":
-            print("Calculating Fisher Info")
-            stationary_action = (selected_action[0], selected_action[0])
-            torch_action = torch.vstack([torch.from_numpy(action).clone() for action in selected_action])
-            interpolated_action, timestamps = interpolate_sampled_action(torch_action)
-            robot_trajectory = extract_robot_trajectory(learned_system, interpolated_action, robot_model_name)
-
-            fisher = learned_system.expected_fisher_info(robot_trajectory.unsqueeze(0), timestamps, robot_model_name)
+            print("Visualizing")
+            # TODO: HACK don't hardcode object name
+            object_name = "cube"
+            true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+            if new_trajectory is not None and len(new_trajectory) >= 1:
+                true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
+            visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
 
     # Quit
 
