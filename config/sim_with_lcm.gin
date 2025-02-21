@@ -59,7 +59,7 @@ PlantDiagram.additional_system_builders = [@sim_diagram_builder]
 sim_diagram_builder.lcm_pub_dt = %io_dt
 sim_diagram_builder.lcm_densetact_dt = %densetact_io_dt
 sim_diagram_builder.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
 	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
