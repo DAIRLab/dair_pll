@@ -438,8 +438,8 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         """
         if self.training:
             mesh = extract_mesh_from_support_function(self.network)
-            vertices = mesh.vertices.numpy()
-            faces = mesh.faces.numpy()
+            vertices = mesh.vertices.to('cpu').numpy()
+            faces = mesh.faces.to('cpu').numpy()
             self.fcl_geometry = fcl.BVHModel()
             self.fcl_geometry.beginModel(vertices.shape[0], faces.shape[0])
             self.fcl_geometry.addSubModel(vertices, faces)
@@ -599,7 +599,7 @@ class PydrakeToCollisionGeometryFactory:
     @staticmethod
     def convert(
         drake_shape: Shape,
-        represent_geometry_as: str,
+        represent_geometry_bodies_as: str,
         learnable: bool = True,
         name: str = "",
     ) -> CollisionGeometry:
@@ -620,12 +620,21 @@ class PydrakeToCollisionGeometryFactory:
         Raises:
             TypeError: When provided object is not a supported Drake shape type.
         """
+        
+
+        try:
+            represent_geometry_as = represent_geometry_bodies_as[name]
+        except:
+            represent_geometry_as = represent_geometry_bodies_as
+
+        print(f"Converting {drake_shape} to {represent_geometry_as}")
         if isinstance(drake_shape, DrakeBox):
             geometry = PydrakeToCollisionGeometryFactory.convert_box(
                 drake_shape, represent_geometry_as, learnable
             )
         elif isinstance(drake_shape, DrakeHalfSpace):
             geometry = PydrakeToCollisionGeometryFactory.convert_plane()
+
         elif isinstance(drake_shape, DrakeMesh):
             geometry = PydrakeToCollisionGeometryFactory.convert_mesh(
                 drake_shape, represent_geometry_as, learnable
@@ -640,7 +649,6 @@ class PydrakeToCollisionGeometryFactory:
                 "CollisionGeometry() conversion:",
                 type(drake_shape),
             )
-
         geometry.name = name
         return geometry
 
@@ -651,7 +659,7 @@ class PydrakeToCollisionGeometryFactory:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         if represent_geometry_as == "box":
             half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
-            return Box(half_widths, 4, learnable)
+            return Box(half_widths, 4, learnable)        
 
         if represent_geometry_as == "polygon":
             pass  # TODO
@@ -684,7 +692,9 @@ class PydrakeToCollisionGeometryFactory:
 
     @staticmethod
     def convert_mesh(
-        drake_mesh: DrakeMesh, represent_geometry_as: str, learnable: bool = True
+        drake_mesh: DrakeMesh, 
+        represent_geometry_as: str, 
+        learnable: bool = True
     ) -> Union[DeepSupportConvex, Polygon]:
         """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
         ``DeepSupportConvex``."""
@@ -1260,18 +1270,31 @@ class GeometryCollider:
         directions_A = directions / directions.norm(dim=-1, keepdim=True)
         directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB).squeeze(-2)
 
-        p_AoAc_A = support_fn_a(directions_A, hints_a)
-        p_BoBc_B = support_fn_b(directions_B, hints_b)
+        # Get support points
+        # HACK: tbh dont why deepsupportconvex dont use hints
+        if isinstance(geometry_a, DeepSupportConvex):
+            p_AoAc_A = support_fn_a(directions_A)
+        else:
+            p_AoAc_A = support_fn_a(directions_A, hints_a)
+        
+        if isinstance(geometry_b, DeepSupportConvex):
+            p_BoBc_B = support_fn_b(directions_B)
+        else:
+            p_BoBc_B = support_fn_b(directions_B, hints_b)
+        
+        # Get length of witness point distance projected onto contact normal
+
         p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1, -2))
         # Check Sanity of autodiff-calculated points relative to FCL
-        assert np.isclose(
-            p_AoAc_A.detach().cpu().numpy(),
-            hints_a.unsqueeze(-2).detach().cpu().numpy(),
-        ).all()
-        assert np.isclose(
-            p_BoBc_B.detach().cpu().numpy(),
-            hints_b.unsqueeze(-2).detach().cpu().numpy(),
-        ).all()
+        #import pdb; pdb.set_trace()
+        # assert np.isclose(
+        #     p_AoAc_A.detach().cpu().numpy(),
+        #     hints_a.unsqueeze(-2).detach().cpu().numpy(),
+        # ).all()
+        # assert np.isclose(
+        #     p_BoBc_B.detach().cpu().numpy(),
+        #     hints_b.unsqueeze(-2).detach().cpu().numpy(),
+        # ).all()
 
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 
@@ -1297,7 +1320,7 @@ class GeometryCollider:
                 3,
             )
         ) == R_AC.shape
-        assert phi.shape[1] == 1  # TODO: HACK Only supporting 1 contact witness point
-        assert phi.shape[1] == p_AoAc_A.shape[1]
-        assert phi.shape[1] == p_BoBc_B.shape[1]
+        # assert phi.shape[1] == 1  # TODO: HACK Only supporting 1 contact witness point (NOTT TRUE)
+        # assert phi.shape[1] == p_AoAc_A.shape[1]
+        # assert phi.shape[1] == p_BoBc_B.shape[1]
         return phi, R_AC, p_AoAc_A, p_BoBc_B

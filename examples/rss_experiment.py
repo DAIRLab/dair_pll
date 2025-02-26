@@ -23,6 +23,7 @@ import sys
 import time
 from typing import cast, Any, Dict, List, Optional, Tuple, Type
 
+
 import dair_pll.vis_utils as vis_utils
 
 import gin
@@ -33,14 +34,17 @@ import numpy as np
 from pydrake.all import StartMeshcat, Rgba, Shape
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from scipy.spatial.transform import Rotation as R
+
 from tensordict import TensorDictBase, TensorDict
 import torch
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torch import Tensor
+from chamferdist import ChamferDistance
 
 from scipy.optimize import optimize, NonlinearConstraint
 from collision_free_planner import collision_free_traj
+from rss_visualization import get_chamfer_distance
 
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
@@ -201,14 +205,14 @@ class TrifingerLCMService:
         self._lcm = lcm.LCM()
         self._lcm_subs = {}
         self._lcm_subs["fingertips_position"] = self._lcm.subscribe(
-            lcm_channels["fingertips_position"], self.sub_handler
-        )
+            lcm_channels["fingertips_position"], self.sub_handler)
+        
         self._lcm_subs["densetact"] = self._lcm.subscribe(
-            lcm_channels["densetact"], self.sub_handler
-        )
+            lcm_channels["densetact"], self.sub_handler)
+        
         self._lcm_subs["object_state"] = self._lcm.subscribe(
-            lcm_channels["object_state"], self.sub_handler
-        )
+            lcm_channels["object_state"], self.sub_handler)
+        
         for sub in self._lcm_subs.values():
             sub.set_queue_capacity(
                 1
@@ -225,7 +229,6 @@ class TrifingerLCMService:
         # be careful with this info
         if channel == self._lcm_channels["object_state"]:
             self._object_raw_data.append(lcmt_object_state.decode(data))
-
 
     def send_traj_to_lcm(self, waypoints_pos, waypoints_vel):
         n = waypoints_pos.shape[0]
@@ -520,8 +523,7 @@ def sample_action(
         if fixed_pinch:
             start_polar = np.pi / 2.0
             start_azimuth = 0.
-        print(start_azimuth)
-        # Start on a point on a sphere    
+
         start_S = (workspace_radius - sphere_radius) * np.array(
             [
                 flip_factor * np.sin(start_polar) * np.cos(start_azimuth),
@@ -530,25 +532,14 @@ def sample_action(
             ]
         )
 
-        
-        #start_S[0] += sphere_radius
-        #finger radius padding
         start_S[2] += sphere_radius
 
-        end_radius = rng.uniform(0.0, workspace_radius - sphere_radius)
-        end_angle = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
-        # if fixed_pinch:
-        #     end_radius = 0.
-        #     end_angle = 0.
-        # end_S = np.array(
-        #     # [
-        #     #     flip_factor * sphere_radius,
-        #     #     end_radius * np.cos(end_angle),
-        #     #     sphere_radius + end_radius * np.sin(end_angle),
-        #     # ]
-        # )
-        end_S = start_S /(workspace_radius - sphere_radius) *sphere_radius
+        # end_radius = rng.uniform(0.0, workspace_radius - sphere_radius)
+        # end_angle = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
+
+        end_S = (start_S /(workspace_radius - sphere_radius)) * 2 * sphere_radius
         end_S[2] += sphere_radius
+
         return (start_S, end_S)
 
     finger_0_traj = sample_finger(flip_x = False, fixed_pinch = pitch_testing)
@@ -656,6 +647,7 @@ def visualize_geometries(meshcat, system, true_geometry, true_pose):
     transform = np.eye(4)
     transform[:3, :3] = R.from_quat(pose[:4], scalar_first=True).as_matrix()
     transform[:3, 3] = pose[4:]
+    #learned = blue
     meshcat.SetObject("/learned", geom, Rgba(0.1, 0.1, 0.9, 0.5))
     meshcat.SetTransform("/learned", transform)
 
@@ -665,6 +657,9 @@ def visualize_geometries(meshcat, system, true_geometry, true_pose):
     true_transform[:3, 3] = true_pose[4:]
     meshcat.SetObject("/true", true_geometry, Rgba(0.9, 0.1, 0.1, 1.0))
     meshcat.SetTransform("/true", true_transform)
+
+    chamfer_metric = get_chamfer_distance(geom, true_geometry, pose, true_pose)
+    print(f"Chamfer Distance: {chamfer_metric}")
 
 def get_true_geometry() -> Shape:
     """Get True Geometry from configured base system"""
@@ -678,6 +673,8 @@ def get_true_geometry() -> Shape:
         return true_geom
     assert False, "Could not find true geometry"
     return None
+
+
 
 
 ### Signal Handling
@@ -697,7 +694,6 @@ def main(
     storage_folder_name: str = "storage_rss",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
-    ground_truth_urdf: str = "examples/urdf/cube_v2.urdf",
 ):
     """Main function for online learning loop"""
     global signal_pressed
@@ -825,7 +821,6 @@ def main(
             if len(new_trajectory) < 1:
                 print("WARNING: No data collected")
                 continue
-            input("Testing Densetact")
             # Move straight up
             safe_state = np.copy(selected_action[0])
             safe_state[:3] = (new_trajectory["finger_0"]["position"][-1].cpu().clone().numpy())
@@ -864,20 +859,22 @@ def main(
                 traj_data=[plant_states_dict.squeeze()["cube_state"]],
             )
 
-            cube_traj = plant_states_dict.squeeze()["cube_state"]
-            robot_traj = plant_states_dict.squeeze()["robot_state"]
-            print(cube_traj.shape)
-            q_obj = cube_traj[:, :6]
-            v_obj = cube_traj[:, 6:]
-            q_robo, v_robo = np.array_split(robot_traj, 2, axis = 1)
-            print(q_obj.shape, q_robo.shape)
+            cube_state = plant_states_dict.squeeze()["cube_state"]
 
-            n = 1e8
-            # HACK push the robot far away
-            joint = torch.cat([q_obj, q_robo*n, v_obj, v_robo,
-                               q_obj, q_robo*n, v_obj, v_robo], dim = 1)
+            # cube_traj = plant_states_dict.squeeze()["cube_state"]
+            # robot_traj = plant_states_dict.squeeze()["robot_state"]
+            # print(cube_traj.shape)
+            # q_obj = cube_traj[:, :6]
+            # v_obj = cube_traj[:, 6:]
+            # q_robo, v_robo = np.array_split(robot_traj, 2, axis = 1)
+            # print(q_obj.shape, q_robo.shape)
+
+            # n = 1e8
+            # # HACK push the robot far away
+            # joint = torch.cat([q_obj, q_robo*n, v_obj, v_robo,
+            #                    q_obj, q_robo*n, v_obj, v_robo], dim = 1)
             
-            vis_utils.visualize_trajectory(vis_system, joint)
+            # vis_utils.visualize_trajectory(vis_system, joint)
 
             # Re-init optimizer and data-loader
             batch_size = (
@@ -932,6 +929,8 @@ def main(
             if traj_dataloader is None or len(traj_dataloader) == 0:
                 print("Cannot train without data.\n")
                 continue
+            else:
+                print("Training on ", len(traj_dataloader), "trajectories.")
 
             try:
                 epochs = int(input("How many epochs? "))
@@ -939,17 +938,6 @@ def main(
                 print("Cancelling...")
                 continue
             print("Training...")
-
-            from dair_pll.geometry import (
-            GeometryCollider,
-            PydrakeToCollisionGeometryFactory,
-            CollisionGeometry,
-            DeepSupportConvex,
-            Polygon,
-            Box,
-            Plane,
-            _NOMINAL_HALF_LENGTH,
-            )
 
             start_time = time.time()
             for idx in range(epochs):
@@ -970,7 +958,6 @@ def main(
                 summary = learned_system.summary({})
                 learned_summaries.append(summary)
                 learned_mesh_geometry = summary.meshes
-                print(learned_mesh_geometry)
 
                 if signal_pressed:
                     signal_pressed = False
@@ -989,8 +976,8 @@ def main(
             # TODO: HACK don't hardcode object name
             object_name = "cube"
             true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
-            if new_trajectory is not None and len(new_trajectory) >= 1:
-                true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
+            if cube_state is not None and len(cube_state) >= 1:
+                true_pose = cube_state[-1].detach().cpu().numpy()[:7]
             visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
 
     # Quit

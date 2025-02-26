@@ -249,15 +249,22 @@ def add_plant_from_urdfs(
     """
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, delta_t)
     parser = Parser(plant)
-    parser.SetAutoRenaming(True)
+    #parser.SetAutoRenaming(True)
+
+    package_map = parser.package_map()
+    package_map.Add("dair_pll","/home/brukebaraki/dair_pll/assets")
 
     # Build [model instance index] list, starting with world model, which is
     # always added by default.
+
+    print(urdfs)
+    print(package_map.GetPath("dair_pll"))
+
     model_ids = [world_model_instance()]
-    print(urdfs, "\n")
     for name, urdf in urdfs.items():
-        print(urdf)
+        #print(urdf)
         new_ids = parser.AddModelsFromString(urdf, "urdf")
+        
         if len(new_ids) < 1:
             continue
         assert len(new_ids) == 1, "Only one robot supported per URDF"

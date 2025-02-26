@@ -18,7 +18,7 @@ _LINEAR_SPACE = torch.linspace(-1, 1, steps=8)
 _GRID = torch.cartesian_prod(_LINEAR_SPACE, _LINEAR_SPACE, _LINEAR_SPACE)
 _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
-_SURFACE = _SURFACE.to(torch.float64)
+_SURFACE = _SURFACE.to(torch.float64).to("cuda")
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
 
@@ -162,7 +162,7 @@ def extract_mesh_from_support_function(
     vertices = torch.stack(unique_support_points)
     hull = ConvexHull(vertices.numpy())
     faces = torch.tensor(hull.simplices).to(torch.long)  # type: ignore
-
+    vertices = vertices.to("cuda")
     _, backwards, _ = extract_outward_normal_hyperplanes(
         vertices.unsqueeze(0), faces.unsqueeze(0)
     )
@@ -278,6 +278,7 @@ class HomogeneousICNN(Module):
         hidden_wts, output_wt = self.abs_weights()
         input_wts = self.input_weights
         # (*, 3) x (*, 3, W)
+        directions = directions.to(input_wts[0].device)
         hiddens.append(self.activation(pbmm(directions, input_wts[0])))
         # print(hiddens[-1].norm(dim=-1).mean(dim=0))
         for hidden_wt, input_wt in zip(hidden_wts, input_wts[1:]):
@@ -298,6 +299,7 @@ class HomogeneousICNN(Module):
             ``(*, 3)`` network input Jacobian.
         """
         hidden_wts, output_wt = self.abs_weights()
+        #directions = directions.to(hidden_wts[0].device)
         hiddens, _ = self.network_activations(directions)
         input_wts = self.input_weights
 
