@@ -1,0 +1,52 @@
+<?xml version="1.0" ?>
+<robot name="sphere"
+  xmlns:xacro="http://www.ros.org/wiki/xacro"
+  xmlns:drake="https://drake.mit.edu/">
+
+    <xacro:arg name="mass" default="0.023" />
+    <xacro:property name="mass" value="$(arg mass)" />
+    <xacro:arg name="radius" default="0.1" />
+    <xacro:property name="radius" value="$(arg radius)" />
+    <xacro:arg name="mu" default="0.05" />
+    <link name="sphere_body">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="${mass}" />
+        <inertia
+          ixx="${2.0/5.0 * mass * radius * radius}"
+          ixy="0"
+          ixz="0"
+          iyy="${2.0/5.0 * mass * radius * radius}"
+          iyz="0"
+          izz="${2.0/5.0 * mass * radius * radius}" />
+        </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="-1.570796 0 0" />
+      <geometry>
+        <mesh filename="file:///home/brukebaraki/dair_pll/assets/HE_sphere.obj" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="-1.570796 0 0" />
+      <geometry>
+        <mesh filename="file:///home/brukebaraki/dair_pll/assets/HE_sphere.obj" />
+      </geometry>
+    </collision>
+  </link>
+    <xacro:arg name="planar_xz" default="false" />
+    <xacro:if value="$(arg planar_xz)">
+    <link name="${global_frame}" />
+    <joint name="world_to_cube_body" type="planar">
+        <parent link="${global_frame}"/>
+        <child link="cube_body"/>
+        <axis xyz="0 -1 0"/>
+      </joint>
+    </xacro:if>
+</robot>
