@@ -1024,12 +1024,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
 
         # Compute Gradients (i.e. score)
-        print("Computing Gradients...")
-        grads = torch.autograd.grad(loss_batches.flatten(), param_list, grad_outputs=torch.eye(loss_batches.numel()), is_grads_batched=True, retain_graph=True)
-        score_batches = torch.cat([grad.reshape((loss_batches.numel(), -1)) for grad in grads], dim=-1)
-        assert score_batches.size() == (loss_batches.numel(), n_params)
-        # Compute Fisher Info as outer product
-        sample_fishers = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_samples, n_params, n_params))
+        # TODO: Trade-Off Between Time and VRAM
+        sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
+        for sample_idx in range(n_samples):
+            print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
+            grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
+            score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
+            assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
+            # Compute Fisher Info as outer product
+            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
         ret = sample_fishers.sum(dim=-3)
         ret /= n_samples
         # clear gradients
