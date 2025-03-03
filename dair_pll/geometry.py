@@ -31,12 +31,16 @@ from pydrake.geometry import Sphere as DrakeSphere  # type: ignore
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from pydrake.geometry import Mesh as DrakeMesh  # type: ignore
 from pydrake.geometry import Shape  # type: ignore
+from pydrake.common import MemoryFile
+from pydrake.geometry import InMemoryMesh
 from torch import Tensor
 from torch.nn import Module, Parameter
 
 from dair_pll.deep_support_function import (
     HomogeneousICNN,
     extract_mesh_from_support_function,
+    get_mesh_summary_from_polygon,
+    extract_obj_from_mesh_summary,
 )
 from dair_pll.tensor_utils import pbmm, tile_dim, rotation_matrix_from_one_vector
 
@@ -572,6 +576,25 @@ class Sphere(BoundedConvexCollisionGeometry):
 class PydrakeToCollisionGeometryFactory:
     """Utility class for converting Drake ``Shape`` instances to
     ``CollisionGeometry`` instances."""
+
+    @staticmethod
+    def reverse_convert(
+        geometry: CollisionGeometry,
+    ) -> Shape:
+        """ Converts ``CollisionGeometry`` back into ``pydrake.geometry.shape``
+        """
+        if isinstance(geometry, Box):
+            return DrakeBox(*((2.0*geometry.get_half_lengths()).flatten().tolist()))
+        elif isinstance(geometry, Plane):
+            return DrakeHalfSpace()
+        elif isinstance(geometry, Sphere):
+            return DrakeSphere(geometry.get_radius())
+        elif isinstance(geometry, Polygon):
+            mesh_data = extract_obj_from_mesh_summary(get_mesh_summary_from_polygon(geometry))
+            return Mesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+        elif isinstance(geometry, DeepSupportConvex):
+            mesh_data = extract_obj_from_mesh_summary(extract_mesh_from_support_function(geometry.network))
+            return Mesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
 
     @staticmethod
     def convert(

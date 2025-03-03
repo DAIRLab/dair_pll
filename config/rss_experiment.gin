@@ -126,3 +126,19 @@ TrajectorySliceConfig.pred_state_keys = [
 # Note: 30 / 10 uses 10GB VRAM if done in parallel
 main.n_actions_optimized=40
 LearnableSystem.n_fisher_samples=10
+
+## True System (for Metrics)
+DrakeSystem.dt = %delta_t # seconds, unnecessary
+DrakeSystem.urdfs = { 
+	%object_model_name: @object/get_urdf_asset_contents()
+}
+DrakeSystem.visualization_file = None
+object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_urdf_asset_contents.mappings = {
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
+	"mu": 0.1,
+	"planar_xz": "false",
+}
+>>>>>>> 3c751d04233f99fc4e8be382df9ecaa0110c3aba

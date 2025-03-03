@@ -507,7 +507,10 @@ class MultibodyPlantDiagram:
 
         # Gravcomp
         # TODO: this is a HACK, find principled way of doing gravcomp
-        plant.set_gravity_enabled(plant.GetModelInstanceByName("robot"), False)
+        try:
+            plant.set_gravity_enabled(plant.GetModelInstanceByName("robot"), False)
+        except:
+            print("Warning: No robot in plant")
 
         # Finalize multibody plant.
         plant.Finalize()
