@@ -124,7 +124,7 @@ TrajectorySliceConfig.pred_state_keys = [
 
 ## Exploration Params
 # Note: 30 / 10 uses 10GB VRAM if done in parallel
-main.n_actions_optimized=40
+main.n_actions_optimized=60
 LearnableSystem.n_fisher_samples=10
 
 ## True System (for Metrics)

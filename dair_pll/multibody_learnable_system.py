@@ -345,9 +345,13 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         J_t = J[..., n_contacts:, :]
         sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
-        sliding_speeds = sliding_velocities.reshape(
+
+        ### Need non-0 norm for Hessian calculation
+        sliding_vels_reshape = sliding_velocities.reshape(
             phi.shape[:-1] + (n_contacts, 2)
-        ).norm(dim=-1, keepdim=True)
+        )
+        sliding_eps = torch.ones_like(sliding_vels_reshape) * eps
+        sliding_speeds = (sliding_vels_reshape + sliding_eps).norm(dim=-1, keepdim=True)
 
         J_n = J[..., :n_contacts, :]
         normal_velocities = pbmm(J_n, v_plus.unsqueeze(-1))
@@ -887,10 +891,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return self.multibody_terms.parameters()
-        #return chain([self._trajectory.current_pose_param()],
-        #    self.multibody_terms.parameters()
-        #)
+        return chain([self._trajectory.current_pose_param()],
+            self.multibody_terms.parameters()
+        )
 
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
@@ -948,6 +951,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         assert len(flattened_grads) == n_params
         hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
         ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        assert not torch.any(torch.isnan(ret))
         return ret
 
     def expected_fisher_info(

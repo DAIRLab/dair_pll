@@ -638,7 +638,7 @@ def main(
     """Main function for online learning loop"""
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
-    torch.autograd.set_detect_anomaly(True)
+    #torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
     torch.set_default_device("cuda")
 
     # Create run directory
@@ -748,15 +748,22 @@ def main(
             )
 
             # Simulate and Extend Learnable Trajectory
+            # TODO: HACK Sim causes things to go flying, debug
+            """
             print("Simulating init trajectory")
             with torch.no_grad():
                 plant_states_dict, _, _ = learned_system.diff_simulate(
-                    add_trajectory["robot_state"].unsqueeze(0), add_trajectory["time"]
+                    add_trajectory["robot_state"].unsqueeze(0), add_trajectory["time"],
+                    steps_per_timestep=100
                 )
             # TODO: HACK don't hardcode object model name
             learned_system.add_trajectories(
                 traj_lens=[len(plant_states_dict.squeeze())],
                 traj_data=[plant_states_dict.squeeze()["cube_state"]],
+            )
+            """
+            learned_system.add_trajectories(
+                traj_lens=[len(add_trajectory["time"])],
             )
 
             # Re-init optimizer and data-loader
@@ -832,6 +839,7 @@ def main(
                     f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
                 )
+                visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
                 train_losses.append(train_loss)
                 train_loss_data.append(loss_data)
                 learned_summaries.append(learned_system.summary({}))
