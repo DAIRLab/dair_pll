@@ -820,9 +820,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             ..., 0, :
         ]
         # Zero out current state velocity
-        # TODO: HACK make an argument
-        current_q, current_v = self._trajectory.space.q_v(self._trajectory.current_state())
-        current_x = self._trajectory.space.x(current_q, torch.zeros_like(current_v))
+        current_x = self._trajectory.current_state()
         traj_splits = self._trajectory.space.x_split(current_x)
         for traj_model_idx, traj_model_name in enumerate(self._trajectory_model_names):
             model_x = traj_splits[traj_model_idx]
@@ -889,14 +887,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return chain([self._trajectory.current_state()],
-            self.multibody_terms.parameters()
-        )
+        return self.multibody_terms.parameters()
+        #return chain([self._trajectory.current_pose_param()],
+        #    self.multibody_terms.parameters()
+        #)
 
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
         """ Current pose for the learned object """
-        return self._trajectory.space.q(self._trajectory.current_state().detach().clone())
+        return self._trajectory.current_pose_param().detach().clone()
 
     @torch.no_grad
     def get_learned_geometry(self) -> Shape:
@@ -944,7 +943,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
         grads = torch.autograd.grad(avg_loss, param_list, retain_graph=True, create_graph=True)
-        flattened_grads = torch.cat([grad.flatten() for grad in grads])
+        flattened_list = [grad.flatten() for grad in grads]
+        flattened_grads = torch.cat(flattened_list)
         assert len(flattened_grads) == n_params
         hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
         ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)

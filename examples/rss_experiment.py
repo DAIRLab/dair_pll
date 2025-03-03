@@ -638,7 +638,7 @@ def main(
     """Main function for online learning loop"""
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
-    #torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(True)
     torch.set_default_device("cuda")
 
     # Create run directory
