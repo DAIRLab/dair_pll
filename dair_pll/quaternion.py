@@ -270,14 +270,13 @@ def log(q: Tensor) -> Tensor:
         ``(*, 3)`` rotation vector batch :math:`r`\ .
     """
     assert q.shape[-1] == 4
-    eps = 1e-8
     cos_half_theta = q[..., 0:1]
     q_xyz = q[..., 1:]
     sin_half_theta_sq = torch.sum(q_xyz * q_xyz, dim=-1, keepdim=True)
 
     # pylint: disable=E1103
     not_null = sin_half_theta_sq > 0
-    sin_half_theta = eps * torch.ones_like(sin_half_theta_sq)
+    sin_half_theta = torch.finfo(q.dtype).eps * torch.ones_like(sin_half_theta_sq)
     sin_half_theta[not_null] = torch.sqrt(sin_half_theta_sq[not_null])
     theta = torch.atan2(sin_half_theta, cos_half_theta) * 2
     mul = theta / sin_half_theta
