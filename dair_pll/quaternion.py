@@ -276,7 +276,6 @@ def log(q: Tensor) -> Tensor:
     sin_half_theta_sq = torch.sum(q_xyz * q_xyz, dim=-1, keepdim=True)
 
     # pylint: disable=E1103
-    mul = 2.0 * torch.ones_like(sin_half_theta_sq)
     not_null = sin_half_theta_sq > 0
     sin_half_theta = eps * torch.ones_like(sin_half_theta_sq)
     sin_half_theta[not_null] = torch.sqrt(sin_half_theta_sq[not_null])
