@@ -974,7 +974,6 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         flattened_list = [grad.flatten() for grad in grads]
         flattened_grads = torch.cat(flattened_list)
         assert len(flattened_grads) == n_params
-        breakpoint()
         hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
         ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
         try:
