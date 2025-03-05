@@ -355,6 +355,12 @@ class TrifingerLCMService:
             )
             body_R_CW = body_R_BW.inv() * body_R_CB
             fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
+            # Zero out no contact normal
+            finger_in_contact = np.array([
+                measurement.sensorData[body_idx].inContact
+                        for measurement in self._force_raw_data
+                ])
+            fingertip_normal_W[body_name][~finger_in_contact] = 0.
             force_C = np.array(
                 [
                     (
@@ -825,6 +831,13 @@ def main(
                 print("Cancelling...")
                 continue
             print("Training...")
+
+            ### TODO: HACK don't repeat vis code
+            # TODO: HACK don't hardcode object name
+            object_name = "cube"
+            true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+            if new_trajectory is not None and len(new_trajectory) >= 1:
+                true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
 
             start_time = time.time()
             for idx in range(epochs):

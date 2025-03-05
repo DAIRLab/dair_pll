@@ -371,6 +371,31 @@ class MultibodyLearnableSystem(DrakeSystem):
         constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
 
+        ### Calculate Normal Alignment Term
+        """
+        constant_normal = torch.zeros_like(constant_pen)
+        for key in contact_normals.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            for idx in indices:
+                R_FW = R_FW_list[idx]
+                normals_guess_W = R_FW[..., 2]
+                assert normals_guess_W.size() == batch_dims + (3,)
+                assert contact_normals[key].size() == batch_dims + (3,)
+                # if contact_normals is 0, then cost = 0 i.e. align with guess
+                normals_measured_W = torch.nn.functional.normalize(contact_normals[key] + eps * normals_guess_W, dim=-1)
+                assert normals_measured_W.size() == batch_dims + (3,)
+                # Batch dot product
+                cost_normal = 1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1)
+                assert cost_normal.size() + (1, 1) == constant_normal.size()
+                cost_normal = cost_normal.unsqueeze(-1).unsqueeze(-1)
+                assert cost_normal.size() == constant_normal.size()
+                constant_normal += cost_normal
+        ## TODO: HACK add as cost weight
+        constant_normal *= 0.
+        """
+
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J_small, dv_small.transpose(-1, -2))
@@ -949,9 +974,13 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         flattened_list = [grad.flatten() for grad in grads]
         flattened_grads = torch.cat(flattened_list)
         assert len(flattened_grads) == n_params
+        breakpoint()
         hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
         ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
-        assert not torch.any(torch.isnan(ret))
+        try:
+            assert not torch.any(torch.isnan(ret))
+        except AssertionError:
+            breakpoint()
         return ret
 
     def expected_fisher_info(

@@ -1091,7 +1091,7 @@ class GeometryCollider:
         if estimated_normals_A is not None:
             n_c = 2
             assert estimated_normals_A.shape == batch_dim + (3,)
-            directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
+            directions_A2 = torch.nn.functional.normalize(estimated_normals_A.detach(), dim=-1)
             zeros_idx = torch.isclose(
                 torch.norm(directions_A2, dim=-1), torch.zeros(batch_dim)
             )
