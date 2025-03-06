@@ -6,7 +6,7 @@ robot_radius_buffer = 0.016
 workspace_radius = 0.1
 robot_model_name = "robot"
 
-object_model_name = "HE_sphere"
+object_model_name = "cube"
 object_body_name = "sphere_body"
 object_urdf = "HE_sphere.urdf.xacro"
  

@@ -98,7 +98,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         w_reg_iner: float,
         learnable_body_dict: Optional[Dict[str, LearnableBodySettings]] = None,
         output_urdfs_dir: Optional[str] = None,
-        represent_geometry_as: str = "sphere",
+        represent_geometry_as: str = "box",
         randomize_initialization: bool = False,
     ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.

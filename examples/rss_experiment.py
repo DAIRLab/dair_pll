@@ -44,7 +44,7 @@ from chamferdist import ChamferDistance
 
 from scipy.optimize import optimize, NonlinearConstraint
 from collision_free_planner import collision_free_traj
-from rss_visualization import get_chamfer_distance
+from rss_visualization import visualize_geometries, get_true_geometry
 
 # tensor_utils required for TensorDict's collate_fn
 # pylint: disable-next=unused-import
@@ -638,41 +638,6 @@ def extract_robot_trajectory(
 
 ### Visualization
 
-def visualize_geometries(meshcat, system, true_geometry, true_pose):
-    """ Visualize the learned and true geometries """
-
-    geom = system.get_learned_geometry()
-    pose = system.get_learned_pose().cpu().numpy()
-    assert len(pose) == 7, "Only Free Floating State Accepted"
-    transform = np.eye(4)
-    transform[:3, :3] = R.from_quat(pose[:4], scalar_first=True).as_matrix()
-    transform[:3, 3] = pose[4:]
-    #learned = blue
-    meshcat.SetObject("/learned", geom, Rgba(0.1, 0.1, 0.9, 0.5))
-    meshcat.SetTransform("/learned", transform)
-
-    assert len(true_pose) == 7, "Only Free Floating State Accepted"
-    true_transform = np.eye(4)
-    true_transform[:3, :3] = R.from_quat(true_pose[:4], scalar_first=True).as_matrix()
-    true_transform[:3, 3] = true_pose[4:]
-    meshcat.SetObject("/true", true_geometry, Rgba(0.9, 0.1, 0.1, 1.0))
-    meshcat.SetTransform("/true", true_transform)
-
-    chamfer_metric = get_chamfer_distance(geom, true_geometry, pose, true_pose)
-    print(f"Chamfer Distance: {chamfer_metric}")
-
-def get_true_geometry() -> Shape:
-    """Get True Geometry from configured base system"""
-    system = DrakeSystem()
-    inspector = system.plant_diagram.scene_graph.model_inspector()
-    all_geom_ids = inspector.GetAllGeometryIds()
-    for geom_id in all_geom_ids:
-        true_geom = inspector.GetShape(geom_id)
-        if isinstance(true_geom, DrakeHalfSpace):
-            continue
-        return true_geom
-    assert False, "Could not find true geometry"
-    return None
 
 
 
@@ -699,7 +664,7 @@ def main(
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
     #torch.autograd.set_detect_anomaly(True)
-    torch.set_default_device("cuda")
+    torch.set_default_device("cpu")
 
     # Create run directory
     print("Active Tactile Exploration")
@@ -732,6 +697,8 @@ def main(
     traj_dataloader = None
     obs_info_inv = None
     total_epochs = 0
+
+    cube_state = None
 
     # Visualization
     print("Starting Meshcat")
@@ -974,10 +941,13 @@ def main(
         elif command_char == "v":
             print("Visualizing")
             # TODO: HACK don't hardcode object name
-            object_name = "cube"
-            true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
-            if cube_state is not None and len(cube_state) >= 1:
-                true_pose = cube_state[-1].detach().cpu().numpy()[:7]
+            object_name = "sphere"
+
+            if cube_state is None: #hasn't been declared yet
+                true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+            else:
+                true_pose = cube_state[-1].cpu().clone().numpy()
+            
             visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
 
     # Quit

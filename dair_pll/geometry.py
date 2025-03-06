@@ -621,11 +621,11 @@ class PydrakeToCollisionGeometryFactory:
             TypeError: When provided object is not a supported Drake shape type.
         """
         
-
-        try:
+        if name == "world":
+            represent_geometry_as = DrakeHalfSpace
+        else:
             represent_geometry_as = represent_geometry_bodies_as[name]
-        except:
-            represent_geometry_as = represent_geometry_bodies_as
+   
 
         print(f"Converting {drake_shape} to {represent_geometry_as}")
         if isinstance(drake_shape, DrakeBox):
@@ -749,7 +749,8 @@ class GeometryCollider:
             (batch, N, 3) witness points Bc on B, p_BoBc_B
         """
         assert not geometry_a > geometry_b
-
+        print(f"Unsupported collision between {geometry_a} and {geometry_b}")
+        
         # case 1: half-space to compact-convex collision (e.g. ground)
         if isinstance(geometry_a, Plane) and isinstance(
             geometry_b, BoundedConvexCollisionGeometry
@@ -783,6 +784,7 @@ class GeometryCollider:
             return GeometryCollider.collide_convex_convex(
                 geometry_a, geometry_b, R_AB, p_AoBo_A
             )
+        
         raise TypeError(
             "No type-specific implementation for geometry pair of following types:",
             type(geometry_a).__name__,
@@ -958,6 +960,10 @@ class GeometryCollider:
         assert isinstance(shape_a, BoundedConvexCollisionGeometry)
         assert isinstance(sphere_b, Sphere)
         n_c = 2
+
+        print(
+            f"Colliding {shape_a} and {sphere_b} with {n_c} contact points"
+        )
 
         ## Get nearest point on object
         phi = torch.zeros(batch_dim + (n_c,))
@@ -1200,9 +1206,9 @@ class GeometryCollider:
         support_fn_a = geometry_a.support_points
         support_fn_b = geometry_b.support_points
         if isinstance(geometry_a, DeepSupportConvex):
-            support_fn_a = geometry_a.network
+            support_fn_a = geometry_a.get_vertices
         if isinstance(geometry_b, DeepSupportConvex):
-            support_fn_b = geometry_b.network
+            support_fn_b = geometry_b.get_vertices
 
         # pylint: disable=too-many-locals
         p_AoBo_A = p_AoBo_A.unsqueeze(-2)
@@ -1236,8 +1242,11 @@ class GeometryCollider:
             )
             b_obj.setTransform(b_t)
             result = fcl.CollisionResult()
+
+            print("test",fcl.collide(a_obj, b_obj, collision_request, result))
             if fcl.collide(a_obj, b_obj, collision_request, result) > 0:
                 # Collision detected.
+                print("Collision detected.")
                 # Assume only 1 contact point.
                 directions[transform_index] += torch.tensor(result.contacts[0].normal)
                 nearest_points = [
@@ -1271,30 +1280,34 @@ class GeometryCollider:
         directions_B = -pbmm(directions_A.unsqueeze(-2), R_AB).squeeze(-2)
 
         # Get support points
-        # HACK: tbh dont why deepsupportconvex dont use hints
-        if isinstance(geometry_a, DeepSupportConvex):
-            p_AoAc_A = support_fn_a(directions_A)
-        else:
-            p_AoAc_A = support_fn_a(directions_A, hints_a)
+        p_AoAc_A = support_fn_a(directions_A)
+        p_BoBc_B = support_fn_b(directions_B)
+
+        # if isinstance(geometry_a, DeepSupportConvex):
+        #     p_AoAc_A = support_fn_a(directions_A)
+        # elif isinstance(geometry_a, Sphere):
+        #     p_AoAc_A = support_fn_a(directions_A, hints_a)
         
-        if isinstance(geometry_b, DeepSupportConvex):
-            p_BoBc_B = support_fn_b(directions_B)
-        else:
-            p_BoBc_B = support_fn_b(directions_B, hints_b)
+        # if isinstance(geometry_b, DeepSupportConvex):
+        #     p_BoBc_B = support_fn_b(directions_B)
+        # elif isinstance(geometry_b, Sphere):
+        #     p_BoBc_B = support_fn_b(directions_B, hints_b)
         
         # Get length of witness point distance projected onto contact normal
+        R_BA = R_AB.transpose(-1, -2)
+        p_BoBc_A = pbmm(p_BoBc_B, R_BA)
+        #Check Sanity of autodiff-calculated points relative to FCL
 
-        p_BoBc_A = pbmm(p_BoBc_B, R_AB.transpose(-1, -2))
-        # Check Sanity of autodiff-calculated points relative to FCL
-        #import pdb; pdb.set_trace()
-        # assert np.isclose(
-        #     p_AoAc_A.detach().cpu().numpy(),
-        #     hints_a.unsqueeze(-2).detach().cpu().numpy(),
-        # ).all()
-        # assert np.isclose(
-        #     p_BoBc_B.detach().cpu().numpy(),
-        #     hints_b.unsqueeze(-2).detach().cpu().numpy(),
-        # ).all()
+        import pdb; pdb.set_trace()
+
+        assert np.isclose(
+            p_AoAc_A.detach().cpu().numpy(),
+            hints_a.unsqueeze(-2).detach().cpu().numpy(),
+        ).all()
+        assert np.isclose(
+            p_BoBc_B.detach().cpu().numpy(),
+            hints_b.unsqueeze(-2).detach().cpu().numpy(),
+        ).all()
 
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 
@@ -1302,6 +1315,7 @@ class GeometryCollider:
         R_AC = rotation_matrix_from_one_vector(directions_A, 2).unsqueeze(-3)
         # Assume same contact frame for all witness points
         R_AC = R_AC.expand(p_AcBc_A.shape + (3,))
+
         # Get length of witness point distance projected onto contact normal
         phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)
 
@@ -1320,7 +1334,9 @@ class GeometryCollider:
                 3,
             )
         ) == R_AC.shape
-        # assert phi.shape[1] == 1  # TODO: HACK Only supporting 1 contact witness point (NOTT TRUE)
-        # assert phi.shape[1] == p_AoAc_A.shape[1]
-        # assert phi.shape[1] == p_BoBc_B.shape[1]
+
+        import pdb; pdb.set_trace()
+        assert phi.shape[1] == 1  # TODO: HACK Only supporting 1 contact witness point
+        assert phi.shape[1] == p_AoAc_A.shape[1]
+        assert phi.shape[1] == p_BoBc_B.shape[1]
         return phi, R_AC, p_AoAc_A, p_BoBc_B
