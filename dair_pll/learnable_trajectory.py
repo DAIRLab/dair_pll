@@ -20,7 +20,7 @@ class LearnableTrajectories(Module):
     """
 
     _trajectories: ParameterList
-    _trajectories_x0: ParameterList
+    _trajectories_q0: ParameterList
     _space: StateSpace
 
     def __init__(
@@ -31,14 +31,18 @@ class LearnableTrajectories(Module):
         super().__init__()
         self._space = space
         self._trajectories = ParameterList([])
-        self._trajectories_x0 = ParameterList([])
+        self._trajectories_q0 = ParameterList([])
 
-        init_x0 = self._space.zero_state()
+        init_q0 = self._space.q(self._space.zero_state())
         if init_state is not None:
-            assert init_state.size() == (self._space.n_x,), str(init_state)
-            init_x0 = init_state.detach().clone()
+            if init_state.size() == (self._space.n_x,):
+                init_q0 = self._space.q(init_state)
+            elif init_state.size() == (self._space.n_q,):
+                init_q0 = init_state
+            else:
+                assert False, f"Wrong size: {init_state.size()}, should be {(self._space.n_q,)} or {(self._space.n_x,)}"
 
-        self._trajectories_x0.append(Parameter(init_x0, requires_grad=True))
+        self._trajectories_q0.append(Parameter(init_q0.detach().clone(), requires_grad=True))
 
     @property
     def space(self):
@@ -64,7 +68,7 @@ class LearnableTrajectories(Module):
         """
 
         traj_idx = len(self._trajectories)
-        new_x0 = self._trajectories_x0[traj_idx].clone().detach()
+        new_x0 = self.space.x(self._trajectories_q0[traj_idx], self.space.v(self.space.zero_state())).clone().detach()
         new_trajectory = new_x0.clone().repeat(traj_len - 2, 1)
         next_x0 = new_x0.clone()
         if init_states is None:
@@ -87,15 +91,21 @@ class LearnableTrajectories(Module):
         assert next_x0.size() == (self._space.n_x,), str(next_x0.size())
         assert new_trajectory.size() == (traj_len - 2, self._space.n_x)
 
-        self._trajectories_x0[traj_idx].copy_(new_x0)
+        self._trajectories_q0[traj_idx].copy_(self.space.q(new_x0))
         self._trajectories.append(Parameter(new_trajectory, requires_grad=True))
-        self._trajectories_x0.append(Parameter(next_x0, requires_grad=True))
+        self._trajectories_q0.append(Parameter(self.space.q(next_x0), requires_grad=True))
 
     def current_state(self) -> Tensor:
         """
         Get the current state / latest time state estimate.
         """
-        return self._trajectories_x0[-1]
+        return self.space.x(self._trajectories_q0[-1], self.space.v(self.space.zero_state()))
+
+    def current_pose_param(self) -> Tensor:
+        """
+        Get the current pose estimate as a parameter at the latest time.
+        """
+        return self._trajectories_q0[-1]
 
     def forward(self, traj_nums: Tensor, indices: Tensor) -> Tensor:
         """Returns a batch of trajectory states.
@@ -119,9 +129,9 @@ class LearnableTrajectories(Module):
             assert traj_num >= 0, f"Invalid trajectory number {traj_num}"
             assert traj_index >= 0, f"Invalid trajectory index {traj_index}"
             if traj_index == 0:
-                ret[idx] = self._trajectories_x0[traj_num]
+                ret[idx] = self.space.x(self._trajectories_q0[traj_num], self.space.v(self.space.zero_state()))
             elif traj_index == self._trajectories[traj_num].shape[0] + 1:
-                ret[idx] = self._trajectories_x0[traj_num + 1]
+                ret[idx] = self.space.x(self._trajectories_q0[traj_num + 1], self.space.v(self.space.zero_state()))
             else:
                 ret[idx] = self._trajectories[traj_num][traj_index - 1, :]
 

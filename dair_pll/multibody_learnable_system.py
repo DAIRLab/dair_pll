@@ -345,9 +345,13 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         J_t = J[..., n_contacts:, :]
         sliding_velocities = pbmm(J_t, v_plus.unsqueeze(-1))
-        sliding_speeds = sliding_velocities.reshape(
+
+        ### Need non-0 norm for Hessian calculation
+        sliding_vels_reshape = sliding_velocities.reshape(
             phi.shape[:-1] + (n_contacts, 2)
-        ).norm(dim=-1, keepdim=True)
+        )
+        sliding_eps = torch.ones_like(sliding_vels_reshape) * eps
+        sliding_speeds = (sliding_vels_reshape + sliding_eps).norm(dim=-1, keepdim=True)
 
         J_n = J[..., :n_contacts, :]
         normal_velocities = pbmm(J_n, v_plus.unsqueeze(-1))
@@ -366,6 +370,31 @@ class MultibodyLearnableSystem(DrakeSystem):
         constant_pred = 0.5 * pbmm(dv_small, pbmm(M_small, dv_small.transpose(-1, -2)))
         constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
+
+        ### Calculate Normal Alignment Term
+        """
+        constant_normal = torch.zeros_like(constant_pen)
+        for key in contact_normals.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            for idx in indices:
+                R_FW = R_FW_list[idx]
+                normals_guess_W = R_FW[..., 2]
+                assert normals_guess_W.size() == batch_dims + (3,)
+                assert contact_normals[key].size() == batch_dims + (3,)
+                # if contact_normals is 0, then cost = 0 i.e. align with guess
+                normals_measured_W = torch.nn.functional.normalize(contact_normals[key] + eps * normals_guess_W, dim=-1)
+                assert normals_measured_W.size() == batch_dims + (3,)
+                # Batch dot product
+                cost_normal = 1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1)
+                assert cost_normal.size() + (1, 1) == constant_normal.size()
+                cost_normal = cost_normal.unsqueeze(-1).unsqueeze(-1)
+                assert cost_normal.size() == constant_normal.size()
+                constant_normal += cost_normal
+        ## TODO: HACK add as cost weight
+        constant_normal *= 0.
+        """
 
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
@@ -819,9 +848,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         data_state[robot_model_name + "_state"][..., 0, :] = robot_target_trajectories[..., 0, :]
         
         # Zero out current state velocity
-        # TODO: HACK make an argument
-        current_q, current_v = self._trajectory.space.q_v(self._trajectory.current_state())
-        current_x = self._trajectory.space.x(current_q, torch.zeros_like(current_v))
+        current_x = self._trajectory.current_state()
         traj_splits = self._trajectory.space.x_split(current_x)
         for traj_model_idx, traj_model_name in enumerate(self._trajectory_model_names):
             model_x = traj_splits[traj_model_idx]
@@ -888,14 +915,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return chain([self._trajectory.current_state()],
+        return chain([self._trajectory.current_pose_param()],
             self.multibody_terms.parameters()
         )
 
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
         """ Current pose for the learned object """
-        return self._trajectory.space.q(self._trajectory.current_state().detach().clone())
+        return self._trajectory.current_pose_param().detach().clone()
 
     @torch.no_grad
     def get_learned_geometry(self) -> Shape:
@@ -943,10 +970,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
         grads = torch.autograd.grad(avg_loss, param_list, retain_graph=True, create_graph=True)
-        flattened_grads = torch.cat([grad.flatten() for grad in grads])
+        flattened_list = [grad.flatten() for grad in grads]
+        flattened_grads = torch.cat(flattened_list)
         assert len(flattened_grads) == n_params
         hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
         ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        try:
+            assert not torch.any(torch.isnan(ret))
+        except AssertionError:
+            breakpoint()
         return ret
 
     def expected_fisher_info(
@@ -1050,12 +1082,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
 
         # Compute Gradients (i.e. score)
-        print("Computing Gradients...")
-        grads = torch.autograd.grad(loss_batches.flatten(), param_list, grad_outputs=torch.eye(loss_batches.numel()), is_grads_batched=True, retain_graph=True)
-        score_batches = torch.cat([grad.reshape((loss_batches.numel(), -1)) for grad in grads], dim=-1)
-        assert score_batches.size() == (loss_batches.numel(), n_params)
-        # Compute Fisher Info as outer product
-        sample_fishers = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_samples, n_params, n_params))
+        # TODO: Trade-Off Between Time and VRAM
+        sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
+        for sample_idx in range(n_samples):
+            print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
+            grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
+            score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
+            assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
+            # Compute Fisher Info as outer product
+            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
         ret = sample_fishers.sum(dim=-3)
         ret /= n_samples
         # clear gradients

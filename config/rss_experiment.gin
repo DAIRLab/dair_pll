@@ -33,6 +33,7 @@ main.safe_trifinger_height = %workspace_radius
 
 extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
 interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
+get_loss_args.object_body_name = %object_body_name
 
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
@@ -137,15 +138,15 @@ Adam.fused=True
 TrajectorySliceConfig.batch_size = -1
 TrajectorySliceConfig.shuffle = False
 TrajectorySliceConfig.his_state_keys = [
-	"robot_state", "contact_forces", "traj_num", "index", "time",
+	"robot_state", "contact_forces", "contact_normals", "traj_num", "index", "time",
 ]
 TrajectorySliceConfig.pred_state_keys = [
 	"robot_state", "traj_num", "index", "time",
 ]
 
 ## Exploration Params
-# Note: 30 / 10 uses 10GB VRAM
-main.n_actions_optimized = 30
+# Note: 30 / 10 uses 10GB VRAM if done in parallel
+main.n_actions_optimized=60
 LearnableSystem.n_fisher_samples=10
 
 ## True System (for Metrics)

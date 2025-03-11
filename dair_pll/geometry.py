@@ -809,9 +809,12 @@ class GeometryCollider:
         assert line_O.shape == batch_dim + (2, 3)
 
         dx = line_O[..., 1, :] - line_O[..., 0, :]
-        nx = -(line_O[..., 0, :] * dx[..., :]).sum(dim=-1) / torch.norm(dx, dim=-1)
+        nx = torch.zeros(batch_dim)
+        is_nan = torch.isclose(torch.norm(dx, dim=-1), torch.zeros(batch_dim))
+        assert is_nan.shape == batch_dim
+        nx[is_nan] = 0.
+        nx[~is_nan] = -(line_O[~is_nan][..., 0, :] * dx[~is_nan]).sum(dim=-1) / torch.norm(dx[~is_nan], dim=-1)
         assert nx.shape == batch_dim
-        nx[torch.isnan(nx)] = 0.0
         nx = torch.clamp(nx, 0.0, 1.0)
         ret = dx * nx.unsqueeze(-1) + line_O[..., 0, :]
         assert ret.shape == batch_dim + (3,)
@@ -823,8 +826,8 @@ class GeometryCollider:
         shape_a: BoundedConvexCollisionGeometry,
         p_AoO_A: Tensor,
         inside_thresh: float = 1e-4,
-        gjk_thresh: float = 8e-6,
-        gjk_max_iter: int = 2000,
+        gjk_thresh: float = 5e-4,
+        gjk_max_iter: int = 200,
     ) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Use GJK to find the point in shape_a closest to the origin.
@@ -874,36 +877,36 @@ class GeometryCollider:
             new_supports[nonzero_norms] = (
                 shape_a.support_points(-p_OSimplex_A[nonzero_norms])[..., 0, :]
                 + p_OAo_A.reshape(batch_dim + (1, 3))[nonzero_norms]
-            )
+            ).clone()
 
             # Concat into line segment simplices
             p_OSimplex_A = torch.cat(
                 [p_OSimplex_A, new_supports], dim=-2
-            )  # (batch, 2, 3) line segment
+            ).clone()  # (batch, 2, 3) line segment
             assert p_OSimplex_A.shape == batch_dim + (2, 3)
 
             # Get closest point on line segment to origin and new displacement vector
             # Displacement vector of closest point on line segment == normal vector
-            new_p_OAc_A = GeometryCollider.closest_point_to_origin(p_OSimplex_A)
+            new_p_OAc_A = GeometryCollider.closest_point_to_origin(p_OSimplex_A).clone()
 
             # Check if changes in normals are <thresh
             diff = (torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh).unsqueeze(-1)
             if torch.all(diff):
-                p_OAc_A = new_p_OAc_A
+                p_OAc_A = new_p_OAc_A.clone()
                 break
 
             # Next iteration
-            p_OAc_A = new_p_OAc_A
-            p_OSimplex_A = p_OAc_A.unsqueeze(-2)
+            p_OAc_A = new_p_OAc_A.clone()
+            p_OSimplex_A = p_OAc_A.unsqueeze(-2).clone()
         if cur_iter == (gjk_max_iter-1):
             print("Warning: Reached max GJK iterations")
             import ipdb; ipdb.set_trace()
 
         # p_OAc_A is location of closest point to origin in object
         assert p_OAc_A.shape == batch_dim + (3,)
-        normals_A = -p_OAc_A
+        normals_A = -p_OAc_A.clone()
         p_AoAc_A = p_AoO_A + p_OAc_A
-        phi = torch.norm(normals_A, dim=-1)
+        phi = torch.norm(normals_A.clone(), dim=-1).clone()
 
         # Handle inside-object case
         inside_object = phi < inside_thresh
@@ -926,7 +929,7 @@ class GeometryCollider:
         assert phi.shape == batch_dim
         assert normals_A.shape == batch_dim + (3,)
 
-        return p_AoAc_A, phi, normals_A
+        return p_AoAc_A.clone(), phi.clone(), normals_A.clone()
 
     @staticmethod
     def collide_convex_sphere(
@@ -1104,11 +1107,12 @@ class GeometryCollider:
         if estimated_normals_A is not None:
             n_c = 2
             assert estimated_normals_A.shape == batch_dim + (3,)
-            directions_A2 = torch.nn.functional.normalize(estimated_normals_A, dim=-1)
+            directions_A2 = torch.zeros_like(estimated_normals_A)
             zeros_idx = torch.isclose(
-                torch.norm(directions_A2, dim=-1), torch.zeros(batch_dim)
+                torch.norm(estimated_normals_A.detach(), dim=-1), torch.zeros(batch_dim)
             )
             directions_A2[zeros_idx, :] = directions_A[zeros_idx, 0, :]
+            directions_A2[~zeros_idx, :] = torch.nn.functional.normalize(estimated_normals_A[~zeros_idx], dim=-1)
             p_AoAc_A2 = box_a.support_points(directions_A2)[..., :1, :]
             p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
             directions_A = torch.cat(

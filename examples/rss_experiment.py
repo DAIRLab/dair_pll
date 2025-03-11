@@ -391,6 +391,29 @@ class TrifingerLCMService:
                     ]
                 )
             )
+            normal_C = np.broadcast_to(
+                np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
+            )
+            body_R_CW = body_R_BW.inv() * body_R_CB
+            fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
+            # Zero out no contact normal
+            finger_in_contact = np.array([
+                measurement.sensorData[body_idx].inContact
+                        for measurement in self._force_raw_data
+                ])
+            fingertip_normal_W[body_name][~finger_in_contact] = 0.
+            force_C = np.array(
+                [
+                    (
+                        list(measurement.sensorData[body_idx].scaledFriction)
+                        + [measurement.sensorData[body_idx].scaledNormal]
+                    )
+                    for measurement in self._force_raw_data
+                ]
+            )
+            assert force_C.shape == (len(densetact_time_s), 3)
+            fingertip_force_W[body_name] = body_R_CW.apply(force_C)
+            fingertip_force_C[body_name] = force_C
             
             # homogenous matrix representing the contract frame (C) in the world frame (W)
             H_C_in_W = (
@@ -663,8 +686,8 @@ def main(
     """Main function for online learning loop"""
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
-    #torch.autograd.set_detect_anomaly(True)
-    torch.set_default_device("cpu")
+    #torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
+    torch.set_default_device("cuda")
 
     # Create run directory
     print("Active Tactile Exploration")
@@ -814,34 +837,23 @@ def main(
             )
 
             # Simulate and Extend Learnable Trajectory
+            # TODO: HACK Sim causes things to go flying, debug
+            """
             print("Simulating init trajectory")
             with torch.no_grad():
                 plant_states_dict, _, _ = learned_system.diff_simulate(
-                    add_trajectory["robot_state"].unsqueeze(0), 
-                    add_trajectory["time"]
+                    add_trajectory["robot_state"].unsqueeze(0), add_trajectory["time"],
+                    steps_per_timestep=100
                 )
             # TODO: HACK don't hardcode object model name
             learned_system.add_trajectories(
                 traj_lens=[len(plant_states_dict.squeeze())],
                 traj_data=[plant_states_dict.squeeze()["cube_state"]],
             )
-
-            cube_state = plant_states_dict.squeeze()["cube_state"]
-
-            # cube_traj = plant_states_dict.squeeze()["cube_state"]
-            # robot_traj = plant_states_dict.squeeze()["robot_state"]
-            # print(cube_traj.shape)
-            # q_obj = cube_traj[:, :6]
-            # v_obj = cube_traj[:, 6:]
-            # q_robo, v_robo = np.array_split(robot_traj, 2, axis = 1)
-            # print(q_obj.shape, q_robo.shape)
-
-            # n = 1e8
-            # # HACK push the robot far away
-            # joint = torch.cat([q_obj, q_robo*n, v_obj, v_robo,
-            #                    q_obj, q_robo*n, v_obj, v_robo], dim = 1)
-            
-            # vis_utils.visualize_trajectory(vis_system, joint)
+            """
+            learned_system.add_trajectories(
+                traj_lens=[len(add_trajectory["time"])],
+            )
 
             # Re-init optimizer and data-loader
             batch_size = (
@@ -906,6 +918,13 @@ def main(
                 continue
             print("Training...")
 
+            ### TODO: HACK don't repeat vis code
+            # TODO: HACK don't hardcode object name
+            object_name = "cube"
+            true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+            if new_trajectory is not None and len(new_trajectory) >= 1:
+                true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
+
             start_time = time.time()
             for idx in range(epochs):
                 train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
@@ -919,6 +938,7 @@ def main(
                     f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
                 )
+                visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
                 train_losses.append(train_loss)
                 train_loss_data.append(loss_data)
 
