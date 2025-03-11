@@ -591,10 +591,10 @@ class PydrakeToCollisionGeometryFactory:
             return DrakeSphere(geometry.get_radius())
         elif isinstance(geometry, Polygon):
             mesh_data = extract_obj_from_mesh_summary(get_mesh_summary_from_polygon(geometry))
-            return Mesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+            return DrakeMesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
         elif isinstance(geometry, DeepSupportConvex):
             mesh_data = extract_obj_from_mesh_summary(extract_mesh_from_support_function(geometry.network))
-            return Mesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+            return DrakeMesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
 
     @staticmethod
     def convert(
@@ -627,7 +627,7 @@ class PydrakeToCollisionGeometryFactory:
             represent_geometry_as = represent_geometry_bodies_as[name]
    
 
-        print(f"Converting {drake_shape} to {represent_geometry_as}")
+        #print(f"Converting {drake_shape} to {represent_geometry_as}")
         if isinstance(drake_shape, DrakeBox):
             geometry = PydrakeToCollisionGeometryFactory.convert_box(
                 drake_shape, represent_geometry_as, learnable
@@ -659,30 +659,40 @@ class PydrakeToCollisionGeometryFactory:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         if represent_geometry_as == "box":
             half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
-            return Box(half_widths, 4, learnable)        
+            return Box(half_widths, 4, learnable)     
+
+        if represent_geometry_as == "mesh":
+            half_dims = drake_box.size()/2
+            vertices  = torch.from_numpy(
+                        np.stack([half_dims*np.array([i, j, k]) 
+                        for i in np.array([-1, 1]) 
+                        for j in np.array([-1, 1]) 
+                        for k in np.array([-1, 1])]))
+           
+            return DeepSupportConvex(vertices, learnable=learnable)   
 
         if represent_geometry_as == "polygon":
             pass  # TODO
 
         raise NotImplementedError(
-            "Cannot presently represent a DrakeBox()"
-            + f"as {represent_geometry_as} type."
+            f"{drake_box}:" + " Cannot presently represent a DrakeSphere() "
+            + f"as {represent_geometry_as} collision geometry type."
         )
 
     @staticmethod
     def convert_sphere(
         drake_sphere: DrakeSphere, represent_geometry_as: str, learnable: bool = True
     ) -> Union[Sphere, Polygon]:
-        """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
-        if represent_geometry_as == "box":
+        """Converts ``pydrake.geometry.Sphere`` to ``Sphere`` or ``Polygon``."""
+        if represent_geometry_as == "sphere":
             return Sphere(torch.tensor([drake_sphere.radius()]), learnable)
 
         if represent_geometry_as == "polygon":
             pass  # TODO
 
         raise NotImplementedError(
-            "Cannot presently represent a DrakeBox()"
-            + f"as {represent_geometry_as} type."
+            f"{drake_sphere}:" + " Cannot presently represent a DrakeSphere() "
+            + f"as {represent_geometry_as} collision geometry type."
         )
 
     @staticmethod
@@ -749,7 +759,7 @@ class GeometryCollider:
             (batch, N, 3) witness points Bc on B, p_BoBc_B
         """
         assert not geometry_a > geometry_b
-        print(f"Unsupported collision between {geometry_a} and {geometry_b}")
+        #print(f"Collision between {geometry_a} and {geometry_b}")
         
         # case 1: half-space to compact-convex collision (e.g. ground)
         if isinstance(geometry_a, Plane) and isinstance(
@@ -762,19 +772,19 @@ class GeometryCollider:
             return GeometryCollider.collide_plane_convex(
                 geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB)
             )
-
+        
         # case 2: compact-convex to sphere collision (e.g. robot)
-        if isinstance(geometry_a, Box) and isinstance(geometry_b, Sphere):
-            return GeometryCollider.collide_box_sphere(
+        if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(geometry_b, Sphere):
+            return GeometryCollider.collide_convex_sphere(
                 geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A
             )
-        if isinstance(geometry_a, Sphere) and isinstance(geometry_b, Box):
-            return GeometryCollider.collide_box_sphere(
+        if isinstance(geometry_a, Sphere) and isinstance(geometry_b, BoundedConvexCollisionGeometry):
+            return GeometryCollider.collide_convex_sphere(
                 geometry_b,
                 geometry_a,
                 R_AB.transpose(-1, -2),
-                -pbmm(p_AoBo_A, R_AB),
-                -pbmm(estimated_normals_A, R_AB),
+                -pbmm(p_AoBo_A.unsqueeze(1), R_AB).squeeze(1),
+                -pbmm(estimated_normals_A.unsqueeze(1), R_AB).squeeze(1),
             )
 
         # case 3: compact-convex to compact-convex collision (NOTE: unstable)
@@ -959,14 +969,15 @@ class GeometryCollider:
         # Input Sanitation
         batch_dim = R_AB.shape[:-2]
         assert R_AB.shape == batch_dim + (3, 3)
+
         assert p_AoBo_A.shape == batch_dim + (3,)
         assert isinstance(shape_a, BoundedConvexCollisionGeometry)
         assert isinstance(sphere_b, Sphere)
         n_c = 2
 
-        print(
-            f"Colliding {shape_a} and {sphere_b} with {n_c} contact points"
-        )
+        # print(
+        #     f"Colliding {shape_a} and {sphere_b} with {n_c} contact points"
+        # )
 
         ## Get nearest point on object
         phi = torch.zeros(batch_dim + (n_c,))
@@ -1247,7 +1258,6 @@ class GeometryCollider:
             b_obj.setTransform(b_t)
             result = fcl.CollisionResult()
 
-            print("test",fcl.collide(a_obj, b_obj, collision_request, result))
             if fcl.collide(a_obj, b_obj, collision_request, result) > 0:
                 # Collision detected.
                 print("Collision detected.")

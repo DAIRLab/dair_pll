@@ -662,7 +662,7 @@ class ContactTerms(Module):
         # iterate over body pairs (Ai, Bi)
         for geo_a, geo_b, R_AiW, R_BiW, p_AiBi_A, Jv_V_WAi_W, Jv_V_WBi_W, mu_i in a_b:
             estimated_normals_A = None
-            key = (geo_a.name, geo_b.name)
+            key = (geo_b.name, geo_a.name)
             if key in estimated_normals_W:
                 estimated_normals_A = pbmm(
                     R_AiW, estimated_normals_W[key].unsqueeze(-1)
@@ -780,7 +780,7 @@ class MultibodyTerms(Module):
 
                 elif isinstance(geometry, Polygon):
                     geometry_mesh = get_mesh_summary_from_polygon(geometry)
-                print(geometry_mesh)
+
                 if geometry_mesh != None:
                     meshes[body_id] = geometry_mesh
                     vertices = geometry_mesh.vertices

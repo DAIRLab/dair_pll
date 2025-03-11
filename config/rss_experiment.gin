@@ -7,8 +7,8 @@ workspace_radius = 0.1
 robot_model_name = "robot"
 
 object_model_name = "cube"
-object_body_name = "sphere_body"
-object_urdf = "HE_sphere.urdf.xacro"
+object_body_name = "cube_body"
+object_urdf = "contactnets_cube.urdf.xacro"
  
 
 fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
@@ -78,9 +78,9 @@ LearnableSystem.learnable_body_dict = {
 	%object_body_name: @object_init/LearnableBodySettings()
 }
 LearnableSystem.represent_geometry_as = {
-    %object_body_name: "mesh", 
-    "finger_0": "box",
-	"finger_1": "box"
+    %object_body_name: "box", 
+    "finger_0": "sphere",
+	"finger_1": "sphere"
     }
 
 # Initial guesses

@@ -382,6 +382,15 @@ class TrifingerLCMService:
             assert body_quat_interp.shape == (len(densetact_time_s), 4)
             body_R_BW = R.from_quat(body_quat_interp, scalar_first=True)
 
+            body_R_CB = R.from_matrix(
+                np.stack(
+                    [
+                        np.array(measurement.sensorData[body_idx].contactPose)[:3, :3]
+                        for measurement in self._force_raw_data
+                    ]
+                )
+            )
+
             # Record normal and force in world frame
             contact_bool = (
                 np.array(
@@ -394,6 +403,7 @@ class TrifingerLCMService:
             normal_C = np.broadcast_to(
                 np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
             )
+
             body_R_CW = body_R_BW.inv() * body_R_CB
             fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
             # Zero out no contact normal
@@ -405,8 +415,9 @@ class TrifingerLCMService:
             force_C = np.array(
                 [
                     (
+                        [measurement.sensorData[body_idx].scaledNormal] +
                         list(measurement.sensorData[body_idx].scaledFriction)
-                        + [measurement.sensorData[body_idx].scaledNormal]
+                        
                     )
                     for measurement in self._force_raw_data
                 ]
@@ -703,10 +714,11 @@ def main(
     print("Sample Initial Random Action...")
     selected_action = sample_action(workspace_z_rot = np.pi/4, workspace_radius = 0.1, sphere_radius=0.0175)
     new_trajectory = None
-
+    
     # Create learnable system
     print("Loading Learned System...")
-    learned_system = MultibodyLearnableSystemWithTrajectory(output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name))
+    learned_system = MultibodyLearnableSystemWithTrajectory(output_urdfs_dir=
+                                                file_utils.get_learned_urdf_dir(storage_name, run_name))
 
     learned_summaries = [learned_system.summary({})]
     train_losses = []
@@ -722,13 +734,11 @@ def main(
     total_epochs = 0
 
     cube_state = None
+    true_geometry = get_true_geometry() 
 
     # Visualization
     print("Starting Meshcat")
     vis_meshcat = StartMeshcat()
-
-    ## True Geometry
-    true_geom = get_true_geometry()
 
     # Start Input Loop
     def print_help():
@@ -749,10 +759,6 @@ def main(
     command_char = " "
     while command_char != "q":
         command_char = input("Command $ ").split(" ")[0]
-
-        #trifinger_lcm.update_cube_sim(drake_sim = base_system)
-
-        # base_system.model_states_from_state_tensor(torch.from_numpy(np.ones((1,25))))
         
         if command_char == "h":
             print_help()
@@ -938,7 +944,7 @@ def main(
                     f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
                 )
-                visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
+                #visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
                 train_losses.append(train_loss)
                 train_loss_data.append(loss_data)
 
@@ -961,14 +967,13 @@ def main(
         elif command_char == "v":
             print("Visualizing")
             # TODO: HACK don't hardcode object name
-            object_name = "sphere"
 
             if cube_state is None: #hasn't been declared yet
-                true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+                true_pose = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0325])
             else:
                 true_pose = cube_state[-1].cpu().clone().numpy()
             
-            visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
+            visualize_geometries(vis_meshcat, learned_system, true_geometry, true_pose)
 
     # Quit
 

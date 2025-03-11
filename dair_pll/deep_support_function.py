@@ -147,6 +147,7 @@ def extract_mesh_from_support_function(
     Returns:
         Object vertices and face indices.
     """
+    og_device = support_function(_SURFACE).device
     support_points = support_function(_SURFACE).detach().cpu()
     support_point_hashes = set()
     unique_support_points = []
@@ -162,7 +163,10 @@ def extract_mesh_from_support_function(
     vertices = torch.stack(unique_support_points)
     hull = ConvexHull(vertices.numpy())
     faces = torch.tensor(hull.simplices).to(torch.long)  # type: ignore
-    # vertices = vertices.to("cuda")
+    
+    faces = faces.to(og_device)
+    vertices = vertices.to(og_device)
+
     _, backwards, _ = extract_outward_normal_hyperplanes(
         vertices.unsqueeze(0), faces.unsqueeze(0)
     )
@@ -298,8 +302,9 @@ class HomogeneousICNN(Module):
         Returns:
             ``(*, 3)`` network input Jacobian.
         """
+        
         hidden_wts, output_wt = self.abs_weights()
-        #directions = directions.to(hidden_wts[0].device)
+        directions = directions.to(hidden_wts[0].device)
         hiddens, _ = self.network_activations(directions)
         input_wts = self.input_weights
 
@@ -307,12 +312,14 @@ class HomogeneousICNN(Module):
             output_wt.expand(hiddens[-1].shape) * self.activation_jacobian(hiddens[-1])
         ).unsqueeze(-1)
 
+ 
         jacobian = torch.zeros_like(directions)
         layer_bundle = zip(
             reversed(hiddens[:-1]), reversed(hidden_wts), reversed(list(input_wts[1:]))
         )
 
         for hidden, hidden_wt, input_wt in layer_bundle:
+            #import pdb; pdb.set_trace()
             jacobian += pbmm(input_wt, hidden_jacobian).squeeze(-1)
 
             hidden_jacobian = pbmm(
