@@ -926,6 +926,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         return self._trajectory.current_pose_param().detach().clone()
 
     @torch.no_grad
+    def get_learned_trajectory(self) -> Tensor:
+        """ Current pose trqjectory for the learned object """
+        return self._trajectory.get_current_pose_traj()
+
+    @torch.no_grad
     def get_learned_geometry(self) -> Shape:
         """ Current geometry as a Drake Shape. """
         assert len(self._trajectory_model_names) == 1, "Only 1 learnable object supported"
@@ -936,6 +941,17 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         body_id = unique_body_identifier(plant, bodies[0])
         body_geometry_indices = self.multibody_terms.geometry_body_assignment[body_id]
         assert len(body_geometry_indices) == 1, "Only 1 learnable geometry"
+        body_geometry = cast(CollisionGeometry, self.multibody_terms.contact_terms.geometries[body_geometry_indices[0]])
+        return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
+
+    @torch.no_grad
+    def get_body_geometry(self, body_name: str) -> Shape:
+        """Current geometry of body based on name"""
+        plant = self.plant_diagram.plant
+        body = plant.GetBodyByName(body_name)
+        body_id = unique_body_identifier(plant, body)
+        body_geometry_indices = self.multibody_terms.geometry_body_assignment[body_id]
+        assert len(body_geometry_indices) == 1, "Body must contain only 1 geometry"
         body_geometry = cast(CollisionGeometry, self.multibody_terms.contact_terms.geometries[body_geometry_indices[0]])
         return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
 

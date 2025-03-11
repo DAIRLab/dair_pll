@@ -43,6 +43,7 @@ from dair_pll import tensor_utils
 from dair_pll import file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.dataset_management import TrajectorySet
+from dair_pll.gui_utils import PLLMeshcatVisualizer
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
 from dair_pll.lcmtypes.dairlib import (
     lcmt_fingertips_position,
@@ -589,26 +590,6 @@ def extract_robot_trajectory(
 
 
 ### Visualization
-
-def visualize_geometries(meshcat, system, true_geometry, true_pose):
-    """ Visualize the learned and true geometries """
-
-    geom = system.get_learned_geometry()
-    pose = system.get_learned_pose().cpu().numpy()
-    assert len(pose) == 7, "Only Free Floating State Accepted"
-    transform = np.eye(4)
-    transform[:3, :3] = R.from_quat(pose[:4], scalar_first=True).as_matrix()
-    transform[:3, 3] = pose[4:]
-    meshcat.SetObject("/learned", geom, Rgba(0.1, 0.1, 0.9, 0.5))
-    meshcat.SetTransform("/learned", transform)
-
-    assert len(true_pose) == 7, "Only Free Floating State Accepted"
-    true_transform = np.eye(4)
-    true_transform[:3, :3] = R.from_quat(true_pose[:4], scalar_first=True).as_matrix()
-    true_transform[:3, 3] = true_pose[4:]
-    meshcat.SetObject("/true", true_geometry, Rgba(0.9, 0.1, 0.1, 1.0))
-    meshcat.SetTransform("/true", true_transform)
-
 def get_true_geometry() -> Shape:
     """Get True Geometry from configured base system"""
     system = DrakeSystem()
@@ -636,6 +617,7 @@ def main(
     init_trifinger_state: List[float],
     safe_trifinger_height: float,
     robot_model_name: str,
+    object_model_name: str = "cube",
     n_actions_optimized: int = 30,
     storage_folder_name: str = "storage_rss",
     run_name: str = "default_run",
@@ -652,16 +634,6 @@ def main(
     storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
     print(f"Storing data and results at {file_utils.run_dir(storage_name, run_name)}")
 
-    # Initialize LCM
-    # Pylint doesn't know about gin
-    # pylint: disable=no-value-for-parameter
-    trifinger_lcm = TrifingerLCMService()
-    print("Move to initial trifinger state")
-    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
-    print("Sample Initial Random Action...")
-    selected_action = sample_action()
-    new_trajectory = None
-
     # Create learnable system
     print("Loading Learned System...")
     learned_system = MultibodyLearnableSystemWithTrajectory(
@@ -674,19 +646,29 @@ def main(
     # Create Dataset
     data_trajectories = TrajectorySet()
 
+    # GUI Visualization
+    gui_vis = PLLMeshcatVisualizer(
+        system = learned_system,
+        data = data_trajectories,
+        true_geom = get_true_geometry()
+    )
+
+    # Initialize LCM
+    # Pylint doesn't know about gin
+    # pylint: disable=no-value-for-parameter
+    trifinger_lcm = TrifingerLCMService()
+    print("Move to initial trifinger state")
+    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
+    print("Sample Initial Random Action...")
+    selected_action = sample_action()
+    new_trajectory = None
+
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
     traj_dataloader = None
     obs_info_inv = None
     total_epochs = 0
-
-    # Visualization
-    print("Starting Meshcat")
-    vis_meshcat = StartMeshcat()
-
-    ## True Geometry
-    true_geom = get_true_geometry()
-
+    
     # Start Input Loop
     def print_help():
         print(
@@ -748,6 +730,7 @@ def main(
                 except (IndexError, KeyError): # e.g. object, time
                     continue
             add_trajectory["time"] = new_trajectory["time"]
+            add_trajectory[object_model_name + "_groundtruth"] = new_trajectory[object_model_name]["position"]
             data_trajectories.add_trajectories(
                 [add_trajectory.clone().detach()],
                 torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
@@ -771,6 +754,9 @@ def main(
             learned_system.add_trajectories(
                 traj_lens=[len(add_trajectory["time"])],
             )
+
+            # Re-init visualizer
+            gui_vis.update()
 
             # Re-init optimizer and data-loader
             batch_size = (
@@ -852,7 +838,7 @@ def main(
                     f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
                 )
-                visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
+                gui_vis.update()
                 train_losses.append(train_loss)
                 train_loss_data.append(loss_data)
                 learned_summaries.append(learned_system.summary({}))
@@ -862,19 +848,8 @@ def main(
                     epochs = idx + 1
                     break
 
-            vis_system = None  # Invalidate
-
             print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
             obs_info_inv = None
-
-        elif command_char == "v":
-            print("Visualizing")
-            # TODO: HACK don't hardcode object name
-            object_name = "cube"
-            true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
-            if new_trajectory is not None and len(new_trajectory) >= 1:
-                true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
-            visualize_geometries(vis_meshcat, learned_system, true_geom, true_pose)
 
     # Quit
 

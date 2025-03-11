@@ -15,6 +15,7 @@ install_reqs = [
     "scipy",
     "typing_extensions",
     "matplotlib",
+    "lcm",
     "threadpoolctl",
     "click",
     "pywavefront",
