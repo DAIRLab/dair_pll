@@ -72,6 +72,7 @@ from dair_pll.geometry import (
     Polygon,
     Box,
     Plane,
+    GeometryRepresentation,
     _NOMINAL_HALF_LENGTH,
 )
 from dair_pll.inertia import InertialParameterConverter
@@ -90,12 +91,13 @@ DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 @dataclass
 class LearnableBodySettings:
     """Class to specify which body parameters to learn"""
-
     inertia_mass: bool = False
     inertia_com: bool = False
     inertia_moments_products: bool = False
     geometry: bool = False
     friction: bool = False
+    representation: GeometryRepresentation = GeometryRepresentation.PRIMITIVE
+
 
 
 # noinspection PyUnresolvedReferences
@@ -360,7 +362,6 @@ class ContactTerms(Module):
     def __init__(
         self,
         plant_diagram: MultibodyPlantDiagram,
-        represent_geometry_as: str = "box",
         learnable_body_dict: Dict[str, LearnableBodySettings] = {},
     ) -> None:
         """Inits :py:class:`ContactTerms` with prescribed kinematics and
@@ -371,9 +372,7 @@ class ContactTerms(Module):
 
         Args:
             plant_diagram: Drake MultibodyPlant diagram to extract terms from.
-            represent_geometry_as: How to represent the geometry of any
-              learnable bodies (box/mesh/polygon).  By default, any ``Plane``
-              objects are not considered learnable -- only boxes or meshes.
+            learnable_body_dict: Settings for each body by body name
         """
         # pylint: disable=too-many-locals
         super().__init__()
@@ -391,7 +390,6 @@ class ContactTerms(Module):
                 inspector,
                 geometry_ids,
                 context,
-                represent_geometry_as,
                 learnable_body_dict=learnable_body_dict,
             )
         )
@@ -469,7 +467,6 @@ class ContactTerms(Module):
         inspector: SceneGraphInspector,
         geometry_ids: List[GeometryId],
         context: Context,
-        represent_geometry_as: str,
         learnable_body_dict: Dict[str, LearnableBodySettings] = {},
     ) -> Tuple[
         List[CollisionGeometry], List[np.ndarray], List[np.ndarray], List[np.ndarray]
@@ -481,7 +478,7 @@ class ContactTerms(Module):
             inspector: Scene graph inspector associated with plant.
             geometry_ids: List of geometries to model.
             context: Plant's context with symbolic state.
-            represent_geometry_as: How to represent learnable geometries.
+            learnable_body_dict: Learnable settings for each body
 
         Returns:
             List of :py:class:`CollisionGeometry` models with one-to-one
@@ -508,6 +505,8 @@ class ContactTerms(Module):
                 and learnable_body_dict[body.name()].geometry
             )
 
+            representation = learnable_body_dict[body.name()].representation if (body.name() in learnable_body_dict) else GeometryRepresentation.NONE
+
             geometry_frame = body.body_frame()
 
             geometry_transform = geometry_frame.CalcPoseInWorld(context) @ geometry_pose
@@ -529,7 +528,7 @@ class ContactTerms(Module):
             geometries.append(
                 PydrakeToCollisionGeometryFactory.convert(
                     inspector.GetShape(geometry_id),
-                    represent_geometry_as,
+                    representation,
                     learnable,
                     body.name(),
                 )
@@ -849,7 +848,6 @@ class MultibodyTerms(Module):
         self,
         urdfs: Dict[str, str],
         learnable_body_dict: Dict[str, LearnableBodySettings] = {},
-        represent_geometry_as: str = "box",
         g_frac: float = 1.0,
     ) -> None:
         """Inits :py:class:`MultibodyTerms` for system described in URDFs
@@ -867,8 +865,6 @@ class MultibodyTerms(Module):
             urdfs: Dictionary of named URDF XML file names, containing
               description of multibody system.
             learnable_body_dict: specify which bodies and parameters to learn
-            represent_geometry_as: String box/mesh/polygon to determine how
-              the geometry should be represented.
         """
         super().__init__()
 
@@ -898,7 +894,7 @@ class MultibodyTerms(Module):
         # setup parameterization
         self.lagrangian_terms = LagrangianTerms(plant_diagram, learnable_body_dict)
         self.contact_terms = ContactTerms(
-            plant_diagram, represent_geometry_as, learnable_body_dict
+            plant_diagram, learnable_body_dict
         )
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram

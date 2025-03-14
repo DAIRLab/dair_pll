@@ -25,6 +25,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 # pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-lines
 # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-positional-arguments
 
+from dataclasses import dataclass
 from os import path
 import pdb
 from itertools import chain
@@ -59,18 +60,20 @@ from dair_pll.drake_utils import (
 from dair_pll.geometry import CollisionGeometry, PydrakeToCollisionGeometryFactory
 from pydrake.all import Shape
 
-# Scaling factors to equalize translation and rotation errors.
-# For rotation versus linear scaling:  penalize 0.1 meters same as 90 degrees.
-ROTATION_SCALING = 0.2 / torch.pi
-# For articulation versus linear/rotation scaling:  penalize the scenario where
-# one elbow link is in the right place and the other is 180 degrees flipped the
-# same, whether link 1 or link 2 are in the right place.
-ELBOW_COM_TO_AXIS_DISTANCE = 0.035
-JOINT_SCALING = 2 * ELBOW_COM_TO_AXIS_DISTANCE / torch.pi + ROTATION_SCALING
-
-# Dimension of Measured Force
-DIMENSION = 3
-
+@gin.configurable("LearnableHyperparameters")
+@dataclass
+class MultibodyLearnableSystemHyperparameters:
+    """Class to specify hyperparameters"""
+    w_pred: float = 1e0
+    w_q_pred: float = 1e0
+    w_comp: float = 1e0
+    w_fdiss: float = 1e0
+    w_ndiss: float = 1e0
+    w_pen: float = 1e0
+    w_dev: float = 1e0
+    w_norm: float = 1e0
+    w_reg_iner: float = 1e0
+    n_fisher_samples: int = 10
 
 @gin.configurable
 class MultibodyLearnableSystem(DrakeSystem):
@@ -80,26 +83,18 @@ class MultibodyLearnableSystem(DrakeSystem):
     multibody_terms: MultibodyTerms
     init_urdfs: Dict[str, str]
     output_urdfs_dir: Optional[str] = None
-    visualization_system: Optional[DrakeSystem]
-    solver: DynamicCvxpyLCQPLayer
-    dt: float
+    _solver: DynamicCvxpyLCQPLayer
+    _hyperparameters: MultibodyLearnableSystemHyperparameters
+    _default_dt: float
     loss_cache: Dict[str, Any]
 
     def __init__(
         self,
         init_urdfs: Dict[str, str],
-        dt: float,
-        w_pred: float,
-        w_q_pred: float,
-        w_comp: float,
-        w_diss: float,
-        w_pen: float,
-        w_dev: float,
-        w_reg_iner: float,
+        hyperparameters: MultibodyLearnableSystemHyperparameters = MultibodyLearnableSystemHyperparameters(),
         learnable_body_dict: Optional[Dict[str, LearnableBodySettings]] = None,
+        default_dt: float = 0.0333,
         output_urdfs_dir: Optional[str] = None,
-        represent_geometry_as: str = "box",
-        randomize_initialization: bool = False,
     ) -> None:
         """Inits :py:class:`MultibodyLearnableSystem` with provided model URDFs.
 
@@ -116,8 +111,6 @@ class MultibodyLearnableSystem(DrakeSystem):
               be learned
             output_urdfs_dir: Optionally, a directory that learned URDFs can be
               written to.
-            randomize_initialization: Whether to randomize and export the
-              initialization or not.
         """
         if learnable_body_dict is None:
             learnable_body_dict = {}
@@ -125,41 +118,33 @@ class MultibodyLearnableSystem(DrakeSystem):
         multibody_terms = MultibodyTerms(
             init_urdfs,
             learnable_body_dict,
-            represent_geometry_as,
         )
 
+        # Init Parent System
         space = multibody_terms.plant_diagram.space
-        integrator = VelocityIntegrator(space, self.sim_step, dt)
+        integrator = VelocityIntegrator(space, self.sim_step, default_dt)
         super(DrakeSystem, self).__init__(space, integrator)
 
         self.output_urdfs_dir = output_urdfs_dir
         self.multibody_terms = multibody_terms
         self.init_urdfs = init_urdfs
+        self.urdfs = init_urdfs
 
-        if randomize_initialization:
-            # Add noise and export.
-            raise NotImplementedError("Random Initialization Not Implemented")
+        # TODO: HACK re-add random initialization
 
-        self.visualization_system = None
         # Pylint doesn't know about gin
         # pylint: disable=no-value-for-parameter
-        self.solver = DynamicCvxpyLCQPLayer()
-        self.dt = dt
+        self._solver = DynamicCvxpyLCQPLayer()
+        self._default_dt = default_dt
         self.set_carry_sampler(lambda: torch.tensor([False]))
         self.max_batch_dim = 1
-        self.w_pred = w_pred
-        self.w_q_pred = w_q_pred
-        self.w_comp = w_comp
-        self.w_diss = w_diss
-        self.w_dev = w_dev
-        self.w_pen = w_pen
-        self.w_reg_iner = w_reg_iner
+        self._hyperparameters = hyperparameters
 
         # Match DrakeSystem Attributes
-        self.urdfs = self.init_urdfs
         self.plant_diagram = multibody_terms.plant_diagram
 
         self.loss_cache = {}
+        self.debug = False
 
     def generate_updated_urdfs(self, suffix: str = None) -> Dict[str, str]:
         """Exports current parameterization as a :py:class:`DrakeSystem`.
@@ -217,7 +202,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         Returns:
             (\*,) loss batch.
         """
-        loss_pred, loss_q_pred, loss_comp, loss_pen, loss_diss, loss_dev = (
+        loss_pred, loss_q_pred, loss_comp, loss_pen, loss_fdiss, loss_ndiss, loss_dev, loss_norm = (
             self.calculate_contactnets_loss_terms(
                 x, u, x_plus, contact_forces, contact_normals, impulses
             )
@@ -230,14 +215,16 @@ class MultibodyLearnableSystem(DrakeSystem):
         # reg_inertia_cond = regularizers[0]
 
         loss = (
-            (self.w_pred * loss_pred)
-            + (self.w_q_pred * loss_q_pred)
-            + (self.w_comp * loss_comp)
-            + (self.w_pen * loss_pen)
-            + (self.w_diss * loss_diss)
-            + (self.w_dev * loss_dev)
+            (self._hyperparameters.w_pred * loss_pred)
+            + (self._hyperparameters.w_q_pred * loss_q_pred)
+            + (self._hyperparameters.w_comp * loss_comp)
+            + (self._hyperparameters.w_pen * loss_pen)
+            + (self._hyperparameters.w_fdiss * loss_fdiss)
+            + (self._hyperparameters.w_ndiss * loss_ndiss)
+            + (self._hyperparameters.w_dev * loss_dev)
+            + (self._hyperparameters.w_norm * loss_norm)
             # TODO: HACK re-add later
-            #            + (self.w_reg_iner * reg_inertia_cond)
+            #            + (self._hyperparameters.w_reg_iner * reg_inertia_cond)
         )
 
         # Cache Losses
@@ -245,8 +232,10 @@ class MultibodyLearnableSystem(DrakeSystem):
         self.loss_cache["loss_q_pred"] = loss_q_pred.clone().detach()
         self.loss_cache["loss_comp"] = loss_comp.clone().detach()
         self.loss_cache["loss_pen"] = loss_pen.clone().detach()
-        self.loss_cache["loss_diss"] = loss_diss.clone().detach()
+        self.loss_cache["loss_fdiss"] = loss_fdiss.clone().detach()
+        self.loss_cache["loss_ndiss"] = loss_ndiss.clone().detach()
         self.loss_cache["loss_dev"] = loss_dev.clone().detach()
+        self.loss_cache["loss_norm"] = loss_norm.clone().detach()
 
         return loss
 
@@ -305,7 +294,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         assert x.size() == x_plus.size()
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
-        dt = self.dt
+        dt = self._default_dt
         eps = 1e-8  # TODO: HACK, make a hyperparameter
         
         # Begin loss calculation.
@@ -371,31 +360,6 @@ class MultibodyLearnableSystem(DrakeSystem):
         constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
 
-        ### Calculate Normal Alignment Term
-        """
-        constant_normal = torch.zeros_like(constant_pen)
-        for key in contact_normals.keys():
-            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
-            if len(indices) == 0:
-                continue
-            for idx in indices:
-                R_FW = R_FW_list[idx]
-                normals_guess_W = R_FW[..., 2]
-                assert normals_guess_W.size() == batch_dims + (3,)
-                assert contact_normals[key].size() == batch_dims + (3,)
-                # if contact_normals is 0, then cost = 0 i.e. align with guess
-                normals_measured_W = torch.nn.functional.normalize(contact_normals[key] + eps * normals_guess_W, dim=-1)
-                assert normals_measured_W.size() == batch_dims + (3,)
-                # Batch dot product
-                cost_normal = 1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1)
-                assert cost_normal.size() + (1, 1) == constant_normal.size()
-                cost_normal = cost_normal.unsqueeze(-1).unsqueeze(-1)
-                assert cost_normal.size() == constant_normal.size()
-                constant_normal += cost_normal
-        ## TODO: HACK add as cost weight
-        constant_normal *= 0.
-        """
-
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J_small, dv_small.transpose(-1, -2))
@@ -413,6 +377,28 @@ class MultibodyLearnableSystem(DrakeSystem):
         q_dev = torch.zeros_like(q_pred)
         Q_dev = torch.zeros_like(Q_delassus)
         constant_dev = torch.zeros_like(constant_pred)
+
+        # Penalize Normal Deviation
+        # This is unitless. TODO: figure out energy conversion.
+        q_norm = torch.zeros_like(q_pred)
+        for key in contact_normals.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            for idx in indices:
+                R_FW = R_FW_list[idx]
+                normals_guess_W = R_FW.transpose(-1, -2)[..., 2]
+                assert normals_guess_W.size() == batch_dims + (3,)
+                assert contact_normals[key].size() == batch_dims + (3,)
+                nonzero_norm = torch.nonzero(torch.linalg.vector_norm(contact_normals[key], dim=-1))
+                # if contact_normals is 0, then cost = 0 i.e. align with guess
+                normals_measured_W = normals_guess_W.clone().detach()
+                normals_measured_W[nonzero_norm, :] = torch.nn.functional.normalize(contact_normals[key][nonzero_norm, :], dim=-1)
+                assert normals_measured_W.size() == batch_dims + (3,)
+                # Batch dot product (max 0 for numerical stability)
+                cost_normal = torch.maximum(1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1), torch.zeros(batch_dims))
+                assert cost_normal.size() == batch_dims
+                q_norm[..., idx, 0] = cost_normal
 
         for key in contact_forces.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
@@ -465,14 +451,15 @@ class MultibodyLearnableSystem(DrakeSystem):
                 impulse_measured_W, impulse_measured_W.transpose(-1, -2)
             )
 
-        Q_final = Q_delassus + (self.w_dev / self.w_pred) * Q_dev
+        Q_final = Q_delassus + (self._hyperparameters.w_dev / self._hyperparameters.w_pred) * Q_dev
 
         q_final = (
             q_pred
-            + (self.w_comp / self.w_pred) * q_comp
-            + (self.w_diss / self.w_pred) * q_diss
-            + (self.w_diss / self.w_pred) * q_n_diss
-            + (self.w_dev / self.w_pred) * q_dev
+            + (self._hyperparameters.w_comp / self._hyperparameters.w_pred) * q_comp
+            + (self._hyperparameters.w_norm / self._hyperparameters.w_pred) * q_norm
+            + (self._hyperparameters.w_fdiss / self._hyperparameters.w_pred) * q_diss
+            + (self._hyperparameters.w_ndiss / self._hyperparameters.w_pred) * q_n_diss
+            + (self._hyperparameters.w_dev / self._hyperparameters.w_pred) * q_dev
         )
 
         # Envelope theorem guarantees that gradient of loss w.r.t. parameters
@@ -483,7 +470,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             with torch.no_grad():
                 impulses = pbmm(
                     reorder_mat,
-                    self.solver(
+                    self._solver(
                         pbmm(
                             reorder_mat.transpose(-1, -2), pbmm(Q_final, reorder_mat)
                         ),  # Quadratic Term
@@ -504,6 +491,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         constant_pred[invalid] *= 0.0
         constant_dev[invalid] *= 0.0
         impulses[invalid.expand(impulses.shape)] = 0.0
+        # Zero out negative normals (possible within solver tolerance)
+        impulses[..., :n_contacts, 0] = torch.maximum(impulses[..., :n_contacts, 0], torch.zeros_like(impulses[..., :n_contacts, 0]))
 
         if ret_impulse_only:
             return impulses.squeeze(-1)
@@ -520,7 +509,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         loss_q_pred = pbmm(vel_err.transpose(-1, -2), pbmm(M, vel_err))
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
-        loss_diss = pbmm(impulses.transpose(-1, -2), q_diss) + pbmm(
+        loss_fdiss = pbmm(impulses.transpose(-1, -2), q_diss)
+        loss_ndiss = pbmm(
             impulses.transpose(-1, -2), q_n_diss
         )
         loss_dev = (
@@ -528,34 +518,42 @@ class MultibodyLearnableSystem(DrakeSystem):
             + pbmm(impulses.transpose(-1, -2), q_dev)
             + constant_dev
         )
+        loss_norm = pbmm(impulses.transpose(-1, -2), q_norm)
 
         # Interpretable Loss Terms
         self.loss_cache["mean_dev_N"] = (
-            torch.sqrt(loss_dev.clone().detach().mean()) / self.dt
+            torch.sqrt(loss_dev.clone().detach().mean()) / dt
         )
-        self.loss_cache["mean_diss_Jps"] = loss_diss.clone().detach().mean() / self.dt
+        self.loss_cache["mean_diss_Jps"] = loss_fdiss.clone().detach().mean() / dt
         self.loss_cache["mean_comp_Nm"] = loss_comp.clone().detach().mean()
         self.loss_cache["mean_pen_m"] = torch.sqrt(loss_pen.clone().detach().mean())
         self.loss_cache["mean_q_pred_mps"] = torch.sqrt(
             pbmm(vel_err.transpose(-1, -2), vel_err).clone().detach().mean()
         )
         self.loss_cache["mean_pred_Nm"] = loss_pred.clone().detach().mean()
+        self.loss_cache["mean_norm_cosine"] = q_norm.clone().detach().mean()
 
         # Check for positive definite loss
         try:
             assert np.all(loss_dev.detach().cpu().numpy() >= 0.0), "Deviation Loss Negative"
             assert np.all(loss_pred.detach().cpu().numpy() >= 0.0), "Prediction Loss Negative"
+            assert np.all(loss_norm.detach().cpu().numpy() >= 0.0), "Normal Alignment Loss Negative"
         except AssertionError:
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
+
+        if self.debug:
+            breakpoint()
 
         return (
             loss_pred.reshape(batch_dims),
             loss_q_pred.reshape(batch_dims),
             loss_comp.reshape(batch_dims),
             loss_pen.reshape(batch_dims),
-            loss_diss.reshape(batch_dims),
+            loss_fdiss.reshape(batch_dims),
+            loss_ndiss.reshape(batch_dims),
             loss_dev.reshape(batch_dims),
+            loss_norm.reshape(batch_dims),
         )
 
     def get_multibody_terms(
@@ -658,7 +656,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             (\*, space.n_v) delta velocity batch.
         """
         # pylint: disable=too-many-locals
-        dt = self.dt if dts is None else dts
+        dt = self._default_dt if dts is None else dts
         phi_eps = 1e6
         eps = 1e-8  # TODO: HACK make this a hyperparameter
         delassus, M, J, phi, non_contact_acceleration, _, _, _ = (
@@ -684,7 +682,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         with torch.no_grad():
             impulse_full = pbmm(
                 reorder_mat,
-                self.solver(
+                self._solver(
                     pbmm(
                         reorder_mat.transpose(-1, -2), pbmm(Q_delassus, reorder_mat)
                     ),  # Quadratic Term
@@ -755,10 +753,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self,
         trajectory_model_names: Union[List[str], str],
         init_traj_state: Optional[Union[List[float], Tensor]] = None,
-        n_fisher_samples: int = 10,
         **kwargs,
     ) -> None:
-        self.n_fisher_samples = n_fisher_samples
         ## Construct Super System
         super().__init__(**kwargs)
         self._trajectory_model_names = (
@@ -1014,7 +1010,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Returns:
             Fisher Information Trace: Tensor (batch, n_params, n_params)
         """
-        n_samples = self.n_fisher_samples
+        n_samples = self._hyperparameters.n_fisher_samples
         # Input Validation
         assert len(robot_trajectories.size()) >= 3
         batch_dims = robot_trajectories.size()[:-2]

@@ -65,11 +65,11 @@ LearnableSystem.init_urdfs = {
 	%object_model_name: @object_init/get_urdf_asset_contents(), 
 	%robot_model_name: @robot/get_urdf_asset_contents()
 }
-LearnableSystem.dt = %delta_t # seconds
+LearnableSystem.hyperparameters = @LearnableHyperparameters()
+LearnableSystem.default_dt = %delta_t # seconds
 LearnableSystem.learnable_body_dict = { 
 	%object_body_name: @object_init/LearnableBodySettings()
 }
-LearnableSystem.represent_geometry_as = "box"
 
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
@@ -93,15 +93,18 @@ object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
 object_init/LearnableBodySettings.friction = True
+object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
 
-# Learning weights
-LearnableSystem.w_pred = 1e0
-LearnableSystem.w_q_pred = 1e0
-LearnableSystem.w_comp = 1e1
-LearnableSystem.w_diss = 1e0
-LearnableSystem.w_pen = 5e1
-LearnableSystem.w_dev = 1e5
-LearnableSystem.w_reg_iner = 1e-5
+# Learning hyperparams
+LearnableHyperparameters.w_pred = 1e0
+LearnableHyperparameters.w_q_pred = 1e0
+LearnableHyperparameters.w_comp = 1e1
+LearnableHyperparameters.w_fdiss = 1e0
+LearnableHyperparameters.w_ndiss = 1e0
+LearnableHyperparameters.w_pen = 5e1
+LearnableHyperparameters.w_dev = 1e5
+LearnableHyperparameters.w_norm = 1e1
+LearnableHyperparameters.w_reg_iner = 1e-5
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
@@ -126,7 +129,7 @@ TrajectorySliceConfig.pred_state_keys = [
 ## Exploration Params
 # Note: 30 / 10 uses 10GB VRAM if done in parallel
 main.n_actions_optimized=60
-LearnableSystem.n_fisher_samples=10
+LearnableHyperparameters.n_fisher_samples=10
 
 ## True System (for Metrics)
 DrakeSystem.dt = %delta_t # seconds, unnecessary

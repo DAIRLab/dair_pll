@@ -837,6 +837,7 @@ def main(
                     f"Pen (m): {loss_data['mean_pen_m']:.3e};", 
                     f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
+                    f"Norm (cosine): {loss_data['mean_norm_cosine']:.3e};",
                 )
                 gui_vis.update()
                 train_losses.append(train_loss)

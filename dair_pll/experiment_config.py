@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Type, Optional, Dict, Any
 
+import gin
 import torch
 from torch.optim import Optimizer
 
@@ -16,7 +17,7 @@ class SystemConfig:
     learning dynamics; all inheriting classes are expected to contain all
     necessary configuration attributes."""
 
-
+@gin.configurable
 @dataclass
 class OptimizerConfig:
     """:func:`~dataclasses.dataclass` defining setup and usage opf a Pytorch

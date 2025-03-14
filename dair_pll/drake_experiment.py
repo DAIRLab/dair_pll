@@ -8,6 +8,7 @@ from typing import Any, List, Optional, cast, Dict, Callable, Tuple, Union
 import pdb
 import numpy as np
 
+import gin
 import torch
 from torch import Tensor
 from tensordict.tensordict import TensorDict, TensorDictBase
@@ -31,10 +32,11 @@ from dair_pll.experiment import (
     AVERAGE_TAG,
 )
 from dair_pll.experiment_config import SystemConfig, SupervisedLearningExperimentConfig
-from dair_pll.hyperparameter import Float
+from dair_pll.hyperparameter import Float, Int
 from dair_pll.multibody_terms import LearnableBodySettings
 from dair_pll.multibody_learnable_system import (
     MultibodyLearnableSystem,
+    MultibodyLearnableSystemHyperparameters,
     MultibodyLearnableSystemWithTrajectory,
 )
 from dair_pll.system import System, SystemSummary
@@ -71,30 +73,69 @@ class DrakeMultibodyLearnableTactileExperimentConfig(
     """Whether to use learned geometry in trajectory overlay visualization."""
 
 
+@gin.register
 @dataclass
-class MultibodyLearnableSystemConfig(DrakeSystemConfig):
-    loss: MultibodyLosses = MultibodyLosses.PREDICTION_LOSS
-    """Whether to use ContactNets or prediction loss."""
-    learnable_body_dict: Dict[str, LearnableBodySettings] = field(default_factory={})
+class MultibodyLearnableSystemConfig:
+    init_urdfs: Dict[str, str] = field(default_factory=dict)
+    """Defines environment and model names, plus any initial parameter guesses."""
+    default_dt: Float = Float(0.0333, log=True)
+    """Default dt when none is provided by data"""
+    learnable_body_dict: Dict[str, LearnableBodySettings] = field(default_factory=dict)
     """What body parameters to learn.  Any body not in this dictionary will be considered unlearnable."""
-    w_pred: float = 1.0
-    """Weight of prediction term in ContactNets loss (suggested keep at 1.0)."""
+    w_pred: Float = Float(1e0, log=True)
+    """Weight of velocity prediction term in ContactNets loss."""
     w_q_pred: Float = Float(1e0, log=True)
-    """Weight of q prediction term in ContactNets loss."""
+    """Weight of pose prediction term in ContactNets loss."""
     w_comp: Float = Float(1e0, log=True)  # 1e-1
     """Weight of complementarity term in ContactNets loss."""
-    w_diss: Float = Float(1e0, log=True)
-    """Weight of dissipation term in ContactNets loss."""
+    w_norm: Float = Float(1e0, log=True)  # 1e-1
+    """Weight of normal alignment term in ContactNets loss."""
+    w_fdiss: Float = Float(1e0, log=True)
+    """Weight of friction power dissipation term in ContactNets loss."""
+    w_ndiss: Float = Float(1e0, log=True)
+    """Weight of normal power dissipation term in ContactNets loss."""
     w_pen: Float = Float(1e0, log=True)  # 1e1
     """Weight of penetration term in ContactNets loss."""
     w_dev: Float = Float(1e0, log=True)
-    """Weight of deviation from measured contact forces."""
-    represent_geometry_as: str = "box"
-    """How to represent geometry (box, mesh, or polygon)."""
-    randomize_initialization: bool = True
-    """Whether to randomize initialization."""
-    g_frac: float = 1.0
-    """What fraction of the true gravitational constant to use."""
+    """Weight of measured contact force deviation term in ContactNets loss."""
+
+    w_reg_iner: Float = Float(1e0, log=True)
+    """Weight of inertia regularizer."""
+
+    n_fisher_samples: Int = Int(10, log=True)
+    """Number of samples for Fisher Info calculation."""
+    trajectory_model_name: str = ""
+    """Which model to learn the trajectory of."""
+    init_traj_state: List[float] = field(default_factory=list)
+    """Initial guess as model state."""
+
+    def generate_mls_hyperparameters(self) -> MultibodyLearnableSystemHyperparameters:
+        return MultibodyLearnableSystemHyperparameters(
+            w_pred = float(self.w_pred),
+            w_q_pred =  float(self.w_q_pred),
+            w_comp = float(self.w_comp),
+            w_fdiss = float(self.w_fdiss),
+            w_ndiss = float(self.w_ndiss),
+            w_pen = float(self.w_pen),
+            w_dev = float(self.w_dev),
+            w_reg_iner = float(self.w_reg_iner),
+            n_fisher_samples = int(self.n_fisher_samples),
+        )
+
+    @gin.register
+    def generate_mls_system(self, with_trajectory = True) -> MultibodyLearnableSystemWithTrajectory:
+        ret_cls = MultibodyLearnableSystemWithTrajectory if with_trajectory else MultibodyLearnableSystem
+        kwargs = {
+            "init_urdfs": self.init_urdfs,
+            "default_dt": self.default_dt,
+            "hyperparameters": self.generate_mls_hyperparameters(),
+            "learnable_body_dict": self.learnable_body_dict,
+        }
+        if with_trajectory:
+            kwargs["trajectory_model_names"] = str(self.trajectory_model_name)
+            kwargs["init_traj_state"] = self.init_traj_state
+        
+        return ret_cls(**kwargs)
 
 
 from functools import partial
