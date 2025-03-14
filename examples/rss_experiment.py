@@ -242,6 +242,11 @@ class TrifingerLCMService:
         command.targetPos[:] = target_state[: len(command.targetPos)]
         command.targetVel[:] = target_state[len(command.targetPos) :]
 
+        # Start with clear data
+        self._force_raw_data.clear()
+        self._fingertip_pose_raw_data.clear()
+        self._object_raw_data.clear()
+
         print(f"Sending Command at: {time.time()}")
         self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
         end_time = time.time() + self._traj_time_len
@@ -256,9 +261,6 @@ class TrifingerLCMService:
         # Return empty if not any force data
         ret = TensorDict({}, batch_size=len(self._force_raw_data))
         if no_data or len(self._force_raw_data) < 1:
-            self._force_raw_data.clear()
-            self._fingertip_pose_raw_data.clear()
-            self._object_raw_data.clear()
             return ret
 
         assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
@@ -328,7 +330,7 @@ class TrifingerLCMService:
             # Quat Interpolation
             body_quat = np.array(
                 [
-                    measurement.curQuat[3 * body_idx : 3 * body_idx + 4]
+                    measurement.curQuat[4 * body_idx : 4 * body_idx + 4]
                     for measurement in self._fingertip_pose_raw_data
                 ]
             )
@@ -429,10 +431,7 @@ class TrifingerLCMService:
                 object_vel_interp
             ).clone()
 
-        # Clear data and return
-        self._force_raw_data.clear()
-        self._fingertip_pose_raw_data.clear()
-        self._object_raw_data.clear()
+        # Return
         return ret
 
 

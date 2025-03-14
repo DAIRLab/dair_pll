@@ -324,6 +324,8 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         if contact_forces is None:
             contact_forces = {}
+        if contact_normals is None:
+            contact_normals = {}
 
         # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
         n_contacts = phi.shape[-1]
@@ -978,19 +980,21 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             x_past: Tensor = xy_i[0]
             x_plus: Tensor = xy_i[1]
 
-            loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self)).mean()
-            losses.append(loss.clone())
+            loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self))
+            losses.append(loss)
 
         # Compute Epoch Average
-        avg_loss = cast(Tensor, sum(losses) / len(losses))
+        all_losses = torch.cat(losses)
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
-        grads = torch.autograd.grad(avg_loss, param_list, retain_graph=True, create_graph=True)
-        flattened_list = [grad.flatten() for grad in grads]
-        flattened_grads = torch.cat(flattened_list)
-        assert len(flattened_grads) == n_params
-        hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
-        ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        grads = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+        grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
+        assert grads_tensor.size() == (all_losses.numel(), n_params)
+        # Compute Fisher Infos as outer product
+        per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
+        summed_fishers = per_timestep_fishers.sum(dim=0)
+        assert summed_fishers.size() == ret.size()
+        ret += summed_fishers
         try:
             assert not torch.any(torch.isnan(ret))
         except AssertionError:
