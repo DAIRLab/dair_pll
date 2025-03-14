@@ -971,7 +971,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Use: https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
-        ret = torch.eye(n_params)
+        # TODO: Make this a hyperparam
+        ret = 1e-2 * torch.eye(n_params)
         if data is None:
             return ret
 
