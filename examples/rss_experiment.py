@@ -443,6 +443,7 @@ def sample_action(
     workspace_radius: float,
     sphere_radius: float,
     fixed_240_W: List[float],
+    fixed_pinch: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Sample a straight line action
@@ -461,7 +462,7 @@ def sample_action(
     rng = np.random.default_rng()
 
     # Start in workspace frame
-    def sample_finger(flip_x: bool = False, fixed_pinch = False):
+    def sample_finger(flip_x: bool = False, fixed_pinch = fixed_pinch):
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0.0, np.pi / 2.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
@@ -660,7 +661,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    selected_action = sample_action()
+    selected_action = sample_action(fixed_pinch=True)
     new_trajectory = None
 
     # Initialize Optimizer and Data config

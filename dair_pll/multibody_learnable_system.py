@@ -25,6 +25,7 @@ Robotic Learning, 2020, https://proceedings.mlr.press/v155/pfrommer21a.html
 # pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-lines
 # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-positional-arguments
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 from os import path
 import pdb
@@ -180,6 +181,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         contact_forces: Optional[Dict[Tuple[str, str], Tensor]] = None,
         contact_normals: Optional[Dict[Tuple[str, str], Tensor]] = None,
         impulses: Optional[Tensor] = None,
+        use_envelope: bool = True,
     ) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
@@ -204,7 +206,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         """
         loss_pred, loss_q_pred, loss_comp, loss_pen, loss_fdiss, loss_ndiss, loss_dev, loss_norm = (
             self.calculate_contactnets_loss_terms(
-                x, u, x_plus, contact_forces, contact_normals, impulses
+                x, u, x_plus, contact_forces, contact_normals, impulses, use_envelope=use_envelope
             )
         )
 
@@ -267,6 +269,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         contact_normals: Optional[Dict[Tuple[str, str], Tensor]] = None,
         impulses: Optional[Tensor] = None,
         ret_impulse_only: bool = False,
+        use_envelope: bool = True,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
         :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
@@ -467,7 +470,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Therefore, we can detach ``impulses`` from pytorch's computation graph
         # without causing error in the overall loss gradient.
         if impulses is None:
-            with torch.no_grad():
+            with torch.no_grad() if use_envelope else nullcontext():
                 impulses = pbmm(
                     reorder_mat,
                     self._solver(
@@ -492,7 +495,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         constant_dev[invalid] *= 0.0
         impulses[invalid.expand(impulses.shape)] = 0.0
         # Zero out negative normals (possible within solver tolerance)
-        impulses[..., :n_contacts, 0] = torch.maximum(impulses[..., :n_contacts, 0], torch.zeros_like(impulses[..., :n_contacts, 0]))
+        impulses[..., :n_contacts, 0] = torch.maximum(impulses[..., :n_contacts, 0].clone(), torch.zeros_like(impulses[..., :n_contacts, 0].detach())).clone()
 
         if ret_impulse_only:
             return impulses.squeeze(-1)
