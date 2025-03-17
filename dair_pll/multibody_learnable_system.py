@@ -960,7 +960,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
     def observed_info(
         self,
         data: Optional[DataLoader],
-        get_loss_args: Callable[[Tensor, Tensor, MultibodyLearnableSystem], Tensor]
+        get_loss_args: Callable[[Tensor, Tensor, MultibodyLearnableSystem], Tensor],
+        use_hessian: bool = False
     ) -> Tensor:
         """
         Calculate the Observed Information in previously taken actions
@@ -988,14 +989,22 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         all_losses = torch.cat(losses)
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
-        grads = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
-        grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
-        assert grads_tensor.size() == (all_losses.numel(), n_params)
-        # Compute Fisher Infos as outer product
-        per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
-        summed_fishers = per_timestep_fishers.sum(dim=0)
-        assert summed_fishers.size() == ret.size()
-        ret += summed_fishers
+        if use_hessian:
+            grads = torch.autograd.grad(all_losses.mean(), param_list, retain_graph=True, create_graph=True)
+            flattened_list = [grad.flatten() for grad in grads]
+            flattened_grads = torch.cat(flattened_list)
+            assert len(flattened_grads) == n_params
+            hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
+            ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        else:
+            grads = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+            grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
+            assert grads_tensor.size() == (all_losses.numel(), n_params)
+            # Compute Fisher Infos as outer product
+            per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
+            summed_fishers = per_timestep_fishers.sum(dim=0)
+            assert summed_fishers.size() == ret.size()
+            ret += summed_fishers
         try:
             assert not torch.any(torch.isnan(ret))
         except AssertionError:

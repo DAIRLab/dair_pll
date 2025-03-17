@@ -12,6 +12,7 @@ from pydrake.geometry import StartMeshcat, Meshcat, Shape, Rgba
 from scipy.spatial.transform import Rotation as R
 from tkinter import Tk, Scale, DoubleVar
 import torch
+import time
 
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
 from dair_pll.dataset_management import TrajectorySet
@@ -101,3 +102,14 @@ class PLLMeshcatVisualizer:
       self._meshcat.SetTransform("/robot/0", transform_from_state_q(robot_0_traj[timestep, :]))
       self._meshcat.SetTransform("/robot/1", transform_from_state_q(robot_1_traj[timestep, :]))
       
+  def sweep(self, dt=0.033) -> None:
+    """
+    Sweep through the entire trajectory
+    """
+    end = int(self._scale.config()['to'][-1])
+
+    for timestep in range(end):
+      self._timestep.set(timestep)
+      self.update()
+      time.sleep(dt)
+

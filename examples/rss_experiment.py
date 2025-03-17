@@ -806,6 +806,11 @@ def main(
 
             obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
 
+        elif command_char == "v":
+            print("Visualizing entire trajectory.")
+            gui_vis.sweep()
+            print("Done!")
+
         elif command_char == "t":
             if traj_dataloader is None or len(traj_dataloader) == 0:
                 print("Cannot train without data.\n")
