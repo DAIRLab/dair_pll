@@ -257,9 +257,6 @@ def add_plant_from_urdfs(
     # Build [model instance index] list, starting with world model, which is
     # always added by default.
 
-    print(urdfs)
-    print(package_map.GetPath("dair_pll"))
-
     model_ids = [world_model_instance()]
     for name, urdf in urdfs.items():
         #print(urdf)

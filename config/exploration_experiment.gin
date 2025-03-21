@@ -95,9 +95,9 @@ LearnableSystem.represent_geometry_as = "box"
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
-SGD.lr=8e-4
+SGD.lr=8e-2
 SGD.momentum=2e-4
-Adam.lr=1e-3
+Adam.lr=1e-1
 Adam.amsgrad=True
 Adam.fused=True
 

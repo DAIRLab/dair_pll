@@ -3,6 +3,20 @@ import numpy as np
 from scipy.optimize import minimize, NonlinearConstraint, LinearConstraint
 import time
 
+
+# class TrajFactory():
+#     @staticmethod
+#     def initial_uniform_traj():
+        
+#         """
+#         Generates a trajectory
+#         HACK: informed by ground truth
+#         standardize information gain by enforcing the same action in the initial trial
+
+#         """
+        
+
+
 def collision_free_traj(
     init_state: np.ndarray,
     target_state: np.ndarray,

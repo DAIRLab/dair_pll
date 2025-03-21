@@ -2,6 +2,10 @@ import torch
 from chamferdist import ChamferDistance
 import numpy as np
 
+from dair_pll import file_utils
+
+from typing import Optional
+
 from abc import ABC, abstractmethod
 from trimesh import Trimesh
 from trimesh.convex import convex_hull
@@ -16,8 +20,8 @@ from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from pydrake.geometry import Mesh as DrakeMesh  # type: ignore
 
 #from pydrake.geometry import GetConvexHull  # type: ignore
-
-from pydrake.all import Rgba, Shape
+ 
+from pydrake.all import Rgba, Shape, DrakeLcm, DrakeVisualizer, SceneGraph, DiagramBuilder, MultibodyPlant
 from dair_pll.drake_system import DrakeSystem
 from scipy.spatial.transform import Rotation as R
 
@@ -39,9 +43,12 @@ def visualize_geometries(meshcat,
                          true_pose):
     
     """ Visualize the learned and true geometries """
+    #import pdb; pdb.set_trace()
 
     learned_geom = system.get_learned_geometry()
     learned_pose = system.get_learned_pose().cpu().numpy()
+
+    true_geom = get_true_geometry()
 
     def display_geom(name: str, 
                      geom: Shape, 
@@ -57,19 +64,18 @@ def visualize_geometries(meshcat,
 
         meshcat.SetObject(name, geom, color)
         meshcat.SetTransform(name, transform)
-  
+        
         return transform
 
     blue = Rgba(0.1, 0.1, 0.9, 0.5)
     red = Rgba(0.9, 0.1, 0.1, 1.0)
 
     #testing only
-    learned_geom = DrakeBox(width = 0.00001, depth = 1, height = 1)
-    true_geom = DrakeBox(width = 0.00001, depth = 1, height = 1)
-    learned_pose = [1, 0, 0, 0, 0, 0, 0]
-    true_pose = [np.sqrt(2)/2, 0, 0, np.sqrt(2)/2, 0.5, 0, 0]
-    true_pose = [1, 0, 0, 0, 1, 0, 0]
-
+    # learned_geom = DrakeBox(width = 0.00001, depth = 1, height = 1)
+    # true_geom = DrakeBox(width = 0.00001, depth = 1, height = 1)
+    # learned_pose = [1, 0, 0, 0, 0, 0, 0]
+    # true_pose = [np.sqrt(2)/2, 0, 0, np.sqrt(2)/2, 0.5, 0, 0]
+    # true_pose = [1, 0, 0, 0, 1, 0, 0]
 
     learned_trans = display_geom("/learned", learned_geom, learned_pose, blue)
     true_trans = display_geom("/true", true_geom, true_pose, red)
@@ -92,7 +98,7 @@ def get_chamfer_distance(learned_geom, learned_trans,
     #learned_pose = object's pc in object frame
     #learned_pc_in_origin = object's pc in world frame = 
     #   object's pc in object frame * object's frame in world's frame
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
 
     learned_pc_in_origin = learned_pc @ learned_trans[:3, :3].T + learned_trans[:3, 3]
     true_pc_in_origin = true_pc @ true_trans[:3, :3].T + true_trans[:3, 3]
@@ -122,13 +128,32 @@ class DraketoTrimeshFactory:
         else:
             NotImplementedError(f"Can't convert {shape} to Trimesh") 
 
-def get_true_geometry() -> Shape:
+def get_true_geometry(path: str = "assets/contactnets_cube.urdf.xacro") -> Shape:
     """Get True Geometry from configured base system"""
-    system = DrakeSystem()
-    inspector = system.plant_diagram.scene_graph.model_inspector()
-    all_geom_ids = inspector.GetAllGeometryIds()
 
-    #import pdb; pdb.set_trace()
+    CUBE_DATA_ASSET = "contactnets_cube"
+    BOX_URDF_ASSET = "contactnets_cube.urdf"
+    CUBE_MODEL = "cube"
+
+    #urdfs = file_utils.get_urdf_asset_contents(BOX_URDF_ASSET, mappings={CUBE_MODEL: })
+    m = {
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
+	"mu": 0.1,
+	"planar_xz": "false",
+    }
+
+    urdf_contents = file_utils.get_urdf_asset_contents(
+    urdf_file_basename="contactnets_cube.urdf.xacro",
+    mappings=m,
+    )
+
+    urdfs = {CUBE_MODEL: urdf_contents}
+    base_config = DrakeSystem(urdfs=urdfs)
+
+    inspector = base_config.plant_diagram.scene_graph.model_inspector()
+    all_geom_ids = inspector.GetAllGeometryIds()
 
     for geom_id in all_geom_ids:
         true_geom = inspector.GetShape(geom_id)

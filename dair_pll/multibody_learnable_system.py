@@ -757,7 +757,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         init_traj_state: Optional[Union[List[float], Tensor]] = None,
         n_fisher_samples: int = 10,
         **kwargs,
-    ) -> None:
+        ) -> None:
+        
         self.n_fisher_samples = n_fisher_samples
         ## Construct Super System
         super().__init__(**kwargs)
@@ -965,6 +966,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self)).mean()
             losses.append(loss.clone())
 
+        import pdb; pdb.set_trace()
         # Compute Epoch Average
         avg_loss = cast(Tensor, sum(losses) / len(losses))
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]

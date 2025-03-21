@@ -40,9 +40,7 @@ import torch
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torch import Tensor
-from chamferdist import ChamferDistance
 
-from scipy.optimize import optimize, NonlinearConstraint
 from collision_free_planner import collision_free_traj
 from rss_visualization import visualize_geometries, get_true_geometry
 
@@ -327,7 +325,7 @@ class TrifingerLCMService:
         fingertip_vel_W = {}
         fingertip_force_C = {}
         fingertip_force_W = {}
-        fingertip_normal_W = {}
+        fingertip_norm_vec_W = {}
 
         # enumerate each fingertip ie 1,2,3 with its name
         for body_idx, body_name in enumerate(self._fingertip_body_names):
@@ -339,6 +337,7 @@ class TrifingerLCMService:
                 ]
             )
             assert body_pos.shape == (len(fingerpos_time_s), 3)
+
             body_pos_interp = np.vstack(
                 [
                     np.interp(densetact_time_s, fingerpos_time_s, body_pos[:, idx])
@@ -346,7 +345,7 @@ class TrifingerLCMService:
                 ]
             ).T
             assert body_pos_interp.shape == (len(densetact_time_s), 3)
-            fingertip_pos_W[body_name] = body_pos_interp
+
 
             # Velocity Interpolation
             body_vel = np.array(
@@ -355,6 +354,7 @@ class TrifingerLCMService:
                     for measurement in self._fingertip_pose_raw_data
                 ]
             )
+
             assert body_vel.shape == (len(fingerpos_time_s), 3)
             body_vel_interp = np.vstack(
                 [
@@ -380,8 +380,11 @@ class TrifingerLCMService:
                 ]
             ).T
             assert body_quat_interp.shape == (len(densetact_time_s), 4)
+
+            # rotation - DT frame in world frame
             body_R_BW = R.from_quat(body_quat_interp, scalar_first=True)
 
+            # rotation - contact frame in DT frame
             body_R_CB = R.from_matrix(
                 np.stack(
                     [
@@ -391,67 +394,87 @@ class TrifingerLCMService:
                 )
             )
 
-            # Record normal and force in world frame
-            contact_bool = (
-                np.array(
+            body_trans = np.stack(
                     [
-                        measurement.sensorData[body_idx].inContact
+                        np.array(measurement.sensorData[body_idx].contactPose)[:3, -1]
                         for measurement in self._force_raw_data
                     ]
                 )
-            )
-            normal_C = np.broadcast_to(
-                np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
-            )
+            
+            fingertip_pos_W[body_name] = body_pos_interp + body_trans
 
-            body_R_CW = body_R_BW.inv() * body_R_CB
-            fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
             # Zero out no contact normal
             finger_in_contact = np.array([
                 measurement.sensorData[body_idx].inContact
                         for measurement in self._force_raw_data
                 ])
-            fingertip_normal_W[body_name][~finger_in_contact] = 0.
+
+            normal_C = np.broadcast_to(
+                np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
+            )
+
+            # rotation - contact frame in world frame
+            #body_R_CW = body_R_BW  * body_R_CB
+            body_R_CW = body_R_BW.inv() * body_R_CB
+
+
+            fingertip_norm_vec_W[body_name] = body_trans/np.linalg.norm(body_trans)
+            fingertip_norm_vec_W[body_name][~finger_in_contact] = 0.0
+            
+
             force_C = np.array(
                 [
                     (
                         [measurement.sensorData[body_idx].scaledNormal] +
-                        list(measurement.sensorData[body_idx].scaledFriction)
-                        
+                        list(measurement.sensorData[body_idx].scaledFriction)   
                     )
                     for measurement in self._force_raw_data
                 ]
             )
+
+            force_C[np.isnan(force_C)] = 0.0
+            
             assert force_C.shape == (len(densetact_time_s), 3)
+            #pdb.set_trace()
             fingertip_force_W[body_name] = body_R_CW.apply(force_C)
             fingertip_force_C[body_name] = force_C
-            
-            # homogenous matrix representing the contract frame (C) in the world frame (W)
-            H_C_in_W = (
-                np.stack([np.array(measurement.sensorData[body_idx].contactPose) 
-                          for measurement in self._force_raw_data]))
 
-            R_C_in_W = R.from_matrix(H_C_in_W[:, :3, :3])
+            #pdb.set_trace()
+
+            fingertip_force_W[body_name][~finger_in_contact] = 0.0
+            fingertip_force_C[body_name][~finger_in_contact] = 0.0
+
             
-            # Checks to make sure the pose frames from lcm is correct
-            for i, H in enumerate(H_C_in_W):
-                if contact_bool[i]:
-                    assert np.isclose(np.sum(np.trace(H.T @ H)), 4, atol = 1e-3, rtol = 1e-4) 
-                    assert np.allclose(H[-1,:], np.array([0,0,0,1]), atol = 1e-3, rtol = 1e-4)
+            #pdb.set_trace()
+
+            #print(body_name,np.round(fingertip_force_W[body_name], 2))
+            
+            # # homogenous matrix representing the contract frame (C) in the world frame (W)
+            # H_C_in_W = (
+            #     np.stack([np.array(measurement.sensorData[body_idx].contactPose) 
+            #               for measurement in self._force_raw_data]))
+
+            # R_C_in_W = R.from_matrix(H_C_in_W[:, :3, :3])
+            
+            # # Checks to make sure the pose frames from lcm is correct
+            # for i, H in enumerate(H_C_in_W):
+            #     if contact_bool[i]:
+            #         assert np.isclose(np.sum(np.trace(H.T @ H)), 4, atol = 1e-3, rtol = 1e-4) 
+            #         assert np.allclose(H[-1,:], np.array([0,0,0,1]), atol = 1e-3, rtol = 1e-4)
 
             # get forces vectors in contact frame 
-            force_in_C = np.array([([measurement.sensorData[body_idx].scaledNormal] +
-                        list(measurement.sensorData[body_idx].scaledFriction))
-                    for measurement in self._force_raw_data])
+            # force_in_C = np.array([([measurement.sensorData[body_idx].scaledNormal] +
+            #             list(measurement.sensorData[body_idx].scaledFriction))
+            #         for measurement in self._force_raw_data])
 
 
-            fingertip_normal_W[body_name] = H_C_in_W[:, :3, 0]
+            # fingertip_normal_W[body_name] = H_C_in_W[:, :3, 0]
 
-            assert force_in_C.shape == (len(densetact_time_s), 3)
-            fingertip_force_C[body_name] = force_in_C
-            fingertip_force_W[body_name] = R_C_in_W.apply(force_in_C)
-
-
+            # assert force_in_C.shape == (len(densetact_time_s), 3)
+            # fingertip_force_C[body_name] = force_in_C
+            # fingertip_force_W[body_name] = R_C_in_W.apply(force_in_C)
+            # fingertip_force_W[body_name] = force_in_C
+        
 
         ret["time"] = torch.from_numpy(densetact_time_s)
         for body_name in self._fingertip_body_names:
@@ -467,9 +490,9 @@ class TrifingerLCMService:
             ret[body_name, "contact_force_W"] = torch.from_numpy(
                 fingertip_force_W[body_name]
             ).clone()
-            ret[body_name, "contact_normal_W"] = torch.from_numpy(
-                fingertip_normal_W[body_name]
-            ).clone()
+            # ret[body_name, "contact_normal_W"] = torch.from_numpy(
+            #     fingertip_norm_vec_W[body_name]
+            # ).clone()
 
         # Interp ground-truth object data
         if len(self._object_raw_data) > 0:
@@ -516,11 +539,6 @@ class TrifingerLCMService:
         self._fingertip_pose_raw_data.clear()
         self._object_raw_data.clear()
         return ret
-    
-    def update_cube_sim(self, 
-                drake_sim: DrakeSystem):
-        self.lcm_stall(self._object_raw_data)
-        drake_sim.write_state_to_sim(state = torch.tensor(self._object_raw_data[-1].position + self._object_raw_data[-1].velocity))
 
 
 @gin.configurable
@@ -670,9 +688,6 @@ def extract_robot_trajectory(
     return ret
 
 
-### Visualization
-
-
 
 
 
@@ -769,42 +784,9 @@ def main(
             pdb.Pdb(nosigint=True).set_trace()
 
         # base_system = DrakeSystem(
-        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf),
-        #                 urdfs = learned_system.generate_updated_urdfs("vis"),
-        #                 dt=0.0005,
-        #                 visualization_file=None)
-
-        # if command_char == "d":
-        #     base_system = DrakeSystem(
-        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf),
-        #                 urdfs = learned_system.generate_updated_urdfs("vis"),
-        #                 dt=0.0005,
-        #                 visualization_file=None)
-        
-        #trifinger_lcm.update_cube_sim(drake_sim = base_system)
-        #base_system.sim_step()
-
-
-
-        # if command_char == "d":
-        #     print(learned_system.generate_updated_urdfs("vis"))
-        #     base_system = DrakeSystem(
-        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf),
-        #                 urdfs = learned_system.generate_updated_urdfs("vis"),
-        #                 dt=None,
-        #                 visualization_file=None)
-            
-        #     vis_system = vis_utils.generate_visualization_system(
-        #             base_system=base_system,
-        #             learned_system=DrakeSystem(
-        #                 urdfs=learned_system.generate_updated_urdfs("vis"),
-        #                 dt=base_system.dt,
-        #                 visualization_file=None,
-        #             ),
-        #             visualization_file=(
-        #                 "meshcat"
-        #                 )
-        #             )
+        #                 #urdfs=file_utils.get_urdf_asset_contents(ground_truth_urdf)
+        # ,
+    
 
         elif command_char == "e":
             ## Execute selected action
@@ -813,6 +795,14 @@ def main(
 
             # Execute and collect data
             new_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
+            # force_test_pose = np.copy(selected_action[0])
+            # force_test_pose[:3] = np.array([0, 0, 0.1])
+            # new_trajectory = trifinger_lcm.execute_trajectory(force_test_pose)
+            # force_test_pose[:3] = np.array([0, 0, 0.04])
+            # new_trajectory = trifinger_lcm.execute_trajectory(force_test_pose)
+            # input()
+
+            cube_state = new_trajectory["cube"]["position"].detach().cpu().numpy()
 
             if len(new_trajectory) < 1:
                 print("WARNING: No data collected")
@@ -825,10 +815,12 @@ def main(
             safe_state[5] = safe_trifinger_height
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
+            #HACK: harcode name 
+            object_model_name = "cube"
+
             # Add data to dataset
             add_trajectory = TensorDict({}, batch_size = new_trajectory.batch_size)
             add_trajectory["robot_state"] = extract_robot_trajectory(learned_system, new_trajectory, robot_model_name)
-
             for finger_name in new_trajectory.keys():
                 try:
                     add_trajectory["contact_forces", finger_name] = new_trajectory[finger_name]["contact_force_W"]
@@ -836,7 +828,7 @@ def main(
                 except (IndexError, KeyError): # e.g. object, time
                     continue
             add_trajectory["time"] = new_trajectory["time"]
-
+            add_trajectory[object_model_name + "_groundtruth"] = new_trajectory[object_model_name]["position"]
             data_trajectories.add_trajectories(
                 [add_trajectory.clone().detach()],
                 torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
@@ -857,6 +849,7 @@ def main(
                 traj_data=[plant_states_dict.squeeze()["cube_state"]],
             )
             """
+
             learned_system.add_trajectories(
                 traj_lens=[len(add_trajectory["time"])],
             )
@@ -875,6 +868,10 @@ def main(
             )
             optimizer = optimizer_cls(learned_system.parameters())
             obs_info_inv = None
+
+            #test = add_trajectory.clone().detach()
+            #pdb.set_trace()
+
 
 
         elif command_char == "s":
@@ -928,11 +925,13 @@ def main(
             # TODO: HACK don't hardcode object name
             object_name = "cube"
             true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+
             if new_trajectory is not None and len(new_trajectory) >= 1:
                 true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
 
             start_time = time.time()
             for idx in range(epochs):
+                pdb.set_trace()
                 train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
                 total_epochs += 1
                 print(total_epochs, 
@@ -967,13 +966,16 @@ def main(
         elif command_char == "v":
             print("Visualizing")
             # TODO: HACK don't hardcode object name
+            #print("cube_state", cube_state)
 
             if cube_state is None: #hasn't been declared yet
-                true_pose = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0325])
+                last_cube_state_traj = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0325])
             else:
-                true_pose = cube_state[-1].cpu().clone().numpy()
+                last_cube_state_traj = cube_state[-1]
             
-            visualize_geometries(vis_meshcat, learned_system, true_geometry, true_pose)
+            #print("cube_state",last_cube_state_traj)
+            
+            visualize_geometries(vis_meshcat, learned_system, true_geometry, last_cube_state_traj)
 
     # Quit
 
