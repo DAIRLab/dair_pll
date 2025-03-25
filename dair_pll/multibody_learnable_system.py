@@ -39,7 +39,7 @@ from torch import Tensor
 from torch.autograd.functional import hessian
 from torch.nn import Parameter
 from torch.distributions.normal import Normal
-from torch.distributions.gamma import Gamma
+#from torch.distributions.gamma import Gamma
 from tensordict.tensordict import TensorDictBase, TensorDict
 from torch.utils.data import DataLoader
 
@@ -362,14 +362,14 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Constant Terms
         # Calculate the prediction constant based on loss formulation mode.
         constant_pred = 0.5 * pbmm(dv_small, pbmm(M_small, dv_small.transpose(-1, -2)))
-        constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
+        constant_pen = torch.square(torch.maximum(-phi, torch.zeros_like(phi))).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
 
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J_small, dv_small.transpose(-1, -2))
-        q_comp = (1.0 / dt) * torch.maximum(
-            phi_then_zero, torch.zeros_like(phi_then_zero)
+        q_comp = (1.0 / dt) * torch.square(torch.maximum(
+            phi_then_zero, torch.zeros_like(phi_then_zero))
         ).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         q_n_diss = torch.cat(
@@ -664,7 +664,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         dt = self._default_dt if dts is None else dts
         phi_eps = 1e6
         eps = 1e-8  # TODO: HACK make this a hyperparameter
-        delassus, M, J, phi, non_contact_acceleration, _, _, _ = (
+        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, _ = (
             self.get_multibody_terms(q, v, u)
         )
         n_contacts = phi.shape[-1]
@@ -702,7 +702,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
             impulse[contact_filter] += impulse_full[contact_filter]
 
-            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1)
+            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1).detach()
 
         # pylint doesn't know about torch functions
         # pylint: disable=E1102
@@ -973,7 +973,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         # TODO: Make this a hyperparam
-        ret = 1e-2 * torch.eye(n_params)
+        ret = torch.zeros((n_params, n_params)) #1e0 * torch.eye(n_params)
         if data is None:
             return ret
 
@@ -1065,10 +1065,13 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Those are the only forces where we want to add noise.
         # See https://en.wikipedia.org/wiki/Gamma_distribution
-        gamma_rate = 10.0
-        gamma_eps = 1e-8
+        # TODO ASAP: Switch to Normal
+        # Convert impulses into contact forces before sending as data to contactnets
+        #gamma_rate = 10.0
+        #gamma_eps = 1e-8
         normal_mean = impulse_star[..., normal_indices].flatten()
-        normal_alpha = normal_mean * gamma_rate + gamma_eps
+        #normal_alpha = normal_mean * gamma_rate + gamma_eps
+        normal_var
         sampler_normal = Gamma(
             concentration=normal_alpha,
             rate=gamma_rate * torch.ones_like(normal_alpha),

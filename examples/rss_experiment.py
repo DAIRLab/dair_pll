@@ -16,6 +16,7 @@ TODOs:
 
 # pylint: disable=invalid-name,too-many-statements,too-many-locals
 
+from enum import Enum
 import os
 import pdb
 import signal
@@ -435,6 +436,17 @@ class TrifingerLCMService:
         return ret
 
 
+class ActionLibrary(Enum):
+    NONE = 0
+    XPINCH = 1
+    YPINCH = 2
+    ZPINCH = 3
+    XSINGLE = 4
+    YSINGLE = 5
+    ZSINGLE = 6
+    CORNERSINGLE = 7
+    EDGESINGLE = 8
+
 @gin.configurable
 def sample_action(
     workspace_xy_center: Tuple[float, float],
@@ -442,7 +454,7 @@ def sample_action(
     workspace_radius: float,
     sphere_radius: float,
     fixed_240_W: List[float],
-    fixed_pinch: bool = False,
+    library: ActionLibrary = ActionLibrary.NONE,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Sample a straight line action
@@ -452,6 +464,7 @@ def sample_action(
     workspace_radius: start will be along edge of radius above ground
     sphere_radius: radius of robot fingertip
     fixed_240: 3d position
+    library: int for fixed set of action
     """
 
     assert workspace_radius > 0.0
@@ -461,12 +474,27 @@ def sample_action(
     rng = np.random.default_rng()
 
     # Start in workspace frame
-    def sample_finger(flip_x: bool = False, fixed_pinch = fixed_pinch):
+    def sample_finger(flip_x: bool = False, library = library):
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0.0, np.pi / 2.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
-        if fixed_pinch:
+        if library in (ActionLibrary.XPINCH, ActionLibrary.XSINGLE):
             start_polar = np.pi / 2.0
+            start_azimuth = 0.
+        elif library in (ActionLibrary.ZPINCH, ActionLibrary.ZSINGLE):
+            start_polar = 0.
+            start_azimuth = 0.
+        elif library in (ActionLibrary.YPINCH, ActionLibrary.YSINGLE):
+            start_polar = np.pi / 2.0
+            start_azimuth = flip_factor * (np.pi / 2.0)
+        elif library in (ActionLibrary.CORNERSINGLE,):
+            start_polar = np.pi / 5.0
+            start_azimuth = np.pi / 2.5
+        elif library in (ActionLibrary.EDGESINGLE,):
+            start_polar = np.pi / 7.0
+            start_azimuth = 0.
+        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.CORNERSINGLE, ActionLibrary.EDGESINGLE)):
+            start_polar = 0.
             start_azimuth = 0.
         start_S = (workspace_radius - sphere_radius) * np.array(
             [
@@ -478,11 +506,15 @@ def sample_action(
         start_S[0] += sphere_radius
         start_S[2] += sphere_radius
         start_S[0] *= flip_factor
-        end_radius = rng.uniform(0.0, workspace_radius - sphere_radius)
+        max_radius = workspace_radius - sphere_radius
+        end_radius = rng.uniform(0.0, max_radius)
         end_angle = rng.uniform(0.0, np.pi)
-        if fixed_pinch:
+        if not (library is ActionLibrary.NONE):
             end_radius = 0.
             end_angle = 0.
+        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.CORNERSINGLE)):
+            end_radius = max_radius
+            end_angle = np.pi / 2.0
         end_S = np.array(
             [
                 flip_factor * sphere_radius,
@@ -660,7 +692,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    selected_action = sample_action(fixed_pinch=True)
+    selected_action = sample_action(library=ActionLibrary.XSINGLE)
     new_trajectory = None
 
     # Initialize Optimizer and Data config
@@ -787,8 +819,9 @@ def main(
 
             print(f"Sampling {n_actions_optimized} actions to optimize...")
             action_samples = torch.stack([
-                torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action()])
-                for _ in range(n_actions_optimized)
+                torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action(library=libaction)])
+                #for _ in range(n_actions_optimized)
+                for libaction in ActionLibrary
             ])
             interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
             robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)
@@ -796,6 +829,7 @@ def main(
             fishers_obs_weighted = torch.matmul(fishers, obs_info_inv)
             fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
             best_action = action_samples[torch.argmax(fishers_traces)]
+            breakpoint()
             print(f"Best Action Fisher: {fishers[torch.argmax(fishers_traces)]}")
             selected_action = (best_action[0, :].detach().cpu().numpy(), best_action[1, :].detach().cpu().numpy())
 
