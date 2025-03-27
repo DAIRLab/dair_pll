@@ -1108,8 +1108,8 @@ class GeometryCollider:
             zeros_idx = torch.isclose(
                 torch.norm(estimated_normals_A.detach(), dim=-1), torch.zeros(batch_dim)
             )
-            directions_A2[zeros_idx, :] = directions_A[zeros_idx, 0, :]
-            directions_A2[~zeros_idx, :] = torch.nn.functional.normalize(estimated_normals_A[~zeros_idx], dim=-1)
+            directions_A2[zeros_idx] = directions_A[zeros_idx].squeeze(-2)
+            directions_A2[~zeros_idx] = torch.nn.functional.normalize(estimated_normals_A[~zeros_idx], dim=-1)
             p_AoAc_A2 = box_a.support_points(directions_A2)[..., :1, :]
             p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
             directions_A = torch.cat(

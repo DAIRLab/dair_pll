@@ -829,7 +829,6 @@ def main(
             fishers_obs_weighted = torch.matmul(fishers, obs_info_inv)
             fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
             best_action = action_samples[torch.argmax(fishers_traces)]
-            breakpoint()
             print(f"Best Action Fisher: {fishers[torch.argmax(fishers_traces)]}")
             selected_action = (best_action[0, :].detach().cpu().numpy(), best_action[1, :].detach().cpu().numpy())
 

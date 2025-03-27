@@ -86,4 +86,4 @@ class DynamicCvxpyLCQPLayer:
         layer = self.get_sized_layer(Q_solve.shape[-2] // 3)
         Q_sqrt = sqrtm(Q_solve)
         soln = layer(Q_sqrt, q_solve, solver_args=self._solver_args)[0]
-        return soln.reshape(q_solve.size())
+        return soln.reshape(q.size())
