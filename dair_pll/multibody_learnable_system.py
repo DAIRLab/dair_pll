@@ -662,7 +662,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         """
         # pylint: disable=too-many-locals
         dt = self._default_dt if dts is None else dts
-        phi_eps = 1e-4
+        phi_eps = 1e-3
         eps = 1e-8  # TODO: HACK make this a hyperparameter
         delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = (
             self.get_multibody_terms(q, v, u)
@@ -1102,7 +1102,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(n_samples):
+        for sample_idx in range(-1, n_samples):
             print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
             # Impulses need to be a column vector
             sample_contact_forces = {}
@@ -1117,18 +1117,25 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 plant_x, robot_u_cropped, plant_xplus, contact_normals=contact_normals_star, contact_forces=sample_contact_forces
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
-
+            if sample_idx >= 0:
+                loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
+            else:
+                breakpoint()
+        breakpoint()
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
         sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
-        for sample_idx in range(n_samples):
+        for sample_idx in range(-1, n_samples):
             print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
             grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
             score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
             assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
             # Compute Fisher Info as outer product
-            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+            if sample_idx >= 0:
+                sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+            else:
+                breakpoint()
+        breakpoint()
         ret = sample_fishers.sum(dim=-3)
         ret /= n_samples
         # clear gradients
