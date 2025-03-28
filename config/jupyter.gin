@@ -33,7 +33,7 @@ LearnableSystem.dt = %delta_t # seconds
 LearnableSystem.learnable_body_dict = { 
 	%object_body_name: @object_init/LearnableBodySettings()
 }
-LearnableSystem.represent_geometry_as = "box"
+LearnableSystem.representation = "box"
 
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"

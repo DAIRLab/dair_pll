@@ -6,3 +6,4 @@ lcm-gen 1.5.1
 
 from .lcmt_densetact_measurement import lcmt_densetact_measurement as lcmt_densetact_measurement
 from .lcmt_densetact_measurement_data import lcmt_densetact_measurement_data as lcmt_densetact_measurement_data
+from .lcmt_frame_visual import lcmt_frame_visual as lcmt_frame_visual

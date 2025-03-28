@@ -1,6 +1,7 @@
 import torch
 from chamferdist import ChamferDistance
 import numpy as np
+import scipy
 
 from dair_pll import file_utils
 
@@ -36,6 +37,67 @@ from dair_pll.geometry import (
     Plane,
     _NOMINAL_HALF_LENGTH,
 )
+
+import lcm
+from dair_pll.lcmtypes.dairlib import (lcmt_frame_visual, lcmt_densetact_measurement_data, lcmt_fingertips_position)
+
+import time
+
+
+class frame_visual:
+    def __init__(self):
+        self.lcm_ = lcm.LCM()
+        self.finger1_pos_list = list()
+        self.finger1_quat_list = []
+        self.contactPose_list = list()
+        self.finger1_in_contact = []
+
+    def lcm_stall(self, lcm_type):
+            while len(lcm_type) == 0:
+                self.lcm_.handle_timeout(int(10))
+        
+
+    def handle_densetact(self, channel, data):
+        msg = lcmt_densetact_measurement_data.decode(data)
+        self.contactPose_list.append((np.array(msg.sensorData[0].contactPose)))
+
+    def handle_pos(self, channel, data):
+        msg = lcmt_fingertips_position.decode(data)     
+        self.finger1_pos_list.append(np.array(msg.curPos[:3]))
+        self.finger1_quat_list.append(np.array(msg.curQuat[:4]))
+
+    def frame_visual(self) -> None:
+
+        self.lcm_.subscribe("DENSETACT_DATA", self.handle_densetact)
+        self.lcm_.subscribe("FINGERTIPS_POSITION", self.handle_pos)
+
+        while True:
+            self.lcm_stall(self.contactPose_list)
+            self.lcm_stall(self.finger1_pos_list)
+
+
+            R_CB_B = self.contactPose_list[-1][:3,:3]
+            R_BW = R.from_quat(self.finger1_quat_list[-1], scalar_first=True).as_matrix()
+            #import pdb; pdb.set_trace()
+
+            R_CB_W = R_BW @ R_CB_B
+            #import pdb; pdb.set_trace()
+            
+            t_W = self.finger1_pos_list[-1].reshape(3,1)
+            #import pdb; pdb.set_trace()
+
+            pose = np.block([[R_CB_W, t_W + R_CB_W[:3,0].reshape(3,1)*0.01575], [np.zeros((1,3)), np.ones((1,1))]])
+
+            frame_vis = lcmt_frame_visual.lcmt_frame_visual()  # Define frame_vis as an instance of lcmt_frame_visual
+            #import pdb; pdb.set_trace()
+
+            #frame_vis.frame[:] = pose.flatten().tolist()
+            frame_vis.frame = [list(row) for row in pose] 
+            self.lcm_.publish("FRAME_VISUAL", frame_vis.encode())
+
+            self.lcm_.handle_timeout(int(50))
+
+
 
 def visualize_geometries(meshcat,
                          system, 
@@ -161,3 +223,7 @@ def get_true_geometry(path: str = "assets/contactnets_cube.urdf.xacro") -> Shape
             continue
         return true_geom
     assert False, "Could not find true geometry"
+
+if __name__ == "__main__":
+    l = frame_visual()
+    l.frame_visual()

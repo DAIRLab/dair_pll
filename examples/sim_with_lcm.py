@@ -153,29 +153,45 @@ class DensetactIOSystem(LeafSystem):
       # Evaluate the input ports to obtain the averaged contact results
       robot_state = self.EvalVectorInput(context, self._robot_state_input_port.get_index())
       avg_contact = self._avg_contact_input_port.Eval(context)
-      densetact_msg.get_mutable_value().numSensors = len(self._body_names)
+
+      sensorized_bodies = self._body_names[:2]
+
+      densetact_msg.get_mutable_value().numSensors = len(sensorized_bodies)
       densetact_msg.get_mutable_value().sensorData.clear()
       utime = int(context.get_time() * 1e6)
+
       for fingertip_idx, body_name in zip(finger_idx_from_body_name(self._plant, self._robot_id, self._body_names), self._body_names):
+        #import pdb; pdb.set_trace()
+
         body_idx = int(self._plant.GetBodyByName(body_name).index())
         fingertip_pose_W = np.array([robot_state[fingertip_idx * 3], robot_state[fingertip_idx * 3 + 1], robot_state[fingertip_idx * 3 + 2]])
+        
+        R_BW = self._plant.GetFrameByName(body_name).GetFixedRotationMatrixInBodyFrame().matrix()
+        
         measurement = lcmt_densetact_measurement()
+        
         force_W = np.array(avg_contact["force"][body_idx])
         point = np.array(avg_contact["point"][body_idx]) - fingertip_pose_W
         normal_W = np.array(avg_contact["normal"][body_idx])
         measurement.utime = utime
         measurement.inContact = not np.all(np.isclose(normal_W, np.zeros_like(normal_W)))
+        
+        #import pdb; pdb.set_trace()
         if measurement.inContact:
           R_CW = DensetactIOSystem.rotation_matrix_from_vectors(np.array([0., 0., 1.]), normal_W)
+          
+          # sensor1_pose_W.EvalPoseInWorld(context)
+          #import pdb; pdb.set_trace()
+          R_CB = R_BW.T @ R_CW
           assert not np.any(np.isnan(R_CW))
           force_C = R_CW.T.dot(force_W)
           for idx in range(3):
             for jdx in range(3):
               # Copy Rotation of body frame -> contact frame
-              measurement.contactFrame[idx][jdx] = R_CW[idx][jdx]
+              measurement.contactPose[idx][jdx] = R_CW[idx][jdx]
             # Copy Translation, i.e., contact point in body frame
-            measurement.contactFrame[idx][3] = point[idx]
-          measurement.contactFrame[3][3] = 1.0 # Valid affine transform
+            measurement.contactPose[idx][3] = point[idx]
+          measurement.contactPose[3][3] = 1.0 # Valid affine transform
           # Force in contact frame
           measurement.scaledNormal = self._normal_scale * force_C[2]
           measurement.scaledFriction[0] = self._friction_scale * force_C[0]

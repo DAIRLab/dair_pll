@@ -20,9 +20,11 @@ general purpose converter is implemented in
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Tuple, Dict, cast, Union, Optional
 
 import fcl  # type: ignore
+import gin
 import numpy as np
 import pywavefront  # type: ignore
 import torch
@@ -65,7 +67,7 @@ _ROT_Z_45 = torch.tensor(
 )
 
 # TODO: HACK adjust based on trajectory length
-_NOMINAL_HALF_LENGTH = 1e-2  # Note: matches Box/Polygon space to trajectory space (m)
+_NOMINAL_HALF_LENGTH = 1e-1  # Note: matches Box/Polygon space to trajectory space (m)
 
 _total_ordering = ["Plane", "Polygon", "Box", "Sphere", "DeepSupportConvex"]
 
@@ -73,6 +75,14 @@ _POLYGON_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
+
+@gin.constants_from_enum
+class GeometryRepresentation(Enum):
+    NONE = 0
+    PRIMITIVE = 1
+    POLYGON = 2
+    MESH = 3
+    SPHERE = 4
 
 
 class CollisionGeometry(ABC, Module):
@@ -604,11 +614,11 @@ class PydrakeToCollisionGeometryFactory:
         name: str = "",
     ) -> CollisionGeometry:
         """Converts abstract ``pydrake.geometry.shape`` to
-        ``CollisionGeometry`` according to the desired ``represent_geometry_as``
+        ``CollisionGeometry`` according to the desired ``representation``
         type.
 
         Notes:
-            The desired ``represent_geometry_as`` type only will affect
+            The desired ``representation`` type only will affect
             ``DrakeBox`` and ``DrakeMesh`` types, not ``DrakeHalfSpace`` types.
 
         Args:
@@ -622,26 +632,28 @@ class PydrakeToCollisionGeometryFactory:
         """
         
         if name == "world":
-            represent_geometry_as = DrakeHalfSpace
+            representation = DrakeHalfSpace
         else:
-            represent_geometry_as = represent_geometry_bodies_as[name]
+            representation = represent_geometry_bodies_as
+        
+        print(representation)
    
 
-        #print(f"Converting {drake_shape} to {represent_geometry_as}")
+        #print(f"Converting {drake_shape} to {representation}")
         if isinstance(drake_shape, DrakeBox):
             geometry = PydrakeToCollisionGeometryFactory.convert_box(
-                drake_shape, represent_geometry_as, learnable
+                drake_shape, representation, learnable
             )
         elif isinstance(drake_shape, DrakeHalfSpace):
             geometry = PydrakeToCollisionGeometryFactory.convert_plane()
 
         elif isinstance(drake_shape, DrakeMesh):
             geometry = PydrakeToCollisionGeometryFactory.convert_mesh(
-                drake_shape, represent_geometry_as, learnable
+                drake_shape, representation, learnable
             )
         elif isinstance(drake_shape, DrakeSphere):
             geometry = PydrakeToCollisionGeometryFactory.convert_sphere(
-                drake_shape, represent_geometry_as, learnable
+                drake_shape, representation, learnable
             )
         else:
             raise TypeError(
@@ -654,14 +666,16 @@ class PydrakeToCollisionGeometryFactory:
 
     @staticmethod
     def convert_box(
-        drake_box: DrakeBox, represent_geometry_as: str, learnable: bool = True
+        drake_box: DrakeBox, representation: GeometryRepresentation, learnable: bool = True
     ) -> Union[Box, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
-        if represent_geometry_as == "box":
+        if representation == GeometryRepresentation.NONE:
+            print("Warning: no representation supplied for DrakeBox, default to PRIMITIVE")
+        if representation in [GeometryRepresentation.PRIMITIVE, GeometryRepresentation.NONE]:
             half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
             return Box(half_widths, 4, learnable)     
 
-        if represent_geometry_as == "mesh":
+        if representation == GeometryRepresentation.MESH:
             half_dims = drake_box.size()/2
             vertices  = torch.from_numpy(
                         np.stack([half_dims*np.array([i, j, k]) 
@@ -671,28 +685,33 @@ class PydrakeToCollisionGeometryFactory:
            
             return DeepSupportConvex(vertices, learnable=learnable)   
 
-        if represent_geometry_as == "polygon":
+        if representation == GeometryRepresentation.POLYGON:
             pass  # TODO
 
         raise NotImplementedError(
             f"{drake_box}:" + " Cannot presently represent a DrakeSphere() "
-            + f"as {represent_geometry_as} collision geometry type."
+            + f"as {representation} collision geometry type."
         )
 
     @staticmethod
     def convert_sphere(
-        drake_sphere: DrakeSphere, represent_geometry_as: str, learnable: bool = True
+        drake_sphere: DrakeSphere, representation: GeometryRepresentation, learnable: bool = True
     ) -> Union[Sphere, Polygon]:
         """Converts ``pydrake.geometry.Sphere`` to ``Sphere`` or ``Polygon``."""
-        if represent_geometry_as == "sphere":
+
+        if representation == GeometryRepresentation.NONE:
+            print("Warning: no representation supplied for DrakeSphere, default to PRIMITIVE")
+            representation = GeometryRepresentation.PRIMITIVE
+        
+        if representation == GeometryRepresentation.PRIMITIVE:
             return Sphere(torch.tensor([drake_sphere.radius()]), learnable)
 
-        if represent_geometry_as == "polygon":
+        elif representation == GeometryRepresentation.POLYGON:
             pass  # TODO
 
         raise NotImplementedError(
             f"{drake_sphere}:" + " Cannot presently represent a DrakeSphere() "
-            + f"as {represent_geometry_as} collision geometry type."
+            + f"as {representation} collision geometry type."
         )
 
     @staticmethod
@@ -703,7 +722,7 @@ class PydrakeToCollisionGeometryFactory:
     @staticmethod
     def convert_mesh(
         drake_mesh: DrakeMesh, 
-        represent_geometry_as: str, 
+        representation: str, 
         learnable: bool = True
     ) -> Union[DeepSupportConvex, Polygon]:
         """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
@@ -712,15 +731,15 @@ class PydrakeToCollisionGeometryFactory:
         mesh = pywavefront.Wavefront(filename)
         vertices = torch.tensor(mesh.vertices)
 
-        if represent_geometry_as == "mesh":
+        if representation == GeometryRepresentation.MESH:
             return DeepSupportConvex(vertices, learnable=learnable)
 
-        if represent_geometry_as == "polygon":
+        if representation == GeometryRepresentation.POLYGON:
             return Polygon(vertices, learnable)
 
         raise NotImplementedError(
             "Cannot presently represent a "
-            + f"DrakeMesh() as {represent_geometry_as} type."
+            + f"DrakeMesh() as {representation} type."
         )
 
 

@@ -107,6 +107,23 @@ class LearnableTrajectories(Module):
         """
         return self._trajectories_q0[-1]
 
+    def get_current_pose_traj(self) -> Tensor:
+        """
+        Get the entire trajectory as a single tensor (traj_len, self.space.n_q)
+        """
+
+        ret_list = []
+        for idx in range(len(self._trajectories)):
+            ret_list.append(self._trajectories_q0[idx].unsqueeze(0))
+            ret_list.append(self._space.q(self._trajectories[idx]))
+            ret_list.append(self._trajectories_q0[idx+1].unsqueeze(0))
+
+        if len(ret_list) == 0:
+            ret_list = [self._trajectories_q0[0].unsqueeze(0)]
+
+        return torch.cat(ret_list, dim=-2)
+
+
     def forward(self, traj_nums: Tensor, indices: Tensor) -> Tensor:
         """Returns a batch of trajectory states.
 

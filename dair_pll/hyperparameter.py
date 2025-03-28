@@ -146,6 +146,9 @@ class Int(Scalar):
     value: int
     distribution: Tuple[int, int]
 
+    def __int__(self):
+        return int(self.value)
+
     def default_range(self, value: int, log: bool) -> Tuple[int, int]:
         """Default bounds for integer hyperparameter.
 
@@ -175,6 +178,9 @@ class Float(Scalar):
 
     value: float
     distribution: Tuple[float, float]
+
+    def __float__(self):
+        return float(self.value)
 
     def default_range(self, value: float, log: bool) -> Tuple[float, float]:
         """Default bounds for float hyperparameter.

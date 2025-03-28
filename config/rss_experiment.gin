@@ -46,7 +46,7 @@ DynamicCvxpyLCQPLayer.solver_args = {
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names_ctrl
 TrifingerLCMService.traj_time_len = 2.0
 TrifingerLCMService.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
 	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
@@ -73,37 +73,25 @@ LearnableSystem.init_urdfs = {
 	%object_model_name: @object_init/get_urdf_asset_contents(), 
 	%robot_model_name: @robot/get_urdf_asset_contents()
 }
-LearnableSystem.dt = %delta_t # seconds
+LearnableSystem.hyperparameters = @LearnableHyperparameters()
+LearnableSystem.default_dt = %delta_t # seconds
 LearnableSystem.learnable_body_dict = { 
 	%object_body_name: @object_init/LearnableBodySettings()
 }
-LearnableSystem.represent_geometry_as = {
-    %object_body_name: "box", 
-    "finger_0": "sphere",
-	"finger_1": "sphere"
-    }
-
-# Initial guesses
-#object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
-#object_init/get_urdf_asset_contents.mappings = {
-#	"length_x": 0.065, # m
-#	"length_y": 0.065, # m
-#	"length_z": 0.065, # m
-#	"mu": 0.1,
-#	"planar_xz": "false",
-#}
 
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = %object_urdf
 object_init/get_urdf_asset_contents.mappings = {
-	"radius": 0.1, # m
+	"length_x": 0.1, # m
+	"length_y": 0.1, # m
+	"length_z": 0.1, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
 
 LearnableSystem.init_traj_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.0325,     # XYZ
+	0.0, 0.0, 0.015,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -114,21 +102,24 @@ object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
 object_init/LearnableBodySettings.friction = True
+object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
 
-# Learning weights
-LearnableSystem.w_pred = 5e1
-LearnableSystem.w_q_pred = 5e1
-LearnableSystem.w_comp = 1e0
-LearnableSystem.w_diss = 1e0
-LearnableSystem.w_pen = 5e1
-LearnableSystem.w_dev = 2e6
-LearnableSystem.w_reg_iner = 1e-5
+# Learning hyperparams
+LearnableHyperparameters.w_pred = 5e0
+LearnableHyperparameters.w_q_pred = 1e2
+LearnableHyperparameters.w_comp = 1e1
+LearnableHyperparameters.w_fdiss = 1e1
+LearnableHyperparameters.w_ndiss = 1e0
+LearnableHyperparameters.w_pen = 1e2
+LearnableHyperparameters.w_dev = 1e5
+LearnableHyperparameters.w_norm = 5e0
+LearnableHyperparameters.w_reg_iner = 1e-5
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
-SGD.lr=8e-4
+SGD.lr=2e-3
 SGD.momentum=2e-4
-Adam.lr=1e-3
+Adam.lr=5e-3
 Adam.amsgrad=True
 Adam.fused=True
 
@@ -147,7 +138,7 @@ TrajectorySliceConfig.pred_state_keys = [
 ## Exploration Params
 # Note: 30 / 10 uses 10GB VRAM if done in parallel
 main.n_actions_optimized=60
-LearnableSystem.n_fisher_samples=10
+LearnableHyperparameters.n_fisher_samples=10
 
 ## True System (for Metrics)
 DrakeSystem.dt = %delta_t # seconds, unnecessary
