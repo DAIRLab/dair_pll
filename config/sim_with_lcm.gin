@@ -29,7 +29,7 @@ object/get_urdf_asset_contents.mappings = {
 }
 object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.015,     # XYZ
+	0.0, 0.0, 0.06,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]

@@ -1,4 +1,4 @@
-# Default GIN Config File for rss_experiment.py
+# Default GIN Config File for sim_experiment.py
 
 ## General Config
 robot_radius = 0.01575 # From trifingeredu.urdf
@@ -32,7 +32,7 @@ main.init_trifinger_state = [
 main.safe_trifinger_height = %workspace_radius
 
 extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
-#interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
+interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
 get_loss_args.object_body_name = %object_body_name
 
 # Paralellism in cvxpylayers (added manually)
@@ -53,7 +53,7 @@ TrifingerLCMService.lcm_channels = {
 }
 
 ##
-#TrajectoryFactory.workspace_radius = %workspace_radius
+TrajectoryFactory.workspace_radius = %workspace_radius
 
 ## Action Sampling
 sample_action.workspace_xy_center = (0., 0.)

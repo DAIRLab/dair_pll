@@ -51,9 +51,9 @@ class PLLMeshcatVisualizer:
         self._meshcat = StartMeshcat()
         self._data = data
         self._system = system
-        self._meshcat.SetObject("/true", true_geom, Rgba(0.9, 0.1, 0.1, 1.0))
+        self._meshcat.SetObject("/true", true_geom, Rgba(0.8, 0.0, 0.0, 0.3))
         self._meshcat.SetTransform("/true", transform_from_state_q(np.array([1., 0., 0., 0., 0., 0., 0.])))
-        self._meshcat.SetObject("/learned", self._system.get_learned_geometry(), Rgba(0.1, 0.1, 0.9, 0.5))
+        self._meshcat.SetObject("/learned", self._system.get_learned_geometry(), Rgba(0.0, 0.0, 0.8, 1.0))
         self._meshcat.SetTransform("/true", transform_from_state_q(self._system.get_learned_pose().cpu().numpy()))
 
         self.reinit_tk()
@@ -77,7 +77,7 @@ class PLLMeshcatVisualizer:
     Update visualization
     """
     # Update learned geometry
-    self._meshcat.SetObject("/learned", self._system.get_learned_geometry(), Rgba(0.1, 0.1, 0.9, 0.5))
+    self._meshcat.SetObject("/learned", self._system.get_learned_geometry(), Rgba(0.0, 0.0, 0.8, 1.0))
 
     # Update learned trajectory
     timestep = int(self._timestep.get())
@@ -93,8 +93,8 @@ class PLLMeshcatVisualizer:
       self._scale.configure(to=true_traj.shape[0]-1)
 
       ## Robot
-      self._meshcat.SetObject("/robot/0", self._system.get_body_geometry("finger_0"), Rgba(0.9, 0.1, 0.1, 1.0))
-      self._meshcat.SetObject("/robot/1", self._system.get_body_geometry("finger_1"), Rgba(0.9, 0.1, 0.1, 1.0))
+      self._meshcat.SetObject("/robot/0", self._system.get_body_geometry("finger_0"), Rgba(0.8, 0.0, 0.0, 0.8))
+      self._meshcat.SetObject("/robot/1", self._system.get_body_geometry("finger_1"), Rgba(0.8, 0.0, 0.0, 0.8))
       robot_traj = torch.cat([traj["robot_state"] for traj in self._data.trajectories], dim=-2).cpu().numpy()
       zero_rot = np.array([1., 0., 0., 0.])
       robot_0_traj = np.hstack([np.broadcast_to(zero_rot, (robot_traj.shape[0], 4)), robot_traj[:, :3]])

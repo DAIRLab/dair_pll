@@ -39,7 +39,7 @@ from torch import Tensor
 from torch.autograd.functional import hessian
 from torch.nn import Parameter
 from torch.distributions.normal import Normal
-from torch.distributions.gamma import Gamma
+#from torch.distributions.gamma import Gamma
 from tensordict.tensordict import TensorDictBase, TensorDict
 from torch.utils.data import DataLoader
 
@@ -362,14 +362,14 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Constant Terms
         # Calculate the prediction constant based on loss formulation mode.
         constant_pred = 0.5 * pbmm(dv_small, pbmm(M_small, dv_small.transpose(-1, -2)))
-        constant_pen = (torch.maximum(-phi, torch.zeros_like(phi)) ** 2).sum(dim=-1)
+        constant_pen = torch.square(torch.maximum(-phi, torch.zeros_like(phi))).sum(dim=-1)
         constant_pen = constant_pen.reshape(constant_pen.shape + (1, 1))
 
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J_small, dv_small.transpose(-1, -2))
-        q_comp = (1.0 / dt) * torch.maximum(
-            phi_then_zero, torch.zeros_like(phi_then_zero)
+        q_comp = (1.0 / dt) * torch.square(torch.maximum(
+            phi_then_zero, torch.zeros_like(phi_then_zero))
         ).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         q_n_diss = torch.cat(
@@ -395,10 +395,10 @@ class MultibodyLearnableSystem(DrakeSystem):
                 normals_guess_W = R_FW.transpose(-1, -2)[..., 2]
                 assert normals_guess_W.size() == batch_dims + (3,)
                 assert contact_normals[key].size() == batch_dims + (3,)
-                nonzero_norm = torch.nonzero(torch.linalg.vector_norm(contact_normals[key], dim=-1))
+                nonzero_norm = (torch.linalg.vector_norm(contact_normals[key], dim=-1) > 0.)
                 # if contact_normals is 0, then cost = 0 i.e. align with guess
                 normals_measured_W = normals_guess_W.clone().detach()
-                normals_measured_W[nonzero_norm, :] = torch.nn.functional.normalize(contact_normals[key][nonzero_norm, :], dim=-1)
+                normals_measured_W[nonzero_norm] = torch.nn.functional.normalize(contact_normals[key][nonzero_norm], dim=-1)
                 assert normals_measured_W.size() == batch_dims + (3,)
                 # Batch dot product (max 0 for numerical stability)
                 cost_normal = torch.maximum(1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1), torch.zeros(batch_dims))
@@ -662,9 +662,9 @@ class MultibodyLearnableSystem(DrakeSystem):
         """
         # pylint: disable=too-many-locals
         dt = self._default_dt if dts is None else dts
-        phi_eps = 1e6
+        phi_eps = 1e-3
         eps = 1e-8  # TODO: HACK make this a hyperparameter
-        delassus, M, J, phi, non_contact_acceleration, _, _, _ = (
+        delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = (
             self.get_multibody_terms(q, v, u)
         )
         n_contacts = phi.shape[-1]
@@ -700,16 +700,42 @@ class MultibodyLearnableSystem(DrakeSystem):
             impulse = torch.zeros_like(impulse_full)
             # Clamp to avoid small negative normal force
             impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
-            impulse[contact_filter] += impulse_full[contact_filter]
+            impulse[contact_filter] += impulse_full[contact_filter].detach()
 
-            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1)
+            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1).detach()
+
+        ### Construct contact forces / normals
+        batch_dims = q.size()[:-1]
+        ret_contact_forces = {} # Dict[Tuple[str, str], Tensor]
+        ret_contact_normals = {} # Dict[Tuple[str, str], Tensor]
+        for key in obj_pair_list:
+            if obj_pair_list.count(key) == 1:
+                ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
+                ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
+
+        for key in ret_contact_forces.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            assert len(indices) == 1
+            index = indices[0]
+            fric_index = len(obj_pair_list) + 2 * index
+            R_WF_i = R_FW_list[index].transpose(-1, -2).detach()
+            ret_contact_normals[key][contact_filter[..., index, 0], 0, :] = R_WF_i[contact_filter[..., index, 0], :, 2]
+            # Force in contact_frame
+            ret_contact_forces[key][..., 0, 0] = impulse[..., index, 0] / dt
+            ret_contact_forces[key][..., 0, 1:] = mu_list[index].detach() * impulse[..., fric_index:fric_index+2, 0] / dt
+            # Rotate into world frame
+            ret_contact_forces[key] = pbmm(R_WF_i, ret_contact_forces[key].transpose(-1, -2)).transpose(-1, -2)      
+        ###
 
         # pylint doesn't know about torch functions
         # pylint: disable=E1102
         ## TODO: HACK Only differentiate euler steps.
         return (
             v_minus + v_add,
-            impulse.squeeze(-1), # Flatten last 2 dims
+            ret_contact_forces,
+            ret_contact_normals,
         )
 
     def sim_step(self, x: Tensor, carry: Tensor) -> Tuple[Tensor, Tensor]:
@@ -864,7 +890,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         assert plant_states.size() == batch_dims + (traj_len, self.space.n_x)
 
         ## Simulation Loop
-        ret_impulse = None
+        ret_contact_forces = {}
+        ret_contact_normals = {}
         ret_u = torch.zeros(batch_dims + (traj_len, robot_space.n_v))
         for sim_idx in range(1, traj_len):
             print(f"Sim Step {sim_idx} / {traj_len}...")
@@ -894,24 +921,28 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 # Run Forward Dynamics
                 step_q = self.space.q(step_states[..., step_idx - 1, :]).clone()
                 step_v = self.space.v(step_states[..., step_idx - 1, :]).clone()
-                step_vplus, step_impulse_star = self.forward_dynamics(
+                step_vplus, step_contact_forces, step_contact_normals = self.forward_dynamics(
                     step_q, step_v, step_u, step_dt
                 )
                 step_states[..., step_idx, :] = self.space.x(
                     self.space.euler_step(step_q, step_v, step_dt), step_vplus
                 )
-                # Initialize
-                if ret_impulse is None:
-                    n_c = step_impulse_star.size()[-1]
-                    assert step_impulse_star.size() == batch_dims + (n_c,)
-                    ret_impulse = torch.zeros(batch_dims + (traj_len, n_c))
-                ret_impulse[..., sim_idx, :] += step_impulse_star
+                for key in step_contact_forces:
+                    if key not in ret_contact_forces.keys():
+                        ret_contact_forces[key] = torch.zeros(batch_dims + (traj_len-1, 3))
+                    ret_contact_forces[key][..., sim_idx-1, :] += step_contact_forces[key][..., 0, :]
+                for key in step_contact_normals:
+                    if key not in ret_contact_normals.keys():
+                        ret_contact_normals[key] = torch.zeros(batch_dims + (traj_len-1, 3))
+                    ret_contact_normals[key][..., sim_idx-1, :] = step_contact_forces[key][..., 0, :]    
                 ret_u[..., sim_idx, :] += step_u
+            for key in ret_contact_forces:
+                ret_contact_forces[key][..., sim_idx-1, :] /= steps_per_timestep
             ret_u[..., sim_idx, :] /= steps_per_timestep
             plant_states[..., sim_idx, :] = step_states[..., -1, :]
 
         ret = self.model_states_from_state_tensor(plant_states)
-        return ret, ret_impulse, ret_u
+        return ret, ret_contact_forces, ret_contact_normals, ret_u
 
     def exploration_parameters(self) -> Iterable[Parameter]:
         """
@@ -973,7 +1004,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         # TODO: Make this a hyperparam
-        ret = 1e-2 * torch.eye(n_params)
+        ret = 1e-2 * torch.eye(n_params) #torch.zeros((n_params, n_params))
         if data is None:
             return ret
 
@@ -1044,7 +1075,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         # Simulate batch of robot actions
         # TODO: HACK don't hardcode this
         steps_per_timestep = 1
-        plant_states_dict, impulse_star, robot_u = self.diff_simulate(
+        plant_states_dict, contact_forces_star, contact_normals_star, robot_u = self.diff_simulate(
             robot_trajectories, robot_timestamps, robot_model_name, 
             kp=20.,
             kd=10.,
@@ -1056,72 +1087,56 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         robot_u_cropped = robot_u[..., : traj_len - 1, :]
         assert plant_x.size() == plant_xplus.size()
 
-        # Sample impulses
-        # TODO: HACK Don't hardcode this
-        # cube_body -> fingers are object pair IDs 0 and 1
-        # corresponding to indices 0, 6, 7 (finger_0); 1, 8, 9 (finger_1)
-        normal_indices = [0, 1]
-        friction_x_indices = [6, 8]
-        friction_y_indices = [7, 9]
-
-        # Those are the only forces where we want to add noise.
-        # See https://en.wikipedia.org/wiki/Gamma_distribution
-        gamma_rate = 10.0
-        gamma_eps = 1e-8
-        normal_mean = impulse_star[..., normal_indices].flatten()
-        normal_alpha = normal_mean * gamma_rate + gamma_eps
-        sampler_normal = Gamma(
-            concentration=normal_alpha,
-            rate=gamma_rate * torch.ones_like(normal_alpha),
-        )
-        fric_norm_mean = torch.sqrt(torch.square(impulse_star[..., friction_x_indices].flatten()) + torch.square(impulse_star[..., friction_y_indices].flatten()))
-        fric_norm_alpha = fric_norm_mean * gamma_rate + gamma_eps
-        sampler_fric_norm = Gamma(
-            concentration=fric_norm_alpha,
-            rate=gamma_rate * torch.ones_like(fric_norm_alpha),
-        )
-        fric_angle_mean = torch.atan2(impulse_star[..., friction_y_indices].flatten(), impulse_star[..., friction_x_indices].flatten())
-        fric_angle_std = 0.174533 # 10 degrees
-        sampler_fric_angle = Normal(
-            loc = fric_angle_mean,
-            scale = fric_angle_std,
-        )
+        # Sample forces
+        # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
+        forces_std = 0.01 # 10g * g ~ 0.01N
+        samplers_forces = {}
+        for key in contact_forces_star.keys():  
+            samplers_forces[key] = Normal(
+                loc=contact_forces_star[key].flatten(),
+                scale=forces_std * torch.ones_like(contact_forces_star[key].flatten()),
+            )
+        
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
         ret = torch.zeros(batch_dims + (n_params, n_params))
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(n_samples):
+        for sample_idx in range(-1, n_samples):
             print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
             # Impulses need to be a column vector
-            impulse_sample_full = impulse_star.clone()
-            if sample_idx >= 0:
-                impulse_sample_full[..., normal_indices] = sampler_normal.sample().reshape(impulse_sample_full[..., normal_indices].size())
-                sampled_fric_norm = sampler_fric_norm.sample()
-                sampled_fric_angle = sampler_fric_angle.sample()
-                impulse_sample_full[..., friction_x_indices] = (sampled_fric_norm * torch.cos(sampled_fric_angle)).reshape(impulse_sample_full[..., friction_x_indices].size())
-                impulse_sample_full[..., friction_y_indices] = (sampled_fric_norm * torch.sin(sampled_fric_angle)).reshape(impulse_sample_full[..., friction_y_indices].size())
-            
-            impulse_sample = impulse_sample_full[..., : traj_len-1, :].unsqueeze(-1)
+            sample_contact_forces = {}
+            for key in contact_forces_star.keys():
+                if sample_idx < 0:
+                    sample_contact_forces[key] = contact_forces_star[key]
+                else:
+                    sample_contact_forces[key] = samplers_forces[key].sample().reshape(contact_forces_star[key].size())
 
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
-                plant_x, robot_u_cropped, plant_xplus, impulses=impulse_sample
+                plant_x, robot_u_cropped, plant_xplus, contact_normals=contact_normals_star, contact_forces=sample_contact_forces
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
-
+            if sample_idx >= 0:
+                loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
+            else:
+                breakpoint()
+        breakpoint()
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
         sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
-        for sample_idx in range(n_samples):
+        for sample_idx in range(-1, n_samples):
             print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
             grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
             score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
             assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
             # Compute Fisher Info as outer product
-            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+            if sample_idx >= 0:
+                sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+            else:
+                breakpoint()
+        breakpoint()
         ret = sample_fishers.sum(dim=-3)
         ret /= n_samples
         # clear gradients
