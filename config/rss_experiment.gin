@@ -26,6 +26,9 @@ main.safe_trifinger_height = %workspace_radius
 extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
 interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
 get_loss_args.object_body_name = %object_body_name
+# 100Hz trajectory
+interpolate_sampled_action.traj_len_s = 2.0
+interpolate_sampled_action.traj_n_steps = 201
 
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1

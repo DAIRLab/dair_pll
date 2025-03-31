@@ -182,6 +182,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         contact_normals: Optional[Dict[Tuple[str, str], Tensor]] = None,
         impulses: Optional[Tensor] = None,
         use_envelope: bool = True,
+        dts: Optional[Union[float, Tensor]] = None,
     ) -> Tensor:
         r"""Calculate ContactNets [1] loss for state transition.
 
@@ -206,7 +207,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         """
         loss_pred, loss_q_pred, loss_comp, loss_pen, loss_fdiss, loss_ndiss, loss_dev, loss_norm = (
             self.calculate_contactnets_loss_terms(
-                x, u, x_plus, contact_forces, contact_normals, impulses, use_envelope=use_envelope
+                x, u, x_plus, contact_forces, contact_normals, impulses, use_envelope=use_envelope, dts=dts,
             )
         )
 
@@ -270,6 +271,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         impulses: Optional[Tensor] = None,
         ret_impulse_only: bool = False,
         use_envelope: bool = True,
+        dts: Optional[Union[float, Tensor]] = None
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Helper function for
         :py:meth:`MultibodyLearnableSystem.contactnets_loss` that returns the
@@ -297,7 +299,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         assert x.size() == x_plus.size()
         v = self.space.v(x)
         q_plus, v_plus = self.space.q_v(x_plus)
-        dt = self._default_dt
+        dt = self._default_dt * torch.ones(batch_dims + (1,)) if dts is None else dts.reshape(batch_dims + (1,))
+        assert dt.size() == batch_dims + (1,)
         eps = 1e-8  # TODO: HACK, make a hyperparameter
         
         # Begin loss calculation.
@@ -355,7 +358,6 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         # Units: Energy
         Q_delassus = delassus + eps * torch.eye(3 * n_contacts)  # Force PD
-
         dv = (v_plus - (v + non_contact_acceleration * dt)).unsqueeze(-2)
         dv_small = dv[..., velocity_mask]
 
@@ -368,9 +370,9 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Calculate q vectors
         # Final Units: Energy -> q units velocity
         q_pred = -pbmm(J_small, dv_small.transpose(-1, -2))
-        q_comp = (1.0 / dt) * torch.square(torch.maximum(
+        q_comp = (torch.reciprocal(dt) * torch.square(torch.maximum(
             phi_then_zero, torch.zeros_like(phi_then_zero))
-        ).unsqueeze(-1)
+        )).unsqueeze(-1)
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
         q_n_diss = torch.cat(
             (normal_velocities, double_zero_vector.unsqueeze(-1)), dim=-2
@@ -446,7 +448,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             Q_dev += pbmm(q_dev_part.transpose(-1, -2), q_dev_part)
 
             # Linear Term is lambda_mSR^Tdiag(mu)^T
-            impulse_measured_W = contact_forces[key].unsqueeze(-2) * dt  # (batch, 1, 3)
+            impulse_measured_W = (contact_forces[key] * dt).unsqueeze(-2)  # (batch, 1, 3)
             q_dev -= pbmm(impulse_measured_W, q_dev_part).transpose(
                 -1, -2
             )  # (batch, n_c_tot*3, 1)
@@ -507,8 +509,9 @@ class MultibodyLearnableSystem(DrakeSystem):
             + pbmm(impulses.transpose(-1, -2), q_pred)
             + constant_pred
         )
+        # Backward Euler compatibility
         vel_err = (
-            self.space.configuration_difference(self.space.euler_step(self.space.q(x), self.space.v(x), dt), self.space.q(x_plus))
+            self.space.configuration_difference(self.space.euler_step(self.space.q(x), self.space.v(x_plus), dt), self.space.q(x_plus))
             / dt
         ).unsqueeze(-1)
         loss_q_pred = pbmm(vel_err.transpose(-1, -2), pbmm(M, vel_err))
@@ -841,7 +844,6 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         robot_model_name: str = "robot",
         kp: float = 20.0,
         kd: float = 10.0,
-        steps_per_timestep=1,
     ) -> Tensor:
         """
         From the current estimated model state, simulate a batch of robots on the target trajectories.
@@ -896,50 +898,38 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         for sim_idx in range(1, traj_len):
             print(f"Sim Step {sim_idx} / {traj_len}...")
             sim_dt = timestamps[sim_idx] - timestamps[sim_idx - 1]
-            step_dt = sim_dt / float(steps_per_timestep)
-            step_states = torch.zeros(batch_dims + (steps_per_timestep+1, self.space.n_x))
-            step_states[..., 0, :] = plant_states[..., sim_idx - 1, :]
-            for step_idx in range(1, steps_per_timestep+1):
-                # Calculate u from PID
-                robot_step_states = self.model_states_from_state_tensor(
-                    step_states[..., step_idx - 1, :]
-                )[robot_model_name + "_state"]
-                assert robot_step_states.size() == batch_dims + (robot_space.n_x,)
-                interp_val = (step_idx - 1.0) / steps_per_timestep
-                robot_target_states = (
-                    interp_val * robot_target_trajectories[..., sim_idx - 1, :]
-                    + (1.0 - interp_val) * robot_target_trajectories[..., sim_idx, :]
-                )
-                assert robot_target_states.size() == batch_dims + (robot_space.n_x,)
-                step_u = kp * (
-                    robot_space.q(robot_target_states)
-                    - robot_space.q(robot_step_states)
-                ) + kd * (
-                    robot_space.v(robot_target_states)
-                    - robot_space.v(robot_step_states)
-                )
-                # Run Forward Dynamics
-                step_q = self.space.q(step_states[..., step_idx - 1, :]).clone()
-                step_v = self.space.v(step_states[..., step_idx - 1, :]).clone()
-                step_vplus, step_contact_forces, step_contact_normals = self.forward_dynamics(
-                    step_q, step_v, step_u, step_dt
-                )
-                step_states[..., step_idx, :] = self.space.x(
-                    self.space.euler_step(step_q, step_v, step_dt), step_vplus
-                )
-                for key in step_contact_forces:
-                    if key not in ret_contact_forces.keys():
-                        ret_contact_forces[key] = torch.zeros(batch_dims + (traj_len-1, 3))
-                    ret_contact_forces[key][..., sim_idx-1, :] += step_contact_forces[key][..., 0, :]
-                for key in step_contact_normals:
-                    if key not in ret_contact_normals.keys():
-                        ret_contact_normals[key] = torch.zeros(batch_dims + (traj_len-1, 3))
-                    ret_contact_normals[key][..., sim_idx-1, :] = step_contact_forces[key][..., 0, :]    
-                ret_u[..., sim_idx, :] += step_u
-            for key in ret_contact_forces:
-                ret_contact_forces[key][..., sim_idx-1, :] /= steps_per_timestep
-            ret_u[..., sim_idx, :] /= steps_per_timestep
-            plant_states[..., sim_idx, :] = step_states[..., -1, :]
+            # Calculate u from PID
+            robot_step_states = self.model_states_from_state_tensor(
+                plant_states[..., sim_idx - 1, :]
+            )[robot_model_name + "_state"]
+            assert robot_step_states.size() == batch_dims + (robot_space.n_x,)
+            robot_target_states = robot_target_trajectories[..., sim_idx - 1, :]
+            assert robot_target_states.size() == batch_dims + (robot_space.n_x,)
+            step_u = kp * (
+                robot_space.q(robot_target_states)
+                - robot_space.q(robot_step_states)
+            ) + kd * (
+                robot_space.v(robot_target_states)
+                - robot_space.v(robot_step_states)
+            )
+            # Run Forward Dynamics
+            step_q = self.space.q(plant_states[..., sim_idx - 1, :]).clone()
+            step_v = self.space.v(plant_states[..., sim_idx - 1, :]).clone()
+            step_vplus, step_contact_forces, step_contact_normals = self.forward_dynamics(
+                step_q, step_v, step_u, sim_dt
+            )
+            plant_states[..., sim_idx, :] = self.space.x(
+                self.space.euler_step(step_q, step_vplus, sim_dt), step_vplus
+            )
+            for key in step_contact_forces:
+                if key not in ret_contact_forces.keys():
+                    ret_contact_forces[key] = torch.zeros(batch_dims + (traj_len-1, 3))
+                ret_contact_forces[key][..., sim_idx-1, :] += step_contact_forces[key][..., 0, :]
+            for key in step_contact_normals:
+                if key not in ret_contact_normals.keys():
+                    ret_contact_normals[key] = torch.zeros(batch_dims + (traj_len-1, 3))
+                ret_contact_normals[key][..., sim_idx-1, :] = step_contact_forces[key][..., 0, :]    
+            ret_u[..., sim_idx, :] += step_u
 
         ret = self.model_states_from_state_tensor(plant_states)
         return ret, ret_contact_forces, ret_contact_normals, ret_u
@@ -1004,7 +994,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         # TODO: Make this a hyperparam
-        ret = 1e-2 * torch.eye(n_params) #torch.zeros((n_params, n_params))
+        ret = 1e0 * torch.eye(n_params) #torch.zeros((n_params, n_params))
         if data is None:
             return ret
 
@@ -1072,17 +1062,16 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self.zero_grad()
 
         # Simulate batch of robot actions
-        # TODO: HACK don't hardcode this
-        steps_per_timestep = 1
         plant_states_dict, contact_forces_star, contact_normals_star, robot_u = self.diff_simulate(
             robot_trajectories, robot_timestamps, robot_model_name, 
             kp=20.,
-            kd=10.,
-            steps_per_timestep=steps_per_timestep
+            kd=10.
         )
         plant_states = super().construct_state_tensor(plant_states_dict)
         plant_x = plant_states[..., : traj_len - 1, :]
         plant_xplus = plant_states[..., 1:, :]
+        dt_unbatched = robot_timestamps[1:] - robot_timestamps[:-1]
+        dts = dt_unbatched.view(*(1,)*(len(batch_dims)-1), traj_len-1).expand(batch_dims + (traj_len-1,))
         robot_u_cropped = robot_u[..., : traj_len - 1, :]
         assert plant_x.size() == plant_xplus.size()
 
@@ -1102,7 +1091,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(-1, n_samples):
+        for sample_idx in range(n_samples):
             print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
             # Impulses need to be a column vector
             sample_contact_forces = {}
@@ -1114,32 +1103,29 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
-                plant_x, robot_u_cropped, plant_xplus, contact_normals=contact_normals_star, contact_forces=sample_contact_forces
+                plant_x, robot_u_cropped, plant_xplus, 
+                contact_normals=contact_normals_star, 
+                contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
             if sample_idx >= 0:
                 loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
             else:
+                # Debuging with true loss
                 breakpoint()
-        breakpoint()
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
         sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
-        for sample_idx in range(-1, n_samples):
+        for sample_idx in range(n_samples):
             print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
             grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
             score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
             assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
             # Compute Fisher Info as outer product
-            if sample_idx >= 0:
-                sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
-            else:
-                breakpoint()
-        breakpoint()
-        ret = sample_fishers.sum(dim=-3)
-        ret /= n_samples
-        # clear gradients
-        self.zero_grad()
+            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+            # Clear gradients for next cycle
+            self.zero_grad()
+        ret = sample_fishers.mean(dim=-3)
         return ret
 
     def add_trajectories(
