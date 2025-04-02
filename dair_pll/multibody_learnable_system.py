@@ -530,9 +530,9 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         # Interpretable Loss Terms
         self.loss_cache["mean_dev_N"] = (
-            torch.sqrt(loss_dev.clone().detach().mean()) / dt
-        )
-        self.loss_cache["mean_diss_Jps"] = loss_fdiss.clone().detach().mean() / dt
+            torch.sqrt(loss_dev.clone().detach()).squeeze(-1) / dt
+        ).mean()
+        self.loss_cache["mean_diss_Jps"] = (loss_fdiss.clone().detach().squeeze(-1) / dt).mean()
         self.loss_cache["mean_comp_Nm"] = loss_comp.clone().detach().mean()
         self.loss_cache["mean_pen_m"] = torch.sqrt(loss_pen.clone().detach().mean())
         self.loss_cache["mean_q_pred_mps"] = torch.sqrt(
@@ -665,7 +665,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         """
         # pylint: disable=too-many-locals
         dt = self._default_dt if dts is None else dts
-        phi_eps = 1e-3
+        phi_eps = 1e-2
         eps = 1e-8  # TODO: HACK make this a hyperparameter
         delassus, M, J, phi, non_contact_acceleration, obj_pair_list, R_FW_list, mu_list = (
             self.get_multibody_terms(q, v, u)
@@ -707,6 +707,7 @@ class MultibodyLearnableSystem(DrakeSystem):
 
             v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1).detach()
 
+        debug = bool(impulse.cpu().flatten()[0] > 0.)
         ### Construct contact forces / normals
         batch_dims = q.size()[:-1]
         ret_contact_forces = {} # Dict[Tuple[str, str], Tensor]
@@ -726,8 +727,8 @@ class MultibodyLearnableSystem(DrakeSystem):
             R_WF_i = R_FW_list[index].transpose(-1, -2).detach()
             ret_contact_normals[key][contact_filter[..., index, 0], 0, :] = R_WF_i[contact_filter[..., index, 0], :, 2]
             # Force in contact_frame
-            ret_contact_forces[key][..., 0, 0] = impulse[..., index, 0] / dt
-            ret_contact_forces[key][..., 0, 1:] = mu_list[index].detach() * impulse[..., fric_index:fric_index+2, 0] / dt
+            ret_contact_forces[key][..., 0, 2] = impulse[..., index, 0] / dt
+            ret_contact_forces[key][..., 0, :2] = mu_list[index].detach() * impulse[..., fric_index:fric_index+2, 0] / dt
             # Rotate into world frame
             ret_contact_forces[key] = pbmm(R_WF_i, ret_contact_forces[key].transpose(-1, -2)).transpose(-1, -2)      
         ###
@@ -915,9 +916,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Run Forward Dynamics
             step_q = self.space.q(plant_states[..., sim_idx - 1, :]).clone()
             step_v = self.space.v(plant_states[..., sim_idx - 1, :]).clone()
-            step_vplus, step_contact_forces, step_contact_normals = self.forward_dynamics(
-                step_q, step_v, step_u, sim_dt
-            )
+            with torch.no_grad():
+                step_vplus, step_contact_forces, step_contact_normals = self.forward_dynamics(
+                    step_q, step_v, step_u, sim_dt
+                )
             plant_states[..., sim_idx, :] = self.space.x(
                 self.space.euler_step(step_q, step_vplus, sim_dt), step_vplus
             )
@@ -928,7 +930,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             for key in step_contact_normals:
                 if key not in ret_contact_normals.keys():
                     ret_contact_normals[key] = torch.zeros(batch_dims + (traj_len-1, 3))
-                ret_contact_normals[key][..., sim_idx-1, :] = step_contact_forces[key][..., 0, :]    
+                ret_contact_normals[key][..., sim_idx-1, :] = step_contact_normals[key][..., 0, :]    
             ret_u[..., sim_idx, :] += step_u
 
         ret = self.model_states_from_state_tensor(plant_states)
@@ -1091,7 +1093,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(n_samples):
+        for sample_idx in range(-1, n_samples):
             print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
             # Impulses need to be a column vector
             sample_contact_forces = {}
@@ -1109,10 +1111,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
             if sample_idx >= 0:
-                loss_batches[..., sample_idx] = torch.sum(loss_trajlen_batch, dim=-1).flatten()
+                loss_batches[..., sample_idx] = torch.mean(loss_trajlen_batch, dim=-1).flatten()
             else:
                 # Debuging with true loss
                 breakpoint()
+        breakpoint()
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
         sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))

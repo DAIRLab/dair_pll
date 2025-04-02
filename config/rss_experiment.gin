@@ -33,7 +33,7 @@ interpolate_sampled_action.traj_n_steps = 201
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
 DynamicCvxpyLCQPLayer.solver_args = {
-    "solve_method": "Clarabel",
+    "solve_method": "SCS",
     "n_jobs_forward": -1,
 }
 
