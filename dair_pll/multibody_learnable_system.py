@@ -1096,11 +1096,11 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
         for sample_idx in range(n_samples):
-            print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
+            print(f"Calculate Loss for Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             sample_contact_forces = {}
             for key in contact_forces_star.keys():
-                if sample_idx < 0:
+                if sample_idx < 1:
                     sample_contact_forces[key] = contact_forces_star[key]
                 else:
                     sample_contact_forces[key] = samplers_forces[key].sample().reshape(contact_forces_star[key].size())
@@ -1112,16 +1112,13 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            if sample_idx >= 0:
-                loss_batches[..., sample_idx] = torch.mean(loss_trajlen_batch, dim=-1).flatten()
-            else:
-                # Debuging with true loss
-                breakpoint()
+            loss_batches[..., sample_idx] = torch.mean(loss_trajlen_batch, dim=-1).flatten()
+
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
         sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
         for sample_idx in range(n_samples):
-            print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
+            print(f"Computing Gradients for sample {sample_idx}/{n_samples}...")
             grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
             score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
             assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
@@ -1129,6 +1126,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
             # Clear gradients for next cycle
             self.zero_grad()
+            
         ret = sample_fishers.mean(dim=-3)
         return ret
 
