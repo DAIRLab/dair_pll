@@ -388,6 +388,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Penalize Normal Deviation
         # This is unitless. TODO: figure out energy conversion.
         q_norm = torch.zeros_like(q_pred)
+        """
         for key in contact_normals.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
@@ -406,6 +407,7 @@ class MultibodyLearnableSystem(DrakeSystem):
                 cost_normal = torch.maximum(1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1), torch.zeros(batch_dims))
                 assert cost_normal.size() == batch_dims
                 q_norm[..., idx, 0] = cost_normal
+        """
 
         for key in contact_forces.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
@@ -1093,7 +1095,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(-1, n_samples):
+        for sample_idx in range(n_samples):
             print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
             # Impulses need to be a column vector
             sample_contact_forces = {}
@@ -1106,7 +1108,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
                 plant_x, robot_u_cropped, plant_xplus, 
-                contact_normals=contact_normals_star, 
+                # contact_normals=contact_normals_star, 
                 contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
@@ -1115,7 +1117,6 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             else:
                 # Debuging with true loss
                 breakpoint()
-        breakpoint()
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
         sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))

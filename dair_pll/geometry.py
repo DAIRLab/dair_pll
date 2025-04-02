@@ -1025,8 +1025,8 @@ class GeometryCollider:
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi
-        temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
-        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
+        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B
@@ -1103,6 +1103,11 @@ class GeometryCollider:
         # Add estimated normal if they exist
         if estimated_normals_A is not None:
             n_c = 2
+            p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A.clone()], dim=-2)
+            directions_A = torch.cat(
+                [directions_A, directions_A.clone()], dim=-2
+            )
+            """
             assert estimated_normals_A.shape == batch_dim + (3,)
             directions_A2 = torch.zeros_like(estimated_normals_A)
             zeros_idx = torch.isclose(
@@ -1115,6 +1120,7 @@ class GeometryCollider:
             directions_A = torch.cat(
                 [directions_A, directions_A2.unsqueeze(-2)], dim=-2
             )
+            """
         else:
             n_c = 1
             p_AoAc_A = p_AoAc_A.expand(batch_dim + (n_c, 3))
@@ -1151,12 +1157,12 @@ class GeometryCollider:
         # Vector Norm
         # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
-        # phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi
-        temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
-        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
+        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B
