@@ -3,7 +3,7 @@
 ## General Config
 robot_radius = 0.01575 # From trifingeredu.urdf
 robot_radius_buffer = 0.016
-workspace_radius = 0.1
+workspace_radius = 0.15
 robot_model_name = "robot"
 
 object_model_name = "cube"
@@ -13,8 +13,6 @@ object_urdf = "contactnets_cube.urdf.xacro"
 
 fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
 fingertip_body_names_ctrl = ["finger_0", "finger_1"]
-#fingertip_body_names = ["densetact_0", "densetact_120", "finger_240"]
-#fingertip_body_names_ctrl = ["densetact_0", "densetact_120"]
 delta_t = 0.0068 # TODO: HACK remove
 
 delta_t = 0.0333 # TODO: HACK remove and use timestamps; 33ms == 30Hz
@@ -29,6 +27,7 @@ main.init_trifinger_state = [
 	0., 0., 0.,   # DenseTact 120 v
 	0., 0., 0.,   # Finger 240 v
 ]
+
 main.safe_trifinger_height = %workspace_radius
 
 extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
@@ -43,7 +42,8 @@ DynamicCvxpyLCQPLayer.solver_args = {
 }
 
 ## LCM Trajectory Execution
-TrifingerLCMService.fingertip_body_names = %fingertip_body_names_ctrl
+TrifingerLCMService.fingertip_body_names = %fingertip_body_names
+TrifingerLCMService.fingertip_body_names_ctrl = %fingertip_body_names_ctrl
 TrifingerLCMService.traj_time_len = 2.0
 TrifingerLCMService.lcm_channels = {
 	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
@@ -85,9 +85,9 @@ LearnableSystem.learnable_body_dict = {
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = %object_urdf
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.065, # m
-	"length_y": 0.065, # m
-	"length_z": 0.065, # m
+	"length_x": 0.1, # m
+	"length_y": 0.1, # m
+	"length_z": 0.1, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }

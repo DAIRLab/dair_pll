@@ -12,7 +12,7 @@ object_urdf = "contactnets_cube.urdf.xacro"
  
 
 fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
-fingertip_body_names_ctrl = ["finger_0", "finger_1"]
+fingertip_body_names_ctrl = ["finger_0", "finger_1","finger_2"]
 #fingertip_body_names = ["densetact_0", "densetact_120", "finger_240"]
 #fingertip_body_names_ctrl = ["densetact_0", "densetact_120"]
 delta_t = 0.0068 # TODO: HACK remove

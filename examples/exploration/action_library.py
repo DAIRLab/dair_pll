@@ -3,25 +3,6 @@ import numpy as np
 from typing import List, Tuple
 from enum import Enum
 
-import sys
-import os
-import git
-
-#gin.parse_config_file("config/sim_experiment.gin")
-
-# DEFAULT_CONFIG = "rss_experiment.gin"
-# REPO_DIR = os.path.normpath(
-#     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
-# )
-# config_file = DEFAULT_CONFIG
-# if len(sys.argv) < 2:
-#     print(f"Warning: Using default config file ({DEFAULT_CONFIG})")
-# else:
-#     config_file = sys.argv[1]
-
-# # Parse config file and start
-# gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
-
 class ActionLibrary(Enum):
     NONE = 0
     XPINCH = 1
@@ -62,7 +43,7 @@ def sample_action(
     # Start in workspace frame
     def sample_finger(flip_x: bool = False, library = library):
         flip_factor = -1.0 if flip_x else 1.0
-        start_polar = rng.uniform(0.0, np.pi / 2.0)
+        start_polar = rng.uniform(np.pi / 6.0, np.pi / 3.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
         if library in (ActionLibrary.XPINCH, ActionLibrary.XSINGLE):
             start_polar = np.pi / 2.0
@@ -101,13 +82,14 @@ def sample_action(
         if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.CORNERSINGLE)):
             end_radius = max_radius
             end_angle = np.pi / 2.0
-        end_S = np.array(
-            [
-                flip_factor * sphere_radius,
-                end_radius * np.cos(end_angle),
-                sphere_radius + end_radius * np.sin(end_angle),
-            ]
-        )
+        # end_S = np.array(
+        #     [
+        #         flip_factor * sphere_radius,
+        #         end_radius * np.cos(end_angle),
+        #         sphere_radius + end_radius * np.sin(end_angle),
+        #     ]
+        end_S = start_S * (2.5*sphere_radius/(workspace_radius - sphere_radius))
+        
         return (start_S, end_S)
 
     finger_0_traj = sample_finger(False)
@@ -127,13 +109,3 @@ def sample_action(
         ret[idx][3:6] = z_rot @ finger_120_traj[idx].T + xy_trans  
         ret[idx][6:9] = fixed_240_traj[:]
     return ret
-
-    # def load_gin():
-    #     config_file = DEFAULT_CONFIG
-    #     if len(sys.argv) < 2:
-    #         print(f"Warning: Using default config file ({DEFAULT_CONFIG})")
-    #     else:
-    #         config_file = sys.argv[1]
-
-    #     # Parse config file and start
-    #     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))

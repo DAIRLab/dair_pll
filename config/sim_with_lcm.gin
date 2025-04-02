@@ -21,9 +21,9 @@ PlantDiagram.urdfs = {
 ## Base URDF and State Config
 object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
-	"length_x": 0.065, # m
-	"length_y": 0.065, # m
-	"length_z": 0.065, # m
+	"length_x": 0.1, # m
+	"length_y": 0.1, # m
+	"length_z": 0.1, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
@@ -40,15 +40,6 @@ robot/get_urdf_asset_contents.mappings = {
 	"mu": 1.0,
 	"radius": 0.01575,
 }
-robot_initial_state = [
-	0.0, 0.1, 0.05, # DenseTact 0 q
-	-0.1, -0.1, 0.1, # Finger 240 q
-	0.1, 0.0, 0.05, # DenseTact 120 q
-	0., 0., 0.,   # DenseTact 0 v
-	0., 0., 0.,   # DenseTact 120 v
-	0., 0., 0.,   # Finger 240 v
-]
-
 robot_initial_state = [
 	0.0, 0.1, 0.05, # DenseTact 0 q
 	0.1, 0.0, 0.05, # DenseTact 120 q
@@ -68,7 +59,7 @@ PlantDiagram.additional_system_builders = [@sim_diagram_builder]
 sim_diagram_builder.lcm_pub_dt = %io_dt
 sim_diagram_builder.lcm_densetact_dt = %densetact_io_dt
 sim_diagram_builder.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position
+	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
 	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics

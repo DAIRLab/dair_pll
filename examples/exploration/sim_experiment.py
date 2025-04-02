@@ -36,7 +36,6 @@ import numpy as np
 from pydrake.all import StartMeshcat, Rgba, Shape
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from scipy.spatial.transform import Rotation as R
-from scipy.spatial.transform import Slerp
 
 from tensordict import TensorDictBase, TensorDict
 import torch
@@ -44,7 +43,6 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torch import Tensor
 
-from examples.exploration.trajectory_factory import TrajectoryFactory
 from trifinger_lcm_service import TrifingerLCMService
 from action_library import sample_action, ActionLibrary
 
@@ -217,7 +215,6 @@ def extract_robot_trajectory(
 
     for finger_name, state_idx in zip(fingertip_body_names,
         finger_idx_from_body_name(plant, plant.GetModelInstanceByName(robot_model_name), fingertip_body_names),):
-
         pos_idx = 3 * state_idx
         vel_idx = robot_space.n_x // 2 + pos_idx
         ret[..., pos_idx : pos_idx + 3] = data[finger_name]["position"]
@@ -255,16 +252,6 @@ def main(
     print("Active Tactile Exploration")
     storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
     print(f"Storing data and results at {file_utils.run_dir(storage_name, run_name)}")
-
-    # Initialize LCM
-    # Pylint doesn't know about gin
-    # pylint: disable=no-value-for-parameter
-    trifinger_lcm = TrifingerLCMService()
-    print("Move to initial trifinger state")
-    trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
-    print("Sample Initial Random Action...")
-    selected_action = sample_action(workspace_z_rot = np.pi/4, workspace_radius = 0.1, sphere_radius=0.0175)
-    new_trajectory = None
     
     # Create learnable system
     print("Loading Learned System...")
@@ -288,7 +275,7 @@ def main(
     # Initialize LCM
     # Pylint doesn't know about gin
     # pylint: disable=no-value-for-parameter
-    trifinger_lcm = TrifingerLCMService()
+    trifinger_lcm = TrifingerLCMService(learned_system)
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
@@ -331,6 +318,10 @@ def main(
         if command_char == "h":
             print_help()
 
+        elif command_char == "i":
+            print("Move to initial trifinger state")
+            trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
+
 
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
@@ -371,6 +362,7 @@ def main(
                     continue
             add_trajectory["time"] = new_trajectory["time"]
             add_trajectory[object_model_name + "_groundtruth"] = new_trajectory[object_model_name]["position"]
+            import pdb; pdb.set_trace()
             data_trajectories.add_trajectories(
                 [add_trajectory.clone().detach()],
                 torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
@@ -417,7 +409,12 @@ def main(
 
         elif command_char == "s":
             print("Sampling random action...")
-            selected_action = sample_action(workspace_z_rot = 3 * np.pi / 4.0, workspace_radius = 0.15, sphere_radius=0.0175, fixed_240_W=init_trifinger_state[6:9], library=ActionLibrary.XSINGLE)
+            selected_action = sample_action(workspace_z_rot = 3 * np.pi / 4.0, workspace_radius = 0.15, sphere_radius=0.0175, fixed_240_W=init_trifinger_state[6:9])
+            
+        elif command_char == "c":
+            print("Sampling random action...")
+            selected_action = sample_action(workspace_z_rot = 3 * np.pi / 4.0, workspace_radius = 0.15, sphere_radius=0.0175, fixed_240_W=init_trifinger_state[6:9],
+                                            library=ActionLibrary.CORNERSINGLE)
 
         elif command_char == "a":
             print("Recording Inverse Observed Info")
@@ -448,8 +445,6 @@ def main(
                 continue
 
             obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-
-
 
         elif command_char == "t":
             if traj_dataloader is None or len(traj_dataloader) == 0:
@@ -512,7 +507,6 @@ def main(
             else:
                 last_cube_state_traj = cube_state[-1]
             
-            #print("cube_state",last_cube_state_traj)
             
             visualize_geometries(vis_meshcat, learned_system, true_geometry, last_cube_state_traj)
             print("Learned Geometry", learned_system.get_learned_geometry())

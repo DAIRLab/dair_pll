@@ -17,6 +17,7 @@ from tensordict import TensorDictBase, TensorDict
 import torch
 
 from trajectory_factory import TrajectoryFactory
+from dair_pll.hack_utils import finger_idx_from_body_name
 #from examples.exploration.trajectory_factory import collision_free_traj
 
 ## Execute Robot Trajectory
@@ -29,23 +30,36 @@ class TrifingerLCMService(TrajectoryFactory):
 
     def __init__(
         self,
+        system,
         lcm_channels: Dict[str, str],
         fingertip_body_names: List[str],
         fingertip_body_names_ctrl: List[str],
         traj_time_len: float,
         ):
         
+        self._system = system
         self._lcm_channels = lcm_channels
         self._fingertip_body_names = fingertip_body_names
         self._fingertip_body_names_ctrl = fingertip_body_names_ctrl
         self._traj_time_len = traj_time_len
 
+        #plant = self._system.plant_diagram.plant
+
+        # self._finger_pairs = list(zip(self._fingertip_body_names, 
+        #     finger_idx_from_body_name(plant, plant.GetModelInstanceByName("robot"), self._fingertip_body_names),))
+
+        self._object_rad = 0.29
+        self._workspace_rad = 0.3
+        self._traj_n_steps = 20
+
+        self._start_t = time.time()
+
         super().__init__(
-            object_rad =  0.29,
-            workspace_rad = 0.3,
-            traj_n_steps = 20,
-            traj_len_s = traj_time_len,
-            fingertip_body_names = fingertip_body_names
+            object_rad =  self._object_rad,
+            workspace_rad = self._workspace_rad,
+            traj_n_steps = self._traj_n_steps,
+            traj_time_len = traj_time_len,
+            fingertip_body_names = fingertip_body_names,
             )
 
         self._force_raw_data = []
@@ -67,7 +81,11 @@ class TrifingerLCMService(TrajectoryFactory):
                 1
             )  # to discard everything outside of the handle window
 
-    def __sub_handler(self, channel: str, data: Any):
+    def __sub_handler(
+        self, 
+        channel: str, 
+        data: Any,
+        ):
         """
         Write LCM incoming messages to cache
         """
@@ -80,54 +98,64 @@ class TrifingerLCMService(TrajectoryFactory):
 
     def __sub_empty_stall(
         self, 
-        lcm_type):
+        lcm_type: List,
+        ):
         """
         Stall LCM until first message is received
+        Args:
+            lcm_type: list of lcm data
         """
         while len(lcm_type) == 0:
             self._lcm.handle_timeout(int(10))
         
     
-    def __sub_timed_stall(self,
-                          s: float, 
-                          dt: float):
+    def __sub_timed_stall(
+        self,
+        start_time: float, 
+        dt: float,
+        ):
         """
         Stall LCM for dt seconds
+        Args:
+            start_time: beginning of time step: t_i, float
+            dt: time elapsed: dt, float
         """
-        assert time.time() - s < dt, "too slow"
-        while time.time() < s + dt:
+        assert time.time() - start_time < dt, "too slow"
+        while time.time() < start_time + dt:
             self._lcm.handle_timeout(int(10))
 
     def __send_traj_to_lcm(
         self,
         traj: TensorDict,
-    ):
+        ):
         """
         Send trajectory to LCM
         traj: TensorDict with keys (fingertip, "position") and (fingertip, "velocity")
         """
         _lcm = self._finger_target_lcm
-        fingertip_body_names = self._fingertip_body_names
+        plant = self._system.plant_diagram.plant
 
         dts = np.gradient(traj['timestamp'].detach().cpu().tolist())
-    
+
+        #context = self._system.get_context()
+
         for n_idx, dt in enumerate(dts):
-            _lcm.utime = int(time.time() * 1e6)
+            _lcm.utime = int(time.time()*1e3)
             _lcm.isAbsoluteTargetPos = True
-            s = np.copy(time.time())
-            for finger_indx, finger_name in enumerate(fingertip_body_names):  
-                
+            s = np.copy(time.time())  
+
+            for finger_indx, finger_name in enumerate(self._fingertip_body_names):
                 _lcm.targetPos[3*finger_indx: 3*finger_indx + 3] = np.float32(traj[finger_name, 'position'][n_idx].detach().cpu().tolist())
                 _lcm.targetVel[3*finger_indx: 3*finger_indx + 3] = np.float32(traj[finger_name, 'velocity'][n_idx].detach().cpu().tolist())
-
+            
             self.__sub_timed_stall(s, dt)
             self._lcm.publish(self._lcm_channels["fingertips_target"], _lcm.encode())
 
     def execute_trajectory(
-            self,
-            target_state: np.ndarray,
-            pos_is_absolute: bool = True,
-            no_data: bool = False,
+        self,
+        target_state: np.ndarray,
+        pos_is_absolute: bool = True,
+        no_data: bool = False,
         ) -> TensorDictBase:
             """
             Direct the robot to go to target_state.
@@ -152,11 +180,8 @@ class TrifingerLCMService(TrajectoryFactory):
                                         np.array(self._fingertip_pose_raw_data[-1].curVel)])
 
             end_knots = torch.stack([torch.from_numpy(init_state).squeeze(0),torch.from_numpy(target_state).squeeze(0)])
-            
-            traj = self.object_avoidance(end_knots)
-
-            self.__send_traj_to_lcm(traj)
-            
+            trajectory = self.object_avoidance(end_knots)
+            self.__send_traj_to_lcm(trajectory)
 
             print(f"Finished at: {time.time()}")
             print(
@@ -171,6 +196,7 @@ class TrifingerLCMService(TrajectoryFactory):
 
             assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names_ctrl)
             assert len(self._fingertip_pose_raw_data) >= len(self._force_raw_data)
+
             def is_sorted(a: np.ndarray) -> bool:
                 return np.all(a[:-1] <= a[1:])
             densetact_time_s = np.array(
@@ -179,6 +205,7 @@ class TrifingerLCMService(TrajectoryFactory):
                     for measurement in self._force_raw_data
                 ]
             ).flatten()
+
             assert is_sorted(densetact_time_s)
             fingerpos_time_s = np.array(
                 [
@@ -233,6 +260,8 @@ class TrifingerLCMService(TrajectoryFactory):
                 assert body_vel_interp.shape == (len(densetact_time_s), 3)
                 fingertip_vel_W[body_name] = body_vel_interp
 
+                import pdb; pdb.set_trace()
+
                 # Quat Interpolation
                 body_quat = np.array(
                     [
@@ -260,21 +289,21 @@ class TrifingerLCMService(TrajectoryFactory):
                     )
                 )
                 normal_C = np.broadcast_to(
-                    np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
+                    np.array([1.0, 0.0, 0.0]), (len(densetact_time_s), 3)
                 )
-                body_R_CW = body_R_BW.inv() * body_R_CB
+                body_R_CW = body_R_BW * body_R_CB
                 fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
                 # Zero out no contact normal
                 finger_in_contact = np.array([
                     measurement.sensorData[body_idx].inContact
                             for measurement in self._force_raw_data
                     ])
-                fingertip_normal_W[body_name][~finger_in_contact] = 0.
+                fingertip_normal_W[body_name][~finger_in_contact] = 0.0
                 force_C = np.array(
                     [
                         (
+                            [measurement.sensorData[body_idx].scaledNormal] +
                             list(measurement.sensorData[body_idx].scaledFriction)
-                            + [measurement.sensorData[body_idx].scaledNormal]
                         )
                         for measurement in self._force_raw_data
                     ]
