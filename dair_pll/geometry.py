@@ -67,7 +67,7 @@ _ROT_Z_45 = torch.tensor(
 )
 
 # TODO: HACK adjust based on trajectory length
-_NOMINAL_HALF_LENGTH = 1e0  # Note: matches Box/Polygon space to trajectory space (m)
+_NOMINAL_HALF_LENGTH = 1e-1  # Note: matches Box/Polygon space to trajectory space (m)
 
 _total_ordering = ["Plane", "Polygon", "Box", "Sphere", "DeepSupportConvex"]
 
@@ -1019,9 +1019,9 @@ class GeometryCollider:
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 
         # Vector Norm
-        # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
-        phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        #phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi

@@ -231,14 +231,14 @@ class MultibodyLearnableSystem(DrakeSystem):
         )
 
         # Cache Losses
-        self.loss_cache["loss_pred"] = loss_pred.clone().detach()
-        self.loss_cache["loss_q_pred"] = loss_q_pred.clone().detach()
-        self.loss_cache["loss_comp"] = loss_comp.clone().detach()
-        self.loss_cache["loss_pen"] = loss_pen.clone().detach()
-        self.loss_cache["loss_fdiss"] = loss_fdiss.clone().detach()
-        self.loss_cache["loss_ndiss"] = loss_ndiss.clone().detach()
-        self.loss_cache["loss_dev"] = loss_dev.clone().detach()
-        self.loss_cache["loss_norm"] = loss_norm.clone().detach()
+        self.loss_cache["loss_pred"] = loss_pred.clone()
+        self.loss_cache["loss_q_pred"] = loss_q_pred.clone()
+        self.loss_cache["loss_comp"] = loss_comp.clone()
+        self.loss_cache["loss_pen"] = loss_pen.clone()
+        self.loss_cache["loss_fdiss"] = loss_fdiss.clone()
+        self.loss_cache["loss_ndiss"] = loss_ndiss.clone()
+        self.loss_cache["loss_dev"] = loss_dev.clone()
+        self.loss_cache["loss_norm"] = loss_norm.clone()
 
         return loss
 
@@ -388,7 +388,6 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Penalize Normal Deviation
         # This is unitless. TODO: figure out energy conversion.
         q_norm = torch.zeros_like(q_pred)
-        """
         for key in contact_normals.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
@@ -407,7 +406,6 @@ class MultibodyLearnableSystem(DrakeSystem):
                 cost_normal = torch.maximum(1.0 - (normals_measured_W * normals_guess_W).sum(dim=-1), torch.zeros(batch_dims))
                 assert cost_normal.size() == batch_dims
                 q_norm[..., idx, 0] = cost_normal
-        """
 
         for key in contact_forces.keys():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
@@ -998,7 +996,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         # TODO: Make this a hyperparam
-        ret = 1e0 * torch.eye(n_params) #torch.zeros((n_params, n_params))
+        ret = 1e-6 * torch.eye(n_params) #torch.zeros((n_params, n_params))
         if data is None:
             return ret
 
@@ -1108,11 +1106,13 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
                 plant_x, robot_u_cropped, plant_xplus, 
-                # contact_normals=contact_normals_star, 
+                contact_normals=contact_normals_star, 
                 contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            loss_batches[..., sample_idx] = torch.mean(loss_trajlen_batch, dim=-1).flatten()
+            loss_batches[..., sample_idx] = loss_trajlen_batch.mean(dim=-1).flatten()
+            # breakpoint()
+            # torch.autograd.grad(self.loss_cache["loss_pred"].mean(), param_list, retain_graph=True, allow_unused=True)
 
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
