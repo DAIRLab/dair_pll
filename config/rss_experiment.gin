@@ -33,8 +33,12 @@ interpolate_sampled_action.traj_n_steps = 201
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
 DynamicCvxpyLCQPLayer.solver_args = {
-    "solve_method": "SCS",
+    "solve_method": "ECOS",
     "n_jobs_forward": -1,
+    "max_iters": 500,
+    "abstol": 1e-9,
+    "reltol": 1e-9,
+    "feastol": 1e-9,
 }
 
 ## LCM Trajectory Execution

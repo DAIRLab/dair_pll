@@ -301,7 +301,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         q_plus, v_plus = self.space.q_v(x_plus)
         dt = self._default_dt * torch.ones(batch_dims + (1,)) if dts is None else dts.reshape(batch_dims + (1,))
         assert dt.size() == batch_dims + (1,)
-        eps = 1e-8  # TODO: HACK, make a hyperparameter
+        eps = torch.finfo(x.dtype).eps  # TODO: HACK, make a hyperparameter
         
         # Begin loss calculation.
         (
@@ -543,9 +543,9 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         # Check for positive definite loss
         try:
-            assert np.all(loss_dev.detach().cpu().numpy() >= 0.0), "Deviation Loss Negative"
-            assert np.all(loss_pred.detach().cpu().numpy() >= 0.0), "Prediction Loss Negative"
-            assert np.all(loss_norm.detach().cpu().numpy() >= 0.0), "Normal Alignment Loss Negative"
+            assert np.all(loss_dev.detach().cpu().numpy() >= -eps), "Deviation Loss Negative"
+            assert np.all(loss_pred.detach().cpu().numpy() >= -eps), "Prediction Loss Negative"
+            assert np.all(loss_norm.detach().cpu().numpy() >= -eps), "Normal Alignment Loss Negative"
         except AssertionError:
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
@@ -1098,7 +1098,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Impulses need to be a column vector
             sample_contact_forces = {}
             for key in contact_forces_star.keys():
-                if sample_idx < 1:
+                if sample_idx < 0:
                     sample_contact_forces[key] = contact_forces_star[key]
                 else:
                     sample_contact_forces[key] = samplers_forces[key].sample().reshape(contact_forces_star[key].size())
