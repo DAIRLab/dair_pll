@@ -230,9 +230,6 @@ class MultibodyLearnableSystem(DrakeSystem):
             #            + (self._hyperparameters.w_reg_iner * reg_inertia_cond)
         )
 
-        if self.debug:
-            breakpoint()
-
         # Cache Losses
         self.loss_cache["loss_pred"] = loss_pred.clone()
         self.loss_cache["loss_q_pred"] = loss_q_pred.clone()
@@ -708,7 +705,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
             impulse[contact_filter] += impulse_full[contact_filter].detach()
 
-            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1).detach()
+        v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1)
 
         debug = bool(impulse.cpu().flatten()[0] > 0.)
         ### Construct contact forces / normals
@@ -1125,6 +1122,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 loss_batches[..., sample_idx] = loss_trajlen_batch.mean(dim=-1).flatten()
             # breakpoint()
             # torch.autograd.grad(self.loss_cache["loss_pred"].mean(), param_list, retain_graph=True, allow_unused=True)
+        # breakpoint()
 
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
@@ -1148,7 +1146,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Clear gradients for next cycle
             self.zero_grad()
         ret = sample_fishers.mean(dim=-3)
-        # breakpoint()
+        breakpoint()
         return ret
 
     def add_trajectories(
