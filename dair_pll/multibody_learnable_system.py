@@ -230,6 +230,9 @@ class MultibodyLearnableSystem(DrakeSystem):
             #            + (self._hyperparameters.w_reg_iner * reg_inertia_cond)
         )
 
+        if self.debug:
+            breakpoint()
+
         # Cache Losses
         self.loss_cache["loss_pred"] = loss_pred.clone()
         self.loss_cache["loss_q_pred"] = loss_q_pred.clone()
@@ -984,7 +987,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self,
         data: Optional[DataLoader],
         get_loss_args: Callable[[Tensor, Tensor, MultibodyLearnableSystem], Tensor],
-        use_hessian: bool = False
+        info_calc: int = 1
     ) -> Tensor:
         """
         Calculate the Observed Information in previously taken actions
@@ -1012,13 +1015,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         all_losses = torch.cat(losses)
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
-        if use_hessian:
+        # Hessian (Note: likely inaccurate)
+        if info_calc == 0:
             grads = torch.autograd.grad(all_losses.mean(), param_list, retain_graph=True, create_graph=True)
             flattened_list = [grad.flatten() for grad in grads]
             flattened_grads = torch.cat(flattened_list)
             assert len(flattened_grads) == n_params
             hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
             ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        # Per Timestep Loss
         else:
             grads = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
             grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
@@ -1079,7 +1084,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Sample forces
         # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
-        forces_std = 0.01 # 10g * g ~ 0.01N
+        forces_std = 0.1 # 10g * g ~ 0.01N
         samplers_forces = {}
         for key in contact_forces_star.keys():  
             samplers_forces[key] = Normal(
@@ -1093,8 +1098,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(n_samples):
-            print(f"Calculate Loss for Sample {sample_idx} / {n_samples}...")
+        true_loss = torch.zeros(batch_dims)
+        for sample_idx in range(-1, n_samples):
+            if sample_idx < 0:
+                print(f"Calculate Loss for unperturbed force...")
+            else:
+                print(f"Calculate Loss for Sample {sample_idx} / {n_samples}...")
             # Impulses need to be a column vector
             sample_contact_forces = {}
             for key in contact_forces_star.keys():
@@ -1106,28 +1115,40 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
                 plant_x, robot_u_cropped, plant_xplus, 
-                contact_normals=contact_normals_star, 
+                # contact_normals=contact_normals_star, 
                 contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            loss_batches[..., sample_idx] = loss_trajlen_batch.mean(dim=-1).flatten()
+            if sample_idx < 0:
+                true_loss = loss_trajlen_batch.mean(dim=-1).flatten()
+            else:
+                loss_batches[..., sample_idx] = loss_trajlen_batch.mean(dim=-1).flatten()
             # breakpoint()
             # torch.autograd.grad(self.loss_cache["loss_pred"].mean(), param_list, retain_graph=True, allow_unused=True)
 
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
-        sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
-        for sample_idx in range(n_samples):
-            print(f"Computing Gradients for sample {sample_idx}/{n_samples}...")
-            grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
-            score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
-            assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
-            # Compute Fisher Info as outer product
-            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+        sample_fishers = torch.zeros(batch_dims + (n_samples, n_params, n_params))
+        for sample_idx in range(-1, n_samples):
+            if sample_idx < 0:
+                print(f"Computing unperturbed gradient...")
+                loss_calc = true_loss
+            else:
+                print(f"Computing Gradients for sample {sample_idx}/{n_samples}...")
+                loss_calc = loss_batches[..., sample_idx]
+            grads = torch.autograd.grad(loss_calc.flatten(), param_list, grad_outputs=torch.eye(loss_calc.numel()), is_grads_batched=True, retain_graph=True)
+            score_batches = torch.cat([grad.reshape((loss_calc.numel(), -1)) for grad in grads], dim=-1)
+            assert score_batches.size() == (loss_calc.numel(), n_params)
+            if sample_idx < 0:
+                mean_score = score_batches.clone()
+            else:
+                score_batches = score_batches - mean_score
+                # Compute Fisher Info as outer product
+                sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
             # Clear gradients for next cycle
             self.zero_grad()
-            
         ret = sample_fishers.mean(dim=-3)
+        breakpoint()
         return ret
 
     def add_trajectories(

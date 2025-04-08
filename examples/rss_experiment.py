@@ -493,9 +493,12 @@ def sample_action(
         elif library in (ActionLibrary.EDGESINGLE,):
             start_polar = np.pi / 7.0
             start_azimuth = 0.
-        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.CORNERSINGLE, ActionLibrary.EDGESINGLE)):
+        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.CORNERSINGLE, ActionLibrary.EDGESINGLE)):
             start_polar = 0.
             start_azimuth = 0.
+        if flip_x and (library in (ActionLibrary.ZSINGLE,)):
+            start_polar = np.pi / 2.0
+            start_azimuth = np.pi / 2.0
         start_S = (workspace_radius - sphere_radius) * np.array(
             [
                 (np.sin(start_polar) * np.cos(start_azimuth)),
@@ -503,7 +506,7 @@ def sample_action(
                 np.cos(start_polar),
             ]
         )
-        start_S[0] += sphere_radius
+        #start_S[0] += sphere_radius
         start_S[2] += sphere_radius
         start_S[0] *= flip_factor
         max_radius = workspace_radius - sphere_radius
@@ -515,9 +518,12 @@ def sample_action(
         if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.CORNERSINGLE)):
             end_radius = max_radius
             end_angle = np.pi / 2.0
+        if flip_x and (library in (ActionLibrary.ZSINGLE,)):
+            end_radius = max_radius
+            end_angle = 0.
         end_S = np.array(
             [
-                flip_factor * sphere_radius,
+                flip_factor * 0.,#sphere_radius,
                 end_radius * np.cos(end_angle),
                 sphere_radius + end_radius * np.sin(end_angle),
             ]
@@ -692,7 +698,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    selected_action = sample_action(library=ActionLibrary.XSINGLE)
+    selected_action = sample_action(library=ActionLibrary.ZSINGLE)
     new_trajectory = None
 
     # Initialize Optimizer and Data config
@@ -818,10 +824,11 @@ def main(
             print(f"Previously Observed Information: {obs_info}")
 
             print(f"Sampling {n_actions_optimized} actions to optimize...")
+            libaction = ActionLibrary.NONE
             action_samples = torch.stack([
                 torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action(library=libaction)])
                 #for _ in range(n_actions_optimized)
-                for libaction in [ActionLibrary.XPINCH]
+                for libaction in [ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE]
             ])
             interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
             robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)
@@ -838,6 +845,7 @@ def main(
                 continue
 
             obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
+            obs_info_inv = torch.linalg.inv(obs_info)
 
         elif command_char == "v":
             print("Visualizing entire trajectory.")

@@ -111,13 +111,21 @@ LearnableHyperparameters.w_ndiss = 1e0
 LearnableHyperparameters.w_pen = 1e2
 LearnableHyperparameters.w_dev = 1e5
 LearnableHyperparameters.w_norm = 1e0
+#LearnableHyperparameters.w_pred = 1e0
+#LearnableHyperparameters.w_q_pred = 1e0
+#LearnableHyperparameters.w_comp = 1e0
+#LearnableHyperparameters.w_fdiss = 1e0
+#LearnableHyperparameters.w_ndiss = 1e0
+#LearnableHyperparameters.w_pen = 1e0
+#LearnableHyperparameters.w_dev = 1e2
+#LearnableHyperparameters.w_norm = 1e0
 LearnableHyperparameters.w_reg_iner = 1e-5
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=1e-3
+Adam.lr=5e-3
 Adam.amsgrad=True
 Adam.fused=True
 
