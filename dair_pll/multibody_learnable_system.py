@@ -1148,7 +1148,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Clear gradients for next cycle
             self.zero_grad()
         ret = sample_fishers.mean(dim=-3)
-        breakpoint()
+        # breakpoint()
         return ret
 
     def add_trajectories(

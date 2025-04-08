@@ -498,7 +498,7 @@ def sample_action(
             start_azimuth = 0.
         if flip_x and (library in (ActionLibrary.ZSINGLE,)):
             start_polar = np.pi / 2.0
-            start_azimuth = np.pi / 2.0
+            start_azimuth = -np.pi / 2.0
         start_S = (workspace_radius - sphere_radius) * np.array(
             [
                 (np.sin(start_polar) * np.cos(start_azimuth)),
@@ -520,7 +520,7 @@ def sample_action(
             end_angle = np.pi / 2.0
         if flip_x and (library in (ActionLibrary.ZSINGLE,)):
             end_radius = max_radius
-            end_angle = 0.
+            end_angle = np.pi
         end_S = np.array(
             [
                 flip_factor * 0.,#sphere_radius,
@@ -698,7 +698,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    selected_action = sample_action(library=ActionLibrary.ZSINGLE)
+    selected_action = sample_action(library=ActionLibrary.XSINGLE)
     new_trajectory = None
 
     # Initialize Optimizer and Data config
