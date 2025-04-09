@@ -320,6 +320,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         # velocity_mask: 1 for object velocities, 0 for robot velocities.
         # object velocities: wx, wy, wz, vx, vy, vz
         velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q:].detach().clone()
+        import pdb; pdb.set_trace()
         J_small = J[..., velocity_mask] # (*, n_contacts*3, n_v_object)
         M_small = M[..., velocity_mask, :][..., velocity_mask]
         M_inv_small = torch.inverse(M_small)
@@ -951,7 +952,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
     @torch.no_grad
     def get_learned_trajectory(self) -> Tensor:
-        """ Current pose trqjectory for the learned object """
+        """ Current pose trajectory for the learned object """
         return self._trajectory.get_current_pose_traj()
 
     @torch.no_grad

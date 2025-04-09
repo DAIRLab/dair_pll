@@ -1,0 +1,12 @@
+
+main.weights = {
+    "w_pred": 5e0,
+    "w_q_pred": 1e1,
+    "w_comp" : 2e1,
+    "w_fdiss" : 1e0,
+    "w_ndiss" : 1e0,
+    "w_pen" : 1e2,
+    "w_dev" : 1e5,
+    "w_norm" : 1e0,
+
+}
