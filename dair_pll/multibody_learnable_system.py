@@ -172,6 +172,18 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         self.urdfs = new_urdf_strings
         return new_urdf_strings
+    
+    def set_hyperparameters(self, 
+                            params: Dict[str, Any]
+                            ):
+
+        self._hyperparameters.w_pred = params["w_pred"]
+        self._hyperparameters.w_comp = params["w_comp"]
+        self._hyperparameters.w_fdiss = params["w_fdiss"]
+        self._hyperparameters.w_ndiss = params["w_ndiss"]
+        self._hyperparameters.w_pen = params["w_pen"]
+        self._hyperparameters.w_dev = params["w_dev"]
+        self._hyperparameters.w_norm = params["w_norm"]
 
     def contactnets_loss(
         self,
@@ -320,7 +332,6 @@ class MultibodyLearnableSystem(DrakeSystem):
         # velocity_mask: 1 for object velocities, 0 for robot velocities.
         # object velocities: wx, wy, wz, vx, vy, vz
         velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q:].detach().clone()
-        import pdb; pdb.set_trace()
         J_small = J[..., velocity_mask] # (*, n_contacts*3, n_v_object)
         M_small = M[..., velocity_mask, :][..., velocity_mask]
         M_inv_small = torch.inverse(M_small)
