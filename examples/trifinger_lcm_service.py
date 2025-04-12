@@ -13,7 +13,7 @@ from dair_pll.lcmtypes.dairlib import (
     lcmt_fingertips_target_kinematics,
 )
 
-import scipy.spatial.transform as R
+from scipy.spatial.transform import Rotation as R
 
 ## Execute Robot Trajectory
 @gin.configurable
