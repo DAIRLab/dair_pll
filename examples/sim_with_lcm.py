@@ -360,38 +360,69 @@ def sim_diagram_builder(
 
 ## Main Function
 @gin.configurable
-def main(
-  init_sim_state: Optional[Dict[str, List[float]]] = None,
-  sim_rate: float = 1.0
-):
-    """Main function for simulation"""
-    print("Simulation With Object and Robot")
+class Simulation:
+    """Simulation class to run the simulation with LCM interface"""
+    def __init__(self,
+                 init_sim_state: Optional[Dict[str, List[float]]] = None,
+                 sim_rate: float = 1.0):
+      self.init_sim_state_ = init_sim_state
+      self.sim_rate_ = sim_rate
 
-    plant_diagram = MultibodyPlantDiagram()
-    plant_context = plant_diagram.plant.GetMyMutableContextFromRoot(plant_diagram.sim.get_mutable_context())
+      plant_diagram = MultibodyPlantDiagram()
+      plant_context = plant_diagram.plant.GetMyMutableContextFromRoot(plant_diagram.sim.get_mutable_context())
 
-    # Generate plant diagram for debugging
-    plant_diagram.diagram.set_name("dairpll_simplesim")
-    plt.figure(figsize=(11,8.5), dpi=300)
-    plot_system_graphviz(plant_diagram.diagram)
-    plt.savefig(str(Path.home() / "Desktop" / "dairpll_simplesim.png"))
-    plt.close()
+      # Generate plant diagram for debugging
+      plant_diagram.diagram.set_name("dairpll_simplesim")
+      plt.figure(figsize=(11,8.5), dpi=300)
+      plot_system_graphviz(plant_diagram.diagram)
+      plt.savefig(str(Path.home() / "Desktop" / "dairpll_simplesim.png"))
+      plt.close()
 
-    # Set Initial State
-    if init_sim_state is not None:
-      for model_name, model_state in init_sim_state.items():
-        model_id = plant_diagram.plant.GetModelInstanceByName(model_name)
-        plant_diagram.plant.SetPositionsAndVelocities(plant_context, model_id, np.array(model_state))
+      self.plant_diagram_ = plant_diagram
+      self.plant_context_ = plant_context
 
-    # Run Simulator
-    print("Running Sim... Press Ctrl-C to Stop")
-    plant_diagram.sim.set_target_realtime_rate(sim_rate)
-    plant_diagram.sim.set_publish_every_time_step(False)
-    try:
-      plant_diagram.sim.AdvanceTo(float('inf'))
-    except KeyboardInterrupt:
-        print("\nClosing...")
-        sys.exit(0)
+    def init_state(self):
+      """Reset simulation state"""
+      
+      init_sim_state = self.init_sim_state_
+      plant_diagram = self.plant_diagram_ 
+      plant_context = self.plant_context_
+
+      if init_sim_state is not None:
+        for model_name, model_state in init_sim_state.items():
+          model_id = plant_diagram.plant.GetModelInstanceByName(model_name)
+          plant_diagram.plant.SetPositionsAndVelocities(plant_context, model_id, np.array(model_state))
+
+    def main(self):
+      """Main function for simulation"""
+      print("Simulation With Object and Robot")
+
+      init_sim_state = self.init_sim_state_
+      sim_rate = self.sim_rate_
+      plant_diagram = self.plant_diagram_ 
+      plant_context = self.plant_context_
+
+      self.init_state()
+
+      # Generate plant diagram for debugging
+      plant_diagram.diagram.set_name("dairpll_simplesim")
+      plt.figure(figsize=(11,8.5), dpi=300)
+      plot_system_graphviz(plant_diagram.diagram)
+      plt.savefig(str(Path.home() / "Desktop" / "dairpll_simplesim.png"))
+      plt.close()
+
+      # Set Initial State
+      self.init_state()
+
+      # Run Simulator
+      print("Running Sim... Press Ctrl-C to Stop")
+      plant_diagram.sim.set_target_realtime_rate(sim_rate)
+      plant_diagram.sim.set_publish_every_time_step(False)
+      try:
+        plant_diagram.sim.AdvanceTo(float('inf'))
+      except KeyboardInterrupt:
+          print("\nClosing...")
+          sys.exit(0)
 
 def main_fn():
     """Entry point"""
@@ -403,7 +434,10 @@ def main_fn():
 
     # Parse config file and start
     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
-    main()
+
+    sim = Simulation()
+    sim.main()
+
 
 
 if __name__ == "__main__":
