@@ -13,8 +13,8 @@ fingertip_body_names_ctrl = ["finger_0", "finger_1"]
 delta_t = 0.0333 # TODO: HACK remove and use timestamps; 33ms == 30Hz
 
 ## Main Config
-sim_experiment.robot_model_name = %robot_model_name
-sim_experiment.init_trifinger_state = [
+Simulation.robot_model_name = %robot_model_name
+Simulation.init_trifinger_state = [
 	0.1, 0., 0.05, # Finger 0 q
 	-0.1, 0., 0.05, # Finger 120 q
 	0., 0.15, 0.15, # Finger 240 q
@@ -22,8 +22,9 @@ sim_experiment.init_trifinger_state = [
 	0., 0., 0.,   # Finger 120 v
 	0., 0., 0.,   # Finger 240 v
 ]
-sim_experiment.safe_trifinger_height = %workspace_radius
-extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
+Simulation.safe_trifinger_height = %workspace_radius
+Simulation.fingertip_body_names = %fingertip_body_names_ctrl
+
 interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
 get_loss_args.object_body_name = %object_body_name
 # 100Hz trajectory
@@ -114,7 +115,7 @@ LearnableHyperparameters.w_norm = 1e0
 LearnableHyperparameters.w_reg_iner = 1e-5
 
 # Learning Optimizer
-sim_experiment.optimizer_cls = @Adam
+Simulation.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
 Adam.lr=1e-3
@@ -135,7 +136,7 @@ TrajectorySliceConfig.pred_state_keys = [
 
 ## Exploration Params
 # Note: 30 / 10 uses 10GB VRAM if done in parallel
-sim_experiment.n_actions_optimized=60
+Simulation.n_actions_optimized=60
 LearnableHyperparameters.n_fisher_samples=20
 
 ## True System (for Metrics)
