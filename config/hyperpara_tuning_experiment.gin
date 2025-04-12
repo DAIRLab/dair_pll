@@ -10,3 +10,6 @@ main.weights = {
     "w_norm" : 1e0,
 
 }
+
+main.workspace_radius = 0.15
+main.sphere_radius = 0.01575
