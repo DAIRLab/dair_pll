@@ -828,7 +828,7 @@ def main(
             action_samples = torch.stack([
                 torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action(library=libaction)])
                 #for _ in range(n_actions_optimized)
-                for libaction in [ActionLibrary.ZSINGLE]
+                for libaction in [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE]
             ])
             interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
             robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)

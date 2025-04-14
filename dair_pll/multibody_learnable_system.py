@@ -319,7 +319,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         # First n_q of self.state_map_for_learnable_bodies: states; the rest (last n_v): velocities.
         # velocity_mask: 1 for object velocities, 0 for robot velocities.
         # object velocities: wx, wy, wz, vx, vy, vz
-        velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q:].detach().clone()
+        state_mask = self.state_map_for_learnable_bodies().detach().clone()
+        velocity_mask = state_mask[self.space.n_q:]
         J_small = J[..., velocity_mask] # (*, n_contacts*3, n_v_object)
         M_small = M[..., velocity_mask, :][..., velocity_mask]
         M_inv_small = torch.inverse(M_small)
@@ -514,6 +515,8 @@ class MultibodyLearnableSystem(DrakeSystem):
             self.space.configuration_difference(self.space.euler_step(self.space.q(x), self.space.v(x_plus), dt), self.space.q(x_plus))
             / dt
         ).unsqueeze(-1)
+        # Ignore any inconsistencies in robot trajectory
+        vel_err[..., ~velocity_mask, 0] = 0.
         loss_q_pred = pbmm(vel_err.transpose(-1, -2), pbmm(M, vel_err))
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
@@ -901,7 +904,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             sim_dt = timestamps[sim_idx] - timestamps[sim_idx - 1]
             # Calculate u from PID
             robot_step_states = self.model_states_from_state_tensor(
-                plant_states[..., sim_idx - 1, :]
+                plant_states[..., sim_idx - 1, :].detach()
             )[robot_model_name + "_state"]
             assert robot_step_states.size() == batch_dims + (robot_space.n_x,)
             robot_target_states = robot_target_trajectories[..., sim_idx - 1, :]
@@ -940,6 +943,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
+        #return self.multibody_terms.parameters()
         return chain([self._trajectory.current_pose_param()],
             self.multibody_terms.parameters()
         )
@@ -1072,22 +1076,30 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             kd=10.
         )
         plant_states = super().construct_state_tensor(plant_states_dict)
-        plant_x = plant_states[..., : traj_len - 1, :]
-        plant_xplus = plant_states[..., 1:, :]
         dt_unbatched = robot_timestamps[1:] - robot_timestamps[:-1]
         dts = dt_unbatched.view(*(1,)*(len(batch_dims)-1), traj_len-1).expand(batch_dims + (traj_len-1,))
         robot_u_cropped = robot_u[..., : traj_len - 1, :]
-        assert plant_x.size() == plant_xplus.size()
 
         # Sample forces
         # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
-        forces_std = 0.1 # 10g * g ~ 0.01N
+        forces_std = 1e-1 # 10g * g ~ 0.01N
         samplers_forces = {}
         for key in contact_forces_star.keys():  
             samplers_forces[key] = Normal(
                 loc=contact_forces_star[key].flatten(),
                 scale=forces_std * torch.ones_like(contact_forces_star[key].flatten()),
             )
+
+        # Sample Ground Height and Robot Position
+        # TODO: HACK STDs manually tuned for approx equal uncertainty in ZSINGLE
+        ground_std = 1e-4 # 0.1mm (fairly certain)
+        sampler_ground = Normal(loc = 0., scale = ground_std)
+        state_names = self.multibody_terms.plant_diagram.plant.GetStateNames()
+        z_mask = torch.tensor([s.endswith("z_x") or s.endswith("_z") for s in state_names])
+        robot_mask = torch.tensor([s.startswith(robot_model_name) for s in state_names])
+        robot_std = 2e-3 # 2mm
+        sampler_robot = Normal(loc=torch.zeros_like(plant_states[..., robot_mask]), 
+            scale=robot_std * torch.ones_like(plant_states[..., robot_mask]))
         
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
@@ -1098,16 +1110,24 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         true_loss = torch.zeros(batch_dims)
         for sample_idx in range(-1, n_samples):
             if sample_idx < 0:
-                print(f"Calculate Loss for unperturbed force...")
+                print(f"Calculate Loss for unperturbed force and ground...")
             else:
-                print(f"Calculate Loss for Sample {sample_idx} / {n_samples}...")
-            # Impulses need to be a column vector
+                print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
+            # Sample Contact Forces / Normals
             sample_contact_forces = {}
             for key in contact_forces_star.keys():
                 if sample_idx < 0:
                     sample_contact_forces[key] = contact_forces_star[key]
                 else:
                     sample_contact_forces[key] = samplers_forces[key].sample().reshape(contact_forces_star[key].size())
+            # Sample Plant States
+            sample_plant_states = plant_states.clone()
+            if sample_idx >= 0:
+                sample_plant_states[..., z_mask] += sampler_ground.sample()
+                sample_plant_states[..., robot_mask] += sampler_robot.sample()
+            plant_x = sample_plant_states[..., : traj_len - 1, :]
+            plant_xplus = sample_plant_states[..., 1:, :]
+            assert plant_x.size() == plant_xplus.size()
 
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
@@ -1132,7 +1152,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
                 print(f"Computing unperturbed gradient...")
                 loss_calc = true_loss
             else:
-                print(f"Computing Gradients for sample {sample_idx}/{n_samples}...")
+                print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
                 loss_calc = loss_batches[..., sample_idx]
             grads = torch.autograd.grad(loss_calc.flatten(), param_list, grad_outputs=torch.eye(loss_calc.numel()), is_grads_batched=True, retain_graph=True)
             score_batches = torch.cat([grad.reshape((loss_calc.numel(), -1)) for grad in grads], dim=-1)
@@ -1146,7 +1166,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Clear gradients for next cycle
             self.zero_grad()
         ret = sample_fishers.mean(dim=-3)
-        breakpoint()
+        # breakpoint()
         return ret
 
     def add_trajectories(
