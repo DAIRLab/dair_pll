@@ -19,6 +19,7 @@ TODOs:
 from enum import Enum
 import os
 import pdb
+import random
 import signal
 import sys
 import time
@@ -106,7 +107,7 @@ def get_loss_args(
         "u": control,
         "x_plus": x_plus,
         "contact_forces": contact_forces,
-        "contact_normals": contact_normals,
+        "contact_normals": None, #contact_normals,
     }
     if impulses is not None:
         ret["impulses"] = impulses
@@ -515,7 +516,7 @@ def sample_action(
         if not (library is ActionLibrary.NONE):
             end_radius = 0.
             end_angle = 0.
-        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.CORNERSINGLE)):
+        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE)):
             end_radius = max_radius
             end_angle = np.pi / 2.0
         if flip_x and (library in (ActionLibrary.ZSINGLE,)):
@@ -698,7 +699,8 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    selected_action = sample_action(library=ActionLibrary.XSINGLE)
+    action_library = [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE, ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE]
+    selected_action = sample_action(library=ActionLibrary.ZSINGLE)
     new_trajectory = None
 
     # Initialize Optimizer and Data config
@@ -813,13 +815,13 @@ def main(
 
         elif command_char == "s":
             print("Sampling random action...")
-            selected_action = sample_action()
+            selected_action = sample_action(library=random.choice(action_library))
 
         elif command_char == "a":
             print("Recording Inverse Observed Info")
             if obs_info_inv is None:
                 obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-                obs_info_inv = torch.linalg.inv(obs_info)
+                obs_info_inv = torch.linalg.inv(obs_info + torch.eye(obs_info.size()[-1]))
 
             print(f"Previously Observed Information: {obs_info}")
 
@@ -828,7 +830,7 @@ def main(
             action_samples = torch.stack([
                 torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action(library=libaction)])
                 #for _ in range(n_actions_optimized)
-                for libaction in [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE]
+                for libaction in action_library
             ])
             interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
             robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)
@@ -845,7 +847,7 @@ def main(
                 continue
 
             obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-            obs_info_inv = torch.linalg.inv(obs_info)
+            obs_info_inv = torch.linalg.inv(obs_info + torch.eye(obs_info.size()[-1]))
 
         elif command_char == "v":
             print("Visualizing entire trajectory.")

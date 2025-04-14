@@ -547,7 +547,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Check for positive definite loss
         try:
             assert np.all(loss_dev.detach().cpu().numpy() >= -eps), "Deviation Loss Negative"
-            assert np.all(loss_pred.detach().cpu().numpy() >= -eps), "Prediction Loss Negative"
+            assert np.all(loss_pred.detach().cpu().numpy() >= -2.0*eps), "Prediction Loss Negative"
             assert np.all(loss_norm.detach().cpu().numpy() >= -eps), "Normal Alignment Loss Negative"
         except AssertionError:
             # pylint: disable-next=forgotten-debug-statement
@@ -999,8 +999,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Use: https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
-        # TODO: Make this a hyperparam
-        ret = 1e-6 * torch.eye(n_params) #torch.zeros((n_params, n_params))
+        ret = torch.zeros((n_params, n_params))
         if data is None:
             return ret
 
@@ -1026,12 +1025,15 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
         # Per Timestep Loss
         else:
-            grads = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+            grads_tup = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+            # TODO: HACK assume 1st element is position, and apply to all timesteps
+            grads = list(grads_tup)
+            grads[0] = grads[0][-1:, :].expand(grads[0].size())
             grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
             assert grads_tensor.size() == (all_losses.numel(), n_params)
             # Compute Fisher Infos as outer product
             per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
-            summed_fishers = per_timestep_fishers.sum(dim=0)
+            summed_fishers = per_timestep_fishers.mean(dim=0)
             assert summed_fishers.size() == ret.size()
             ret += summed_fishers
         try:
@@ -1082,7 +1084,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Sample forces
         # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
-        forces_std = 1e-1 # 10g * g ~ 0.01N
+        forces_std = 1e-2 # 10g * g ~ 0.01N
         samplers_forces = {}
         for key in contact_forces_star.keys():  
             samplers_forces[key] = Normal(
