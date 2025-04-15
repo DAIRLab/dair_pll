@@ -943,10 +943,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        #return self.multibody_terms.parameters()
-        return chain([self._trajectory.current_pose_param()],
-            self.multibody_terms.parameters()
-        )
+        return self.multibody_terms.parameters()
+        #return chain([self._trajectory.current_pose_param()],
+        #    self.multibody_terms.parameters()
+        #)
 
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
@@ -1028,12 +1028,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             grads_tup = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
             # TODO: HACK assume 1st element is position, and apply to all timesteps
             grads = list(grads_tup)
-            grads[0] = grads[0][-1:, :].expand(grads[0].size())
+            #grads[0] = grads[0][-1:, :].expand(grads[0].size())
             grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
             assert grads_tensor.size() == (all_losses.numel(), n_params)
             # Compute Fisher Infos as outer product
             per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
-            summed_fishers = per_timestep_fishers.mean(dim=0)
+            summed_fishers = per_timestep_fishers.sum(dim=0)
             assert summed_fishers.size() == ret.size()
             ret += summed_fishers
         try:
@@ -1084,7 +1084,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Sample forces
         # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
-        forces_std = 1e-2 # 10g * g ~ 0.01N
+        forces_std = 1e-1 # 10g * g ~ 0.01N
         samplers_forces = {}
         for key in contact_forces_star.keys():  
             samplers_forces[key] = Normal(
@@ -1099,7 +1099,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         state_names = self.multibody_terms.plant_diagram.plant.GetStateNames()
         z_mask = torch.tensor([s.endswith("z_x") or s.endswith("_z") for s in state_names])
         robot_mask = torch.tensor([s.startswith(robot_model_name) for s in state_names])
-        robot_std = 2e-3 # 2mm
+        robot_std = 1e-4 # 2mm
         sampler_robot = Normal(loc=torch.zeros_like(plant_states[..., robot_mask]), 
             scale=robot_std * torch.ones_like(plant_states[..., robot_mask]))
         

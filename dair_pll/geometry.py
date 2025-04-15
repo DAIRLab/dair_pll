@@ -1019,14 +1019,15 @@ class GeometryCollider:
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 
         # Vector Norm
-        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
-        #phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        temp = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi
         # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
-        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # Max with previous phi
+        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B
@@ -1149,14 +1150,15 @@ class GeometryCollider:
 
         # 2nd Witness Point
         # Vector Norm
-        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
-        # phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        temp = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi
         # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
-        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # Max with previous phi
+        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 

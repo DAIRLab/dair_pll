@@ -107,7 +107,7 @@ def get_loss_args(
         "u": control,
         "x_plus": x_plus,
         "contact_forces": contact_forces,
-        "contact_normals": None, #contact_normals,
+        "contact_normals": contact_normals,
     }
     if impulses is not None:
         ret["impulses"] = impulses
@@ -699,7 +699,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    action_library = [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE, ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE]
+    action_library = [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE]
     selected_action = sample_action(library=ActionLibrary.ZSINGLE)
     new_trajectory = None
 
@@ -821,7 +821,7 @@ def main(
             print("Recording Inverse Observed Info")
             if obs_info_inv is None:
                 obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-                obs_info_inv = torch.linalg.inv(obs_info + torch.eye(obs_info.size()[-1]))
+                obs_info_inv = torch.linalg.inv(obs_info + 1e0 * torch.eye(obs_info.size()[-1]))
 
             print(f"Previously Observed Information: {obs_info}")
 
@@ -847,7 +847,7 @@ def main(
                 continue
 
             obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-            obs_info_inv = torch.linalg.inv(obs_info + torch.eye(obs_info.size()[-1]))
+            obs_info_inv = torch.linalg.inv(obs_info + 1e0 * torch.eye(obs_info.size()[-1]))
 
         elif command_char == "v":
             print("Visualizing entire trajectory.")
