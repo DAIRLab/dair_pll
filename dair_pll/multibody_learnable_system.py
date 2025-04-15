@@ -176,8 +176,9 @@ class MultibodyLearnableSystem(DrakeSystem):
     def set_hyperparameters(self, 
                             params: Dict[str, Any]
                             ):
-
+        pass
         self._hyperparameters.w_pred = params["w_pred"]
+        self._hyperparameters.w_q_pred = params["w_q_pred"]
         self._hyperparameters.w_comp = params["w_comp"]
         self._hyperparameters.w_fdiss = params["w_fdiss"]
         self._hyperparameters.w_ndiss = params["w_ndiss"]

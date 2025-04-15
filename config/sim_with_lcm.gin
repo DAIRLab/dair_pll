@@ -29,7 +29,7 @@ object/get_urdf_asset_contents.mappings = {
 }
 object_initial_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.06,     # XYZ
+	0.0, 0.0, 0.033,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -49,7 +49,7 @@ robot_initial_state = [
 	0., 0., 0.,   # Finger 0 v
 ]
 
-main.init_sim_state = {
+Simulation.init_sim_state = {
 	%object_model_name: %object_initial_state,
 	%robot_model_name: %robot_initial_state,
 }

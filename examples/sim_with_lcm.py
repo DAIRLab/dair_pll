@@ -121,7 +121,6 @@ class SetpointFromTargetSystem(LeafSystem):
         state_next.get_mutable_abstract_state().get_mutable_value(self._trajectory_index).SetFrom(Value(traj))
         return EventStatus.Succeeded()
 
-
 @gin.configurable(denylist=['plant'])
 class DensetactIOSystem(LeafSystem):
   """Create a Drake ``LeafSystem`` which converts contact data
@@ -210,7 +209,6 @@ class DensetactIOSystem(LeafSystem):
     rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - dot) / (norm ** 2))
     return rotation_matrix
 
-
 @gin.configurable
 class FingerTipIOSystem(LeafSystem):
     """Create a Drake ``LeafSystem`` which converts LCM messages
@@ -282,7 +280,6 @@ class FingerTipIOSystem(LeafSystem):
         for idx in range(self._object_nv):
           object_msg.get_mutable_value().velocity.append(state.GetAtIndex(self._object_nq + idx))
           object_msg.get_mutable_value().velocity_names.append(self._object_state_names[self._object_nq + idx])
-
 
 @gin.configurable(denylist=['builder', 'plant'])
 def sim_diagram_builder(
@@ -357,19 +354,25 @@ def sim_diagram_builder(
         pid_controller.get_output_port_control(), plant.get_actuation_input_port(robot_model_id)
   )
 
-
 ## Main Function
 @gin.configurable
 class Simulation:
+
     """Simulation class to run the simulation with LCM interface"""
     def __init__(self,
                  init_sim_state: Optional[Dict[str, List[float]]] = None,
-                 sim_rate: float = 1.0):
+                 sim_rate: float = 1.0,
+                 ):
       self.init_sim_state_ = init_sim_state
       self.sim_rate_ = sim_rate
-
+      
       plant_diagram = MultibodyPlantDiagram()
       plant_context = plant_diagram.plant.GetMyMutableContextFromRoot(plant_diagram.sim.get_mutable_context())
+
+      if init_sim_state is not None:
+        for model_name, model_state in init_sim_state.items():
+          model_id = plant_diagram.plant.GetModelInstanceByName(model_name)
+          plant_diagram.plant.SetPositionsAndVelocities(plant_context, model_id, np.array(model_state))
 
       # Generate plant diagram for debugging
       plant_diagram.diagram.set_name("dairpll_simplesim")
@@ -381,18 +384,6 @@ class Simulation:
       self.plant_diagram_ = plant_diagram
       self.plant_context_ = plant_context
 
-    def init_state(self):
-      """Reset simulation state"""
-      
-      init_sim_state = self.init_sim_state_
-      plant_diagram = self.plant_diagram_ 
-      plant_context = self.plant_context_
-
-      if init_sim_state is not None:
-        for model_name, model_state in init_sim_state.items():
-          model_id = plant_diagram.plant.GetModelInstanceByName(model_name)
-          plant_diagram.plant.SetPositionsAndVelocities(plant_context, model_id, np.array(model_state))
-
     def main(self):
       """Main function for simulation"""
       print("Simulation With Object and Robot")
@@ -402,8 +393,6 @@ class Simulation:
       plant_diagram = self.plant_diagram_ 
       plant_context = self.plant_context_
 
-      self.init_state()
-
       # Generate plant diagram for debugging
       plant_diagram.diagram.set_name("dairpll_simplesim")
       plt.figure(figsize=(11,8.5), dpi=300)
@@ -411,8 +400,6 @@ class Simulation:
       plt.savefig(str(Path.home() / "Desktop" / "dairpll_simplesim.png"))
       plt.close()
 
-      # Set Initial State
-      self.init_state()
 
       # Run Simulator
       print("Running Sim... Press Ctrl-C to Stop")

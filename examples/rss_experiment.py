@@ -54,7 +54,7 @@ from dair_pll.hack_utils import finger_idx_from_body_name
 from trifinger_lcm_service import TrifingerLCMService
 from action_library import ActionLibrary, sample_action
 
-from chamfer_distance import get_chamfer_distance
+from chamfer_distance import ChamferDistanceMetric
 
 # DEBUG
 from ipdb import set_trace
@@ -136,16 +136,16 @@ def get_loss_args(
 @gin.configurable
 class Experiment():
     def __init__(self,
-        init_trifinger_state: List[float],
-        safe_trifinger_height: float,
-        robot_model_name: str,
-        fingertip_body_names: List[str],
-        object_model_name: str = "cube",
-        n_actions_optimized: int = 30,
-        storage_folder_name: str = "storage_rss",
-        run_name: str = "default_run",
-        optimizer_cls: Type = torch.optim.SGD,
-        ):
+                 init_trifinger_state: List[float],
+                 safe_trifinger_height: float,
+                 robot_model_name: str,
+                 fingertip_body_names: List[str],
+                 object_model_name: str = "cube",
+                 n_actions_optimized: int = 30,
+                 storage_folder_name: str = "storage_rss",
+                 run_name: str = "default_run",
+                 optimizer_cls: Type = torch.optim.SGD,
+                 ):
 
         """Main function for online learning loop"""
 
@@ -207,8 +207,22 @@ class Experiment():
 
         self.true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
 
+        self.calc_cfd_ = ChamferDistanceMetric()
+
     def reset(self):
         """Reset the simulation"""
+        # Clear CUDA cache
+        torch.cuda.empty_cache()
+        # Clean up existing resources
+        if hasattr(self, 'learned_system_'):
+            del self.learned_system_
+        if hasattr(self, 'data_trajectories_'):
+            del self.data_trajectories_
+        if hasattr(self, 'optimizer'):
+            del self.optimizer
+        if hasattr(self, 'traj_dataloader_'):
+            del self.traj_dataloader_
+    
         self.__init__()
     
     def chamfer_distance(self) -> float:
@@ -227,7 +241,7 @@ class Experiment():
         learned_trans = to_homo_mtrx(self.learned_system_.get_learned_pose().cpu().numpy())
         true_trans = to_homo_mtrx(self.true_pose)
 
-        return get_chamfer_distance(learned_geom,
+        return self.calc_cfd_(learned_geom,
                                     learned_trans, 
                                     true_geom, 
                                     true_trans)
@@ -325,8 +339,8 @@ class Experiment():
         return ret, ret_timestamps
 
     def data_collection(self,
-                        selected_action
-                        ,):
+                        selected_action,
+                        ):
         """Method for running a single trial
             - for a given intial pose of the object
             - execute each action in the action library
@@ -395,9 +409,9 @@ class Experiment():
         optimizer = optimizer_cls(learned_system.parameters())
         obs_info_inv = None
 
-
         self.optimizer = optimizer
         self.traj_dataloader_ = traj_dataloader
+        self.new_trajectory_ = new_trajectory
 
     def data_train(self,
                    hyperparam: Dict[str, Any],
@@ -441,11 +455,6 @@ class Experiment():
             train_losses.append(train_loss)
             train_loss_data.append(loss_data)
             learned_summaries.append(learned_system.summary({}))
-            # if signal_pressed:
-            #     signal_pressed = False
-            #     print("Training cancelled...")
-            #     epochs = idx + 1
-            #     break
 
         print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
         obs_info_inv = None
@@ -525,7 +534,8 @@ def main_fn():
     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
     # Pylint doesn't know about gin
     # pylint: disable=no-value-for-parameter
-    main()
+    f = Experiment()
+    f
 
 
 if __name__ == "__main__":

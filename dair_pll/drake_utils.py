@@ -555,7 +555,7 @@ class MultibodyPlantDiagram:
 
         # Give use time to start Meshcat
         if visualization_file == "meshcat":
-            input("Start Meshcat now!")
+            print("Start Meshcat now!")
 
         # Ensure the model_ids order matches the state order.
         first_joint_indices = []
