@@ -127,7 +127,7 @@ class DensetactIOSystem(LeafSystem):
   """Create a Drake ``LeafSystem`` which converts contact data
   to LCM Messages
   """
-  def __init__(self, plant: MultibodyPlant, robot_id: ModelInstanceIndex, densetact_body_names: List[str], normal_scale: float = 1.0, friction_scale: float = 1.0):
+  def __init__(self, plant: MultibodyPlant, robot_id: ModelInstanceIndex, densetact_body_names: List[str], normal_scale: float = 1.0, friction_scale: float = 1.0, force_std: float = 0.0, normal_std: float = 0.0):
     super().__init__()
 
     self._body_names = densetact_body_names
@@ -135,6 +135,9 @@ class DensetactIOSystem(LeafSystem):
     self._robot_id = robot_id
     self._normal_scale = normal_scale
     self._friction_scale = friction_scale
+    self._force_std = force_std
+    self._normal_std = normal_std
+    self._rng = np.random.default_rng()
 
     # Create an input port for averaged contact data
     self._avg_contact_input_port = self.DeclareAbstractInputPort(
@@ -160,9 +163,13 @@ class DensetactIOSystem(LeafSystem):
         body_idx = int(self._plant.GetBodyByName(body_name).index())
         fingertip_pose_W = np.array([robot_state[fingertip_idx * 3], robot_state[fingertip_idx * 3 + 1], robot_state[fingertip_idx * 3 + 2]])
         measurement = lcmt_densetact_measurement()
-        force_W = np.array(avg_contact["force"][body_idx])
+        force_W = np.array(avg_contact["force"][body_idx]) + self._rng.normal(0., self._force_std, 3)
         point = np.array(avg_contact["point"][body_idx]) - fingertip_pose_W
         normal_W = np.array(avg_contact["normal"][body_idx])
+        normal_norm = np.linalg.norm(normal_W)
+        if np.isclose(normal_norm, 1.0):
+          normal_W += self._rng.normal(0., self._normal_std, 3)
+          normal_W = normal_W / np.linalg.norm(normal_W)
         measurement.timestamp = utime
         measurement.inContact = not np.all(np.isclose(normal_W, np.zeros_like(normal_W)))
         if measurement.inContact:
@@ -217,7 +224,7 @@ class FingerTipIOSystem(LeafSystem):
     to usable system vectors
     """
 
-    def __init__(self, plant: MultibodyPlant, object_id: ModelInstanceIndex, fingertip_body_names: List[str]):
+    def __init__(self, plant: MultibodyPlant, object_id: ModelInstanceIndex, fingertip_body_names: List[str], fingerpos_std: float = 0.):
         super().__init__()
 
         # Input Validation
@@ -228,6 +235,8 @@ class FingerTipIOSystem(LeafSystem):
         self._object_nv = plant.num_velocities(object_id)
         self._object_name = plant.GetModelInstanceName(object_id)
         self._object_state_names = plant.GetStateNames(object_id)
+        self._pose_std = fingerpos_std
+        self._rng = np.random.default_rng()
 
         # System state input ports
         self._body_poses_port = self.DeclareAbstractInputPort(
@@ -257,7 +266,7 @@ class FingerTipIOSystem(LeafSystem):
         for body_enum, body_name in enumerate(self._fingertip_body_names):
           body_idx = self._plant.GetBodyByName(body_name).index()
           for idx in range(3):
-            fingertips_positions_msg.get_mutable_value().curPos[body_enum * 3 + idx] = body_poses[body_idx].translation()[idx]
+            fingertips_positions_msg.get_mutable_value().curPos[body_enum * 3 + idx] = body_poses[body_idx].translation()[idx] + self._rng.normal(0., self._pose_std)
             fingertips_positions_msg.get_mutable_value().curVel[body_enum * 3 + idx] = body_vels[body_idx].translational()[idx]
         # Set Identity Quaternion (W = 1)
         fingertips_positions_msg.get_mutable_value().curQuat[0] = 1.0

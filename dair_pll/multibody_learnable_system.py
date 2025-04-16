@@ -943,10 +943,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return self.multibody_terms.parameters()
-        #return chain([self._trajectory.current_pose_param()],
-        #    self.multibody_terms.parameters()
-        #)
+        # return self.multibody_terms.parameters()
+        return chain([self._trajectory.current_pose_param()],
+            self.multibody_terms.parameters()
+        )
 
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
@@ -1084,7 +1084,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Sample forces
         # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
-        forces_std = 1e-1 # 10g * g ~ 0.01N
+        forces_std = 1e-2 # 10g * g ~ 0.01N
         samplers_forces = {}
         for key in contact_forces_star.keys():  
             samplers_forces[key] = Normal(
@@ -1099,7 +1099,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         state_names = self.multibody_terms.plant_diagram.plant.GetStateNames()
         z_mask = torch.tensor([s.endswith("z_x") or s.endswith("_z") for s in state_names])
         robot_mask = torch.tensor([s.startswith(robot_model_name) for s in state_names])
-        robot_std = 1e-4 # 2mm
+        robot_std = 1e-3 # 1mm
         sampler_robot = Normal(loc=torch.zeros_like(plant_states[..., robot_mask]), 
             scale=robot_std * torch.ones_like(plant_states[..., robot_mask]))
         

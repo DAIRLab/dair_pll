@@ -111,14 +111,14 @@ object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMI
 #LearnableHyperparameters.w_pen = 1e2
 #LearnableHyperparameters.w_dev = 1e5
 #LearnableHyperparameters.w_norm = 1e0
-LearnableHyperparameters.w_pred = 1e2
-LearnableHyperparameters.w_q_pred = 1e2
-LearnableHyperparameters.w_comp = 2e2
-LearnableHyperparameters.w_fdiss = 1e2
-LearnableHyperparameters.w_ndiss = 1e2
-LearnableHyperparameters.w_pen = 1e2
-LearnableHyperparameters.w_dev = 1e4
-LearnableHyperparameters.w_norm = 1e2
+LearnableHyperparameters.w_pred = 1e3
+LearnableHyperparameters.w_q_pred = 1e3
+LearnableHyperparameters.w_comp = 2e3
+LearnableHyperparameters.w_fdiss = 1e3
+LearnableHyperparameters.w_ndiss = 1e3
+LearnableHyperparameters.w_pen = 1e3
+LearnableHyperparameters.w_dev = 1e5
+LearnableHyperparameters.w_norm = 1e3
 LearnableHyperparameters.w_reg_iner = 1e-5
 
 # Learning Optimizer
