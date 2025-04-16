@@ -70,7 +70,6 @@ torch.set_default_device("cuda")
 # global signal_pressed
 # signal.signal(signal.SIGINT, signal_handler)
 #torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
-torch.set_default_device("cuda")
 
 ### Signal Handling
 signal_pressed = False
@@ -133,9 +132,11 @@ def get_loss_args(
 
 
 
-@gin.configurable
+@gin.configurable(denylist=["trifinger_lcm"])
 class Experiment():
+
     def __init__(self,
+                 trifinger_lcm,
                  init_trifinger_state: List[float],
                  safe_trifinger_height: float,
                  robot_model_name: str,
@@ -149,8 +150,8 @@ class Experiment():
 
         """Main function for online learning loop"""
 
+        self.trifinger_lcm_ = trifinger_lcm
         # instance variables
-        self.trifinger_lcm_ = TrifingerLCMService()
         self.safe_trifinger_height_ = safe_trifinger_height
         
         self.robot_model_name_ = robot_model_name
@@ -186,9 +187,8 @@ class Experiment():
         # Initialize LCM
         # Pylint doesn't know about gin
         # pylint: disable=no-value-for-parameter
-        trifinger_lcm = TrifingerLCMService()
         print("Move to initial trifinger state")
-        trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
+        self.trifinger_lcm_.execute_trajectory(np.array(init_trifinger_state), no_data=True)
 
         # Initialize Optimizer and Data config
         optimizer = optimizer_cls(learned_system.parameters())
@@ -209,6 +209,13 @@ class Experiment():
 
         self.calc_cfd_ = ChamferDistanceMetric()
 
+        signal.signal(signal.SIGINT, signal_handler)
+
+
+    def signal_handler(sig, frame):
+        """ Handle SIGINT"""
+        sys.exit(0)
+
     def reset(self):
         """Reset the simulation"""
         # Clear CUDA cache
@@ -223,7 +230,7 @@ class Experiment():
         if hasattr(self, 'traj_dataloader_'):
             del self.traj_dataloader_
     
-        self.__init__()
+        self.__init__(self.trifinger_lcm_)
     
     def chamfer_distance(self) -> float:
         learned_geom = self.learned_system_.get_learned_geometry()
@@ -437,6 +444,15 @@ class Experiment():
 
         total_epochs = 0
 
+        learned_system._hyperparameters.w_pred = hyperparam['w_pred']
+        learned_system._hyperparameters.w_q_pred = hyperparam['w_q_pred']
+        learned_system._hyperparameters.w_comp = hyperparam['w_comp']
+        learned_system._hyperparameters.w_fdiss = hyperparam['w_fdiss']
+        learned_system._hyperparameters.w_ndiss = hyperparam['w_ndiss']
+        learned_system._hyperparameters.w_pen = hyperparam['w_pen']
+        learned_system._hyperparameters.w_dev = hyperparam['w_dev']
+        learned_system._hyperparameters.w_norm = hyperparam['w_norm']
+
         start_time = time.time()
         for idx in range(epochs):
             train_loss, loss_data = self.train_epoch(hyperparam, traj_dataloader, learned_system, optimizer)
@@ -493,7 +509,6 @@ class Experiment():
             #from pstats import SortKey
             #pr = cProfile.Profile()
             #pr.enable()
-            system.set_hyperparameters(parameters)
             
             loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
             losses.append(loss.clone().detach())

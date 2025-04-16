@@ -93,6 +93,7 @@ class TrifingerLCMService:
 
         print(f"Sending Command at: {time.time()}")
         self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
+        print("published!")
         end_time = time.time() + self._traj_time_len
         while time.time() < end_time:
             self._lcm.handle_timeout(int((end_time - time.time()) * 1e3))

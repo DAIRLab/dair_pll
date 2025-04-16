@@ -172,19 +172,6 @@ class MultibodyLearnableSystem(DrakeSystem):
 
         self.urdfs = new_urdf_strings
         return new_urdf_strings
-    
-    def set_hyperparameters(self, 
-                            params: Dict[str, Any]
-                            ):
-        pass
-        self._hyperparameters.w_pred = params["w_pred"]
-        self._hyperparameters.w_q_pred = params["w_q_pred"]
-        self._hyperparameters.w_comp = params["w_comp"]
-        self._hyperparameters.w_fdiss = params["w_fdiss"]
-        self._hyperparameters.w_ndiss = params["w_ndiss"]
-        self._hyperparameters.w_pen = params["w_pen"]
-        self._hyperparameters.w_dev = params["w_dev"]
-        self._hyperparameters.w_norm = params["w_norm"]
 
     def contactnets_loss(
         self,
