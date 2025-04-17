@@ -71,7 +71,7 @@ def get_loss_args(
     system: DrakeSystem,
     impulses: Optional[Tensor] = None,
     object_body_name: str = "cube",
-    ground_std: float = 0.,
+    ground_std: float = 1e-8,
 ) -> Dict[str, Any]:
     """Convert dataloader trajectory slices into arguments for contactnets loss"""
 
@@ -833,9 +833,9 @@ def main(
                 obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
                 obs_info_inv = torch.linalg.inv(obs_info + 1e0 * torch.eye(obs_info.size()[-1]))
 
-            print(f"Previously Observed Information: {obs_info}")
+            print(f"Previously Observed Info: {torch.diagonal(obs_info)}")
 
-            print(f"Sampling {n_actions_optimized} actions to optimize...")
+            print(f"Sampling {len(action_library)} actions to optimize...")
             libaction = ActionLibrary.NONE
             action_samples = torch.stack([
                 torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action(library=libaction)])
@@ -848,7 +848,11 @@ def main(
             fishers_obs_weighted = torch.matmul(fishers, obs_info_inv)
             fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
             best_action = action_samples[torch.argmax(fishers_traces)]
-            print(f"Best Action Fisher: {fishers[torch.argmax(fishers_traces)]}")
+            #print(f"Best Action Fisher: {fishers[torch.argmax(fishers_traces)]}")
+            print(f"Fisher Traces:")
+            for action, trace in zip(action_library, fishers_traces):
+                print(f"{action} : {trace}")
+            print(f"Best Action: {action_library[torch.argmax(fishers_traces)]}")
             selected_action = (best_action[0, :].detach().cpu().numpy(), best_action[1, :].detach().cpu().numpy())
 
         elif command_char == "o":

@@ -2,7 +2,7 @@
 
 """Construction and use of a learnable trajectory.
 """
-from typing import Optional
+from typing import Optional, Union, List
 
 import gin
 import torch
@@ -101,11 +101,14 @@ class LearnableTrajectories(Module):
         """
         return self.space.x(self._trajectories_q0[-1], self.space.v(self.space.zero_state()))
 
-    def current_pose_param(self, trajectory: int = -1) -> Tensor:
+    def current_pose_params(self, traj_num: Optional[int] = None) -> Union[List[Tensor], Tensor]:
         """
         Get the current pose estimate as a parameter at the latest time.
         """
-        return self._trajectories_q0[trajectory]
+        if traj_num is not None:
+            return self._trajectories_q0[traj_num]
+        else:
+            return self._trajectories_q0
 
     def get_current_pose_traj(self) -> Tensor:
         """

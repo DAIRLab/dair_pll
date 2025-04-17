@@ -939,23 +939,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         ret = self.model_states_from_state_tensor(plant_states)
         return ret, ret_contact_forces, ret_contact_normals, ret_u
 
-    def exploration_parameters(self) -> Iterable[Parameter]:
-        """
-        Parameters specifically used for exploration
-        """
-        # return self.multibody_terms.parameters()
-        return chain([self._trajectory.current_pose_param()],
-            self.multibody_terms.parameters()
-        )
-
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
         """ Current pose for the learned object """
-        return self._trajectory.current_pose_param().detach().clone()
+        return self._trajectory.current_pose_params(traj_num=-1).detach().clone()
 
     @torch.no_grad
     def get_learned_trajectory(self) -> Tensor:
-        """ Current pose trqjectory for the learned object """
+        """ Current pose trajectory for the learned object """
         return self._trajectory.get_current_pose_traj()
 
     @torch.no_grad
@@ -998,7 +989,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         Use: https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
         """
-        n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
+        # Zero Gradient before calculation
+        self.zero_grad()
+
+        pose_parameters = [param for param in self._trajectory.current_pose_params() if param.requires_grad]
+        geometry_parameters = [param for param in self.multibody_terms.parameters() if param.requires_grad]
+
+        # Note: Params == geometry_params plus only the current position
+        n_params = len(torch.cat([param.flatten() for param in geometry_parameters])) + len(pose_parameters[-1])
         ret = torch.zeros((n_params, n_params))
         if data is None:
             return ret
@@ -1013,9 +1011,9 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         # Compute Epoch Average
         all_losses = torch.cat(losses)
-        param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
         # Hessian (Note: likely inaccurate)
+        # TODO: Fix for geom vs traj params
         if info_calc == 0:
             grads = torch.autograd.grad(all_losses.mean(), param_list, retain_graph=True, create_graph=True)
             flattened_list = [grad.flatten() for grad in grads]
@@ -1025,15 +1023,14 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
         # Per Timestep Loss
         else:
-            grads_tup = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
-            # TODO: HACK assume 1st element is position, and apply to all timesteps
-            grads = list(grads_tup)
-            #grads[0] = grads[0][-1:, :].expand(grads[0].size())
+            grads_pose = torch.autograd.grad(all_losses, pose_parameters, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True, retain_graph=True)
+            grads_geom = torch.autograd.grad(all_losses, geometry_parameters, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+            # Note: assume dxt/dxT == 1
+            grads = [torch.stack(grads_pose, dim=0).sum(dim=0)] + list(grads_geom)
             grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
             assert grads_tensor.size() == (all_losses.numel(), n_params)
             # Compute Fisher Infos as outer product
             per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
-            breakpoint()
             summed_fishers = per_timestep_fishers.sum(dim=0)
             assert summed_fishers.size() == ret.size()
             ret += summed_fishers
@@ -1104,8 +1101,12 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         sampler_robot = Normal(loc=torch.zeros_like(plant_states[..., robot_mask]), 
             scale=robot_std * torch.ones_like(plant_states[..., robot_mask]))
         
-        n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
-        param_list = [param for param in self.exploration_parameters() if param.requires_grad]
+        exploration_parameters = chain([self._trajectory.current_pose_params(traj_num=-1)],
+            self.multibody_terms.parameters()
+        )
+        
+        param_list = [param for param in exploration_parameters if param.requires_grad]
+        n_params = len(torch.cat([param.flatten() for param in param_list]))
         ret = torch.zeros(batch_dims + (n_params, n_params))
 
         sample_fishers = []
@@ -1135,7 +1136,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
                 plant_x, robot_u_cropped, plant_xplus, 
-                # contact_normals=contact_normals_star, 
+                contact_normals=contact_normals_star, 
                 contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
