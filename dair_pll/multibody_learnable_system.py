@@ -1008,7 +1008,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             x_past: Tensor = xy_i[0]
             x_plus: Tensor = xy_i[1]
 
-            loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self))
+            loss = self.contactnets_loss(**get_loss_args(x_past, x_plus, self, ground_std=1e-4))
             losses.append(loss)
 
         # Compute Epoch Average
@@ -1033,6 +1033,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             assert grads_tensor.size() == (all_losses.numel(), n_params)
             # Compute Fisher Infos as outer product
             per_timestep_fishers = pbmm(grads_tensor.unsqueeze(-1), grads_tensor.unsqueeze(-2))
+            breakpoint()
             summed_fishers = per_timestep_fishers.sum(dim=0)
             assert summed_fishers.size() == ret.size()
             ret += summed_fishers

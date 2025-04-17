@@ -35,6 +35,7 @@ from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from scipy.spatial.transform import Rotation as R
 from tensordict import TensorDictBase, TensorDict
 import torch
+from torch.distributions.normal import Normal
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torch import Tensor
@@ -70,6 +71,7 @@ def get_loss_args(
     system: DrakeSystem,
     impulses: Optional[Tensor] = None,
     object_body_name: str = "cube",
+    ground_std: float = 0.,
 ) -> Dict[str, Any]:
     """Convert dataloader trajectory slices into arguments for contactnets loss"""
 
@@ -81,6 +83,14 @@ def get_loss_args(
     # Construct State
     x_past = system.construct_state_tensor(past)
     x_plus = system.construct_state_tensor(plus)
+
+    # Add Ground Noise
+    sampler_ground = Normal(loc = 0., scale = ground_std)
+    state_names = system.multibody_terms.plant_diagram.plant.GetStateNames()
+    z_mask = torch.tensor([s.endswith("z_x") or s.endswith("_z") for s in state_names])
+    sample = sampler_ground.sample(x_past[..., z_mask].size())
+    x_past[..., z_mask] += sample
+    x_plus[..., z_mask] += sample
 
     # Actuation
     n_control = system.plant_diagram.plant.num_actuated_dofs()
