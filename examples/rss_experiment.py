@@ -709,7 +709,7 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    action_library = [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE]
+    action_library = [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE, ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE]
     selected_action = sample_action(library=ActionLibrary.ZSINGLE)
     new_trajectory = None
 

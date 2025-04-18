@@ -529,7 +529,9 @@ class MultibodyLearnableSystem(DrakeSystem):
             + pbmm(impulses.transpose(-1, -2), q_dev)
             + constant_dev
         )
-        loss_norm = pbmm(impulses.transpose(-1, -2), q_norm)
+        # Add norm as a geometric loss as well.
+        constant_norm = q_norm.sum(dim=-2, keepdim=True)
+        loss_norm = pbmm(impulses.transpose(-1, -2), q_norm) + constant_norm
 
         # Interpretable Loss Terms
         self.loss_cache["mean_dev_N"] = (
