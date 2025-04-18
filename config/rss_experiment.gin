@@ -100,25 +100,33 @@ object_init/LearnableBodySettings.inertia_mass = False
 object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
-object_init/LearnableBodySettings.friction = True
+object_init/LearnableBodySettings.friction = False
 object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
 
 # Learning hyperparams
-LearnableHyperparameters.w_pred = 5e0
-LearnableHyperparameters.w_q_pred = 1e1
-LearnableHyperparameters.w_comp = 2e1
-LearnableHyperparameters.w_fdiss = 1e0
-LearnableHyperparameters.w_ndiss = 1e0
+#LearnableHyperparameters.w_pred = 5e0
+#LearnableHyperparameters.w_q_pred = 1e1
+#LearnableHyperparameters.w_comp = 2e1
+#LearnableHyperparameters.w_fdiss = 1e0
+#LearnableHyperparameters.w_ndiss = 1e0
+#LearnableHyperparameters.w_pen = 1e2
+#LearnableHyperparameters.w_dev = 1e5
+#LearnableHyperparameters.w_norm = 1e0
+LearnableHyperparameters.w_pred = 1e2
+LearnableHyperparameters.w_q_pred = 1e2
+LearnableHyperparameters.w_comp = 2e2
+LearnableHyperparameters.w_fdiss = 1e2
+LearnableHyperparameters.w_ndiss = 1e2
 LearnableHyperparameters.w_pen = 1e2
-LearnableHyperparameters.w_dev = 1e5
-LearnableHyperparameters.w_norm = 1e0
+LearnableHyperparameters.w_dev = 1e4
+LearnableHyperparameters.w_norm = 1e2
 LearnableHyperparameters.w_reg_iner = 1e-5
 
 # Learning Optimizer
 Experiment.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=1e-3
+Adam.lr=2e-3
 Adam.amsgrad=True
 Adam.fused=True
 
@@ -136,8 +144,8 @@ TrajectorySliceConfig.pred_state_keys = [
 
 ## Exploration Params
 # Note: 30 / 10 uses 10GB VRAM if done in parallel
-Experiment.n_actions_optimized=60
-LearnableHyperparameters.n_fisher_samples=20
+main.n_actions_optimized=60
+LearnableHyperparameters.n_fisher_samples=10
 
 ## True System (for Metrics)
 DrakeSystem.dt = %delta_t # seconds, unnecessary

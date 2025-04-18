@@ -101,11 +101,11 @@ class LearnableTrajectories(Module):
         """
         return self.space.x(self._trajectories_q0[-1], self.space.v(self.space.zero_state()))
 
-    def current_pose_param(self) -> Tensor:
+    def current_pose_param(self, trajectory: int = -1) -> Tensor:
         """
         Get the current pose estimate as a parameter at the latest time.
         """
-        return self._trajectories_q0[-1]
+        return self._trajectories_q0[trajectory]
 
     def get_current_pose_traj(self) -> Tensor:
         """

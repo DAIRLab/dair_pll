@@ -11,7 +11,7 @@ import time
 from scipy.stats import loguniform, uniform
 
 from action_library import sample_action, ActionLibrary
-from rss_experiment import Experiment
+from examples.experiment import Experiment
 from trifinger_lcm_service import TrifingerLCMService
 
 #DEBUG

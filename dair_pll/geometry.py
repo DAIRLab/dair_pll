@@ -1019,14 +1019,15 @@ class GeometryCollider:
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
 
         # Vector Norm
-        phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
+        # phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
-        #phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        temp = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi
         # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
-        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # Max with previous phi
+        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
 
         return phi, R_AC, p_AoAc_A, p_BoBc_B
@@ -1072,12 +1073,12 @@ class GeometryCollider:
         p_AoBo_A_clamp_sign[p_AoBo_A_clamp_sign == 0.0] = 1.0
         p_AoBo_A_diffs = p_AoBo_A_clamp_sign * box_lengths - p_AoBo_A_clamp
         # Mask out all but the closest
-        mask = torch.zeros_like(p_AoBo_A_diffs)
-        mask[
-            ...,
-            torch.arange(mask.shape[-2]),
-            torch.argmin(torch.abs(p_AoBo_A_diffs), dim=-1),
+        mask_flat = torch.zeros_like(p_AoBo_A_diffs).reshape(-1, 3)
+        mask_flat[
+            torch.arange(mask_flat.shape[-2]),
+            torch.argmin(torch.abs(p_AoBo_A_diffs), dim=-1).flatten(),
         ] = 1.0
+        mask = mask_flat.reshape(p_AoBo_A_diffs.size())
         p_AoBo_A_diffs_masked = p_AoBo_A_diffs * mask
         # Actual projection to get nearest point
         p_AoAc_A = p_AoBo_A_clamp + p_AoBo_A_diffs_masked
@@ -1151,14 +1152,14 @@ class GeometryCollider:
         # Vector Norm
         phi[..., 1:] = torch.linalg.vector_norm(p_AcBc_A[..., 1:, :], dim=-1)
         # Projected onto Normal
-        # phi[..., 1:] = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
+        temp = (p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1)
         # Projected onto Normal, Abs
         # phi[..., 1:] = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Projected onto Normal, Abs, Max with previous phi
         # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
-        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # Max with previous phi
+        phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
-
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod

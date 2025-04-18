@@ -319,7 +319,8 @@ class MultibodyLearnableSystem(DrakeSystem):
         # First n_q of self.state_map_for_learnable_bodies: states; the rest (last n_v): velocities.
         # velocity_mask: 1 for object velocities, 0 for robot velocities.
         # object velocities: wx, wy, wz, vx, vy, vz
-        velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q:].detach().clone()
+        state_mask = self.state_map_for_learnable_bodies().detach().clone()
+        velocity_mask = state_mask[self.space.n_q:]
         J_small = J[..., velocity_mask] # (*, n_contacts*3, n_v_object)
         M_small = M[..., velocity_mask, :][..., velocity_mask]
         M_inv_small = torch.inverse(M_small)
@@ -514,6 +515,8 @@ class MultibodyLearnableSystem(DrakeSystem):
             self.space.configuration_difference(self.space.euler_step(self.space.q(x), self.space.v(x_plus), dt), self.space.q(x_plus))
             / dt
         ).unsqueeze(-1)
+        # Ignore any inconsistencies in robot trajectory
+        vel_err[..., ~velocity_mask, 0] = 0.
         loss_q_pred = pbmm(vel_err.transpose(-1, -2), pbmm(M, vel_err))
         loss_comp = pbmm(impulses.transpose(-1, -2), q_comp)
         loss_pen = constant_pen
@@ -544,7 +547,7 @@ class MultibodyLearnableSystem(DrakeSystem):
         # Check for positive definite loss
         try:
             assert np.all(loss_dev.detach().cpu().numpy() >= -eps), "Deviation Loss Negative"
-            assert np.all(loss_pred.detach().cpu().numpy() >= -eps), "Prediction Loss Negative"
+            assert np.all(loss_pred.detach().cpu().numpy() >= -2.0*eps), "Prediction Loss Negative"
             assert np.all(loss_norm.detach().cpu().numpy() >= -eps), "Normal Alignment Loss Negative"
         except AssertionError:
             # pylint: disable-next=forgotten-debug-statement
@@ -705,7 +708,7 @@ class MultibodyLearnableSystem(DrakeSystem):
             impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(min=0.)
             impulse[contact_filter] += impulse_full[contact_filter].detach()
 
-            v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1).detach()
+        v_add = torch.linalg.solve(M, pbmm(J.transpose(-1, -2), impulse)).squeeze(-1)
 
         debug = bool(impulse.cpu().flatten()[0] > 0.)
         ### Construct contact forces / normals
@@ -901,7 +904,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             sim_dt = timestamps[sim_idx] - timestamps[sim_idx - 1]
             # Calculate u from PID
             robot_step_states = self.model_states_from_state_tensor(
-                plant_states[..., sim_idx - 1, :]
+                plant_states[..., sim_idx - 1, :].detach()
             )[robot_model_name + "_state"]
             assert robot_step_states.size() == batch_dims + (robot_space.n_x,)
             robot_target_states = robot_target_trajectories[..., sim_idx - 1, :]
@@ -940,9 +943,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         """
         Parameters specifically used for exploration
         """
-        return chain([self._trajectory.current_pose_param()],
-            self.multibody_terms.parameters()
-        )
+        return self.multibody_terms.parameters()
+        #return chain([self._trajectory.current_pose_param()],
+        #    self.multibody_terms.parameters()
+        #)
 
     @torch.no_grad
     def get_learned_pose(self) -> Tensor:
@@ -984,7 +988,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         self,
         data: Optional[DataLoader],
         get_loss_args: Callable[[Tensor, Tensor, MultibodyLearnableSystem], Tensor],
-        use_hessian: bool = False
+        info_calc: int = 1
     ) -> Tensor:
         """
         Calculate the Observed Information in previously taken actions
@@ -995,8 +999,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         Use: https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
         """
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
-        # TODO: Make this a hyperparam
-        ret = 1e-6 * torch.eye(n_params) #torch.zeros((n_params, n_params))
+        ret = torch.zeros((n_params, n_params))
         if data is None:
             return ret
 
@@ -1012,15 +1015,20 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         all_losses = torch.cat(losses)
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
 
-        if use_hessian:
+        # Hessian (Note: likely inaccurate)
+        if info_calc == 0:
             grads = torch.autograd.grad(all_losses.mean(), param_list, retain_graph=True, create_graph=True)
             flattened_list = [grad.flatten() for grad in grads]
             flattened_grads = torch.cat(flattened_list)
             assert len(flattened_grads) == n_params
             hessian = torch.autograd.grad(flattened_grads, param_list, grad_outputs=torch.eye(n_params), is_grads_batched=True, retain_graph=True)
             ret += torch.cat([hess.reshape((n_params, -1)) for hess in hessian], dim=-1)
+        # Per Timestep Loss
         else:
-            grads = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+            grads_tup = torch.autograd.grad(all_losses, param_list, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
+            # TODO: HACK assume 1st element is position, and apply to all timesteps
+            grads = list(grads_tup)
+            #grads[0] = grads[0][-1:, :].expand(grads[0].size())
             grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
             assert grads_tensor.size() == (all_losses.numel(), n_params)
             # Compute Fisher Infos as outer product
@@ -1070,22 +1078,30 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             kd=10.
         )
         plant_states = super().construct_state_tensor(plant_states_dict)
-        plant_x = plant_states[..., : traj_len - 1, :]
-        plant_xplus = plant_states[..., 1:, :]
         dt_unbatched = robot_timestamps[1:] - robot_timestamps[:-1]
         dts = dt_unbatched.view(*(1,)*(len(batch_dims)-1), traj_len-1).expand(batch_dims + (traj_len-1,))
         robot_u_cropped = robot_u[..., : traj_len - 1, :]
-        assert plant_x.size() == plant_xplus.size()
 
         # Sample forces
         # TODO: HACK contact_forces_star only includes 1:1 collisions, which is all we want
-        forces_std = 0.01 # 10g * g ~ 0.01N
+        forces_std = 1e-1 # 10g * g ~ 0.01N
         samplers_forces = {}
         for key in contact_forces_star.keys():  
             samplers_forces[key] = Normal(
                 loc=contact_forces_star[key].flatten(),
                 scale=forces_std * torch.ones_like(contact_forces_star[key].flatten()),
             )
+
+        # Sample Ground Height and Robot Position
+        # TODO: HACK STDs manually tuned for approx equal uncertainty in ZSINGLE
+        ground_std = 1e-4 # 0.1mm (fairly certain)
+        sampler_ground = Normal(loc = 0., scale = ground_std)
+        state_names = self.multibody_terms.plant_diagram.plant.GetStateNames()
+        z_mask = torch.tensor([s.endswith("z_x") or s.endswith("_z") for s in state_names])
+        robot_mask = torch.tensor([s.startswith(robot_model_name) for s in state_names])
+        robot_std = 1e-4 # 2mm
+        sampler_robot = Normal(loc=torch.zeros_like(plant_states[..., robot_mask]), 
+            scale=robot_std * torch.ones_like(plant_states[..., robot_mask]))
         
         n_params = len(torch.cat([param.flatten() for param in self.exploration_parameters() if param.requires_grad]))
         param_list = [param for param in self.exploration_parameters() if param.requires_grad]
@@ -1093,41 +1109,66 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
 
         sample_fishers = []
         loss_batches = torch.zeros(batch_dims + (n_samples,))
-        for sample_idx in range(n_samples):
-            print(f"Calculate Loss for Sample {sample_idx} / {n_samples}...")
-            # Impulses need to be a column vector
+        true_loss = torch.zeros(batch_dims)
+        for sample_idx in range(-1, n_samples):
+            if sample_idx < 0:
+                print(f"Calculate Loss for unperturbed force and ground...")
+            else:
+                print(f"Calculate Loss for Sample {sample_idx+1} / {n_samples}...")
+            # Sample Contact Forces / Normals
             sample_contact_forces = {}
             for key in contact_forces_star.keys():
                 if sample_idx < 0:
                     sample_contact_forces[key] = contact_forces_star[key]
                 else:
                     sample_contact_forces[key] = samplers_forces[key].sample().reshape(contact_forces_star[key].size())
+            # Sample Plant States
+            sample_plant_states = plant_states.clone()
+            if sample_idx >= 0:
+                sample_plant_states[..., z_mask] += sampler_ground.sample()
+                sample_plant_states[..., robot_mask] += sampler_robot.sample()
+            plant_x = sample_plant_states[..., : traj_len - 1, :]
+            plant_xplus = sample_plant_states[..., 1:, :]
+            assert plant_x.size() == plant_xplus.size()
 
             # Compute Loss (i.e. log-likelihood)
             loss_trajlen_batch = self.contactnets_loss(
                 plant_x, robot_u_cropped, plant_xplus, 
-                contact_normals=contact_normals_star, 
+                # contact_normals=contact_normals_star, 
                 contact_forces=sample_contact_forces, dts=dts,
             )
             assert loss_trajlen_batch.size() == batch_dims + (traj_len-1,)
-            loss_batches[..., sample_idx] = loss_trajlen_batch.mean(dim=-1).flatten()
+            if sample_idx < 0:
+                true_loss = loss_trajlen_batch.mean(dim=-1).flatten()
+            else:
+                loss_batches[..., sample_idx] = loss_trajlen_batch.mean(dim=-1).flatten()
             # breakpoint()
             # torch.autograd.grad(self.loss_cache["loss_pred"].mean(), param_list, retain_graph=True, allow_unused=True)
+        # breakpoint()
 
         # Compute Gradients (i.e. score)
         # TODO: Trade-Off Between Time and VRAM
-        sample_fishers =torch.zeros(batch_dims + (n_samples, n_params, n_params))
-        for sample_idx in range(n_samples):
-            print(f"Computing Gradients for sample {sample_idx}/{n_samples}...")
-            grads = torch.autograd.grad(loss_batches[..., sample_idx].flatten(), param_list, grad_outputs=torch.eye(loss_batches[..., sample_idx].numel()), is_grads_batched=True, retain_graph=True)
-            score_batches = torch.cat([grad.reshape((loss_batches[..., sample_idx].numel(), -1)) for grad in grads], dim=-1)
-            assert score_batches.size() == (loss_batches[..., sample_idx].numel(), n_params)
-            # Compute Fisher Info as outer product
-            sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
+        sample_fishers = torch.zeros(batch_dims + (n_samples, n_params, n_params))
+        for sample_idx in range(-1, n_samples):
+            if sample_idx < 0:
+                print(f"Computing unperturbed gradient...")
+                loss_calc = true_loss
+            else:
+                print(f"Computing Gradients for sample {sample_idx+1}/{n_samples}...")
+                loss_calc = loss_batches[..., sample_idx]
+            grads = torch.autograd.grad(loss_calc.flatten(), param_list, grad_outputs=torch.eye(loss_calc.numel()), is_grads_batched=True, retain_graph=True)
+            score_batches = torch.cat([grad.reshape((loss_calc.numel(), -1)) for grad in grads], dim=-1)
+            assert score_batches.size() == (loss_calc.numel(), n_params)
+            if sample_idx < 0:
+                mean_score = score_batches.clone()
+            else:
+                score_batches = score_batches - mean_score
+                # Compute Fisher Info as outer product
+                sample_fishers[..., sample_idx, :, :] = pbmm(score_batches.unsqueeze(-1), score_batches.unsqueeze(-2)).reshape(batch_dims + (n_params, n_params))
             # Clear gradients for next cycle
             self.zero_grad()
-            
         ret = sample_fishers.mean(dim=-3)
+        # breakpoint()
         return ret
 
     def add_trajectories(
