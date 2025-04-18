@@ -1,3 +1,6 @@
+import os
+import git 
+
 import numpy as np
 import gin
 from typing import Dict, List, Any
@@ -23,12 +26,11 @@ class TrifingerLCMService:
     """
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(
-        self,
-        lcm_channels: Dict[str, str],
-        fingertip_body_names: List[str],
-        traj_time_len=2.0,
-    ):
+    def __init__(self,
+                 lcm_channels: Dict[str, str],
+                 fingertip_body_names: List[str],
+                 traj_time_len=2.0,
+                 ):
         self._lcm_channels = lcm_channels
         self._traj_time_len = traj_time_len
         self._fingertip_body_names = fingertip_body_names
@@ -65,6 +67,9 @@ class TrifingerLCMService:
         if channel == self._lcm_channels["object_state"]:
             self._object_raw_data.append(lcmt_object_state.decode(data))
 
+    def __exit__(self):
+        del self._lcm
+
     def execute_trajectory(
         self,
         target_state: np.ndarray,
@@ -93,7 +98,6 @@ class TrifingerLCMService:
 
         print(f"Sending Command at: {time.time()}")
         self._lcm.publish(self._lcm_channels["fingertips_target"], command.encode())
-        print("published!")
         end_time = time.time() + self._traj_time_len
         while time.time() < end_time:
             self._lcm.handle_timeout(int((end_time - time.time()) * 1e3))

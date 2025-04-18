@@ -27,7 +27,7 @@ from typing import cast, Any, Dict, List, Optional, Tuple, Type
 import gin
 import gin.torch.external_configurables
 import git
-import lcm
+
 import numpy as np
 from pydrake.all import StartMeshcat, Rgba, Shape
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
@@ -50,33 +50,21 @@ from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTraj
 from dair_pll.tensor_utils import pbmm
 from dair_pll.hack_utils import finger_idx_from_body_name
 
-# relative imports
 from trifinger_lcm_service import TrifingerLCMService
 from action_library import ActionLibrary, sample_action
-
 from chamfer_distance import ChamferDistanceMetric
+from dair_pll.gui_utils import transform_from_state_q
 
 # DEBUG
 from ipdb import set_trace
+import logging
 
 # Repository directory (default for file operations)
 REPO_DIR = os.path.normpath(
     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
 )
-DEFAULT_CONFIG = "rss_experiment.gin"
 
 torch.set_default_device("cuda")
-
-# global signal_pressed
-# signal.signal(signal.SIGINT, signal_handler)
-#torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
-
-### Signal Handling
-signal_pressed = False
-def signal_handler(sig, frame):
-    """ Handle SIGINT"""
-    global signal_pressed
-    signal_pressed = True
 
 ## Training Functions
 @gin.configurable
@@ -130,13 +118,10 @@ def get_loss_args(
 
     return ret
 
-
-
-@gin.configurable(denylist=["trifinger_lcm"])
-class Experiment():
-
+@gin.configurable
+class Experiment:
+    """Main class for online learning loop"""
     def __init__(self,
-                 trifinger_lcm,
                  init_trifinger_state: List[float],
                  safe_trifinger_height: float,
                  robot_model_name: str,
@@ -147,21 +132,19 @@ class Experiment():
                  run_name: str = "default_run",
                  optimizer_cls: Type = torch.optim.SGD,
                  ):
-
-        """Main function for online learning loop"""
-
-        self.trifinger_lcm_ = trifinger_lcm
+                
         # instance variables
+        self.init_trifinger_state_ = init_trifinger_state
         self.safe_trifinger_height_ = safe_trifinger_height
-        
         self.robot_model_name_ = robot_model_name
-        self.object_model_name_ = object_model_name
         self.fingertip_body_names_ = fingertip_body_names
+        self.object_model_name_ = object_model_name
+        self.optimizer_cls_ = optimizer_cls
 
         self.learned_summaries_ = []
 
         # Create run directory
-        print("Active Tactile Exploration")
+        print("Initialized Active Tactile Exploration")
         storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
         print(f"Storing data and results at {file_utils.run_dir(storage_name, run_name)}")
 
@@ -170,67 +153,80 @@ class Experiment():
         learned_system = MultibodyLearnableSystemWithTrajectory(
             output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
         )
-        learned_summaries = [learned_system.summary({})]
+
         train_losses = []
         train_loss_data = []
 
         # Create Dataset
         data_trajectories = TrajectorySet()
 
-        # GUI Visualization
-        # gui_vis = PLLMeshcatVisualizer(
-        #     system = learned_system,
-        #     data = data_trajectories,
-        #     true_geom = get_true_geometry()
-        # )
-
-        # Initialize LCM
-        # Pylint doesn't know about gin
-        # pylint: disable=no-value-for-parameter
+        trifinger_lcm = TrifingerLCMService()
         print("Move to initial trifinger state")
-        self.trifinger_lcm_.execute_trajectory(np.array(init_trifinger_state), no_data=True)
+        trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
 
-        # Initialize Optimizer and Data config
-        optimizer = optimizer_cls(learned_system.parameters())
-        traj_dataloader = None
-        obs_info_inv = None
-        total_epochs = 0
-
+        self.trifinger_lcm_ = trifinger_lcm
         self.learned_system_ = learned_system
         self.data_trajectories_ = data_trajectories
-        self.optimizer_cls_ = optimizer_cls
-
         self.train_losses_ = train_losses
         self.train_loss_data_ = train_loss_data
-
         self.new_trajectory_ = None
-
-        self.true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
-
+        self.true_pose_ = np.array([1., 0., 0., 0., 0., 0., 0.])
         self.calc_cfd_ = ChamferDistanceMetric()
+        self.run_name_ = run_name
+        self.storage_name_ = storage_name
 
-        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGINT, self.signal_handler)
+
+    def start_sim(self,
+                  ):
+        """Re-initialize the simulation"""
+        init_trifinger_state = self.init_trifinger_state_
+
+        print("Re-initialize Active Tactile Exploration")
+        print("Move to initial trifinger state")
+        self.trifinger_lcm_.execute_trajectory(np.array(init_trifinger_state), no_data=True)
+        print("Loading Learned System...")
+        self.learned_system_ = MultibodyLearnableSystemWithTrajectory(
+            output_urdfs_dir=file_utils.get_learned_urdf_dir(self.storage_name_, self.run_name_)
+        )
+
+        # Create Dataset
+        data_trajectories = TrajectorySet()
+
+        self.data_trajectories_ = data_trajectories
+        self.train_losses_.clear()
+        self.train_loss_data_.clear()
+        self.new_trajectory_ = None
+        self.true_pose_ = np.array([1., 0., 0., 0., 0., 0., 0.])
 
 
-    def signal_handler(sig, frame):
+    def signal_handler(self,
+                       sig, 
+                       frame):
         """ Handle SIGINT"""
+
+        print("\nCtrl+C detected. Cleaning simulation up...")
+        torch.cuda.empty_cache()
+        del self.trifinger_lcm_
+        del self.learned_system_
+
         sys.exit(0)
 
-    def reset(self):
-        """Reset the simulation"""
-        # Clear CUDA cache
-        torch.cuda.empty_cache()
-        # Clean up existing resources
-        if hasattr(self, 'learned_system_'):
-            del self.learned_system_
-        if hasattr(self, 'data_trajectories_'):
-            del self.data_trajectories_
-        if hasattr(self, 'optimizer'):
-            del self.optimizer
-        if hasattr(self, 'traj_dataloader_'):
-            del self.traj_dataloader_
+    # def reset(self):
+    #     """Reset the simulation"""
+    #     # Clear CUDA cache
+    #     torch.cuda.empty_cache()
+    #     # Clean up existing resources
+    #     if hasattr(self, 'learned_system_'):
+    #         del self.learned_system_
+    #     if hasattr(self, 'data_trajectories_'):
+    #         del self.data_trajectories_
+    #     if hasattr(self, 'optimizer'):
+    #         del self.optimizer
+    #     if hasattr(self, 'traj_dataloader_'):
+    #         del self.traj_dataloader_
     
-        self.__init__(self.trifinger_lcm_)
+    #     self.__init__(self.trifinger_lcm_)
     
     def chamfer_distance(self) -> float:
         learned_geom = self.learned_system_.get_learned_geometry()
@@ -246,12 +242,13 @@ class Experiment():
             return transform
         
         learned_trans = to_homo_mtrx(self.learned_system_.get_learned_pose().cpu().numpy())
-        true_trans = to_homo_mtrx(self.true_pose)
+        true_trans = to_homo_mtrx(self.true_pose_)
 
         return self.calc_cfd_(learned_geom,
-                                    learned_trans, 
-                                    true_geom, 
-                                    true_trans)
+                              learned_trans, 
+                              true_geom, 
+                              true_trans,
+                              )
 
     def get_true_geometry(self) -> Shape:
         """Get True Geometry from configured base system"""
@@ -346,7 +343,7 @@ class Experiment():
         return ret, ret_timestamps
 
     def data_collection(self,
-                        selected_action,
+                        selected_action: List[Any],
                         ):
         """Method for running a single trial
             - for a given intial pose of the object
@@ -440,8 +437,8 @@ class Experiment():
         # TODO: HACK don't hardcode object name
         object_name = "cube"
         if new_trajectory is not None and len(new_trajectory) >= 1:
-            self.true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
-
+            self.true_pose_ = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
+        
         total_epochs = 0
 
         learned_system._hyperparameters.w_pred = hyperparam['w_pred']
@@ -471,6 +468,9 @@ class Experiment():
             train_losses.append(train_loss)
             train_loss_data.append(loss_data)
             learned_summaries.append(learned_system.summary({}))
+
+        logging.debug(f"True object pose at the traj end: {np.round(transform_from_state_q(self.true_pose_), 3)}")
+        logging.debug(f"Learned object pose at the traj end: {np.round(transform_from_state_q(self.learned_system_.get_learned_pose().cpu().numpy()), 3)}")
 
         print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
         obs_info_inv = None
@@ -540,17 +540,17 @@ class Experiment():
 def main_fn():
     """Entry point"""
     config_file = DEFAULT_CONFIG
-    if len(sys.argv) < 2:
-        print(f"Warning: Using default config file ({DEFAULT_CONFIG})")
-    else:
-        config_file = sys.argv[1]
+    # if len(sys.argv) < 2:
+    #     print(f"Warning: Using default config file ({DEFAULT_CONFIG})")
+    # else:
+    #     config_file = sys.argv[1]
 
     # Parse config file and start
     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
     # Pylint doesn't know about gin
     # pylint: disable=no-value-for-parameter
-    f = Experiment()
-    f
+    # simulation = Experiment()
+    # simulation
 
 
 if __name__ == "__main__":

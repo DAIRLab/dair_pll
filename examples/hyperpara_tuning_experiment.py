@@ -65,11 +65,12 @@ class hyperparam_tuning:
         "w_pen": 226.5058660208208,
         "w_dev": 1542.401683179897,
         "w_norm": 362.39421199892433,
-        "epoch": 133,  # Integer value for epochs
+        "epoch": 50,  # Integer value for epochs
     }
         
     def __init__(self):
         self.csv_file = CSV_File(self.hyperparams)
+        self.learned_model = Experiment()
 
         self.cfd_prev = 0
         self.cfd = -np.inf
@@ -78,7 +79,7 @@ class hyperparam_tuning:
         self.workspace_radius = 0.15
         self.sphere_radius = 0.01575
 
-        self.trifinger_lcm_ = TrifingerLCMService()
+        #self.trifinger_lcm_ = TrifingerLCMService()
 
         # get cfd for the user's intial guess
         self.cfd = self.trial()
@@ -124,11 +125,6 @@ class hyperparam_tuning:
 
         return best_hyperparams
         
-    def terminate(self):
-        process = self.process
-        if process:
-            process.terminate()
-            process.kill()
 
     def trial(self,
               actions_enum: List[Any] = [ActionLibrary.XPINCH, 
@@ -140,19 +136,17 @@ class hyperparam_tuning:
         hyperparams = self.hyperparams
         workspace_radius = self.workspace_radius
         sphere_radius = self.sphere_radius
+        learned_model = self.learned_model
 
         self.process = subprocess.Popen(["python", "examples/sim_with_lcm.py"])
         time.sleep(5)
-        learned_model = Experiment(self.trifinger_lcm_)
+        self.learned_model.start_sim()
 
         # execute actions
-        # assert len(actions_enum) > 0
-        # assert np.all(np.array(actions_enum) > 0 and np.array(actions_enum) < 9)
-
         for act_idx in actions_enum:
             action = sample_action(workspace_radius=workspace_radius,
-                                sphere_radius=sphere_radius,
-                                library=act_idx)
+                                   sphere_radius=sphere_radius,
+                                   library=act_idx)
         
             learned_model.data_collection(action)
 
@@ -160,7 +154,6 @@ class hyperparam_tuning:
         chamfer_distance = learned_model.chamfer_distance()
         
         # reset sim and experiment
-        learned_model.reset()
         self.process.terminate()
 
         return float(chamfer_distance.cpu().detach())
@@ -192,7 +185,7 @@ class hyperparam_tuning:
                         current_param + step_size*current_param*rand_num,
                         ])
                     # epoch must be an int
-                    candi_params = candi_params.astype(int) if param_name == 'epoch' else candi_params
+                    candi_params = np.clip(candi_params.astype(int), 50, 500) if param_name == 'epoch' else candi_params
                     
                     chamfer_distances[2] = self.cfd 
                     
@@ -225,29 +218,37 @@ class hyperparam_tuning:
                         current_param = candi_params[opt_idx] 
                         hyperparams[param_name] = current_param
                         self.hyperparams = hyperparams
+    def terminate(self):
+        self.process.terminate()  # Send SIGTERM
+        try:
+            self.process.wait(timeout=5)  # Give it time to shut down
+        except subprocess.TimeoutExpired:
+            print("Child didn’t exit, force killing.")
+            self.process.kill()  # Send SIGKILL
+
+    def signal_handler(self,
+                       sig, 
+                       frame,
+                       ):
+        """ Handle SIGINT"""
+        self.terminate()
+        sys.exit(0)
+
+def main():
+    """Entry point"""
+    if '-debug' in sys.argv:
+        logging.basicConfig(level=logging.DEBUG)
+    elif '-info' in sys.argv:
+        logging.basicConfig(level=logging.INFO)
+
+    REPO_DIR = os.path.normpath(git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel"))
+    DEFAULT_CONFIG = "rss_experiment.gin"
+    gin.parse_config_file(os.path.join(REPO_DIR, "config", DEFAULT_CONFIG))
+
+    experiment = hyperparam_tuning()
+    signal.signal(signal.SIGINT, experiment.signal_handler)
+    experiment.coordinate_descent()
 
 
 if __name__ == "__main__":
-    def signal_handler(sig, frame):
-        print("\nCtrl+C detected. Cleaning up...")
-        if 'exp' in locals():
-            exp.terminate()
-            sys.exit(0)
-
-    REPO_DIR = os.path.normpath(
-    git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
-    )
-    DEFAULT_CONFIG = "rss_experiment.gin"
-
-    config_file = DEFAULT_CONFIG
-    
-    gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
-
-    logging.basicConfig(level=logging.INFO)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    exp = hyperparam_tuning()
-    try:
-        exp.coordinate_descent()
-    finally:
-        exp.terminate()
+    main()

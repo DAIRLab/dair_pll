@@ -39,20 +39,20 @@ class ChamferDistanceMetric:
                 DraketoTrimeshFactory.convert(true_geom), count = n_sample_points)    
             
             # point cloud representations in world frame
-            learned_pc_in_origin = learned_pc @ learned_trans[:3, :3].T + learned_trans[:3, 3]
-            true_pc_in_origin = true_pc @ true_trans[:3, :3].T + true_trans[:3, 3]
+            learned_pc_in_origin = learned_pc @ learned_trans[:3, :3] + learned_trans[:3, 3]
+            true_pc_in_origin = true_pc @ true_trans[:3, :3] + true_trans[:3, 3]
 
-            # CRITICAL: using pytorch's implementation for cfd
+            # using pytorch's implementation for cfd
             # $CD(A, B)=\sum \limits_{x_{i}\in A} ||x_{i}-N N(x_{i},B)||^{2}_{2} + \sum \limits_{x_{j}\in B} ||x_{j}-N N(x_{j}, A)||^{2}_{2}$
-
             learned_tensor = torch.from_numpy(learned_pc_in_origin.astype(np.float32)[np.newaxis, :])
             true_tensor = torch.from_numpy(true_pc_in_origin.astype(np.float32)[np.newaxis, :])
                             
             dist = self.chamfer_dist(learned_tensor, 
-                                    true_tensor, 
-                                    bidirectional=True,
-                                    point_reduction="mean",
-                                    batch_reduction= None,)
+                                     true_tensor, 
+                                     bidirectional=True,
+                                     point_reduction="mean",
+                                     batch_reduction= None,
+                                     )
             
             # Clean up GPU memory if needed
             if self.device.type == 'cuda':

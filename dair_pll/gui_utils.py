@@ -88,6 +88,7 @@ class PLLMeshcatVisualizer:
     # TODO: HACK remove hardcoding
     if len(self._data.trajectories) > 0:
       true_traj = torch.cat([traj["cube_groundtruth"] for traj in self._data.trajectories], dim=-2).cpu().numpy()
+      print("true pose", true_traj)
       assert true_traj.shape == learned_traj.shape
       self._meshcat.SetTransform("/true", transform_from_state_q(true_traj[timestep, :]))
       self._scale.configure(to=true_traj.shape[0]-1)
