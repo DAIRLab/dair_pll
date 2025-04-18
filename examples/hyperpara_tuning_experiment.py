@@ -65,7 +65,7 @@ class hyperparam_tuning:
         "w_pen": 226.5058660208208,
         "w_dev": 1542.401683179897,
         "w_norm": 362.39421199892433,
-        "epoch": 50,  # Integer value for epochs
+        "epoch": 500,  # Integer value for epochs
     }
         
     def __init__(self):

@@ -154,6 +154,13 @@ class Experiment:
             output_urdfs_dir=file_utils.get_learned_urdf_dir(storage_name, run_name)
         )
 
+        # GUI Visualization
+        self.gui_vis = PLLMeshcatVisualizer(
+        system = learned_system,
+        data = data_trajectories,
+        true_geom = self.get_true_geometry(),
+        )
+
         train_losses = []
         train_loss_data = []
 
@@ -211,38 +218,14 @@ class Experiment:
         del self.learned_system_
 
         sys.exit(0)
-
-    # def reset(self):
-    #     """Reset the simulation"""
-    #     # Clear CUDA cache
-    #     torch.cuda.empty_cache()
-    #     # Clean up existing resources
-    #     if hasattr(self, 'learned_system_'):
-    #         del self.learned_system_
-    #     if hasattr(self, 'data_trajectories_'):
-    #         del self.data_trajectories_
-    #     if hasattr(self, 'optimizer'):
-    #         del self.optimizer
-    #     if hasattr(self, 'traj_dataloader_'):
-    #         del self.traj_dataloader_
     
-    #     self.__init__(self.trifinger_lcm_)
-    
-    def chamfer_distance(self) -> float:
+    def chamfer_distance(self
+                         ) -> float:
         learned_geom = self.learned_system_.get_learned_geometry()
         true_geom = self.get_true_geometry()
 
-        def to_homo_mtrx(pose: np.ndarray):
-            assert len(pose) == 7, "Only Free Floating State Accepted"
-            transform = np.eye(4)
-            #first 4 elements are quaternion
-            transform[:3, :3] = R.from_quat(pose[:4], scalar_first=True).as_matrix()
-            #last 3 elements are translation
-            transform[:3, 3] = pose[4:]
-            return transform
-        
-        learned_trans = to_homo_mtrx(self.learned_system_.get_learned_pose().cpu().numpy())
-        true_trans = to_homo_mtrx(self.true_pose_)
+        learned_trans = transform_from_state_q(self.learned_system_.get_learned_pose().cpu().numpy())
+        true_trans = transform_from_state_q(self.true_pose_)
 
         return self.calc_cfd_(learned_geom,
                               learned_trans, 
@@ -250,7 +233,8 @@ class Experiment:
                               true_trans,
                               )
 
-    def get_true_geometry(self) -> Shape:
+    def get_true_geometry(self
+                          ) -> Shape:
         """Get True Geometry from configured base system"""
         system = DrakeSystem()
         inspector = system.plant_diagram.scene_graph.model_inspector()
@@ -468,6 +452,7 @@ class Experiment:
             train_losses.append(train_loss)
             train_loss_data.append(loss_data)
             learned_summaries.append(learned_system.summary({}))
+            self.gui_vis.sweep()
 
         logging.debug(f"True object pose at the traj end: {np.round(transform_from_state_q(self.true_pose_), 3)}")
         logging.debug(f"Learned object pose at the traj end: {np.round(transform_from_state_q(self.learned_system_.get_learned_pose().cpu().numpy()), 3)}")
