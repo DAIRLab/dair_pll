@@ -831,7 +831,7 @@ def main(
             print("Recording Inverse Observed Info")
             if obs_info_inv is None:
                 obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-                obs_info_inv = torch.linalg.inv(obs_info + 1e0 * torch.eye(obs_info.size()[-1]))
+                obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[-1]))
 
             print(f"Previously Observed Info: {torch.diagonal(obs_info)}")
 
@@ -845,10 +845,13 @@ def main(
             interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
             robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)
             fishers = learned_system.expected_fisher_info(robot_trajectories, timestamps, robot_model_name)
-            fishers_obs_weighted = torch.matmul(fishers, obs_info_inv)
-            fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
+            fishers_obs_weighted = torch.matmul(fishers + 0 * torch.eye(fishers.size()[-1]), obs_info_inv)
+
+            fishers_singvals = torch.linalg.svdvals(fishers_obs_weighted).real
+            # sum the smaller singular values
+            fishers_traces = fishers_singvals[..., 1:].sum(dim=-1)
+
             best_action = action_samples[torch.argmax(fishers_traces)]
-            #print(f"Best Action Fisher: {fishers[torch.argmax(fishers_traces)]}")
             print(f"Fisher Traces:")
             for action, trace in zip(action_library, fishers_traces):
                 print(f"{action} : {trace}")
