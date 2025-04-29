@@ -998,7 +998,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         geometry_parameters = [param for param in self.multibody_terms.parameters() if param.requires_grad]
 
         # Note: Params == geometry_params plus only the current position
-        n_params = len(torch.cat([param.flatten() for param in geometry_parameters])) + len(pose_parameters[-1])
+        n_params = len(torch.cat([param.flatten() for param in geometry_parameters])) + self._trajectory.space.n_q
         ret = torch.zeros((n_params, n_params))
         if data is None:
             return ret
@@ -1028,7 +1028,8 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
             grads_pose = torch.autograd.grad(all_losses, pose_parameters, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True, retain_graph=True)
             grads_geom = torch.autograd.grad(all_losses, geometry_parameters, grad_outputs=torch.eye(all_losses.numel()), is_grads_batched=True)
             # Note: assume dxt/dxT == 1
-            grads = [torch.stack(grads_pose, dim=0).sum(dim=0)] + list(grads_geom)
+            grads = [torch.cat([gp.reshape(all_losses.numel(), -1, self._trajectory.space.n_q) for gp in grads_pose], dim=1).sum(dim=1)] \
+                + list(grads_geom)
             grads_tensor = torch.cat([grad.reshape((all_losses.numel(), -1)) for grad in grads], dim=-1)
             assert grads_tensor.size() == (all_losses.numel(), n_params)
             # Compute Fisher Infos as outer product
