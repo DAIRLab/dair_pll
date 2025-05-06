@@ -824,8 +824,18 @@ def main(
             obs_info_inv = None
 
         elif command_char == "s":
-            print("Sampling random action...")
-            selected_action = sample_action(library=random.choice(action_library))
+            try:
+                action = int(input("Which Action (<0 == random)? "))
+            except ValueError:
+                print("Cancelling...")
+                continue
+            if action < 0:
+                temp = random.choice(action_library)
+                print(f"Sampling random action: {temp}")
+                selected_action = sample_action(library=temp)
+            else:
+                print(f"Selecting Action: {action_library[action]}")
+                selected_action = sample_action(library=action_library[action % len(action_library)])
 
         elif command_char == "a":
             print("Recording Inverse Observed Info")
