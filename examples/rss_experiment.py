@@ -726,6 +726,7 @@ def main(
             "a - Action Selection\n"
             "e - Execute selected action + collect data\n"
             "o - Observed info\n"
+            "r - Reset learning optimizer\n"
             "s - Sample random action\n"
             "t - Train\n"
             "b - breakpoint()\n"
@@ -822,6 +823,10 @@ def main(
             )
             optimizer = optimizer_cls(learned_system.parameters())
             obs_info_inv = None
+
+        elif command_char == "r":
+            print("Resetting optimizer")
+            optimizer = optimizer_cls(learned_system.parameters())
 
         elif command_char == "s":
             try:

@@ -147,20 +147,20 @@ def extract_mesh_from_support_function(
     Returns:
         Object vertices and face indices.
     """
-    support_points = support_function(_SURFACE).detach().cpu()
+    support_points = support_function(_SURFACE.to(torch.get_default_device())).detach()
     support_point_hashes = set()
     unique_support_points = []
 
     # remove duplicate vertices
     for vertex in support_points:
-        vertex_hash = hash(vertex.numpy().tobytes())
+        vertex_hash = hash(vertex.cpu().numpy().tobytes())
         if vertex_hash in support_point_hashes:
             continue
         support_point_hashes.add(vertex_hash)
         unique_support_points.append(vertex)
 
     vertices = torch.stack(unique_support_points)
-    hull = ConvexHull(vertices.numpy())
+    hull = ConvexHull(vertices.cpu().numpy())
     faces = torch.tensor(hull.simplices).to(torch.long)  # type: ignore
 
     _, backwards, _ = extract_outward_normal_hyperplanes(

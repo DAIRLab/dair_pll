@@ -600,10 +600,10 @@ class PydrakeToCollisionGeometryFactory:
             return DrakeSphere(geometry.get_radius())
         elif isinstance(geometry, Polygon):
             mesh_data = extract_obj_from_mesh_summary(get_mesh_summary_from_polygon(geometry))
-            return Mesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+            return DrakeMesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
         elif isinstance(geometry, DeepSupportConvex):
             mesh_data = extract_obj_from_mesh_summary(extract_mesh_from_support_function(geometry.network))
-            return Mesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+            return DrakeMesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
 
     @staticmethod
     def convert(
@@ -658,14 +658,30 @@ class PydrakeToCollisionGeometryFactory:
         drake_box: DrakeBox, representation: GeometryRepresentation, learnable: bool = True
     ) -> Union[Box, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
+        half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
         if representation == GeometryRepresentation.NONE:
             print("Warning: no representation supplied for DrakeBox, default to PRIMITIVE")
         if representation in [GeometryRepresentation.PRIMITIVE, GeometryRepresentation.NONE]:
-            half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
             return Box(half_widths, 4, learnable)
 
         if representation == GeometryRepresentation.POLYGON:
             pass  # TODO
+
+        if representation == GeometryRepresentation.MESH:
+            # Construct from corner vertices
+            vertices = torch.zeros((8, 3))
+            vertices[0, :] = torch.tensor([1., 1., 1.,])
+            vertices[1, :] = torch.tensor([-1., 1., 1.,])
+            vertices[2, :] = torch.tensor([1., -1., 1.,])
+            vertices[3, :] = torch.tensor([-1., -1., 1.,])
+            vertices[4, :] = torch.tensor([1., 1., -1.,])
+            vertices[5, :] = torch.tensor([-1., 1., -1.,])
+            vertices[6, :] = torch.tensor([1., -1., -1.,])
+            vertices[7, :] = torch.tensor([-1., -1., -1.,])
+            vertices[:, 0] *= half_widths[0]
+            vertices[:, 1] *= half_widths[1]
+            vertices[:, 2] *= half_widths[2]
+            return DeepSupportConvex(vertices, learnable=learnable)
 
         raise NotImplementedError(
             "Cannot presently represent a DrakeBox()"
@@ -765,7 +781,7 @@ class GeometryCollider:
                 geometry_a, R_AB.transpose(-1, -2), -pbmm(p_AoBo_A, R_AB)
             )
 
-        # case 2: compact-convex to sphere collision (e.g. robot)
+        # case 2: box to sphere collision (e.g. robot)
         if isinstance(geometry_a, Box) and isinstance(geometry_b, Sphere):
             return GeometryCollider.collide_box_sphere(
                 geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A
@@ -775,11 +791,25 @@ class GeometryCollider:
                 geometry_b,
                 geometry_a,
                 R_AB.transpose(-1, -2),
-                -pbmm(p_AoBo_A, R_AB),
-                -pbmm(estimated_normals_A, R_AB),
+                -pbmm(p_AoBo_A.unsqueeze(-2), R_AB).squeeze(-2),
+                -pbmm(estimated_normals_A.unsqueeze(-2), R_AB).squeeze(-2),
             )
 
-        # case 3: compact-convex to compact-convex collision (NOTE: unstable)
+        # case 3: compact-convex to sphere collision (e.g. robot)
+        if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(geometry_b, Sphere):
+            return GeometryCollider.collide_convex_sphere(
+                geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A
+            )
+        if isinstance(geometry_a, Sphere) and isinstance(geometry_b, BoundedConvexCollisionGeometry):
+            return GeometryCollider.collide_convex_sphere(
+                geometry_b,
+                geometry_a,
+                R_AB.transpose(-1, -2),
+                -pbmm(p_AoBo_A.unsqueeze(-2), R_AB).squeeze(-2),
+                -pbmm(estimated_normals_A.unsqueeze(-2), R_AB).squeeze(-2),
+            )
+
+        # case 4: compact-convex to compact-convex collision (NOTE: unstable)
         if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
             geometry_b, BoundedConvexCollisionGeometry
         ):

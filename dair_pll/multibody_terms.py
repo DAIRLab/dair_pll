@@ -667,6 +667,7 @@ class ContactTerms(Module):
                     R_AiW, estimated_normals_W[key].unsqueeze(-1)
                 ).squeeze(-1)
             elif (geo_b.name, geo_a.name) in estimated_normals_W:
+                key = (geo_b.name, geo_a.name)
                 estimated_normals_A = -pbmm(
                     R_AiW, estimated_normals_W[key].unsqueeze(-1)
                 ).squeeze(-1)

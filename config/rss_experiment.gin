@@ -97,7 +97,7 @@ object_init/get_urdf_asset_contents.mappings = {
 }
 LearnableSystem.init_traj_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.1, 0.0, 0.015,     # XYZ
+	-0.05, -0.05, 0.015,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -111,10 +111,10 @@ object_init/LearnableBodySettings.friction = False
 object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
 
 # Learning hyperparams
-LearnableHyperparameters.w_pred = 5e0
+LearnableHyperparameters.w_pred = 1e1
 LearnableHyperparameters.w_q_pred = 1e1
 LearnableHyperparameters.w_comp = 2e1
-LearnableHyperparameters.w_fdiss = 1e0
+LearnableHyperparameters.w_fdiss = 1e1
 LearnableHyperparameters.w_ndiss = 1e0
 LearnableHyperparameters.w_pen = 1e2
 LearnableHyperparameters.w_dev = 1e5
@@ -133,7 +133,7 @@ LearnableHyperparameters.w_reg_iner = 1e-5
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=5e-3
+Adam.lr=6e-3 # Mesh: 1e-3
 Adam.amsgrad=True
 Adam.fused=False
 
