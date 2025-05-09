@@ -14,6 +14,14 @@ delta_t = 0.0333 # TODO: HACK remove and use timestamps; 33ms == 30Hz
 
 ## Main Config
 main.robot_model_name = %robot_model_name
+# main.init_trifinger_state = [
+# 	0.0, 0.1, 0.05, # DenseTact 0 q
+# 	0.1, 0.0, 0.05, # DenseTact 120 q
+# 	-0.1, -0.1, 0.1, # Finger 240 q
+# 	0., 0., 0.,   # DenseTact 0 v
+# 	0., 0., 0.,   # DenseTact 120 v
+# 	0., 0., 0.,   # Finger 240 v
+# ]
 main.init_trifinger_state = [
 	0.1, 0., 0.05, # Finger 0 q
 	-0.1, 0., 0.05, # Finger 120 q
@@ -45,7 +53,7 @@ DynamicCvxpyLCQPLayer.solver_args = {
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names
 TrifingerLCMService.traj_time_len = 2.0
 TrifingerLCMService.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
 	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
@@ -53,10 +61,10 @@ TrifingerLCMService.lcm_channels = {
 
 ## Action Sampling
 sample_action.workspace_xy_center = (0., 0.)
-sample_action.workspace_z_rot = 0.
+sample_action.workspace_z_rot = 0. # 0.785398163 # pi/4
 sample_action.workspace_radius = %workspace_radius
 sample_action.sphere_radius = %robot_radius_buffer
-sample_action.fixed_240_W = (0., %workspace_radius, %workspace_radius)
+sample_action.fixed_240_W = (-0.1, -0.1, 0.1)
 
 ## Robot config
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
