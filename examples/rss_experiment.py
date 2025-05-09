@@ -834,7 +834,7 @@ def main(
                 print(f"Sampling random action: {temp}")
                 selected_action = sample_action(library=temp)
             else:
-                print(f"Selecting Action: {action_library[action]}")
+                print(f"Selecting Action: {action_library[action % len(action_library)]}")
                 selected_action = sample_action(library=action_library[action % len(action_library)])
 
         elif command_char == "a":

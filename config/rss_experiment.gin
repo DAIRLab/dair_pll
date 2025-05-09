@@ -133,7 +133,7 @@ LearnableHyperparameters.w_reg_iner = 1e-5
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=1e-3
+Adam.lr=5e-3
 Adam.amsgrad=True
 Adam.fused=False
 
