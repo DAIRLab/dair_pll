@@ -676,6 +676,8 @@ def main(
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
     #torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
+    # Debug: Remove scientific notation for numpy printing
+    np.set_printoptions(suppress=True)
     torch.set_default_device("cuda")
 
     # Create run directory
@@ -864,8 +866,8 @@ def main(
 
             fishers_singvals = torch.linalg.svdvals(fishers_obs_weighted).real
             # sum the smaller singular values
-            fishers_traces = fishers_singvals[..., 1:].sum(dim=-1)
-
+            #fishers_traces = fishers_singvals[..., 1:].sum(dim=-1)
+            fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
             best_action = action_samples[torch.argmax(fishers_traces)]
             print(f"Fisher Traces:")
             for action, trace in zip(action_library, fishers_traces):

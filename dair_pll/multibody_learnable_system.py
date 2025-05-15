@@ -994,7 +994,10 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         # Zero Gradient before calculation
         self.zero_grad()
 
-        pose_parameters = [param for param in self._trajectory.current_pose_params() if param.requires_grad]
+        pose_parameters_all = [param for param in self._trajectory.current_pose_params() if param.requires_grad]
+        # TODO: HACK Only Current Pose
+        #pose_parameters = [pose_parameters_all[-2]]
+        pose_parameters = pose_parameters_all
         geometry_parameters = [param for param in self.multibody_terms.parameters() if param.requires_grad]
 
         # Note: Params == geometry_params plus only the current position

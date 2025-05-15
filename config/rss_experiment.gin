@@ -89,15 +89,15 @@ LearnableSystem.learnable_body_dict = {
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.03, # m
-	"length_y": 0.03, # m
-	"length_z": 0.03, # m
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
 LearnableSystem.init_traj_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	-0.05, -0.05, 0.015,     # XYZ
+	0.0, 0.0, 0.0325,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
