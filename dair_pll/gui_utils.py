@@ -54,7 +54,7 @@ class PLLMeshcatVisualizer:
         self._meshcat.SetObject("/true", true_geom, Rgba(0.8, 0.0, 0.0, 0.3))
         self._meshcat.SetTransform("/true", transform_from_state_q(np.array([1., 0., 0., 0., 0., 0., 0.])))
         self._meshcat.SetObject("/learned", self._system.get_learned_geometry(), Rgba(0.0, 0.0, 0.8, 1.0))
-        self._meshcat.SetTransform("/true", transform_from_state_q(self._system.get_learned_pose().cpu().numpy()))
+        self._meshcat.SetTransform("/learned", transform_from_state_q(self._system.get_learned_pose().cpu().numpy()))
 
         self.reinit_tk()
 
