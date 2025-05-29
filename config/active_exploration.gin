@@ -1,0 +1,170 @@
+# Default GIN Config File for rss_experiment.py
+
+## General Config
+robot_radius = 0.01575 # From trifingeredu.urdf
+robot_radius_buffer = 0.02
+workspace_radius = 0.15
+robot_model_name = "robot"
+object_model_name = "cube"
+# The actual Drake body name within the object model
+object_body_name = "cube_body" 
+fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
+fingertip_body_names_ctrl = ["finger_0", "finger_1"]
+delta_t = 0.0333 # TODO: HACK remove and use timestamps; 33ms == 30Hz
+
+## Main Config
+main.robot_model_name = %robot_model_name
+# main.init_trifinger_state = [
+# 	0.0, 0.1, 0.05, # DenseTact 0 q
+# 	0.1, 0.0, 0.05, # DenseTact 120 q
+# 	-0.1, -0.1, 0.1, # Finger 240 q
+# 	0., 0., 0.,   # DenseTact 0 v
+# 	0., 0., 0.,   # DenseTact 120 v
+# 	0., 0., 0.,   # Finger 240 v
+# ]
+main.init_trifinger_state = [
+	0.1, 0., 0.05, # Finger 0 q
+	-0.1, 0., 0.05, # Finger 120 q
+	0., 0.15, 0.15, # Finger 240 q
+	0., 0., 0.,   # Finger 0 v
+	0., 0., 0.,   # Finger 120 v
+	0., 0., 0.,   # Finger 240 v
+]
+main.safe_trifinger_height = %workspace_radius
+extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
+interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
+get_loss_args.object_body_name = %object_body_name
+# 100Hz trajectory
+interpolate_sampled_action.traj_len_s = 2.0
+interpolate_sampled_action.traj_n_steps = 201
+
+# Paralellism in cvxpylayers (added manually)
+CvxpyLayer.n_proc=-1
+DynamicCvxpyLCQPLayer.solver_args = {
+    "solve_method": "ECOS",
+    "n_jobs_forward": -1,
+    "max_iters": 500,
+    "abstol": 1e-9,
+    "reltol": 1e-9,
+    "feastol": 1e-9,
+}
+
+## LCM Trajectory Execution
+TrifingerLCMService.fingertip_body_names = %fingertip_body_names
+TrifingerLCMService.traj_time_len = 2.0
+TrifingerLCMService.lcm_channels = {
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
+	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+}
+
+## Action Sampling
+sample_action.workspace_xy_center = (0., 0.)
+sample_action.workspace_z_rot = 0. # 0.785398163 # pi/4
+sample_action.workspace_radius = %workspace_radius
+sample_action.sphere_radius = %robot_radius_buffer
+sample_action.fixed_240_W = (-0.1, -0.1, 0.1)
+
+## Robot config
+robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
+robot/get_urdf_asset_contents.mappings = {
+	"num_fingers": 2,
+	"mu": 1.0,
+	"radius": 0.01575,
+}
+
+## Learnable URDF and State Config
+LearnableSystem.trajectory_model_names = %object_model_name
+LearnableSystem.init_urdfs = { 
+	%object_model_name: @object_init/get_urdf_asset_contents(), 
+	%robot_model_name: @robot/get_urdf_asset_contents()
+}
+LearnableSystem.hyperparameters = @LearnableHyperparameters()
+LearnableSystem.default_dt = %delta_t # seconds
+LearnableSystem.learnable_body_dict = { 
+	%object_body_name: @object_init/LearnableBodySettings()
+}
+
+# Initial guesses
+object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object_init/get_urdf_asset_contents.mappings = {
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
+	"mu": 0.1,
+	"planar_xz": "false",
+}
+LearnableSystem.init_traj_state = [
+	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
+	0.0, 0.0, 0.0325,     # XYZ
+	0.0, 0.0, 0.0,      # omega_XYZ
+	0.0, 0.0, 0.0,		# dXYZ
+]
+
+# What is learnable
+object_init/LearnableBodySettings.inertia_mass = False
+object_init/LearnableBodySettings.inertia_com = False
+object_init/LearnableBodySettings.inertia_moments_products = False
+object_init/LearnableBodySettings.geometry = True
+object_init/LearnableBodySettings.friction = False
+object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
+
+# Learning hyperparams
+LearnableHyperparameters.w_pred = 1e1
+LearnableHyperparameters.w_q_pred = 1e1
+LearnableHyperparameters.w_comp = 2e1
+LearnableHyperparameters.w_fdiss = 1e1
+LearnableHyperparameters.w_ndiss = 1e0
+LearnableHyperparameters.w_pen = 1e2
+LearnableHyperparameters.w_dev = 1e5
+LearnableHyperparameters.w_norm = 1e0
+#LearnableHyperparameters.w_pred = 1e3
+#LearnableHyperparameters.w_q_pred = 1e3
+#LearnableHyperparameters.w_comp = 2e3
+#LearnableHyperparameters.w_fdiss = 1e3
+#LearnableHyperparameters.w_ndiss = 1e3
+#LearnableHyperparameters.w_pen = 1e3
+#LearnableHyperparameters.w_dev = 1e5
+#LearnableHyperparameters.w_norm = 1e3
+LearnableHyperparameters.w_reg_iner = 1e-5
+
+# Learning Optimizer
+main.optimizer_cls = @Adam
+SGD.lr=8e-4
+SGD.momentum=2e-4
+Adam.lr=6e-3 # Mesh: 1e-3
+Adam.amsgrad=True
+Adam.fused=False
+
+# Data Configuration
+# traj_num, index required for proper learned trajectory indexing
+# Added by default in TrajectorySet()
+TrajectorySliceConfig.batch_size = -1
+TrajectorySliceConfig.shuffle = False
+TrajectorySliceConfig.his_state_keys = [
+	"robot_state", "contact_forces", "contact_normals", "traj_num", "index", "time",
+]
+TrajectorySliceConfig.pred_state_keys = [
+	"robot_state", "traj_num", "index", "time",
+]
+
+## Exploration Params
+# Note: 30 / 10 uses 10GB VRAM if done in parallel
+main.n_actions_optimized=60
+LearnableHyperparameters.n_fisher_samples=10
+
+## True System (for Metrics)
+DrakeSystem.dt = %delta_t # seconds, unnecessary
+DrakeSystem.urdfs = { 
+	%object_model_name: @object/get_urdf_asset_contents()
+}
+DrakeSystem.visualization_file = None
+object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_urdf_asset_contents.mappings = {
+	"length_x": 0.065, # m
+	"length_y": 0.065, # m
+	"length_z": 0.065, # m
+	"mu": 0.1,
+	"planar_xz": "false",
+}

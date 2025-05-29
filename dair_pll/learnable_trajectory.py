@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""Construction and use of a learnable trajectory.
-"""
+"""Construction and use of a learnable trajectory."""
 from itertools import chain
 from typing import Optional, Union, List
 
@@ -43,9 +42,13 @@ class LearnableTrajectories(Module):
             elif init_state.size() == (self._space.n_q,):
                 init_q0 = init_state
             else:
-                assert False, f"Wrong size: {init_state.size()}, should be {(self._space.n_q,)} or {(self._space.n_x,)}"
+                assert (
+                    False
+                ), f"Wrong size: {init_state.size()}, should be {(self._space.n_q,)} or {(self._space.n_x,)}"
 
-        self._trajectories_q0.append(Parameter(init_q0.detach().clone(), requires_grad=True))
+        self._trajectories_q0.append(
+            Parameter(init_q0.detach().clone(), requires_grad=True)
+        )
 
     @property
     def space(self):
@@ -71,7 +74,13 @@ class LearnableTrajectories(Module):
         """
 
         traj_idx = len(self._trajectories_q)
-        new_x0 = self.space.x(self._trajectories_q0[traj_idx], self.space.v(self.space.zero_state())).clone().detach()
+        new_x0 = (
+            self.space.x(
+                self._trajectories_q0[traj_idx], self.space.v(self.space.zero_state())
+            )
+            .clone()
+            .detach()
+        )
         new_trajectory = new_x0.clone().repeat(traj_len - 2, 1)
         next_x0 = new_x0.clone()
         if init_states is None:
@@ -95,24 +104,34 @@ class LearnableTrajectories(Module):
         assert new_trajectory.size() == (traj_len - 2, self._space.n_x)
 
         self._trajectories_q0[traj_idx].copy_(self.space.q(new_x0))
-        self._trajectories_q.append(Parameter(self.space.q(new_trajectory), requires_grad=True))
-        self._trajectories_v.append(Parameter(self.space.v(new_trajectory), requires_grad=True))
-        self._trajectories_q0.append(Parameter(self.space.q(next_x0), requires_grad=True))
+        self._trajectories_q.append(
+            Parameter(self.space.q(new_trajectory), requires_grad=True)
+        )
+        self._trajectories_v.append(
+            Parameter(self.space.v(new_trajectory), requires_grad=True)
+        )
+        self._trajectories_q0.append(
+            Parameter(self.space.q(next_x0), requires_grad=True)
+        )
 
     def current_state(self) -> Tensor:
         """
         Get the current state / latest time state estimate.
         """
-        return self.space.x(self._trajectories_q0[-1], self.space.v(self.space.zero_state()))
+        return self.space.x(
+            self._trajectories_q0[-1], self.space.v(self.space.zero_state())
+        )
 
-    def current_pose_params(self, traj_num: Optional[int] = None) -> Union[List[Tensor], Tensor]:
+    def current_pose_params(
+        self, traj_num: Optional[int] = None
+    ) -> Union[List[Tensor], Tensor]:
         """
         Get the current pose estimate as a parameter at the latest time.
         """
         if traj_num is not None:
             return self._trajectories_q0[traj_num]
-        else:
-            return list(chain(self._trajectories_q0, self._trajectories_q))
+
+        return list(chain(self._trajectories_q0, self._trajectories_q))
 
     def get_current_pose_traj(self) -> Tensor:
         """
@@ -120,16 +139,15 @@ class LearnableTrajectories(Module):
         """
 
         ret_list = []
-        for idx in range(len(self._trajectories_q)):
+        for idx, _ in enumerate(self._trajectories_q):
             ret_list.append(self._trajectories_q0[idx].unsqueeze(0))
             ret_list.append(self._trajectories_q[idx])
-            ret_list.append(self._trajectories_q0[idx+1].unsqueeze(0))
+            ret_list.append(self._trajectories_q0[idx + 1].unsqueeze(0))
 
         if len(ret_list) == 0:
             ret_list = [self._trajectories_q0[0].unsqueeze(0)]
 
         return torch.cat(ret_list, dim=-2)
-
 
     def forward(self, traj_nums: Tensor, indices: Tensor) -> Tensor:
         """Returns a batch of trajectory states.
@@ -153,11 +171,20 @@ class LearnableTrajectories(Module):
             assert traj_num >= 0, f"Invalid trajectory number {traj_num}"
             assert traj_index >= 0, f"Invalid trajectory index {traj_index}"
             if traj_index == 0:
-                ret[idx] = self.space.x(self._trajectories_q0[traj_num], self.space.v(self.space.zero_state()))
+                ret[idx] = self.space.x(
+                    self._trajectories_q0[traj_num],
+                    self.space.v(self.space.zero_state()),
+                )
             elif traj_index == self._trajectories_q[traj_num].shape[0] + 1:
-                ret[idx] = self.space.x(self._trajectories_q0[traj_num + 1], self.space.v(self.space.zero_state()))
+                ret[idx] = self.space.x(
+                    self._trajectories_q0[traj_num + 1],
+                    self.space.v(self.space.zero_state()),
+                )
             else:
-                ret[idx] = self.space.x(self._trajectories_q[traj_num][traj_index - 1, :], self._trajectories_v[traj_num][traj_index - 1, :])
+                ret[idx] = self.space.x(
+                    self._trajectories_q[traj_num][traj_index - 1, :],
+                    self._trajectories_v[traj_num][traj_index - 1, :],
+                )
 
         return ret.reshape(traj_nums.size() + (self._space.n_x,))
 

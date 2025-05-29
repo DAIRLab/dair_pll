@@ -98,8 +98,6 @@ class LearnableBodySettings:
     friction: bool = False
     representation: GeometryRepresentation = GeometryRepresentation.PRIMITIVE
 
-
-
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
     plant_diagram: MultibodyPlantDiagram,
@@ -581,6 +579,26 @@ class ContactTerms(Module):
             friction_jacobian_shape
         )
         return torch.cat((J_n, J_t), dim=-2)
+
+    def get_object_pairs(self) -> List[Tuple[str, str]]:
+        """ Get list of object pairs in the same order as forward()"""
+        indices_a = self.collision_candidates[0, :]
+        indices_b = self.collision_candidates[1, :]
+
+        geometries_a = [
+            cast(CollisionGeometry, self.geometries[element_index])
+            for element_index in indices_a
+        ]
+        geometries_b = [
+            cast(CollisionGeometry, self.geometries[element_index])
+            for element_index in indices_b
+        ]
+
+        obj_pair_list = []
+        for geo_a, geo_b, in zip(geometries_a,geometries_b):
+            obj_pair_list.append(key)
+
+        return obj_pair_list
 
     def forward(
         self, q_config: Tensor, estimated_normals_W: Dict[Tuple[str, str], Tensor] = {}
