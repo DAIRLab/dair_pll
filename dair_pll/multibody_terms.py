@@ -53,6 +53,7 @@ from pydrake.symbolic import Expression, Variable  # type: ignore
 from pydrake.symbolic import MakeVectorVariable, Jacobian  # type: ignore
 from pydrake.systems.framework import Context  # type: ignore
 from scipy.spatial.transform import Rotation
+from tensordict import TensorDict, TensorDictBase
 from torch import Tensor
 from torch.nn import Module, ModuleList, Parameter, ParameterList
 
@@ -918,6 +919,93 @@ class MultibodyTerms(Module):
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs
+
+    def model_states_from_state_tensor(
+        self, batched_states: Tensor, model_suffix: str = ""
+    ) -> TensorDict:
+        """Input:
+        batched_states: Tensor [batch, self.space.n_x]
+        model_suffix: added to model name before _state in key
+        Returns: TensorDict [batch, ...] for each model in system
+
+        Effectively the inverse of construct_state_tensor()
+        """
+
+        ret = TensorDict({}, batch_size=batched_states.shape[:-1])
+
+        start_idx_q = 0
+        start_idx_v = self.plant_diagram.space.n_q
+        for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
+            space = self.space.spaces[space_idx]
+            # Ignore world and other degenerate spaces
+            if space.n_x == 0:
+                continue
+
+            end_idx_q = start_idx_q + space.n_q
+            end_idx_v = start_idx_v + space.n_v
+
+            key = (
+                self.plant_diagram.plant.GetModelInstanceName(model_id)
+                + model_suffix
+                + "_state"
+            )
+            ret[key] = torch.cat(
+                (
+                    batched_states[..., start_idx_q:end_idx_q],
+                    batched_states[..., start_idx_v:end_idx_v],
+                ),
+                dim=-1,
+            )
+
+            start_idx_q = end_idx_q
+            start_idx_v = end_idx_v
+
+        assert start_idx_q == self.plant_diagram.space.n_q
+        assert start_idx_v == self.plant_diagram.space.n_x
+
+        return ret
+
+    def construct_state_tensor(self, data_state: Tensor) -> Tensor:
+        """Input:
+        data_state: TensorDict shape [batch, ?] with keys "<model_name>_state"
+        Returns: full state tensor (adding traj parameters) shape [batch, self.space.n_x]
+        """
+        if not isinstance(data_state, TensorDictBase):
+            return data_state
+
+        # Construct Model States and Sanitize Input
+        model_states = []  # List of Tensors shape (batch, space_n_x)
+        for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
+            key = self.plant_diagram.plant.GetModelInstanceName(model_id) + "_state"
+            model_state = self.plant_diagram.space.spaces[space_idx].zero_state().unsqueeze(0)
+            if key in data_state.keys():
+                model_state = data_state[key]
+                assert model_state.shape == data_state.shape + (
+                    self.plant_diagram.space.spaces[space_idx].n_x,
+                )
+                if len(model_state.shape) == 1:
+                    model_state.unsqueeze(0)
+            model_states.append(model_state)
+
+        # Loop through models and construct state
+        ret_q = torch.tensor([])
+        ret_v = torch.tensor([])
+        for space_idx, model_x in enumerate(model_states):
+            space = self.plant_diagram.space.spaces[space_idx]
+            # Ignore world and other degenerate spaces
+            if space.n_x == 0:
+                continue
+
+            # Append to return value
+            if ret_q.numel() == 0:
+                ret_q = model_x[..., : space.n_q]
+                ret_v = model_x[..., space.n_q :]
+            else:
+                ret_q = torch.cat((ret_q, model_x[..., : space.n_q]), dim=-1)
+                ret_v = torch.cat((ret_v, model_x[..., space.n_q :]), dim=-1)
+
+        # Return full state batch
+        return torch.cat((ret_q, ret_v), dim=-1)
 
     def randomize_multibody_terms(self, inertia_int) -> None:
         r"""Adds random noise to multibody terms in the following ways:

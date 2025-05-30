@@ -126,28 +126,70 @@ class LearnableTrajectories(Module):
         self, traj_num: Optional[int] = None
     ) -> Union[List[Tensor], Tensor]:
         """
-        Get the current pose estimate as a parameter at the latest time.
+        Get the current pose estimate as a parameter at the latest (or specified) time.
         """
         if traj_num is not None:
             return self._trajectories_q0[traj_num]
 
         return list(chain(self._trajectories_q0, self._trajectories_q))
 
-    def get_current_pose_traj(self) -> Tensor:
+    def get_current_traj(self, pose_only=True, as_list=False) -> Tensor:
         """
-        Get the entire trajectory as a single tensor (traj_len, self.space.n_q)
+        Get the entire trajectory as a single tensor (traj_len, self.space.n_x/n_q)
+
+        Args:
+        pose_only: specifies whether to include velocity
+        as_list: do not concatenate, useful for Autograd which needs the raw Parameters
         """
+        zero_v = self._space.v(self._space.zero_state())
 
         ret_list = []
         for idx, _ in enumerate(self._trajectories_q):
-            ret_list.append(self._trajectories_q0[idx].unsqueeze(0))
-            ret_list.append(self._trajectories_q[idx])
-            ret_list.append(self._trajectories_q0[idx + 1].unsqueeze(0))
+            ret_list.append(
+                (
+                    self._trajectories_q0[idx]
+                    if pose_only
+                    else self._space.x(self._trajectories_q0[idx], zero_v)
+                ).unsqueeze(0)
+            )
+            ret_list.append(
+                (
+                    self._trajectories_q[idx]
+                    if pose_only
+                    else self._space.x(
+                        self._trajectories_q[idx], self._trajectories_v[idx]
+                    )
+                )
+            )
+            ret_list.append(
+                (
+                    self._trajectories_q0[idx + 1]
+                    if pose_only
+                    else self._space.x(self._trajectories_q0[idx + 1], zero_v)
+                ).unsqueeze(0)
+            )
 
         if len(ret_list) == 0:
-            ret_list = [self._trajectories_q0[0].unsqueeze(0)]
+            ret_list = [
+                (
+                    self._trajectories_q0[0]
+                    if pose_only
+                    else self._space.x(self._trajectories_q0[0], zero_v)
+                ).unsqueeze(0)
+            ]
 
-        return torch.cat(ret_list, dim=-2)
+        return ret_list if as_list else torch.cat(ret_list, dim=-2)
+
+    def __len__(self):
+        """Get traj_len.
+        Each q0 counts twice except for beginning and end.
+        Minimum trajectory length is 1 (initial state).
+        """
+        return max(
+            1,
+            (2 * len(self._trajectories_q0) - 2)
+            + sum(len(traj) for traj in self._trajectories_q),
+        )
 
     def forward(self, traj_nums: Tensor, indices: Tensor) -> Tensor:
         """Returns a batch of trajectory states.
