@@ -44,7 +44,7 @@ class PLLMeshcatVisualizer:
 
   def __init__(
         self,
-        system: MultibodyLearnableSystemWithTrajectory,
+        system: MultibodyLearnableSystemWithTrajectory | MultibodyLearnableTactileSystem,
         data: TrajectorySet,
         true_geom: Shape,
     ) -> None:
@@ -56,7 +56,18 @@ class PLLMeshcatVisualizer:
         self._meshcat.SetObject("/learned", self._system.get_learned_geometry(), Rgba(0.0, 0.0, 0.8, 1.0))
         self._meshcat.SetTransform("/learned", transform_from_state_q(self._system.get_learned_pose().cpu().numpy()))
 
+        self._learned_plant_traj = None
+
         self.reinit_tk()
+
+  @property
+  def learned_plant_traj(self):
+    return self._learned_plant_traj
+
+  @learned_plant_traj.setter
+  def learned_plant_traj(self, value):
+    self._learned_plant_traj = value.detach()
+  
 
   def reinit_tk(self, new_val=0.) -> None:
     self._root = Tk()
@@ -81,7 +92,7 @@ class PLLMeshcatVisualizer:
 
     # Update learned trajectory
     timestep = int(self._timestep.get())
-    learned_traj = self._system.get_learned_trajectory().cpu().numpy() # (traj_len, 7)
+    learned_traj = self._system.get_learned_trajectory(self._learned_plant_traj).cpu().numpy() # (traj_len, 7)
     self._meshcat.SetTransform("/learned", transform_from_state_q(learned_traj[timestep, :]))
 
     # Update true trajectory

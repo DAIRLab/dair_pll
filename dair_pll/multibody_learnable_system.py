@@ -947,7 +947,7 @@ class MultibodyLearnableSystemWithTrajectory(MultibodyLearnableSystem):
         return self._trajectory.current_pose_params(traj_num=-1).detach().clone()
 
     @torch.no_grad
-    def get_learned_trajectory(self) -> Tensor:
+    def get_learned_trajectory(self, _) -> Tensor:
         """ Current pose trajectory for the learned object """
         return self._trajectory.get_current_pose_traj()
 

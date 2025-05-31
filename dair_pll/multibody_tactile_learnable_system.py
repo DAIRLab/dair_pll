@@ -20,15 +20,21 @@ https://doi.org/10.1007/s10107-005-0590-7
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import override, Optional
+from typing import override, Optional, cast
 
 import gin
 import numpy as np
+from pydrake.geometry import Shape
 from tensordict import TensorDict
 import torch
 from torch import Tensor
 from torch.nn import Module
 
+from dair_pll.drake_utils import (
+    unique_body_identifier,
+    get_bodies_in_model_instance,
+)
+from dair_pll.geometry import CollisionGeometry, PydrakeToCollisionGeometryFactory
 from dair_pll.learnable_trajectory import LearnableTrajectories
 from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
 from dair_pll.solvers import DynamicCvxpyLCQPLayer
@@ -57,6 +63,7 @@ class LossFunction(Enum):
 @dataclass
 class MultibodyTactileHyperparameters:
     """Class to specify hyperparameters"""
+
     # pylint: disable=too-many-instance-attributes
 
     default_dt: float = 1.0 / 30.0  # 30 Hz Default
@@ -182,6 +189,21 @@ class MultibodyLearnableTactileSystem(Module):
         self._learned_trajectory = LearnableTrajectories(
             ProductSpace(learn_spaces), init_state
         )
+
+    @property
+    def plant(self):
+        """Full system plant"""
+        return self._multibody_terms.plant_diagram.plant
+
+    @property
+    def controlled_space(self):
+        """Controlled / Robot StateSpace"""
+        return self._controlled_space
+
+    @property
+    def controlled_model_names(self):
+        """Controlled / Robot Model Names in Plant"""
+        return self._controlled_model_names
 
     def add_learnable_trajectories(
         self, traj_lens: list[int], traj_data: Optional[list[Optional[Tensor]]] = None
@@ -425,7 +447,7 @@ class MultibodyLearnableTactileSystem(Module):
         ):
             assert len(traj_model_x.size()) == 1
             data_state[traj_model_name + "_state"] = (
-                self._learned_trajectory.spaces[traj_model_idx]
+                self._learned_trajectory.space.spaces[traj_model_idx]
                 .zero_state()
                 .repeat(batch_dims + (traj_len, 1))
             )
@@ -588,7 +610,7 @@ class MultibodyLearnableTactileSystem(Module):
         # Naive Implicit Loss
         if self._hyperparameters.loss_fn == LossFunction.NIMP or nimp_override:
             # Run Differential Simulation
-            return self.diff_simulate(ctrl_desired, timestamps, ctrl_actual)[:-1]
+            return self.diff_simulate(ctrl_desired, timestamps, ctrl_actual)
 
         # Violaiton Implicit Loss
         assert (
@@ -843,3 +865,56 @@ class MultibodyLearnableTactileSystem(Module):
             forward_args[0],  # plant states
             forward_args[1],  # plant control
         )
+
+    @torch.no_grad
+    def get_learned_geometry(self) -> Shape:
+        """Current geometry as a Drake Shape."""
+        assert len(self._learned_model_names) == 1, "Only 1 learnable object supported"
+        model_name = self._learned_model_names[0]
+        plant = self.multibody_terms.plant_diagram.plant
+        bodies = get_bodies_in_model_instance(
+            plant, plant.GetModelInstanceByName(model_name)
+        )
+        assert len(bodies) == 1, "Only 1 learnable body supported"
+        body_id = unique_body_identifier(plant, bodies[0])
+        body_geometry_indices = self.multibody_terms.geometry_body_assignment[body_id]
+        assert len(body_geometry_indices) == 1, "Only 1 learnable geometry"
+        body_geometry = cast(
+            CollisionGeometry,
+            self.multibody_terms.contact_terms.geometries[body_geometry_indices[0]],
+        )
+        return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
+
+    @torch.no_grad
+    def get_learned_pose(self) -> Tensor:
+        """Current pose for the learned object"""
+        return (
+            self._learned_trajectory.current_pose_params(traj_num=-1).detach().clone()
+        )
+
+    @torch.no_grad
+    def get_learned_trajectory(self, system_traj: Optional[Tensor] = None) -> Tensor:
+        """Current pose trajectory for the learned object
+
+        If provided, extract full trajectory from the system trajectory.
+
+        Args:
+        system_traj : (batch, traj_len, self.space.n_x)
+        """
+        if system_traj is not None:
+            data_state = self.multibody_terms.model_states_from_state_tensor(
+                system_traj
+            )
+            ret_list = []
+            for traj_model_idx, traj_model_name in enumerate(self._learned_model_names):
+                ret_list.append(
+                    self._learned_trajectory.space.spaces[traj_model_idx].q(
+                        data_state[traj_model_name + "_state"]
+                    )
+                )
+            ret = torch.cat(ret_list, dim=-1)
+            assert ret.size() == system_traj.size()[:-1] + (
+                self._learned_trajectory.space.n_q,
+            ), ret.size()
+            return ret
+        return self._learned_trajectory.get_current_pose_traj()
