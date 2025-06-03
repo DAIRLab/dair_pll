@@ -69,6 +69,7 @@ class MultibodyTactileHyperparameters:
     # pylint: disable=too-many-instance-attributes
 
     default_dt: float = 1.0 / 30.0  # 30 Hz Default
+    dt_thresh: float = 1.0  # When to assume a trajectory boundary
     ctrl_kp: float = 20.0  # KP for PD Controller
     ctrl_kd: float = 10.0  # KD for PD Controller
 
@@ -330,6 +331,30 @@ class MultibodyLearnableTactileSystem(Module):
         step_v_minus = step_v + dt * non_contact_acceleration
         q_full = pbmm(m_jac, step_v_minus.unsqueeze(-1)) + (1 / dt) * phi_then_zero
 
+        ### Construct contact forces / normals
+        ret_contact_forces = {}  # Dict[Tuple[str, str], Tensor]
+        ret_contact_normals = {}  # Dict[Tuple[str, str], Tensor]
+        ret_phis = {}  # Dict[Tuple[str, str], Tensor]
+        for key in obj_pair_list:
+            if obj_pair_list.count(key) == 1:
+                ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
+                ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
+                index = np.array([i for i, x in enumerate(obj_pair_list) if x == key])[
+                    0
+                ]
+                ret_phis[key] = torch.ones(batch_dims + (1, 1)) * m_phi[..., index]
+
+        # Trajectory Jumps, return 0s
+        if dt > self._hyperparameters.dt_thresh:
+            # print("Trajectory Jump, Assuming No Contact")
+            return (
+                torch.zeros_like(step_v),
+                ret_contact_forces,
+                ret_contact_normals,
+                ret_phis,
+            )
+
+        ## Solve Impulase
         impulse_full = pbmm(
             reorder_mat,
             self._solver(
@@ -341,10 +366,6 @@ class MultibodyLearnableTactileSystem(Module):
         )
 
         impulse = torch.zeros_like(impulse_full)
-        # Clamp to avoid small negative normal force
-        impulse_full[..., :n_contacts, :] = impulse_full[..., :n_contacts, :].clamp(
-            min=0.0
-        )
         impulse[contact_filter] += impulse_full[contact_filter]
 
         # pylint doesn't know about torch
@@ -353,17 +374,7 @@ class MultibodyLearnableTactileSystem(Module):
             m_mass, pbmm(m_jac.transpose(-1, -2), impulse)
         ).squeeze(-1)
 
-        ### Construct contact forces / normals
-        batch_dims = step_q.size()[:-1]
-        ret_contact_forces = {}  # Dict[Tuple[str, str], Tensor]
-        ret_contact_normals = {}  # Dict[Tuple[str, str], Tensor]
-        ret_phis = {}  # Dict[Tuple[str, str], Tensor]
-        for key in obj_pair_list:
-            if obj_pair_list.count(key) == 1:
-                ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
-                ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
-                ret_phis[key] = torch.zeros(batch_dims + (1, 1))
-
+        ### Populate contact forces / normals
         for key, ret_contact_force in ret_contact_forces.items():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
@@ -375,7 +386,6 @@ class MultibodyLearnableTactileSystem(Module):
             ret_contact_normals[key][contact_filter[..., index, 0], 0, :] = mr_wf_i[
                 contact_filter[..., index, 0], :, 2
             ]
-            ret_phis[key][..., 0, 0] = m_phi[..., index]
             # Force in contact_frame
             ret_contact_force[..., 0, 2] = impulse[..., index, 0] / dt
             ret_contact_force[..., 0, :2] = (
@@ -442,6 +452,8 @@ class MultibodyLearnableTactileSystem(Module):
             )
         )
 
+        # print(f"Running DiffSim of Length {traj_len}...")
+
         # Populate Initial Controlled State
         data_state = TensorDict({}, batch_size=batch_dims + (traj_len,))
         ctrl_desired_splits = self._controlled_space.x_split(ctrl_desired)
@@ -485,8 +497,9 @@ class MultibodyLearnableTactileSystem(Module):
         ret_contact_phis = {}
         ret_u = torch.zeros(batch_dims + (traj_len, self._controlled_space.n_v))
         for sim_idx in range(1, traj_len):
-            print(f"Sim Step {sim_idx} / {traj_len}...")
+            # print(f"Sim Step {sim_idx} / {traj_len}...")
             sim_dt = timestamps[sim_idx] - timestamps[sim_idx - 1]
+            # print(f"Sim DT: {sim_dt}")
             # Calculate u from robot PD
             step_u = []
             for robot_model_idx, (robot_model_name, robot_model_space) in enumerate(
@@ -745,29 +758,28 @@ class MultibodyLearnableTactileSystem(Module):
         # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
 
         # Add reverse keys to make access easier
-        supervised_keys = list(meas_contact_normals.keys())
         # Forces and Normals Flip Signs
         for in_dict in (
-            meas_contact_normals,
             est_contact_normals,
             est_contact_forces,
-            meas_contact_forces,
         ):
-            for key in in_dict:
+            for key in list(in_dict):
                 revkey = (key[1], key[0])
                 assert revkey not in in_dict, f"Key and Reverse Key {key} in dictionary"
                 in_dict[revkey] = -in_dict[key]
         # SDF doesn't flip signs
-        for key in est_contact_phis:
+        for key in list(est_contact_phis):
             revkey = (key[1], key[0])
             assert (
                 revkey not in est_contact_phis
             ), f"Key and Reverse Key {key} in dictionary"
             est_contact_phis[revkey] = est_contact_phis[key]
 
+        supervised_keys = list(set(meas_contact_normals) & set(est_contact_phis))
+
         # Input Validation
         for key in supervised_keys:
-            assert len(est_contact_phis[key].size()) >= 3, est_contact_phis[key].size()
+            assert len(est_contact_phis[key].size()) >= 2, est_contact_phis[key].size()
             batch_dims = est_contact_phis[key].size()[:-2]
             traj_len = est_contact_phis[key].size()[-2]
             assert est_contact_phis[key].size()[-1] == 1, est_contact_phis[key].size()
@@ -802,7 +814,7 @@ class MultibodyLearnableTactileSystem(Module):
             assert key in est_contact_forces, f"Key {key} not in est_contact_forces"
             assert key in est_contact_normals, f"Key {key} not in est_contact_normals"
             assert key in est_contact_phis, f"Key {key} not in est_contact_phis"
-            contact_bool = torch.zeros(batch_dims + (traj_len - 1,))
+            contact_bool = torch.ones(batch_dims + (traj_len - 1,))
             contact_bool[
                 torch.isclose(
                     # pylint doesn't know about torch
@@ -810,26 +822,28 @@ class MultibodyLearnableTactileSystem(Module):
                     torch.linalg.vector_norm(meas_contact_normals[key], dim=-1),
                     torch.zeros(batch_dims + (traj_len - 1,)),
                 )
-            ] = 1.0
+            ] = 0.0
 
             # Contact Bool Loss
             phi_alpha = (
-                torch.log(torch.reciprocal(self._hyperparameters.w_phi_ci) - 1.0)
+                np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
                 / self._hyperparameters.w_phi_nominal
             )
             loss_meas_bool = (contact_bool - 1.0) * phi_alpha * est_contact_phis[key][
-                ..., 1:, :
+                ..., 1:, 0
             ] + torch.log(
-                1.0 + torch.exp(phi_alpha * est_contact_phis[key][..., 1:, :])
+                1.0 + torch.exp(phi_alpha * est_contact_phis[key][..., 1:, 0])
             )
-            assert loss_meas_bool.size() == batch_dims + (traj_len - 1,)
+            assert loss_meas_bool.size() == batch_dims + (
+                traj_len - 1,
+            ), loss_meas_bool.size()
             ret_loss["loss_meas_bool"] += loss_meas_bool
 
             # Normal Loss
             loss_meas_normal = (
                 0.5
                 * contact_bool
-                * torch.reciprocal(self._hyperparameters.w_normal_var)
+                * (1.0 / self._hyperparameters.w_normal_var)
                 * (
                     1.0
                     - pbmm(
@@ -840,10 +854,13 @@ class MultibodyLearnableTactileSystem(Module):
                     .squeeze(-1)
                 )
             )
-            assert loss_meas_normal.size() == batch_dims + (traj_len - 1,)
+            assert loss_meas_normal.size() == batch_dims + (
+                traj_len - 1,
+            ), loss_meas_normal.size()
             ret_loss["loss_meas_normal"] += loss_meas_normal
 
             # Force Loss
+
             loss_meas_force = (
                 0.5
                 * (
@@ -851,7 +868,7 @@ class MultibodyLearnableTactileSystem(Module):
                     if self._hyperparameters.supervise_non_contact_force
                     else contact_bool
                 )
-                * torch.reciprocal(self._hyperparameters.w_force_var)
+                * (1.0 / self._hyperparameters.w_force_var)
                 * pbmm(
                     (est_contact_forces[key] - meas_contact_forces[key]).unsqueeze(-2),
                     (est_contact_forces[key] - meas_contact_forces[key]).unsqueeze(-1),
@@ -859,7 +876,9 @@ class MultibodyLearnableTactileSystem(Module):
                 .squeeze(-2)
                 .squeeze(-1)
             )
-            assert loss_meas_force.size() == batch_dims + (traj_len - 1,)
+            assert loss_meas_force.size() == batch_dims + (
+                traj_len - 1,
+            ), loss_meas_force.size()
             ret_loss["loss_meas_force"] += loss_meas_force
 
         return ret_loss
@@ -921,10 +940,9 @@ class MultibodyLearnableTactileSystem(Module):
 
         # NIMP needs
         if self._hyperparameters.loss_fn == LossFunction.NIMP:
-            # Remove
             return self._loss_nimp(
-                {k: v[..., 1:, :] for k, v in meas_contact_forces},
-                {k: v[..., 1:, :] for k, v in meas_contact_normals},
+                {k: v[..., 1:, :] for k, v in meas_contact_forces.items()},
+                {k: v[..., 1:, :] for k, v in meas_contact_normals.items()},
                 forward_args[2],  # estimated contact forces
                 forward_args[3],  # estimated contact normals
                 forward_args[4],  # estimated phi(t)
@@ -932,12 +950,24 @@ class MultibodyLearnableTactileSystem(Module):
 
         # VIMP needs timestamps, plant trajectory, and control
         return self._loss_vimp(
-            {k: v[..., 1:, :] for k, v in meas_contact_forces},
-            {k: v[..., 1:, :] for k, v in meas_contact_normals},
+            {k: v[..., 1:, :] for k, v in meas_contact_forces.items()},
+            {k: v[..., 1:, :] for k, v in meas_contact_normals.items()},
             timestamps,
             forward_args[0],  # plant states
             forward_args[1],  # plant control
         )
+
+    @torch.no_grad
+    def get_learned_body_name(self) -> str:
+        """Name of learned body (assumed for contact)."""
+        assert len(self._learned_model_names) == 1, "Only 1 learnable object supported"
+        model_name = self._learned_model_names[0]
+        plant = self._multibody_terms.plant_diagram.plant
+        bodies = get_bodies_in_model_instance(
+            plant, plant.GetModelInstanceByName(model_name)
+        )
+        assert len(bodies) == 1, "Only 1 learnable body supported"
+        return bodies[0].name()
 
     @torch.no_grad
     def get_learned_geometry(self) -> Shape:

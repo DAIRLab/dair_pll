@@ -51,10 +51,6 @@ REPO_DIR = os.path.normpath(
 DEFAULT_CONFIG = "active_exploration.gin"
 
 
-## Training Function
-# TODO: Add Training Function
-
-
 ### Visualization
 def get_true_geometry() -> Shape:
     """Get True Geometry from configured base system"""
@@ -72,18 +68,10 @@ def get_true_geometry() -> Shape:
     return None
 
 
-### Signal Handling
+## Main Function
 signal_pressed = False
 
 
-def signal_handler(_sig, _frame):
-    """Handle SIGINT"""
-    # pylint: disable=global-statement
-    global signal_pressed
-    signal_pressed = True
-
-
-## Main Function
 @gin.configurable
 def main(
     storage_folder_name: str = "storage_active",
@@ -91,8 +79,16 @@ def main(
     optimizer_cls: Type = torch.optim.SGD,
 ):
     """Main function for online learning loop"""
+    ### Signal Handling
     # pylint: disable=global-statement
     global signal_pressed
+
+    def signal_handler(_sig, _frame):
+        """Handle SIGINT"""
+        # pylint: disable=global-statement
+        global signal_pressed
+        signal_pressed = True
+
     signal.signal(signal.SIGINT, signal_handler)
     # torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
     # Debug: Remove scientific notation for numpy printing
@@ -268,8 +264,49 @@ def main(
             print("Training...")
 
             start_time = time.time()
+            meas_contact_forces = {
+                (learned_system.get_learned_body_name(), str(k)): v
+                for k, v in data_trajectories.get_full_trajectory(
+                    key="contact_forces"
+                ).items()
+            }
+            meas_contact_normals = {
+                (learned_system.get_learned_body_name(), str(k)): v
+                for k, v in data_trajectories.get_full_trajectory(
+                    key="contact_normals"
+                ).items()
+            }
+            timestamps = timestamps = data_trajectories.get_full_trajectory(key="time")
             for idx in range(epochs):
-                # TODO: Add Training Function
+                optimizer.zero_grad()
+
+                forward_args = learned_system(
+                    ctrl_desired=data_trajectories.get_full_trajectory(
+                        key=learned_system.controlled_model_names[0] + "_desired"
+                    ),
+                    timestamps=data_trajectories.get_full_trajectory(key="time"),
+                    ctrl_actual=data_trajectories.get_full_trajectory(
+                        key=learned_system.controlled_model_names[0] + "_state"
+                    ),
+                )
+
+                gui_vis.learned_plant_traj = forward_args[0]
+                gui_vis.update()
+
+                loss_dict = learned_system.loss_fn(
+                    meas_contact_forces, meas_contact_normals, timestamps, *forward_args
+                )
+                loss_total = sum(torch.sum(v) for _, v in loss_dict.items())
+                loss_total.backward()
+                optimizer.step()
+
+                loss_print = tuple(
+                    f"{k}: {torch.sum(v).detach().cpu()};" for k, v in loss_dict.items()
+                )
+
+                total_epochs += 1
+                print(total_epochs, f"Loss: {loss_total:.3e};", *loss_print)
+
                 if signal_pressed:
                     signal_pressed = False
                     print("Training cancelled...")

@@ -67,7 +67,7 @@ xpinch/Action.negx_end_radius = 0.
 xpinch/Action.negx_end_angle = 0.
 
 sample_action.library = [
-	@xsingle/Action(),
+	@xpinch/Action(),
 ]
 interpolate_sampled_action.traj_len_s = %traj_len_s
 interpolate_sampled_action.traj_n_steps = 61
@@ -129,13 +129,13 @@ TactileHyperparameters.supervise_non_contact_force = False
 TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
 TactileHyperparameters.w_normal_var = 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
-TactileHyperparameters.w_force_var = 1e-2  # N, variance of contact force measurement (assume identity covariance)
+TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=6e-3 # Mesh: 1e-3
+Adam.lr=1e-3 # Mesh: 1e-3
 Adam.amsgrad=True
 Adam.fused=False
 
