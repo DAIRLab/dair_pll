@@ -936,7 +936,7 @@ class MultibodyTerms(Module):
         start_idx_q = 0
         start_idx_v = self.plant_diagram.space.n_q
         for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
-            space = self.space.spaces[space_idx]
+            space = self.plant_diagram.space.spaces[space_idx]
             # Ignore world and other degenerate spaces
             if space.n_x == 0:
                 continue

@@ -205,10 +205,18 @@ class MultibodyLearnableTactileSystem(Module):
         """Controlled / Robot Model Names in Plant"""
         return self._controlled_model_names
 
+    @property
+    def learned_model_names(self):
+        """Learned Model Names in Plant"""
+        return self._learned_model_names
+
     def add_learnable_trajectories(
         self, traj_lens: list[int], traj_data: Optional[list[Optional[Tensor]]] = None
     ):
         """Extend learnable trajectory by length sum(traj_lens) with data in traj_data"""
+        if self._hyperparameters.loss_fn == LossFunction.NIMP:
+            print("Warning: Not adding trajectory as x_0 is the only param.")
+            return
         if traj_data is None:
             traj_data = [None] * len(traj_lens)
         assert len(traj_data) == len(traj_lens)
@@ -280,6 +288,12 @@ class MultibodyLearnableTactileSystem(Module):
             (\*, space.n_v) delta velocity batch.
         """
         # pylint: disable=too-many-locals
+
+        # Input Validation
+        batch_dims = step_q.size()[:-1]
+        assert step_q.size() == batch_dims + (self._multibody_terms.plant_diagram.space.n_q, )
+        assert step_v.size() == batch_dims + (self._multibody_terms.plant_diagram.space.n_v, )
+        assert step_u.size() == batch_dims + (self._controlled_space.n_v, )
         dt = self._hyperparameters.default_dt if step_dt is None else step_dt
         phi_eps = 1e-2
         eps = torch.finfo(step_q.dtype).eps
@@ -292,7 +306,7 @@ class MultibodyLearnableTactileSystem(Module):
             obj_pair_list,
             mr_fw_list,
             mu_list,
-        ) = self.multibody_terms(step_q, step_v, step_u)
+        ) = self._multibody_terms(step_q, step_v, step_u)
         n_contacts = m_phi.shape[-1]
         contact_filter = (broadcast_lorentz(m_phi) <= phi_eps).unsqueeze(-1)
 
@@ -398,7 +412,7 @@ class MultibodyLearnableTactileSystem(Module):
         # pylint: disable=too-many-locals, too-many-branches
 
         # Input Validation
-        assert len(ctrl_desired.size()) >= 3
+        assert len(ctrl_desired.size()) >= 2
         batch_dims = ctrl_desired.size()[:-2]
         traj_len = ctrl_desired.size()[-2]
         assert ctrl_desired.size() == batch_dims + (
@@ -424,7 +438,7 @@ class MultibodyLearnableTactileSystem(Module):
             if (ctrl_actual is None)
             else self._controlled_space.x_split(ctrl_actual)
         )
-        for robot_model_idx, robot_model_name, robot_model_space in enumerate(
+        for robot_model_idx, (robot_model_name, robot_model_space) in enumerate(
             zip(self._controlled_model_names, self._controlled_space.spaces)
         ):
             data_state[robot_model_name + "_state"] = (
@@ -437,7 +451,7 @@ class MultibodyLearnableTactileSystem(Module):
             )
 
         # Populate Initial Learned State
-        for traj_model_idx, traj_model_name, traj_model_x in enumerate(
+        for traj_model_idx, (traj_model_name, traj_model_x) in enumerate(
             zip(
                 self._learned_model_names,
                 self._learned_trajectory.space.x_split(
@@ -463,7 +477,7 @@ class MultibodyLearnableTactileSystem(Module):
             sim_dt = timestamps[sim_idx] - timestamps[sim_idx - 1]
             # Calculate u from robot PD
             step_u = []
-            for robot_model_idx, robot_model_name, robot_model_space in enumerate(
+            for robot_model_idx, (robot_model_name, robot_model_space) in enumerate(
                 zip(self._controlled_model_names, self._controlled_space.spaces)
             ):
                 robot_model_step_state = data_state[robot_model_name + "_state"][
@@ -492,19 +506,23 @@ class MultibodyLearnableTactileSystem(Module):
                 )
                 assert step_u[-1].size() == batch_dims + (robot_model_space.n_v,)
             # Run Forward Dynamics
-            step_q, step_v = self.multibody_terms.plant_diagram.space.q_v(
-                self.multibody_terms.construct_state_tensor(
-                    data_state[..., sim_idx - 1, :]
+            step_q, step_v = self._multibody_terms.plant_diagram.space.q_v(
+                self._multibody_terms.construct_state_tensor(
+                    data_state[..., sim_idx - 1]
                 )
             )
+            #print(f"With robot_state: {data_state[..., sim_idx - 1]["robot_state"].detach().cpu().numpy()}")
+            #print(f"With cube_state: {data_state[..., sim_idx - 1]["cube_state"].detach().cpu().numpy()}")
             step_vplus, step_contact_forces, step_contact_normals, step_contact_phis = (
                 self.forward_dynamics(step_q, step_v, torch.cat(step_u, dim=-1), sim_dt)
             )
-            data_state[..., sim_idx, :] = self.multibody_terms.plant_diagram.space.x(
-                self.multibody_terms.plant_diagram.space.euler_step(
-                    step_q, step_vplus, sim_dt
-                ),
-                step_vplus,
+            data_state[..., sim_idx] = self._multibody_terms.model_states_from_state_tensor(
+                self._multibody_terms.plant_diagram.space.x(
+                    self._multibody_terms.plant_diagram.space.euler_step(
+                        step_q, step_vplus, sim_dt
+                    ),
+                    step_vplus,
+                )
             )
             # Overwrite actual robot state
             if ctrl_actual_splits is not None:
@@ -536,9 +554,9 @@ class MultibodyLearnableTactileSystem(Module):
             ret_u[..., sim_idx, :] = torch.cat(step_u, dim=-1)
 
         # Record final phi
-        step_q, step_v = self.multibody_terms.plant_diagram.space.q_v(
-            self.multibody_terms.construct_state_tensor(
-                data_state[..., traj_len - 1, :]
+        step_q, step_v = self._multibody_terms.plant_diagram.space.q_v(
+            self._multibody_terms.construct_state_tensor(
+                data_state[..., traj_len - 1]
             )
         )
         (
@@ -550,7 +568,7 @@ class MultibodyLearnableTactileSystem(Module):
             obj_pair_list,
             _,
             _,
-        ) = self.multibody_terms(
+        ) = self._multibody_terms(
             step_q, step_v, torch.zeros(batch_dims + (self._controlled_space.n_v,))
         )
         for key in obj_pair_list:
@@ -560,7 +578,7 @@ class MultibodyLearnableTactileSystem(Module):
             ret_contact_phis[key][..., traj_len - 1, :] = final_phi[..., indices[0]]
 
         return (
-            self.multibody_terms.construct_state_tensor(data_state),
+            self._multibody_terms.construct_state_tensor(data_state),
             ret_u,
             ret_contact_forces,
             ret_contact_normals,
@@ -571,8 +589,8 @@ class MultibodyLearnableTactileSystem(Module):
     def forward(
         self,
         ctrl_desired: Tensor,
-        timestamps: Optional[Tensor],
-        ctrl_actual: Optional[Tensor],
+        timestamps: Optional[Tensor] = None,
+        ctrl_actual: Optional[Tensor] = None,
         nimp_override: bool = False,
     ) -> tuple[Tensor, Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]]:
         """Forward Function for the Learnable System
@@ -598,7 +616,7 @@ class MultibodyLearnableTactileSystem(Module):
         # pylint: disable=too-many-locals
 
         # Input Validation
-        assert len(ctrl_desired.size()) >= 3
+        assert len(ctrl_desired.size()) >= 2
         batch_dims = ctrl_desired.size()[:-2]
         traj_len = ctrl_desired.size()[-2]
         assert ctrl_desired.size() == batch_dims + (
@@ -636,7 +654,7 @@ class MultibodyLearnableTactileSystem(Module):
             None if ctrl_actual is None else self._controlled_space.x_split(ctrl_actual)
         )
         control_u = []
-        for robot_model_idx, robot_model_name, robot_model_space in enumerate(
+        for robot_model_idx, (robot_model_name, robot_model_space) in enumerate(
             zip(self._controlled_model_names, self._controlled_space.spaces)
         ):
             data_state[robot_model_name + "_state"] = (
@@ -669,7 +687,7 @@ class MultibodyLearnableTactileSystem(Module):
             )
 
         return (
-            self.multibody_terms.construct_state_tensor(data_state),
+            self._multibody_terms.construct_state_tensor(data_state),
             torch.cat(control_u, dim=-1),
             None,
             None,
@@ -871,18 +889,29 @@ class MultibodyLearnableTactileSystem(Module):
         """Current geometry as a Drake Shape."""
         assert len(self._learned_model_names) == 1, "Only 1 learnable object supported"
         model_name = self._learned_model_names[0]
-        plant = self.multibody_terms.plant_diagram.plant
+        plant = self._multibody_terms.plant_diagram.plant
         bodies = get_bodies_in_model_instance(
             plant, plant.GetModelInstanceByName(model_name)
         )
         assert len(bodies) == 1, "Only 1 learnable body supported"
         body_id = unique_body_identifier(plant, bodies[0])
-        body_geometry_indices = self.multibody_terms.geometry_body_assignment[body_id]
+        body_geometry_indices = self._multibody_terms.geometry_body_assignment[body_id]
         assert len(body_geometry_indices) == 1, "Only 1 learnable geometry"
         body_geometry = cast(
             CollisionGeometry,
-            self.multibody_terms.contact_terms.geometries[body_geometry_indices[0]],
+            self._multibody_terms.contact_terms.geometries[body_geometry_indices[0]],
         )
+        return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
+
+    @torch.no_grad
+    def get_body_geometry(self, body_name: str) -> Shape:
+        """Current geometry of body based on name"""
+        plant = self._multibody_terms.plant_diagram.plant
+        body = plant.GetBodyByName(body_name)
+        body_id = unique_body_identifier(plant, body)
+        body_geometry_indices = self._multibody_terms.geometry_body_assignment[body_id]
+        assert len(body_geometry_indices) == 1, "Body must contain only 1 geometry"
+        body_geometry = cast(CollisionGeometry, self._multibody_terms.contact_terms.geometries[body_geometry_indices[0]])
         return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
 
     @torch.no_grad
@@ -902,7 +931,7 @@ class MultibodyLearnableTactileSystem(Module):
         system_traj : (batch, traj_len, self.space.n_x)
         """
         if system_traj is not None:
-            data_state = self.multibody_terms.model_states_from_state_tensor(
+            data_state = self._multibody_terms.model_states_from_state_tensor(
                 system_traj
             )
             ret_list = []
@@ -918,3 +947,29 @@ class MultibodyLearnableTactileSystem(Module):
             ), ret.size()
             return ret
         return self._learned_trajectory.get_current_pose_traj()
+
+    @torch.no_grad
+    def get_controlled_trajectory(self, system_traj: Tensor) -> Tensor:
+        """Current pose trajectory for the robot object
+
+        Extract full trajectory from the system trajectory.
+
+        Args:
+        system_traj : (batch, traj_len, self.space.n_x)
+        """
+        assert system_traj is not None
+        data_state = self._multibody_terms.model_states_from_state_tensor(
+            system_traj
+        )
+        ret_list = []
+        for traj_model_idx, traj_model_name in enumerate(self._controlled_model_names):
+            ret_list.append(
+                self._controlled_space.spaces[traj_model_idx].q(
+                    data_state[traj_model_name + "_state"]
+                )
+            )
+        ret = torch.cat(ret_list, dim=-1)
+        assert ret.size() == system_traj.size()[:-1] + (
+            self._controlled_space.n_q,
+        ), ret.size()
+        return ret

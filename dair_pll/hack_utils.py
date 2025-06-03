@@ -17,7 +17,7 @@ from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactil
 def finger_idx_from_body_name(
     plant: MultibodyPlant, robot_id: ModelInstanceIndex, body_names: list[str]
 ) -> list[int]:
-    """Get plant state index from the fingertip body names"""
+    """Get plant state index from the fingertip body names, return -1 if not in list"""
     state_names = plant.GetStateNames(robot_id)
     ret = [-1] * len(body_names)
     for idx in range(len(state_names) // 2):  # ignore velocity
@@ -25,7 +25,7 @@ def finger_idx_from_body_name(
             if body_name in state_names[idx]:
                 ret[body_idx] = idx // 3
                 break
-    assert np.all(np.array(ret) >= 0) and np.all(np.array(ret) < len(body_names))
+    assert np.all(np.array(ret) < len(body_names))
     return ret
 
 
@@ -36,7 +36,7 @@ def extract_robot_trajectory(
 ) -> Tensor:
     """
     Params:
-            data: batched TensorDict from execute_trajectory()
+            data: batched TensorDict from trifinger_utils.execute_trajectory()
             system: used to get robot_model_name
             trifinger: used to get fingertip_body_names
 
@@ -59,6 +59,8 @@ def extract_robot_trajectory(
             plant, plant.GetModelInstanceByName(robot_model_name), fingertip_body_names
         ),
     ):
+        if state_idx < 0:
+            continue
         pos_idx = 3 * state_idx
         vel_idx = robot_space.n_x // 2 + pos_idx
         ret[..., pos_idx : pos_idx + 3] = data[finger_name]["position"]

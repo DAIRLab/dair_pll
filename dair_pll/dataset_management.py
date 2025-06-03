@@ -151,6 +151,10 @@ class TrajectorySet:
         self.trajectories.extend(trajectory_list)
         self.indices = torch.cat([self.indices, indices.to(torch.get_default_device())])
 
+    def get_full_trajectory(self, key: Optional[str] = None):
+        """Get the entire trajectory optionally for a given key"""
+        return torch.cat([(traj if key is None else traj[key]) for traj in self.trajectories], dim=0)
+
 
 class ExperimentDataManager:
     r"""Management object for maintaining training, validation, and testing

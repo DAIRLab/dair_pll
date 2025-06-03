@@ -14,45 +14,35 @@ TODOs:
 * * calculate accuracy metrics (Chamfer distance + co-located chamfer distance + position error)
 """
 
-# pylint: disable=invalid-name,too-many-statements,too-many-locals
+# pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-branches
 
-from enum import Enum
 import os
 import pdb
-import random
 import signal
 import sys
 import time
-from typing import cast, Any, Dict, List, Optional, Tuple, Type
+from typing import Type
 
 import gin
 import gin.torch.external_configurables
 import git
-import lcm
 import numpy as np
-from pydrake.geometry import StartMeshcat, Rgba, Shape
+from pydrake.geometry import Shape
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
-from scipy.spatial.transform import Rotation as R
-from tensordict import TensorDictBase, TensorDict
+from tensordict import TensorDict
 import torch
-from torch.distributions.normal import Normal
-from torch.optim import Optimizer
-from torch.utils.data import DataLoader
-from torch import Tensor
 
 from dair_pll import file_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.dataset_management import TrajectorySet
 from dair_pll.gui_utils import PLLMeshcatVisualizer
+from dair_pll.hack_utils import extract_robot_trajectory
 from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactileSystem
-from dair_pll.lcmtypes.dairlib import (
-    lcmt_fingertips_position,
-    lcmt_object_state,
-    lcmt_densetact_measurement_data,
-    lcmt_fingertips_target_kinematics,
+from dair_pll.trifinger_utils import (
+    TrifingerLCMService,
+    sample_action,
+    interpolate_sampled_action,
 )
-from dair_pll.tensor_utils import pbmm
-from dair_pll.hack_utils import finger_idx_from_body_name
 
 # Repository directory (default for file operations)
 REPO_DIR = os.path.normpath(
@@ -62,54 +52,14 @@ DEFAULT_CONFIG = "active_exploration.gin"
 
 
 ## Training Function
-def train_epoch(
-    data: DataLoader,
-    system: MultibodyLearnableSystemWithTrajectory,
-    optimizer: Optional[Optimizer] = None,
-) -> Tensor:
-    """Train learned model for a single epoch.  Takes gradient steps in the
-    learned parameters if ``optimizer`` is provided.
-
-    Args:
-        data: Training dataset.
-        system: System to be trained.
-        optimizer: Optimizer which trains system.
-
-    Returns:
-        Scalar average training loss observed during epoch.
-    """
-    losses = []
-    loss_elements = {}
-    for xy_i in data:
-        x_past: Tensor = xy_i[0]
-        x_plus: Tensor = xy_i[1]
-
-        if optimizer is not None:
-            optimizer.zero_grad()
-
-        loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
-        losses.append(loss.clone().detach())
-
-        for key, val in system.loss_cache.items():
-            if key not in loss_elements:
-                loss_elements[key] = []
-            loss_elements[key].append(val)
-
-        if optimizer is not None:
-            loss.backward()
-            optimizer.step()
-
-    # Compute Epoch Average
-    avg_loss = cast(Tensor, sum(losses) / len(losses))
-    loss_elements_ret = {}
-    for key, val in loss_elements.items():
-        loss_elements_ret[key] = cast(Tensor, sum(val) / len(val))
-    return avg_loss, loss_elements_ret
+# TODO: Add Training Function
 
 
 ### Visualization
 def get_true_geometry() -> Shape:
     """Get True Geometry from configured base system"""
+    # Pylint doesn't know about gin
+    # pylint: disable=no-value-for-parameter
     system = DrakeSystem()
     inspector = system.plant_diagram.scene_graph.model_inspector()
     all_geom_ids = inspector.GetAllGeometryIds()
@@ -126,8 +76,9 @@ def get_true_geometry() -> Shape:
 signal_pressed = False
 
 
-def signal_handler(sig, frame):
+def signal_handler(_sig, _frame):
     """Handle SIGINT"""
+    # pylint: disable=global-statement
     global signal_pressed
     signal_pressed = True
 
@@ -140,6 +91,7 @@ def main(
     optimizer_cls: Type = torch.optim.SGD,
 ):
     """Main function for online learning loop"""
+    # pylint: disable=global-statement
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
     # torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
@@ -154,6 +106,8 @@ def main(
 
     # Create learnable system
     print("Loading Learned System...")
+    # Pylint doesn't know about gin
+    # pylint: disable=no-value-for-parameter
     learned_system = MultibodyLearnableTactileSystem()
 
     # Create Dataset
@@ -216,18 +170,34 @@ def main(
             safe_state[:3] = (
                 new_trajectory["finger_0"]["position"][-1].cpu().clone().numpy()
             )
-            safe_state[2] = safe_trifinger_height
+            safe_state[2] = trifinger_lcm.safe_height
             safe_state[3:6] = (
                 new_trajectory["finger_1"]["position"][-1].cpu().clone().numpy()
             )
-            safe_state[5] = safe_trifinger_height
+            safe_state[5] = trifinger_lcm.safe_height
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
             # Add data to dataset
             add_trajectory = TensorDict({}, batch_size=new_trajectory.batch_size)
-            add_trajectory["robot_state"] = extract_robot_trajectory(
-                learned_system, new_trajectory, robot_model_name
+            add_trajectory[learned_system.controlled_model_names[0] + "_state"] = (
+                extract_robot_trajectory(new_trajectory, learned_system, trifinger_lcm)
             )
+            add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = (
+                extract_robot_trajectory(
+                    interpolate_sampled_action(
+                        data=torch.tensor(np.array(selected_action)),
+                        trifinger=trifinger_lcm,
+                        traj_len_s=(
+                            new_trajectory["time"][-1] - new_trajectory["time"][0]
+                        ),
+                        traj_n_steps=len(new_trajectory),
+                    )[0],
+                    learned_system,
+                    trifinger_lcm,
+                )
+            )
+            # TensorDict requires keys() call
+            # pylint: disable=consider-using-dict-items
             for finger_name in new_trajectory.keys():
                 try:
                     add_trajectory["contact_forces", finger_name] = new_trajectory[
@@ -239,33 +209,32 @@ def main(
                 except (IndexError, KeyError):  # e.g. object, time
                     continue
             add_trajectory["time"] = new_trajectory["time"]
-            add_trajectory[object_model_name + "_groundtruth"] = new_trajectory[
-                object_model_name
-            ]["position"]
+            add_trajectory[learned_system.learned_model_names[0] + "_groundtruth"] = (
+                new_trajectory[learned_system.learned_model_names[0]]["position"]
+            )
             data_trajectories.add_trajectories(
                 [add_trajectory.clone().detach()],
                 torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
             )
 
-            learned_system.add_trajectories(
+            learned_system.add_learnable_trajectories(
                 traj_lens=[len(add_trajectory["time"])],
             )
 
             # Re-init visualizer
+            print("Getting current trajectory and visualizing")
+            gui_vis.learned_plant_traj = learned_system(
+                ctrl_desired=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_desired"
+                ),
+                timestamps=data_trajectories.get_full_trajectory(key="time"),
+                ctrl_actual=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_state"
+                ),
+            )[0]
             gui_vis.update()
 
             # Re-init optimizer and data-loader
-            batch_size = (
-                len(data_trajectories.slices)
-                if data_trajectories.slices.config.batch_size == -1
-                else data_trajectories.slices.config.batch_size
-            )
-            traj_dataloader = DataLoader(
-                data_trajectories.slices,
-                batch_size=batch_size,
-                shuffle=data_trajectories.slices.config.shuffle,
-                generator=torch.Generator(device=torch.get_default_device()),
-            )
             optimizer = optimizer_cls(learned_system.parameters())
 
         elif command_char == "s":
@@ -276,7 +245,7 @@ def main(
                 continue
             if action_idx < 0:
                 action_idx = None
-                print(f"Sampling random action: {temp}")
+                print("Sampling random action...")
 
             selected_action = sample_action(index=action_idx)
 
@@ -286,7 +255,7 @@ def main(
             print("Done!")
 
         elif command_char == "t":
-            if traj_dataloader is None or len(traj_dataloader) == 0:
+            if len(data_trajectories.trajectories) == 0:
                 print("Cannot train without data.\n")
                 continue
 
@@ -299,25 +268,7 @@ def main(
 
             start_time = time.time()
             for idx in range(epochs):
-                train_loss, loss_data = train_epoch(
-                    traj_dataloader, learned_system, optimizer
-                )
-                total_epochs += 1
-                print(
-                    total_epochs,
-                    f"Loss (J): {train_loss:.3e};",
-                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};",
-                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};",
-                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};",
-                    f"Pen (m): {loss_data['mean_pen_m']:.3e};",
-                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};",
-                    f"Dev (N): {loss_data['mean_dev_N']:.3e};",
-                    f"Norm (cosine): {loss_data['mean_norm_cosine']:.3e};",
-                )
-                gui_vis.update()
-                train_losses.append(train_loss)
-                train_loss_data.append(loss_data)
-                learned_summaries.append(learned_system.summary({}))
+                # TODO: Add Training Function
                 if signal_pressed:
                     signal_pressed = False
                     print("Training cancelled...")

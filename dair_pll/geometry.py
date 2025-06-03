@@ -1094,7 +1094,7 @@ class GeometryCollider:
 
         ## Get nearest point on box
         # Expand box lengths to batch size
-        box_lengths = box_a.get_half_lengths().expand(p_AoBo_A.size())
+        box_lengths = box_a.get_half_lengths().flatten().expand(p_AoBo_A.size())
         # Clamp to box
         p_AoBo_A_clamp = torch.clamp(p_AoBo_A, min=-box_lengths, max=box_lengths)
         # Project onto nearest face

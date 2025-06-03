@@ -182,16 +182,15 @@ class DensetactIOSystem(LeafSystem):
             # Copy Translation, i.e., contact point in body frame
             measurement.contactFrame[idx][3] = point[idx]
           measurement.contactFrame[3][3] = 1.0 # Valid affine transform
+          # Force in contact frame
+          force_C = R_CW.T.dot(force_W)
+          measurement.scaledNormal = self._normal_scale * force_C[2]
+          measurement.scaledFriction[0] = self._friction_scale * force_C[0]
+          measurement.scaledFriction[1] = self._friction_scale * force_C[1]
         else:
-          # Identity Transform
-          R_CW = np.eye(3)
+          # Identity Transform, leave zero forces
           for idx in range(4):
             measurement.contactFrame[idx][idx] = 1.0
-        # Force in contact frame
-        force_C = R_CW.T.dot(force_W)
-        measurement.scaledNormal = self._normal_scale * force_C[2]
-        measurement.scaledFriction[0] = self._friction_scale * force_C[0]
-        measurement.scaledFriction[1] = self._friction_scale * force_C[1]
         # Add Measurement data
         densetact_msg.get_mutable_value().sensorData.append(measurement)
 

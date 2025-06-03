@@ -1,42 +1,21 @@
 # Default GIN Config File for rss_experiment.py
 
 ## General Config
-robot_radius = 0.01575 # From trifingeredu.urdf
-robot_radius_buffer = 0.02
+robot_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
 workspace_radius = 0.15
 robot_model_name = "robot"
 object_model_name = "cube"
 # The actual Drake body name within the object model
 object_body_name = "cube_body" 
 fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
-fingertip_body_names_ctrl = ["finger_0", "finger_1"]
-delta_t = 0.0333 # TODO: HACK remove and use timestamps; 33ms == 30Hz
+default_dt = 0.03333333333333333 # 30 Hz
+traj_len_s = 2.0 # s, how long each trajectory is
+
+# CONSTANTS
+PI = 3.141592653589793
+PI2 = 1.5707963267948966
 
 ## Main Config
-main.robot_model_name = %robot_model_name
-# main.init_trifinger_state = [
-# 	0.0, 0.1, 0.05, # DenseTact 0 q
-# 	0.1, 0.0, 0.05, # DenseTact 120 q
-# 	-0.1, -0.1, 0.1, # Finger 240 q
-# 	0., 0., 0.,   # DenseTact 0 v
-# 	0., 0., 0.,   # DenseTact 120 v
-# 	0., 0., 0.,   # Finger 240 v
-# ]
-main.init_trifinger_state = [
-	0.1, 0., 0.05, # Finger 0 q
-	-0.1, 0., 0.05, # Finger 120 q
-	0., 0.15, 0.15, # Finger 240 q
-	0., 0., 0.,   # Finger 0 v
-	0., 0., 0.,   # Finger 120 v
-	0., 0., 0.,   # Finger 240 v
-]
-main.safe_trifinger_height = %workspace_radius
-extract_robot_trajectory.fingertip_body_names = %fingertip_body_names_ctrl
-interpolate_sampled_action.fingertip_body_names = %fingertip_body_names_ctrl
-get_loss_args.object_body_name = %object_body_name
-# 100Hz trajectory
-interpolate_sampled_action.traj_len_s = 2.0
-interpolate_sampled_action.traj_n_steps = 201
 
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
@@ -51,7 +30,8 @@ DynamicCvxpyLCQPLayer.solver_args = {
 
 ## LCM Trajectory Execution
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names
-TrifingerLCMService.traj_time_len = 2.0
+TrifingerLCMService.traj_time_len = %traj_len_s
+TrifingerLCMService.safe_height = %workspace_radius
 TrifingerLCMService.lcm_channels = {
 	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
@@ -60,11 +40,37 @@ TrifingerLCMService.lcm_channels = {
 }
 
 ## Action Sampling
-sample_action.workspace_xy_center = (0., 0.)
-sample_action.workspace_z_rot = 0. # 0.785398163 # pi/4
-sample_action.workspace_radius = %workspace_radius
-sample_action.sphere_radius = %robot_radius_buffer
-sample_action.fixed_240_W = (-0.1, -0.1, 0.1)
+sample_action.params = @ActionLibraryParams()
+ActionLibraryParams.workspace_xy_center = (0., 0.)
+ActionLibraryParams.workspace_z_rot = 0. # 0.785398163 # pi/4
+ActionLibraryParams.workspace_radius = %workspace_radius
+ActionLibraryParams.robot_radius = %robot_radius
+ActionLibraryParams.fixed_240_w = (0., 0.1, 0.1)
+ActionLibraryParams.ground_buffer = True
+ActionLibraryParams.yplane_buffer = False
+
+## Action Library
+xsingle/Action.name = "XSINGLE"
+xsingle/Action.posx_start_polar = %PI2
+xsingle/Action.posx_start_azimuth = 0.
+xsingle/Action.posx_end_radius = 0.
+xsingle/Action.posx_end_angle = 0.
+
+xpinch/Action.name = "XPINCH"
+xpinch/Action.posx_start_polar = %PI2
+xpinch/Action.posx_start_azimuth = 0.
+xpinch/Action.posx_end_radius = 0.
+xpinch/Action.posx_end_angle = 0.
+xpinch/Action.negx_start_polar = %PI2
+xpinch/Action.negx_start_azimuth = 0.
+xpinch/Action.negx_end_radius = 0.
+xpinch/Action.negx_end_angle = 0.
+
+sample_action.library = [
+	@xsingle/Action(),
+]
+interpolate_sampled_action.traj_len_s = %traj_len_s
+interpolate_sampled_action.traj_n_steps = 61
 
 ## Robot config
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
@@ -75,14 +81,17 @@ robot/get_urdf_asset_contents.mappings = {
 }
 
 ## Learnable URDF and State Config
-LearnableSystem.trajectory_model_names = %object_model_name
-LearnableSystem.init_urdfs = { 
-	%object_model_name: @object_init/get_urdf_asset_contents(), 
-	%robot_model_name: @robot/get_urdf_asset_contents()
+TactileSystem.urdfs = {
+	%ModelType.CONTROLLABLE: { # Robot Models
+		%robot_model_name: @robot/get_urdf_asset_contents(),
+	},
+	%ModelType.LEARNABLE: { # Learnable Trajectory Models
+		%object_model_name: @object_init/get_urdf_asset_contents(), 
+	}
 }
-LearnableSystem.hyperparameters = @LearnableHyperparameters()
-LearnableSystem.default_dt = %delta_t # seconds
-LearnableSystem.learnable_body_dict = { 
+
+TactileSystem.hyperparameters = @TactileHyperparameters()
+TactileSystem.learnable_body_dict = { 
 	%object_body_name: @object_init/LearnableBodySettings()
 }
 
@@ -95,7 +104,7 @@ object_init/get_urdf_asset_contents.mappings = {
 	"mu": 0.1,
 	"planar_xz": "false",
 }
-LearnableSystem.init_traj_state = [
+TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
 	0.0, 0.0, 0.0325,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
@@ -111,23 +120,16 @@ object_init/LearnableBodySettings.friction = False
 object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
 
 # Learning hyperparams
-LearnableHyperparameters.w_pred = 1e1
-LearnableHyperparameters.w_q_pred = 1e1
-LearnableHyperparameters.w_comp = 2e1
-LearnableHyperparameters.w_fdiss = 1e1
-LearnableHyperparameters.w_ndiss = 1e0
-LearnableHyperparameters.w_pen = 1e2
-LearnableHyperparameters.w_dev = 1e5
-LearnableHyperparameters.w_norm = 1e0
-#LearnableHyperparameters.w_pred = 1e3
-#LearnableHyperparameters.w_q_pred = 1e3
-#LearnableHyperparameters.w_comp = 2e3
-#LearnableHyperparameters.w_fdiss = 1e3
-#LearnableHyperparameters.w_ndiss = 1e3
-#LearnableHyperparameters.w_pen = 1e3
-#LearnableHyperparameters.w_dev = 1e5
-#LearnableHyperparameters.w_norm = 1e3
-LearnableHyperparameters.w_reg_iner = 1e-5
+TactileHyperparameters.default_dt = %default_dt
+TactileHyperparameters.ctrl_kp = 10.0
+TactileHyperparameters.ctrl_kd = 5.0
+TactileHyperparameters.loss_fn = %LossFunction.VIMP
+TactileHyperparameters.supervise_non_contact_force = False
+
+TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
+TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
+TactileHyperparameters.w_normal_var = 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
+TactileHyperparameters.w_force_var = 1e-2  # N, variance of contact force measurement (assume identity covariance)
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
@@ -137,25 +139,10 @@ Adam.lr=6e-3 # Mesh: 1e-3
 Adam.amsgrad=True
 Adam.fused=False
 
-# Data Configuration
-# traj_num, index required for proper learned trajectory indexing
-# Added by default in TrajectorySet()
-TrajectorySliceConfig.batch_size = -1
-TrajectorySliceConfig.shuffle = False
-TrajectorySliceConfig.his_state_keys = [
-	"robot_state", "contact_forces", "contact_normals", "traj_num", "index", "time",
-]
-TrajectorySliceConfig.pred_state_keys = [
-	"robot_state", "traj_num", "index", "time",
-]
-
 ## Exploration Params
-# Note: 30 / 10 uses 10GB VRAM if done in parallel
-main.n_actions_optimized=60
-LearnableHyperparameters.n_fisher_samples=10
 
 ## True System (for Metrics)
-DrakeSystem.dt = %delta_t # seconds, unnecessary
+DrakeSystem.dt = %default_dt # seconds, unnecessary
 DrakeSystem.urdfs = { 
 	%object_model_name: @object/get_urdf_asset_contents()
 }

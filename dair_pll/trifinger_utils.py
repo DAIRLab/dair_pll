@@ -423,7 +423,7 @@ def sample_action(
         start_s[2] += params.robot_radius if params.ground_buffer else 0.0
         start_s[0] *= flip_factor
         max_radius = params.workspace_radius - params.robot_radius
-        end_radius = rng.uniform(0.0, max_radius) if end_radius is None else end_radius
+        end_radius = rng.uniform(0.0, max_radius) if end_radius is None else end_radius*max_radius
         end_angle = rng.uniform(0.0, np.pi) if end_angle is None else end_angle
         end_s = np.array(
             [
@@ -476,6 +476,7 @@ def sample_action(
         ret[idx][:3] = z_rot @ finger_0_traj[idx].T + xy_trans
         ret[idx][3:6] = z_rot @ finger_120_traj[idx].T + xy_trans
         ret[idx][6:9] = fixed_240_traj[:]
+
     return ret
 
 

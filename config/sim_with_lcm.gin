@@ -10,9 +10,9 @@ io_dt = 0.001 # time between sim output lcm pubs
 densetact_io_dt = 0.0333 # time between densetact lcm pubs
 
 ## Random Noise Addition
-FingerTipIOSystem.fingerpos_std = 1e-3
+FingerTipIOSystem.fingerpos_std = 0. # 1e-3
 DensetactIOSystem.normal_std = 0.
-DensetactIOSystem.force_std = 1e-2
+DensetactIOSystem.force_std = 0. # 1e-2
 
 
 ## Simulation Plant
