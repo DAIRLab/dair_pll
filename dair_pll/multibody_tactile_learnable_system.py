@@ -18,6 +18,8 @@ multibody dynamics,” Mathematical Programming, 2006,
 https://doi.org/10.1007/s10107-005-0590-7
 """
 
+# pylint: disable=too-many-lines
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import override, Optional, cast
@@ -291,9 +293,13 @@ class MultibodyLearnableTactileSystem(Module):
 
         # Input Validation
         batch_dims = step_q.size()[:-1]
-        assert step_q.size() == batch_dims + (self._multibody_terms.plant_diagram.space.n_q, )
-        assert step_v.size() == batch_dims + (self._multibody_terms.plant_diagram.space.n_v, )
-        assert step_u.size() == batch_dims + (self._controlled_space.n_v, )
+        assert step_q.size() == batch_dims + (
+            self._multibody_terms.plant_diagram.space.n_q,
+        )
+        assert step_v.size() == batch_dims + (
+            self._multibody_terms.plant_diagram.space.n_v,
+        )
+        assert step_u.size() == batch_dims + (self._controlled_space.n_v,)
         dt = self._hyperparameters.default_dt if step_dt is None else step_dt
         phi_eps = 1e-2
         eps = torch.finfo(step_q.dtype).eps
@@ -394,7 +400,13 @@ class MultibodyLearnableTactileSystem(Module):
         ctrl_desired: Tensor,
         timestamps: Optional[Tensor],
         ctrl_actual: Optional[Tensor],
-    ) -> Tensor:
+    ) -> tuple[
+        Tensor,
+        Tensor,
+        dict[tuple[str, str], Tensor],
+        dict[tuple[str, str], Tensor],
+        dict[tuple[str, str], Tensor],
+    ]:
         """
         From the current estimated model state, simulate a batch of robots on the target trajectories.
 
@@ -403,11 +415,11 @@ class MultibodyLearnableTactileSystem(Module):
             timestamps: (traj_len,)
             ctrl_actual: (batch, traj_len, robot.n_x) (optional: if provided overwrite robot state)
         Returns:
-            - model_states_from_state_tensor() of (batch, traj_len, plant.n_x)
+            - state tensor of size (batch, traj_len, plant.n_x)
+            - robot u  (batch, traj_len, robot.n_v)
             - ret_contact_forces Dict[<collision>, size(batch, traj_len, 3)]
             - ret_normal_forces Dict[<collision>, size(batch, traj_len, 3)]
             - ret_phis Dict[<collision>, size(batch, traj_len, 1)]
-            - robot u  (batch, traj_len, robot.n_v)
         """
         # pylint: disable=too-many-locals, too-many-branches
 
@@ -511,17 +523,19 @@ class MultibodyLearnableTactileSystem(Module):
                     data_state[..., sim_idx - 1]
                 )
             )
-            #print(f"With robot_state: {data_state[..., sim_idx - 1]["robot_state"].detach().cpu().numpy()}")
-            #print(f"With cube_state: {data_state[..., sim_idx - 1]["cube_state"].detach().cpu().numpy()}")
+            # print(f"With robot_state: {data_state[..., sim_idx - 1]["robot_state"].detach().cpu().numpy()}")
+            # print(f"With cube_state: {data_state[..., sim_idx - 1]["cube_state"].detach().cpu().numpy()}")
             step_vplus, step_contact_forces, step_contact_normals, step_contact_phis = (
                 self.forward_dynamics(step_q, step_v, torch.cat(step_u, dim=-1), sim_dt)
             )
-            data_state[..., sim_idx] = self._multibody_terms.model_states_from_state_tensor(
-                self._multibody_terms.plant_diagram.space.x(
-                    self._multibody_terms.plant_diagram.space.euler_step(
-                        step_q, step_vplus, sim_dt
-                    ),
-                    step_vplus,
+            data_state[..., sim_idx] = (
+                self._multibody_terms.model_states_from_state_tensor(
+                    self._multibody_terms.plant_diagram.space.x(
+                        self._multibody_terms.plant_diagram.space.euler_step(
+                            step_q, step_vplus, sim_dt
+                        ),
+                        step_vplus,
+                    )
                 )
             )
             # Overwrite actual robot state
@@ -555,9 +569,7 @@ class MultibodyLearnableTactileSystem(Module):
 
         # Record final phi
         step_q, step_v = self._multibody_terms.plant_diagram.space.q_v(
-            self._multibody_terms.construct_state_tensor(
-                data_state[..., traj_len - 1]
-            )
+            self._multibody_terms.construct_state_tensor(data_state[..., traj_len - 1])
         )
         (
             _,
@@ -592,7 +604,13 @@ class MultibodyLearnableTactileSystem(Module):
         timestamps: Optional[Tensor] = None,
         ctrl_actual: Optional[Tensor] = None,
         nimp_override: bool = False,
-    ) -> tuple[Tensor, Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]]:
+    ) -> tuple[
+        Tensor,
+        Tensor,
+        Optional[dict[tuple[str, str], Tensor]],
+        Optional[dict[tuple[str, str], Tensor]],
+        Optional[dict[tuple[str, str], Tensor]],
+    ]:
         """Forward Function for the Learnable System
 
         If NIMP (or nimp_override), use diffsim to get system state. Otherwise concat
@@ -696,11 +714,11 @@ class MultibodyLearnableTactileSystem(Module):
 
     def _loss_nimp(
         self,
-        meas_contact_forces,
-        meas_contact_normals,
-        est_contact_forces,
-        est_contact_normals,
-        est_contact_phis,
+        meas_contact_forces: dict[tuple[str, str], Tensor],
+        meas_contact_normals: dict[tuple[str, str], Tensor],
+        est_contact_forces: dict[tuple[str, str], Tensor],
+        est_contact_normals: dict[tuple[str, str], Tensor],
+        est_contact_phis: dict[tuple[str, str], Tensor],
     ) -> dict[str, Tensor]:
         """
         NIMP Loss
@@ -713,7 +731,7 @@ class MultibodyLearnableTactileSystem(Module):
             meas_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
             est_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
             est_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
-            est_contact_phis: Dict[<collision>, size(batch, traj_len, 1)] in world frame
+            est_contact_phis: Dict[<collision>, size(batch, traj_len, 1)] SDF
         Returns:
             Dictionary of loss terms, each identified by a string.
             Each term is pre-scaled and comes in size(batch, traj_len-1)
@@ -725,34 +743,6 @@ class MultibodyLearnableTactileSystem(Module):
         """
 
         # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
-
-        # Input Validation
-        assert len(est_contact_phis.size()) >= 3, est_contact_phis.size()
-        batch_dims = est_contact_phis.size()[:-2]
-        traj_len = est_contact_phis.size()[-2]
-        assert est_contact_phis.size()[-1] == 1, est_contact_phis.size()
-        assert est_contact_normals.size() == batch_dims + (
-            traj_len - 1,
-            3,
-        ), est_contact_normals.size()
-        assert est_contact_forces.size() == batch_dims + (
-            traj_len - 1,
-            3,
-        ), est_contact_forces.size()
-        assert meas_contact_normals.size() == batch_dims + (
-            traj_len - 1,
-            3,
-        ), meas_contact_normals.size()
-        assert meas_contact_forces.size() == batch_dims + (
-            traj_len - 1,
-            3,
-        ), meas_contact_forces.size()
-
-        ret_loss = {
-            "loss_meas_bool": torch.zeros(batch_dims + (traj_len - 1,)),
-            "loss_meas_force": torch.zeros(batch_dims + (traj_len - 1,)),
-            "loss_meas_normal": torch.zeros(batch_dims + (traj_len - 1,)),
-        }
 
         # Add reverse keys to make access easier
         supervised_keys = list(meas_contact_normals.keys())
@@ -775,8 +765,38 @@ class MultibodyLearnableTactileSystem(Module):
             ), f"Key and Reverse Key {key} in dictionary"
             est_contact_phis[revkey] = est_contact_phis[key]
 
+        # Input Validation
+        for key in supervised_keys:
+            assert len(est_contact_phis[key].size()) >= 3, est_contact_phis[key].size()
+            batch_dims = est_contact_phis[key].size()[:-2]
+            traj_len = est_contact_phis[key].size()[-2]
+            assert est_contact_phis[key].size()[-1] == 1, est_contact_phis[key].size()
+            assert est_contact_normals[key].size() == batch_dims + (
+                traj_len - 1,
+                3,
+            ), est_contact_normals[key].size()
+            assert est_contact_forces[key].size() == batch_dims + (
+                traj_len - 1,
+                3,
+            ), est_contact_forces[key].size()
+            assert meas_contact_normals[key].size() == batch_dims + (
+                traj_len - 1,
+                3,
+            ), meas_contact_normals[key].size()
+            assert meas_contact_forces[key].size() == batch_dims + (
+                traj_len - 1,
+                3,
+            ), meas_contact_forces[key].size()
+
+        ret_loss = {
+            "loss_meas_bool": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_meas_force": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_meas_normal": torch.zeros(batch_dims + (traj_len - 1,)),
+        }
+
         # Supervise each key
         for key in supervised_keys:
+            # Input Validation
             assert key in meas_contact_forces, f"Key {key} not in meas_contact_forces"
             assert key in meas_contact_normals, f"Key {key} not in meas_contact_normals"
             assert key in est_contact_forces, f"Key {key} not in est_contact_forces"
@@ -844,6 +864,38 @@ class MultibodyLearnableTactileSystem(Module):
 
         return ret_loss
 
+    def _loss_vimp(
+        self,
+        meas_contact_forces,
+        meas_contact_normals,
+        est_contact_forces,
+        est_contact_normals,
+        est_contact_phis,
+    ) -> dict[str, Tensor]:
+        """
+        VIMP Loss
+        contact_normal = 0 means that no contact is detected.
+        if len(meas_contact_forces/normals) > traj_len-1 (could be traj_len),
+            only use the first traj_len-1
+
+        Args:
+            meas_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
+            meas_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
+            est_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
+            est_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
+            est_contact_phis: Dict[<collision>, size(batch, traj_len, 1)] in world frame
+        Returns:
+            Dictionary of loss terms, each identified by a string.
+            Each term is pre-scaled and comes in size(batch, traj_len-1)
+            Loss Terms Are:
+             * Contact Boolean Measurement (loss_meas_bool)
+             * Contact Force Measurement (loss_meas_force)
+             * Contact Normal Measurement (loss_meas_normal)
+
+        """
+        # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+        return None
+
     def loss_fn(
         self,
         meas_contact_forces,
@@ -854,6 +906,8 @@ class MultibodyLearnableTactileSystem(Module):
         """
         Calculate the loss given some measurement data.
         contact_normal = 0 means that no contact is detected.
+
+        Removes 0th element from measured forces to match trajectory length.
 
         Args:
             meas_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
@@ -867,9 +921,10 @@ class MultibodyLearnableTactileSystem(Module):
 
         # NIMP needs
         if self._hyperparameters.loss_fn == LossFunction.NIMP:
+            # Remove
             return self._loss_nimp(
-                meas_contact_forces,
-                meas_contact_normals,
+                {k: v[..., 1:, :] for k, v in meas_contact_forces},
+                {k: v[..., 1:, :] for k, v in meas_contact_normals},
                 forward_args[2],  # estimated contact forces
                 forward_args[3],  # estimated contact normals
                 forward_args[4],  # estimated phi(t)
@@ -877,8 +932,8 @@ class MultibodyLearnableTactileSystem(Module):
 
         # VIMP needs timestamps, plant trajectory, and control
         return self._loss_vimp(
-            meas_contact_forces,
-            meas_contact_normals,
+            {k: v[..., 1:, :] for k, v in meas_contact_forces},
+            {k: v[..., 1:, :] for k, v in meas_contact_normals},
             timestamps,
             forward_args[0],  # plant states
             forward_args[1],  # plant control
@@ -911,7 +966,10 @@ class MultibodyLearnableTactileSystem(Module):
         body_id = unique_body_identifier(plant, body)
         body_geometry_indices = self._multibody_terms.geometry_body_assignment[body_id]
         assert len(body_geometry_indices) == 1, "Body must contain only 1 geometry"
-        body_geometry = cast(CollisionGeometry, self._multibody_terms.contact_terms.geometries[body_geometry_indices[0]])
+        body_geometry = cast(
+            CollisionGeometry,
+            self._multibody_terms.contact_terms.geometries[body_geometry_indices[0]],
+        )
         return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
 
     @torch.no_grad
@@ -958,9 +1016,7 @@ class MultibodyLearnableTactileSystem(Module):
         system_traj : (batch, traj_len, self.space.n_x)
         """
         assert system_traj is not None
-        data_state = self._multibody_terms.model_states_from_state_tensor(
-            system_traj
-        )
+        data_state = self._multibody_terms.model_states_from_state_tensor(system_traj)
         ret_list = []
         for traj_model_idx, traj_model_name in enumerate(self._controlled_model_names):
             ret_list.append(

@@ -223,7 +223,7 @@ def main(
 
             # Re-init visualizer
             print("Getting current trajectory and visualizing")
-            gui_vis.learned_plant_traj = learned_system(
+            temp = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(
                     key=learned_system.controlled_model_names[0] + "_desired"
                 ),
@@ -231,7 +231,8 @@ def main(
                 ctrl_actual=data_trajectories.get_full_trajectory(
                     key=learned_system.controlled_model_names[0] + "_state"
                 ),
-            )[0]
+            )
+            gui_vis.learned_plant_traj = temp[0]
             gui_vis.update()
 
             # Re-init optimizer and data-loader
