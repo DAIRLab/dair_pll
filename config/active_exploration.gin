@@ -98,15 +98,15 @@ TactileSystem.learnable_body_dict = {
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.065, # m
-	"length_y": 0.065, # m
-	"length_z": 0.065, # m
+	"length_x": 0.03, # m
+	"length_y": 0.03, # m
+	"length_z": 0.03, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.0325,     # XYZ
+	0.1, 0.1, 0.0325,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -124,18 +124,20 @@ TactileHyperparameters.default_dt = %default_dt
 TactileHyperparameters.ctrl_kp = 10.0
 TactileHyperparameters.ctrl_kd = 5.0
 TactileHyperparameters.loss_fn = %LossFunction.NIMP
-TactileHyperparameters.supervise_non_contact_force = False
+TactileHyperparameters.supervise_non_contact_force = True
 
 TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
 TactileHyperparameters.w_normal_var = 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
+TactileHyperparameters.w_pen = 1e2
+
 # Learning Optimizer
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=1e-3 # Mesh: 1e-3
+Adam.lr=2e-3
 Adam.amsgrad=True
 Adam.fused=False
 

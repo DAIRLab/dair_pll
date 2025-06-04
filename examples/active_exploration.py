@@ -301,11 +301,12 @@ def main(
                 optimizer.step()
 
                 loss_print = tuple(
-                    f"{k}: {torch.sum(v).detach().cpu()};" for k, v in loss_dict.items()
+                    f"\t{k}: {torch.sum(v).detach().cpu()};\n"
+                    for k, v in loss_dict.items()
                 )
 
                 total_epochs += 1
-                print(total_epochs, f"Loss: {loss_total:.3e};", *loss_print)
+                print(total_epochs, f"Loss: {loss_total:.3e};\n", *loss_print)
 
                 if signal_pressed:
                     signal_pressed = False

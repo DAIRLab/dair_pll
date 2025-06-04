@@ -86,6 +86,7 @@ class MultibodyTactileHyperparameters:
     w_force_var: float = (
         1e-2  # N, variance of contact force measurement (assume identity covariance)
     )
+    w_pen: float = 1e1  # cost/m^2
 
 
 @gin.configurable("TactileSystem")
@@ -804,6 +805,7 @@ class MultibodyLearnableTactileSystem(Module):
             "loss_meas_bool": torch.zeros(batch_dims + (traj_len - 1,)),
             "loss_meas_force": torch.zeros(batch_dims + (traj_len - 1,)),
             "loss_meas_normal": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_pen": torch.zeros(batch_dims + (traj_len - 1,)),
         }
 
         # Supervise each key
@@ -860,7 +862,6 @@ class MultibodyLearnableTactileSystem(Module):
             ret_loss["loss_meas_normal"] += loss_meas_normal
 
             # Force Loss
-
             loss_meas_force = (
                 0.5
                 * (
@@ -880,6 +881,14 @@ class MultibodyLearnableTactileSystem(Module):
                 traj_len - 1,
             ), loss_meas_force.size()
             ret_loss["loss_meas_force"] += loss_meas_force
+
+            # Penetration Loss (start only)
+            ret_loss["loss_pen"] += self._hyperparameters.w_pen * torch.square(
+                torch.maximum(
+                    -est_contact_phis[key][..., 0, 0],
+                    torch.zeros_like(est_contact_phis[key][..., 0, 0]),
+                )
+            )
 
         return ret_loss
 
@@ -906,11 +915,17 @@ class MultibodyLearnableTactileSystem(Module):
         Returns:
             Dictionary of loss terms, each identified by a string.
             Each term is pre-scaled and comes in size(batch, traj_len-1)
-            Loss Terms Are:
-             * Contact Boolean Measurement (loss_meas_bool)
+            lambda-dependent Loss Terms Are:
              * Contact Force Measurement (loss_meas_force)
+             * Prediction: Velocity (loss_v_pred)
+             * Complementarity (loss_comp)
+             * Max Power Dissipation (loss_p_diss)
+             * Inelasticity (loss_elas)
+            lambda-independent Loss Terms Are:
+             * Contact Boolean Measurement (loss_meas_bool)
              * Contact Normal Measurement (loss_meas_normal)
-
+             * Prediction: Position (loss_q_pred)
+             * Penetration (loss_pen)
         """
         # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
         return None
