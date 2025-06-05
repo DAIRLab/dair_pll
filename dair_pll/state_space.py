@@ -292,7 +292,7 @@ class StateSpace(ABC):
         assert q_plus.shape[-1] == self.n_q
         return self.configuration_difference(q, q_plus) / dt
 
-    def euler_step(self, q: Tensor, v: Tensor, dt: float) -> Tensor:
+    def euler_step(self, q: Tensor, v: Tensor, dt: float | Tensor) -> Tensor:
         """Integrates ``q`` forward in time given derivative ``v``.
 
         Implements the inverse of :py:meth:`finite_difference` by returning
@@ -307,7 +307,8 @@ class StateSpace(ABC):
             ``(*, n_q)`` configuration after Euler step.
         """
         assert q.shape[-1] == self.n_q
-        assert v.shape[-1] == self.n_v
+        assert v.shape == q.shape[:-1] + (self.n_v,)
+        assert (type(dt) == float) or ((v * dt).shape == q.shape[:-1] + (self.n_v,))
         return self.exponential(q, v * dt)
 
     def state_difference(self, x_1: Tensor, x_2: Tensor) -> Tensor:

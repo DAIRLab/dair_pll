@@ -86,7 +86,12 @@ class MultibodyTactileHyperparameters:
     w_force_var: float = (
         1e-2  # N, variance of contact force measurement (assume identity covariance)
     )
-    w_pen: float = 1e1  # cost/m^2
+    w_pen: float = 1e0  # cost/m
+    w_v_pred: float = 1e0  # cost/J
+    w_q_pred: float = 1e0  # cost/J
+    w_comp: float = 1e0  # cost/J
+    w_diss: float = 1e0  # cost/J
+    w_elas: float = 1e0  # cost/J
 
 
 @gin.configurable("TactileSystem")
@@ -195,6 +200,11 @@ class MultibodyLearnableTactileSystem(Module):
         )
 
     @property
+    def space(self):
+        """Space of full system"""
+        return self._multibody_terms.plant_diagram.space
+
+    @property
     def plant(self):
         """Full system plant"""
         return self._multibody_terms.plant_diagram.plant
@@ -295,12 +305,8 @@ class MultibodyLearnableTactileSystem(Module):
 
         # Input Validation
         batch_dims = step_q.size()[:-1]
-        assert step_q.size() == batch_dims + (
-            self._multibody_terms.plant_diagram.space.n_q,
-        )
-        assert step_v.size() == batch_dims + (
-            self._multibody_terms.plant_diagram.space.n_v,
-        )
+        assert step_q.size() == batch_dims + (self.space.n_q,)
+        assert step_v.size() == batch_dims + (self.space.n_v,)
         assert step_u.size() == batch_dims + (self._controlled_space.n_v,)
         dt = self._hyperparameters.default_dt if step_dt is None else step_dt
         phi_eps = 1e-2
@@ -317,11 +323,6 @@ class MultibodyLearnableTactileSystem(Module):
         ) = self._multibody_terms(step_q, step_v, step_u)
         n_contacts = m_phi.shape[-1]
         contact_filter = (broadcast_lorentz(m_phi) <= phi_eps).unsqueeze(-1)
-
-        reorder_mat = sappy_reorder_mat(n_contacts)
-        reorder_mat = reorder_mat.reshape(
-            (1,) * (m_delassus.dim() - 2) + reorder_mat.shape
-        ).expand(m_delassus.shape)
 
         mq_delassus = m_delassus + eps * torch.eye(3 * n_contacts)
 
@@ -355,7 +356,11 @@ class MultibodyLearnableTactileSystem(Module):
                 ret_phis,
             )
 
-        ## Solve Impulase
+        ## Solve Impulses
+        reorder_mat = sappy_reorder_mat(n_contacts)
+        reorder_mat = reorder_mat.reshape(
+            (1,) * (m_delassus.dim() - 2) + reorder_mat.shape
+        ).expand(m_delassus.shape)
         impulse_full = pbmm(
             reorder_mat,
             self._solver(
@@ -532,7 +537,7 @@ class MultibodyLearnableTactileSystem(Module):
                 )
                 assert step_u[-1].size() == batch_dims + (robot_model_space.n_v,)
             # Run Forward Dynamics
-            step_q, step_v = self._multibody_terms.plant_diagram.space.q_v(
+            step_q, step_v = self.space.q_v(
                 self._multibody_terms.construct_state_tensor(
                     data_state[..., sim_idx - 1]
                 )
@@ -544,10 +549,8 @@ class MultibodyLearnableTactileSystem(Module):
             )
             data_state[..., sim_idx] = (
                 self._multibody_terms.model_states_from_state_tensor(
-                    self._multibody_terms.plant_diagram.space.x(
-                        self._multibody_terms.plant_diagram.space.euler_step(
-                            step_q, step_vplus, sim_dt
-                        ),
+                    self.space.x(
+                        self.space.euler_step(step_q, step_vplus, sim_dt),
                         step_vplus,
                     )
                 )
@@ -582,7 +585,7 @@ class MultibodyLearnableTactileSystem(Module):
             ret_u[..., sim_idx, :] = torch.cat(step_u, dim=-1)
 
         # Record final phi
-        step_q, step_v = self._multibody_terms.plant_diagram.space.q_v(
+        step_q, step_v = self.space.q_v(
             self._multibody_terms.construct_state_tensor(data_state[..., traj_len - 1])
         )
         (
@@ -882,23 +885,36 @@ class MultibodyLearnableTactileSystem(Module):
             ), loss_meas_force.size()
             ret_loss["loss_meas_force"] += loss_meas_force
 
-            # Penetration Loss (start only)
-            ret_loss["loss_pen"] += self._hyperparameters.w_pen * torch.square(
-                torch.maximum(
-                    -est_contact_phis[key][..., 0, 0],
-                    torch.zeros_like(est_contact_phis[key][..., 0, 0]),
-                )
+            # Penetration Loss (start only for NIMP, assume sim avoids penetration)
+            ret_loss["loss_pen"] += self._hyperparameters.w_pen * torch.maximum(
+                -est_contact_phis[key][..., 0, 0],
+                torch.zeros_like(est_contact_phis[key][..., 0, 0]),
             )
 
         return ret_loss
 
+    def state_map_for_learnable_bodies(
+        self,
+    ) -> Tensor:
+        """Returns a boolean tensor indicating which states correspond to
+        learnable bodies.
+        """
+        # TODO: Make agnostic to number of robot models
+        assert len(self._controlled_model_names) == 1
+        return torch.tensor(
+            [
+                not s.startswith(self._controlled_model_names[0])
+                for s in self.plant.GetStateNames()
+            ]
+        ).detach()
+
     def _loss_vimp(
         self,
-        meas_contact_forces,
-        meas_contact_normals,
-        est_contact_forces,
-        est_contact_normals,
-        est_contact_phis,
+        meas_contact_forces: dict[tuple[str, str], Tensor],
+        meas_contact_normals: dict[tuple[str, str], Tensor],
+        timestamps: Tensor,
+        plant_x: Tensor,
+        plant_u: Tensor,
     ) -> dict[str, Tensor]:
         """
         VIMP Loss
@@ -909,26 +925,374 @@ class MultibodyLearnableTactileSystem(Module):
         Args:
             meas_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
             meas_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
-            est_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
-            est_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
-            est_contact_phis: Dict[<collision>, size(batch, traj_len, 1)] in world frame
+            timestamps: size(batch, traj_len,)
+            plant_x: size(batch, traj_len, space.n_x)
+            plant_u: size(batch, traj_len, controlled_space.n_v)
         Returns:
             Dictionary of loss terms, each identified by a string.
             Each term is pre-scaled and comes in size(batch, traj_len-1)
             lambda-dependent Loss Terms Are:
-             * Contact Force Measurement (loss_meas_force)
              * Prediction: Velocity (loss_v_pred)
              * Complementarity (loss_comp)
-             * Max Power Dissipation (loss_p_diss)
+             * Max Power Dissipation (loss_diss)
              * Inelasticity (loss_elas)
+             * Contact Force Measurement (loss_meas_force)
             lambda-independent Loss Terms Are:
              * Contact Boolean Measurement (loss_meas_bool)
              * Contact Normal Measurement (loss_meas_normal)
              * Prediction: Position (loss_q_pred)
              * Penetration (loss_pen)
         """
-        # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
-        return None
+        # pylint: disable=too-many-arguments, too-many-positional-arguments,
+        # pylint: disable=too-many-statements, too-many-locals
+
+        # Input Validation
+        batch_dims = timestamps.size()[:-1]
+        traj_len = timestamps.size()[-1]
+        for key in list(meas_contact_forces):
+            assert meas_contact_normals[key].size() == batch_dims + (
+                traj_len - 1,
+                3,
+            ), meas_contact_normals[key].size()
+            assert meas_contact_forces[key].size() == batch_dims + (
+                traj_len - 1,
+                3,
+            ), meas_contact_forces[key].size()
+        assert plant_x.size() == batch_dims + (traj_len, self.space.n_x), plant_x.size()
+        assert plant_u.size() == batch_dims + (
+            traj_len,
+            self._controlled_space.n_v,
+        ), plant_u.size()
+
+        ret_loss = {
+            "loss_meas_bool": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_meas_force": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_meas_normal": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_pen": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_v_pred": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_q_pred": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_comp": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_diss": torch.zeros(batch_dims + (traj_len - 1,)),
+            "loss_elas": torch.zeros(batch_dims + (traj_len - 1,)),
+        }
+
+        # Compute DTs, switch trajectory jumps to default_dt
+        dts = (timestamps[..., 1:] - timestamps[..., :-1]).unsqueeze(-1)
+        dts[dts > self._hyperparameters.dt_thresh] = self._hyperparameters.default_dt
+
+        # Extract multibody terms, use next state and current control
+        plant_xplus = plant_x[..., 1:, :]
+        plant_xmin = plant_x[..., :-1, :]
+        (
+            m_delassus,
+            m_mass,
+            m_jac,
+            m_phi,
+            non_contact_acceleration,
+            obj_pair_list,
+            mr_fw_list,
+            mu_list,
+        ) = self._multibody_terms(
+            self.space.q(plant_xplus), self.space.v(plant_xplus), plant_u[..., :-1, :]
+        )
+        n_contacts = m_phi.shape[-1]
+
+        ### Prediction: Velocity Term
+        # Exclude robot predictions
+        # velocity_mask: 1 for learnable velocities, 0 for robot velocities.
+        velocity_mask = self.state_map_for_learnable_bodies()[self.space.n_q :]
+        plant_dv = (
+            self.space.v(plant_xplus)
+            - (self.space.v(plant_xmin) + non_contact_acceleration * dts)
+        ).unsqueeze(-2)
+
+        qp_v_pred = pbmm(
+            m_jac[..., velocity_mask],
+            pbmm(
+                torch.inverse(m_mass[..., velocity_mask, :][..., velocity_mask]),
+                m_jac[..., velocity_mask].transpose(-1, -2),
+            ),
+        ) + torch.finfo(m_delassus.dtype).eps * torch.eye(
+            3 * n_contacts
+        )  # Units: Energy. Must be positive-definite
+        q_v_pred = -pbmm(
+            m_jac[..., velocity_mask], plant_dv[..., velocity_mask].transpose(-1, -2)
+        )
+        const_v_pred = 0.5 * pbmm(
+            plant_dv[..., velocity_mask],
+            pbmm(
+                m_mass[..., velocity_mask, :][..., velocity_mask],
+                plant_dv[..., velocity_mask].transpose(-1, -2),
+            ),
+        )
+
+        ### Complementarity
+        # 0-pad in friction terms
+        phi_then_zero = torch.cat(
+            (m_phi, torch.zeros(m_phi.shape[:-1] + (2 * n_contacts,))), dim=-1
+        )
+        q_comp = (
+            torch.reciprocal(dts)
+            * torch.maximum(phi_then_zero, torch.zeros_like(phi_then_zero))
+        ).unsqueeze(-1)
+
+        ### Max Power Dissipation (loss_diss)
+        sliding_velocities = pbmm(
+            m_jac[..., n_contacts:, :], self.space.v(plant_xplus).unsqueeze(-1)
+        )
+
+        # Need non-0 norm for Hessian calculation, hence add eps to norm()
+        sliding_speeds = (
+            sliding_velocities.reshape(m_phi.shape[:-1] + (n_contacts, 2))
+            + torch.finfo(sliding_velocities.dtype).eps
+        ).norm(dim=-1, keepdim=True)
+
+        q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
+
+        ### Inelasticity (loss_elas)
+        normal_velocities = pbmm(
+            m_jac[..., :n_contacts, :], self.space.v(plant_xplus).unsqueeze(-1)
+        )
+        normal_velocities = torch.maximum(
+            normal_velocities, torch.zeros_like(normal_velocities)
+        )
+        # 0-pad in friction terms
+        q_elas = torch.cat(
+            (
+                normal_velocities,
+                torch.zeros(m_phi.shape[:-1] + (2 * n_contacts,)).unsqueeze(-1),
+            ),
+            dim=-2,
+        )
+
+        ### Contact Force Measurement (loss_meas_force)
+        q_meas_force = torch.zeros_like(q_v_pred)
+        qp_meas_force = torch.zeros_like(qp_v_pred)
+        const_meas_force = torch.zeros_like(const_v_pred)
+
+        for key in meas_contact_forces.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            mu_i = mu_list[indices[0]]
+            # qp_meas_force = diag(mu)RS^TSR^Tdiag(mu)^T; diag(mu) = 1 if normal, mu otherwise
+            # R is block diagonal rotation matrices, S is summation matrix
+            diag_f_mu = torch.zeros(
+                q_meas_force.shape[:-1] + ((len(indices) * 3),)
+            )  # (batch x (n_c_tot*3) x (n_c_obj*3))
+            r_fw_mat = torch.zeros(
+                q_meas_force.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))
+            )  # (batch x (n_c_obj*3) x (n_c_obj*3))
+            sum_w_mat = torch.zeros(
+                q_meas_force.shape[:-2] + (3, (len(indices) * 3))
+            )  # (batch x 3 x (n_c_obj*3))
+            for contact, idx in enumerate(indices):
+                # Map Normal Force
+                diag_f_mu[..., idx, contact * 3 + 2] = 1.0
+                # Map Tangent Forces
+                diag_f_mu[..., len(obj_pair_list) + 2 * idx, contact * 3] = mu_i
+                diag_f_mu[..., len(obj_pair_list) + 2 * idx + 1, contact * 3 + 1] = mu_i
+
+                # Create Block diagonal matrix (note torch.block_diag isn't vectorized)
+                r_fw_mat[
+                    ...,
+                    contact * 3 : (contact + 1) * 3,
+                    contact * 3 : (contact + 1) * 3,
+                ] = mr_fw_list[idx]
+
+                # Summation
+                sum_w_mat[..., 0, contact * 3] = 1.0
+                sum_w_mat[..., 1, contact * 3 + 1] = 1.0
+                sum_w_mat[..., 2, contact * 3 + 2] = 1.0
+            q_meas_force_part = pbmm(
+                sum_w_mat, pbmm(r_fw_mat.transpose(-1, -2), diag_f_mu.transpose(-1, -2))
+            )  # (batch, 3, (n_c_tot*3))
+            assert q_meas_force_part.size() == batch_dims + (
+                traj_len - 1,
+                3,
+                n_contacts * 3,
+            )
+            qp_meas_force += pbmm(
+                q_meas_force_part.transpose(-1, -2), q_meas_force_part
+            )
+
+            # Linear Term is lambda_mSR^Tdiag(mu)^T
+            impulse_measured = (meas_contact_forces[key] * dts).unsqueeze(
+                -2
+            )  # (batch, 1, 3)
+            assert impulse_measured.size() == batch_dims + (traj_len - 1, 1, 3)
+            q_meas_force -= pbmm(impulse_measured, q_meas_force_part).transpose(
+                -1, -2
+            )  # (batch, n_c_tot*3, 1)
+
+            # Constant term is lambda_m magnitude, multiply by 0.5 here to match constant_pred
+            const_meas_force += 0.5 * pbmm(
+                impulse_measured, impulse_measured.transpose(-1, -2)
+            )
+
+        qp_final = (
+            self._hyperparameters.w_v_pred * qp_v_pred
+            + (1.0 / self._hyperparameters.w_force_var) * qp_meas_force
+        )
+
+        q_final = (
+            self._hyperparameters.w_v_pred * q_v_pred
+            + self._hyperparameters.w_comp * q_comp
+            + self._hyperparameters.w_diss * q_diss
+            + self._hyperparameters.w_elas * q_elas
+            + (1.0 / self._hyperparameters.w_force_var) * q_meas_force
+        )
+
+        # Envelope theorem guarantees that gradient of loss w.r.t. parameters
+        # can ignore the gradient of the impulses w.r.t. the QCQP parameters.
+        # Therefore, we can detach ``impulses`` from pytorch's computation graph
+        # without causing error in the overall loss gradient.
+        # Construct a reordering matrix s.t. lambda_CN = reorder_mat @ f_sappy.
+        reorder_mat = sappy_reorder_mat(n_contacts)
+        reorder_mat = reorder_mat.reshape(
+            (1,) * (m_delassus.dim() - 2) + reorder_mat.shape
+        ).expand(m_delassus.shape)
+        with torch.no_grad():
+            impulses = pbmm(
+                reorder_mat,
+                self._solver(
+                    pbmm(
+                        reorder_mat.transpose(-1, -2), pbmm(qp_final, reorder_mat)
+                    ),  # Quadratic Term
+                    pbmm(reorder_mat.transpose(-1, -2), q_final).squeeze(
+                        -1
+                    ),  # Linear Term
+                ).unsqueeze(-1),
+            )
+
+        # Hack: remove elements of ``impulses`` where solver likely failed.
+        invalid = torch.any(
+            (impulses.abs() > 1e3) | impulses.isnan() | impulses.isinf(),
+            dim=-2,
+            keepdim=True,
+        )
+        impulses[invalid.expand(impulses.shape)] = 0.0
+        # Zero out negative normals (possible within solver tolerance)
+        impulses[..., :n_contacts, 0] = torch.maximum(
+            impulses[..., :n_contacts, 0].clone(),
+            torch.zeros_like(impulses[..., :n_contacts, 0].detach()),
+        ).clone()
+        const_v_pred[invalid] *= 0.0
+        const_meas_force[invalid] *= 0.0
+
+        ### Loss: Prediction: Velocity (loss_v_pred)
+        ret_loss["loss_v_pred"] += self._hyperparameters.w_v_pred * (
+            0.5 * pbmm(impulses.transpose(-1, -2), pbmm(qp_v_pred, impulses))
+            + pbmm(impulses.transpose(-1, -2), q_v_pred)
+            + const_v_pred
+        ).squeeze(-1).squeeze(-1)
+        assert ret_loss["loss_v_pred"].size() == batch_dims + (traj_len - 1,)
+        assert np.all(
+            ret_loss["loss_v_pred"].detach().cpu().numpy()
+            >= -torch.finfo(impulses.dtype).eps
+        ), "Velocity Prediction Loss Negative"
+
+        ### Loss: Complementarity (loss_comp)
+        ret_loss["loss_comp"] += self._hyperparameters.w_comp * pbmm(
+            impulses.transpose(-1, -2), q_comp
+        ).squeeze(-1).squeeze(-1)
+        assert ret_loss["loss_comp"].size() == batch_dims + (traj_len - 1,)
+
+        ### Loss: Max Power Dissipation (loss_diss)
+        ret_loss["loss_diss"] += self._hyperparameters.w_diss * pbmm(
+            impulses.transpose(-1, -2), q_diss
+        ).squeeze(-1).squeeze(-1)
+        assert ret_loss["loss_diss"].size() == batch_dims + (traj_len - 1,)
+
+        ### Loss: Inelasticity (loss_elas)
+        ret_loss["loss_elas"] += self._hyperparameters.w_elas * pbmm(
+            impulses.transpose(-1, -2), q_elas
+        ).squeeze(-1).squeeze(-1)
+        assert ret_loss["loss_elas"].size() == batch_dims + (traj_len - 1,)
+
+        ### Loss: Contact Force Measurement (loss_meas_force)
+        ret_loss["loss_meas_force"] += (1.0 / self._hyperparameters.w_force_var) * (
+            0.5 * pbmm(impulses.transpose(-1, -2), pbmm(qp_meas_force, impulses))
+            + pbmm(impulses.transpose(-1, -2), q_meas_force)
+            + const_meas_force
+        ).squeeze(-1).squeeze(-1)
+        assert ret_loss["loss_meas_force"].size() == batch_dims + (traj_len - 1,)
+        assert np.all(
+            ret_loss["loss_meas_force"].detach().cpu().numpy()
+            >= -torch.finfo(impulses.dtype).eps
+        ), "Contact Force Measurement Loss Negative"
+
+        ### Loss: Prediction: Position (loss_q_pred)
+        vel_err = (
+            self.space.configuration_difference(
+                self.space.euler_step(
+                    self.space.q(plant_xmin), self.space.v(plant_xplus), dts
+                ),
+                self.space.q(plant_xplus),
+            )
+            / dts
+        )
+        # Exclude robot trajectory
+        vel_err[..., ~velocity_mask] = 0.0
+        ret_loss["loss_q_pred"] += self._hyperparameters.w_q_pred * pbmm(
+            vel_err.unsqueeze(-2), pbmm(m_mass, vel_err.unsqueeze(-1))
+        ).squeeze(-1).squeeze(-1)
+        assert ret_loss["loss_q_pred"].size() == batch_dims + (traj_len - 1,)
+
+        ### Loss: Penetration (loss_pen)
+        ret_loss["loss_pen"] += self._hyperparameters.w_pen * torch.maximum(
+            -m_phi,
+            torch.zeros_like(m_phi),
+        ).sum(dim=-1)
+        assert ret_loss["loss_pen"].size() == batch_dims + (traj_len - 1,)
+
+        ### Loss: Contact Normal Measurement (loss_meas_normal)
+        phi_alpha = (
+            np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
+            / self._hyperparameters.w_phi_nominal
+        )
+        for key in meas_contact_normals.keys():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            for idx in indices:
+                normals_guess = mr_fw_list[idx].transpose(-1, -2)[..., 2]
+                assert normals_guess.size() == batch_dims + (traj_len - 1, 3)
+                assert meas_contact_normals[key].size() == batch_dims + (
+                    traj_len - 1,
+                    3,
+                )
+                contact_bool = torch.ones(batch_dims + (traj_len - 1,))
+                contact_bool[
+                    torch.isclose(
+                        # pylint doesn't know about torch
+                        # pylint: disable=not-callable
+                        torch.linalg.vector_norm(meas_contact_normals[key], dim=-1),
+                        torch.zeros(batch_dims + (traj_len - 1,)),
+                    )
+                ] = 0.0
+                # Batch dot product (max 0 for numerical stability)
+                cost_normal = torch.maximum(
+                    1.0 - (meas_contact_normals[key] * normals_guess).sum(dim=-1),
+                    torch.zeros(batch_dims + (traj_len - 1,)),
+                )
+                assert cost_normal.size() == batch_dims + (traj_len - 1,)
+                ret_loss["loss_meas_normal"] += (
+                    (0.5 / self._hyperparameters.w_normal_var)
+                    * contact_bool
+                    * cost_normal
+                )
+                assert ret_loss["loss_meas_normal"].size() == batch_dims + (
+                    traj_len - 1,
+                )
+
+                ### Loss: Contact Boolean Measurement (loss_meas_bool)
+                ret_loss["loss_meas_bool"] += (contact_bool - 1.0) * phi_alpha * m_phi[
+                    ..., idx
+                ] + torch.log(1.0 + torch.exp(phi_alpha * m_phi[..., idx]))
+                assert ret_loss["loss_meas_bool"].size() == batch_dims + (traj_len - 1,)
+
+        return ret_loss
 
     def loss_fn(
         self,
