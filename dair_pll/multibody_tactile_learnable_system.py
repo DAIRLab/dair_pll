@@ -22,6 +22,7 @@ https://doi.org/10.1007/s10107-005-0590-7
 
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import partial
 from typing import override, Optional, cast
 
 import gin
@@ -30,7 +31,7 @@ from pydrake.geometry import Shape
 from tensordict import TensorDict
 import torch
 from torch import Tensor
-from torch.nn import Module
+from torch.nn import Module, Parameter
 
 from dair_pll.drake_utils import (
     unique_body_identifier,
@@ -344,7 +345,7 @@ class MultibodyLearnableTactileSystem(Module):
                 index = np.array([i for i, x in enumerate(obj_pair_list) if x == key])[
                     0
                 ]
-                ret_phis[key] = torch.ones(batch_dims + (1, 1)) * m_phi[..., index]
+                ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1,1))
 
         # Trajectory Jumps, return 0s
         if dt > self._hyperparameters.dt_thresh:
@@ -388,16 +389,12 @@ class MultibodyLearnableTactileSystem(Module):
             assert len(indices) == 1
             index = indices[0]
             fric_index = len(obj_pair_list) + 2 * index
-            mr_wf_i = mr_fw_list[index].transpose(-1, -2).detach()
-            ret_contact_normals[key][contact_filter[..., index, 0], 0, :] = mr_wf_i[
-                contact_filter[..., index, 0], :, 2
-            ]
+            mr_wf_i = mr_fw_list[index].transpose(-1, -2)
+            ret_contact_normals[key][..., 0, :] = mr_wf_i[..., :, 2]
             # Force in contact_frame
             ret_contact_force[..., 0, 2] = impulse[..., index, 0] / dt
             ret_contact_force[..., 0, :2] = (
-                mu_list[index].detach()
-                * impulse[..., fric_index : fric_index + 2, 0]
-                / dt
+                mu_list[index] * impulse[..., fric_index : fric_index + 2, 0] / dt
             )
             # Rotate into world frame
             ret_contact_forces[key] = pbmm(
@@ -415,7 +412,8 @@ class MultibodyLearnableTactileSystem(Module):
         self,
         ctrl_desired: Tensor,
         timestamps: Optional[Tensor],
-        ctrl_actual: Optional[Tensor],
+        ctrl_actual: Optional[Tensor] = None,
+        learned_start_state: Optional[Tensor] = None,
     ) -> tuple[
         Tensor,
         Tensor,
@@ -430,14 +428,15 @@ class MultibodyLearnableTactileSystem(Module):
             ctrl_desired: (batch, traj_len, robot.n_x)
             timestamps: (traj_len,)
             ctrl_actual: (batch, traj_len, robot.n_x) (optional: if provided overwrite robot state)
+            learned_start_state: (self._learned_trajectory.space.n_x,), use current state if not provided
         Returns:
             - state tensor of size (batch, traj_len, plant.n_x)
             - robot u  (batch, traj_len, robot.n_v)
             - ret_contact_forces Dict[<collision>, size(batch, traj_len, 3)]
-            - ret_normal_forces Dict[<collision>, size(batch, traj_len, 3)]
-            - ret_phis Dict[<collision>, size(batch, traj_len, 1)]
+            - ret_contact_normals Dict[<collision>, size(batch, traj_len, 3)]
+            - ret_contact_phis Dict[<collision>, size(batch, traj_len, 1)]
         """
-        # pylint: disable=too-many-locals, too-many-branches
+        # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 
         # Input Validation
         assert len(ctrl_desired.size()) >= 2
@@ -447,6 +446,14 @@ class MultibodyLearnableTactileSystem(Module):
             traj_len,
             self._controlled_space.n_x,
         ), str(ctrl_desired.size())
+        timestamps = (
+            torch.arange(
+                traj_len * self._hyperparameters.default_dt,
+                step=self._hyperparameters.default_dt,
+            )
+            if timestamps is None
+            else timestamps
+        )
         assert timestamps.size() == (traj_len,)
 
         assert (ctrl_actual is None) or (
@@ -457,6 +464,11 @@ class MultibodyLearnableTactileSystem(Module):
                 self._controlled_space.n_x,
             )
         )
+
+        if learned_start_state is not None:
+            assert learned_start_state.size() == (self._learned_trajectory.space.n_x,)
+        else:
+            learned_start_state = self._learned_trajectory.current_state()
 
         # print(f"Running DiffSim of Length {traj_len}...")
 
@@ -484,9 +496,7 @@ class MultibodyLearnableTactileSystem(Module):
         for traj_model_idx, (traj_model_name, traj_model_x) in enumerate(
             zip(
                 self._learned_model_names,
-                self._learned_trajectory.space.x_split(
-                    self._learned_trajectory.current_state()
-                ),
+                self._learned_trajectory.space.x_split(learned_start_state),
             )
         ):
             assert len(traj_model_x.size()) == 1
@@ -604,7 +614,7 @@ class MultibodyLearnableTactileSystem(Module):
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) != 1:
                 continue
-            ret_contact_phis[key][..., traj_len - 1, :] = final_phi[..., indices[0]]
+            ret_contact_phis[key][..., traj_len - 1, 0] = final_phi[..., indices[0]]
 
         return (
             self._multibody_terms.construct_state_tensor(data_state),
@@ -658,6 +668,14 @@ class MultibodyLearnableTactileSystem(Module):
             traj_len,
             self._controlled_space.n_x,
         ), str(ctrl_desired.size())
+        timestamps = (
+            torch.arange(
+                traj_len * self._hyperparameters.default_dt,
+                step=self._hyperparameters.default_dt,
+            )
+            if timestamps is None
+            else timestamps
+        )
         assert timestamps.size() == (traj_len,)
 
         # Naive Implicit Loss
@@ -925,7 +943,7 @@ class MultibodyLearnableTactileSystem(Module):
         Args:
             meas_contact_forces: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
             meas_contact_normals: Dict[<collision>, size(batch, traj_len-1, 3)] in world frame
-            timestamps: size(batch, traj_len,)
+            timestamps: size(traj_len,)
             plant_x: size(batch, traj_len, space.n_x)
             plant_u: size(batch, traj_len, controlled_space.n_v)
         Returns:
@@ -947,8 +965,9 @@ class MultibodyLearnableTactileSystem(Module):
         # pylint: disable=too-many-statements, too-many-locals
 
         # Input Validation
-        batch_dims = timestamps.size()[:-1]
-        traj_len = timestamps.size()[-1]
+        batch_dims = plant_x.size()[:-2]
+        traj_len = plant_x.size()[-2]
+        assert timestamps.size() == (traj_len,)
         for key in list(meas_contact_forces):
             assert meas_contact_normals[key].size() == batch_dims + (
                 traj_len - 1,
@@ -977,7 +996,7 @@ class MultibodyLearnableTactileSystem(Module):
         }
 
         # Compute DTs, switch trajectory jumps to default_dt
-        dts = (timestamps[..., 1:] - timestamps[..., :-1]).unsqueeze(-1)
+        dts = (timestamps[1:] - timestamps[:-1]).unsqueeze(-1)
         dts[dts > self._hyperparameters.dt_thresh] = self._hyperparameters.default_dt
 
         # Extract multibody terms, use next state and current control
@@ -1335,6 +1354,157 @@ class MultibodyLearnableTactileSystem(Module):
             forward_args[0],  # plant states
             forward_args[1],  # plant control
         )
+
+    def expected_fisher_info(
+        self,
+        ctrl_desired: Tensor,
+        timestamps: Optional[Tensor] = None,
+        current_learned_q: Optional[Tensor] = None,
+        x_jac: Optional[Tensor] = None,
+    ) -> Tensor:
+        """Calculate Expected Fisher Information
+
+        Args:
+            ctrl_desired: Input desired robot trajectory of size (batch, traj_len, self._controlled_space.n_x)
+            timestamps: (traj_len,), if not provided use hyperparameters.default_dt
+            current_learned_q: (self._learned_trajectory.space.n_q,), if not provided use current state
+            x_jac: d(current_learned_q)/d(exploration_q; e.g. x0)
+                (self._learned_trajectory.space.n_q, self._learned_trajectory.space.n_q)
+                identity if not provided
+
+        Returns:
+            Let n_params = len(current_learned_q) + len(self._multibody_terms.parameters())
+            Returns Expected Fisher Info Matrices: (batch, n_params, n_params)
+        """
+
+        # pylint: disable=too-many-locals
+
+        print("Calculating Expected Information...")
+
+        # Input Validation
+        batch_dims = ctrl_desired.size()[:-2]
+        traj_len = ctrl_desired.size()[-2]
+        assert ctrl_desired.size() == batch_dims + (
+            traj_len,
+            self._controlled_space.n_x,
+        )
+        timestamps = (
+            torch.arange(
+                traj_len * self._hyperparameters.default_dt,
+                step=self._hyperparameters.default_dt,
+            )
+            if timestamps is None
+            else timestamps
+        )
+        assert timestamps.size() == (traj_len,)
+        pose_param = (
+            self._learned_trajectory.current_pose_params(traj_num=-1)
+            if current_learned_q is None
+            else Parameter(current_learned_q.detach().clone(), requires_grad=True)
+        )
+        assert pose_param.size() == (self._learned_trajectory.space.n_q,)
+        assert pose_param.requires_grad
+        x_jac = (
+            torch.eye(self._learned_trajectory.space.n_q) if x_jac is None else x_jac
+        )
+        assert x_jac.size() == (
+            self._learned_trajectory.space.n_q,
+            self._learned_trajectory.space.n_q,
+        )
+
+        # Diff Simulate from pose param
+        self.zero_grad()
+        _, _, sim_forces, sim_normals, sim_phis = self.diff_simulate(
+            ctrl_desired,
+            timestamps,
+            learned_start_state=self._learned_trajectory.space.x(
+                pose_param, torch.zeros((self._learned_trajectory.space.n_v))
+            ),
+        )
+        param_list = [pose_param] + [
+            param for param in self._multibody_terms.parameters() if param.requires_grad
+        ]
+        n_params = sum(param.numel() for param in param_list)
+        ret_fisher = torch.zeros(batch_dims + (n_params, n_params))
+        output_phi = torch.stack([phi[..., 1:, :] for phi in sim_phis.values()], dim=-2)
+        output_normals = torch.stack(
+            [norm[..., :, :] for norm in sim_normals.values()], dim=-2
+        )
+        output_forces = torch.stack(
+            [norm[..., :, :] for norm in sim_forces.values()], dim=-2
+        )
+
+        # Take Derivatives of outputs
+        def get_vjp(output, ret_graph, v):
+            grad = torch.autograd.grad(
+                output.flatten(), param_list, v, retain_graph=ret_graph
+            )
+            return torch.cat([gr.flatten() for gr in grad])
+
+        print("Differentiating phi...")
+        grads_phi = torch.vmap(partial(get_vjp, output_phi, True))(
+            torch.eye(output_phi.numel())
+        ).reshape(output_phi.size() + (-1,))
+        grads_phi[..., : self._learned_trajectory.space.n_q] = pbmm(
+            grads_phi[..., : self._learned_trajectory.space.n_q],
+            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+        )
+        phi_alpha = (
+            np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
+            / self._hyperparameters.w_phi_nominal
+        )
+        phi_mult = (
+            phi_alpha
+            * phi_alpha
+            * torch.exp(phi_alpha * output_phi.detach())
+            / torch.square(1.0 + torch.exp(phi_alpha * output_phi.detach()))
+        ).unsqueeze(-1)
+        ret_fisher += (
+            pbmm(grads_phi.transpose(-1, -2), pbmm(phi_mult, grads_phi))
+            .reshape(batch_dims + (-1, n_params, n_params))
+            .sum(dim=-3)
+        )
+
+        print("Differentiating normals...")
+        contact_bool = torch.reciprocal(
+            1.0 + torch.exp(phi_alpha * output_phi.detach())
+        ).unsqueeze(-1)
+        grads_normals = torch.vmap(partial(get_vjp, output_normals, True))(
+            torch.eye(output_normals.numel())
+        ).reshape(output_normals.size() + (-1,))
+        grads_normals[..., : self._learned_trajectory.space.n_q] = pbmm(
+            grads_normals[..., : self._learned_trajectory.space.n_q],
+            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+        )
+        ret_fisher += (
+            (
+                contact_bool
+                * (1.0 / self._hyperparameters.w_normal_var)
+                * pbmm(grads_normals.transpose(-1, -2), grads_normals)
+            )
+            .reshape(batch_dims + (-1, n_params, n_params))
+            .sum(dim=-3)
+        )
+
+        print("Differentiating forces...")
+        grads_forces = torch.vmap(partial(get_vjp, output_forces, False))(
+            torch.eye(output_forces.numel())
+        ).reshape(output_forces.size() + (-1,))
+        grads_forces[..., : self._learned_trajectory.space.n_q] = pbmm(
+            grads_forces[..., : self._learned_trajectory.space.n_q],
+            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+        )
+        ret_fisher += (
+            (
+                contact_bool
+                * (1.0 / self._hyperparameters.w_force_var)
+                * pbmm(grads_forces.transpose(-1, -2), grads_forces)
+            )
+            .reshape(batch_dims + (-1, n_params, n_params))
+            .sum(dim=-3)
+        )
+
+        return ret_fisher
 
     @torch.no_grad
     def get_learned_body_name(self) -> str:

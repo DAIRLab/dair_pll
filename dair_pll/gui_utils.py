@@ -118,14 +118,17 @@ class PLLMeshcatVisualizer:
         )
 
         # Update true trajectory
-        if len(self._data.trajectories) > 0:
-            true_traj = (
-                self._data.get_full_trajectory(
-                    key=self._system.learned_model_names[0] + "_groundtruth"
+        if len(self._data.trajectories) > 0 or self._learned_plant_traj is not None:
+            if len(self._data.trajectories) > 0:
+                true_traj = (
+                    self._data.get_full_trajectory(
+                        key=self._system.learned_model_names[0] + "_groundtruth"
+                    )
+                    .cpu()
+                    .numpy()
                 )
-                .cpu()
-                .numpy()
-            )
+            else:
+                true_traj = learned_traj
             assert true_traj.shape == learned_traj.shape
             self._meshcat.SetTransform(
                 "/true", transform_from_state_q(true_traj[timestep, :])
@@ -143,6 +146,7 @@ class PLLMeshcatVisualizer:
                 self._system.get_body_geometry("finger_1"),
                 Rgba(0.8, 0.0, 0.0, 0.8),
             )
+            """
             robot_traj = (
                 self._data.get_full_trajectory(
                     key=self._system.controlled_model_names[0] + "_state"
@@ -150,6 +154,8 @@ class PLLMeshcatVisualizer:
                 .cpu()
                 .numpy()
             )
+            """
+            robot_traj = self._system.get_controlled_trajectory(self._learned_plant_traj).cpu().numpy()
 
             zero_rot = np.array([1.0, 0.0, 0.0, 0.0])
             robot_0_traj = np.hstack(

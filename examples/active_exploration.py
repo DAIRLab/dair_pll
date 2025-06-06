@@ -149,6 +149,31 @@ def main(
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
 
+        elif command_char == "a":
+            traj_x, traj_time = interpolate_sampled_action(
+                data=torch.stack([torch.tensor(np.array(sample_action(index=idx))) for idx in [0,1]]),
+                trifinger=trifinger_lcm,
+            )
+            robot_traj = extract_robot_trajectory(
+                traj_x,
+                learned_system,
+                trifinger_lcm,
+            )
+            """
+            print("Temp Diffsim")
+            temp = learned_system(
+                ctrl_desired=robot_traj,
+                timestamps=traj_time,
+                nimp_override=True,
+            )
+            gui_vis.learned_plant_traj = temp[0]
+            gui_vis.update()
+            """
+            fisher = learned_system.expected_fisher_info(
+                ctrl_desired=robot_traj,
+                timestamps=traj_time,
+            )
+
         elif command_char == "e":
             ## Execute selected action
             # Move to start state
