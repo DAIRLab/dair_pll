@@ -23,6 +23,7 @@ https://doi.org/10.1007/s10107-005-0590-7
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import partial
+import time
 from typing import override, Optional, cast
 
 import gin
@@ -1434,24 +1435,37 @@ class MultibodyLearnableTactileSystem(Module):
             [norm[..., :, :] for norm in sim_forces.values()], dim=-2
         )
 
-        # Take Derivatives of outputs
-        def get_vjp(output, ret_graph, v):
-            grad = torch.autograd.grad(
-                output.flatten(), param_list, v, retain_graph=ret_graph
-            )
-            return torch.cat([gr.flatten() for gr in grad])
-
-        print("Differentiating phi...")
-        grads_phi = torch.vmap(partial(get_vjp, output_phi, True))(
-            torch.eye(output_phi.numel())
-        ).reshape(output_phi.size() + (-1,))
-        grads_phi[..., : self._learned_trajectory.space.n_q] = pbmm(
-            grads_phi[..., : self._learned_trajectory.space.n_q],
-            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
-        )
+        # Extract Contact Boolean
         phi_alpha = (
             np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
             / self._hyperparameters.w_phi_nominal
+        )
+        contact_bool = torch.reciprocal(
+            1.0 + torch.exp(phi_alpha * output_phi.detach())
+        ).unsqueeze(-1)
+
+        # Take Derivatives of outputs
+        def get_vjp(output, v):
+            grad = torch.autograd.grad(
+                output.flatten(), param_list, v, create_graph=False, retain_graph=False,
+            )
+            return torch.cat([gr.flatten() for gr in grad])
+
+        print("Differentiating phi, force, normal...")
+        start = time.time()
+        output_combined = torch.cat([output_phi.flatten(), output_forces.flatten(), output_normals.flatten()])
+        grads_combined = torch.vmap(partial(get_vjp, output_combined))(
+            torch.eye(output_combined.numel())
+        )
+        grads_phi = grads_combined[:output_phi.numel()].reshape(output_phi.size() + (n_params,))
+        grads_forces = grads_combined[output_phi.numel():output_phi.numel()+output_forces.numel()].reshape(output_forces.size() + (n_params,))
+        grads_normals = grads_combined[output_phi.numel()+output_forces.numel():].reshape(output_normals.size() + (n_params,))
+        print(f"... Done in {(time.time()-start):.6f}s")
+
+        ### Phi Term
+        grads_phi[..., : self._learned_trajectory.space.n_q] = pbmm(
+            grads_phi[..., : self._learned_trajectory.space.n_q],
+            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
         )
         phi_mult = (
             phi_alpha
@@ -1464,32 +1478,8 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape(batch_dims + (-1, n_params, n_params))
             .sum(dim=-3)
         )
-
-        print("Differentiating normals...")
-        contact_bool = torch.reciprocal(
-            1.0 + torch.exp(phi_alpha * output_phi.detach())
-        ).unsqueeze(-1)
-        grads_normals = torch.vmap(partial(get_vjp, output_normals, True))(
-            torch.eye(output_normals.numel())
-        ).reshape(output_normals.size() + (-1,))
-        grads_normals[..., : self._learned_trajectory.space.n_q] = pbmm(
-            grads_normals[..., : self._learned_trajectory.space.n_q],
-            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
-        )
-        ret_fisher += (
-            (
-                contact_bool
-                * (1.0 / self._hyperparameters.w_normal_var)
-                * pbmm(grads_normals.transpose(-1, -2), grads_normals)
-            )
-            .reshape(batch_dims + (-1, n_params, n_params))
-            .sum(dim=-3)
-        )
-
-        print("Differentiating forces...")
-        grads_forces = torch.vmap(partial(get_vjp, output_forces, False))(
-            torch.eye(output_forces.numel())
-        ).reshape(output_forces.size() + (-1,))
+        
+        ### Forces Term
         grads_forces[..., : self._learned_trajectory.space.n_q] = pbmm(
             grads_forces[..., : self._learned_trajectory.space.n_q],
             x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
@@ -1499,6 +1489,21 @@ class MultibodyLearnableTactileSystem(Module):
                 contact_bool
                 * (1.0 / self._hyperparameters.w_force_var)
                 * pbmm(grads_forces.transpose(-1, -2), grads_forces)
+            )
+            .reshape(batch_dims + (-1, n_params, n_params))
+            .sum(dim=-3)
+        )
+        
+        ### Normals Term
+        grads_normals[..., : self._learned_trajectory.space.n_q] = pbmm(
+            grads_normals[..., : self._learned_trajectory.space.n_q],
+            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+        )
+        ret_fisher += (
+            (
+                contact_bool
+                * (1.0 / self._hyperparameters.w_normal_var)
+                * pbmm(grads_normals.transpose(-1, -2), grads_normals)
             )
             .reshape(batch_dims + (-1, n_params, n_params))
             .sum(dim=-3)
