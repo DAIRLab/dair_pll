@@ -17,6 +17,7 @@ install_reqs = [
     "matplotlib",
     "lcm",
     "threadpoolctl",
+    "multiprocess",
     "click",
     "pywavefront",
     "python-fcl",
