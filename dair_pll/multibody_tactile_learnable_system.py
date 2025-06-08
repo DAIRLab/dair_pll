@@ -346,7 +346,7 @@ class MultibodyLearnableTactileSystem(Module):
                 index = np.array([i for i, x in enumerate(obj_pair_list) if x == key])[
                     0
                 ]
-                ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1,1))
+                ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1, 1))
 
         # Trajectory Jumps, return 0s
         if dt > self._hyperparameters.dt_thresh:
@@ -1384,6 +1384,10 @@ class MultibodyLearnableTactileSystem(Module):
 
         # Input Validation
         batch_dims = ctrl_desired.size()[:-2]
+        if len(batch_dims) < 1:
+            batch_dims = (1,)
+            ctrl_desired = ctrl_desired.unsqueeze(0)
+        n_batches = sum(batch_dims)
         traj_len = ctrl_desired.size()[-2]
         assert ctrl_desired.size() == batch_dims + (
             traj_len,
@@ -1413,103 +1417,141 @@ class MultibodyLearnableTactileSystem(Module):
             self._learned_trajectory.space.n_q,
         )
 
-        # Diff Simulate from pose param
-        self.zero_grad()
-        _, _, sim_forces, sim_normals, sim_phis = self.diff_simulate(
-            ctrl_desired,
-            timestamps,
-            learned_start_state=self._learned_trajectory.space.x(
-                pose_param, torch.zeros((self._learned_trajectory.space.n_v))
-            ),
-        )
         param_list = [pose_param] + [
             param for param in self._multibody_terms.parameters() if param.requires_grad
         ]
         n_params = sum(param.numel() for param in param_list)
-        ret_fisher = torch.zeros(batch_dims + (n_params, n_params))
-        output_phi = torch.stack([phi[..., 1:, :] for phi in sim_phis.values()], dim=-2)
-        output_normals = torch.stack(
-            [norm[..., :, :] for norm in sim_normals.values()], dim=-2
-        )
-        output_forces = torch.stack(
-            [norm[..., :, :] for norm in sim_forces.values()], dim=-2
-        )
 
-        # Extract Contact Boolean
-        phi_alpha = (
-            np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
-            / self._hyperparameters.w_phi_nominal
-        )
-        contact_bool = torch.reciprocal(
-            1.0 + torch.exp(phi_alpha * output_phi.detach())
-        ).unsqueeze(-1)
+        ret_fishers = []
 
-        # Take Derivatives of outputs
+        # Define Derivative Function for vmap
         def get_vjp(output, v):
             grad = torch.autograd.grad(
-                output.flatten(), param_list, v, create_graph=False, retain_graph=False,
+                output.flatten(),
+                param_list,
+                v,
+                create_graph=False,
+                retain_graph=False,
             )
             return torch.cat([gr.flatten() for gr in grad])
 
-        print("Differentiating phi, force, normal...")
-        start = time.time()
-        output_combined = torch.cat([output_phi.flatten(), output_forces.flatten(), output_normals.flatten()])
-        grads_combined = torch.vmap(partial(get_vjp, output_combined))(
-            torch.eye(output_combined.numel())
-        )
-        grads_phi = grads_combined[:output_phi.numel()].reshape(output_phi.size() + (n_params,))
-        grads_forces = grads_combined[output_phi.numel():output_phi.numel()+output_forces.numel()].reshape(output_forces.size() + (n_params,))
-        grads_normals = grads_combined[output_phi.numel()+output_forces.numel():].reshape(output_normals.size() + (n_params,))
-        print(f"... Done in {(time.time()-start):.6f}s")
+        # TODO: Investigate why grad() has superlinear behavior
+        #       necessitating this for loop
+        def calc_info(batch_idx):
+            # Diff Simulate from pose param
+            ret_fisher = torch.zeros((n_params, n_params))
 
-        ### Phi Term
-        grads_phi[..., : self._learned_trajectory.space.n_q] = pbmm(
-            grads_phi[..., : self._learned_trajectory.space.n_q],
-            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
-        )
-        phi_mult = (
-            phi_alpha
-            * phi_alpha
-            * torch.exp(phi_alpha * output_phi.detach())
-            / torch.square(1.0 + torch.exp(phi_alpha * output_phi.detach()))
-        ).unsqueeze(-1)
-        ret_fisher += (
-            pbmm(grads_phi.transpose(-1, -2), pbmm(phi_mult, grads_phi))
-            .reshape(batch_dims + (-1, n_params, n_params))
-            .sum(dim=-3)
-        )
-        
-        ### Forces Term
-        grads_forces[..., : self._learned_trajectory.space.n_q] = pbmm(
-            grads_forces[..., : self._learned_trajectory.space.n_q],
-            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
-        )
-        ret_fisher += (
-            (
-                contact_bool
-                * (1.0 / self._hyperparameters.w_force_var)
-                * pbmm(grads_forces.transpose(-1, -2), grads_forces)
+            print(f"Action {batch_idx+1}/{n_batches}. Running DiffSim...")
+            start = time.time()
+            _, _, sim_forces, sim_normals, sim_phis = self.diff_simulate(
+                ctrl_desired.reshape((n_batches,) + ctrl_desired.size()[1:])[batch_idx],
+                timestamps,
+                learned_start_state=self._learned_trajectory.space.x(
+                    pose_param, torch.zeros((self._learned_trajectory.space.n_v))
+                ),
             )
-            .reshape(batch_dims + (-1, n_params, n_params))
-            .sum(dim=-3)
-        )
-        
-        ### Normals Term
-        grads_normals[..., : self._learned_trajectory.space.n_q] = pbmm(
-            grads_normals[..., : self._learned_trajectory.space.n_q],
-            x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
-        )
-        ret_fisher += (
-            (
-                contact_bool
-                * (1.0 / self._hyperparameters.w_normal_var)
-                * pbmm(grads_normals.transpose(-1, -2), grads_normals)
-            )
-            .reshape(batch_dims + (-1, n_params, n_params))
-            .sum(dim=-3)
-        )
 
-        return ret_fisher
+            output_phi = torch.stack(
+                [phi[..., 1:, :] for phi in sim_phis.values()], dim=-2
+            )
+            output_normals = torch.stack(
+                [norm[..., :, :] for norm in sim_normals.values()], dim=-2
+            )
+            output_forces = torch.stack(
+                [norm[..., :, :] for norm in sim_forces.values()], dim=-2
+            )
+
+            # Extract Contact Boolean
+            phi_alpha = (
+                np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
+                / self._hyperparameters.w_phi_nominal
+            )
+            contact_bool = torch.reciprocal(
+                1.0 + torch.exp(phi_alpha * output_phi.detach())
+            ).unsqueeze(-1)
+
+            # Take Derivatives of outputs
+            print("... Differentiating phi, force, normal...")
+            output_combined = torch.cat(
+                [
+                    output_phi.flatten(),
+                    output_forces.flatten(),
+                    output_normals.flatten(),
+                ]
+            )
+            grads_combined = torch.vmap(partial(get_vjp, output_combined))(
+                torch.eye(output_combined.numel())
+            )
+            grads_phi = grads_combined[: output_phi.numel()].reshape(
+                output_phi.size() + (n_params,)
+            )
+            grads_forces = grads_combined[
+                output_phi.numel() : output_phi.numel() + output_forces.numel()
+            ].reshape(output_forces.size() + (n_params,))
+            grads_normals = grads_combined[
+                output_phi.numel() + output_forces.numel() :
+            ].reshape(output_normals.size() + (n_params,))
+
+            ### Phi Term
+            grads_phi[..., : self._learned_trajectory.space.n_q] = pbmm(
+                grads_phi[..., : self._learned_trajectory.space.n_q],
+                x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+            )
+            phi_mult = (
+                phi_alpha
+                * phi_alpha
+                * torch.exp(phi_alpha * output_phi.detach())
+                / torch.square(1.0 + torch.exp(phi_alpha * output_phi.detach()))
+            ).unsqueeze(-1)
+            ret_fisher += (
+                pbmm(grads_phi.transpose(-1, -2), pbmm(phi_mult, grads_phi))
+                .reshape((-1, n_params, n_params))
+                .sum(dim=0)
+            )
+
+            ### Forces Term
+            grads_forces[..., : self._learned_trajectory.space.n_q] = pbmm(
+                grads_forces[..., : self._learned_trajectory.space.n_q],
+                x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+            )
+            ret_fisher += (
+                (
+                    contact_bool
+                    * (1.0 / self._hyperparameters.w_force_var)
+                    * pbmm(grads_forces.transpose(-1, -2), grads_forces)
+                )
+                .reshape((-1, n_params, n_params))
+                .sum(dim=0)
+            )
+
+            ### Normals Term
+            grads_normals[..., : self._learned_trajectory.space.n_q] = pbmm(
+                grads_normals[..., : self._learned_trajectory.space.n_q],
+                x_jac.expand(output_phi.size()[:-1] + x_jac.size()),
+            )
+            ret_fisher += (
+                (
+                    contact_bool
+                    * (1.0 / self._hyperparameters.w_normal_var)
+                    * pbmm(grads_normals.transpose(-1, -2), grads_normals)
+                )
+                .reshape((-1, n_params, n_params))
+                .sum(dim=0)
+            )
+            print(f"... Done in {(time.time()-start):.6f}s")
+            return ret_fisher
+
+        ## TODO: get pydrake pickle-able
+        """
+        with Pool(5) as p:
+            ret_fishers.extend(p.map(calc_info, range(n_batches)))
+        """
+        for batch_idx in range(n_batches):
+            self.zero_grad()
+            ret_fishers.append(calc_info(batch_idx))
+
+        ret = torch.stack(ret_fishers).reshape(batch_dims + (n_params, n_params))
+        return ret
 
     @torch.no_grad
     def get_learned_body_name(self) -> str:

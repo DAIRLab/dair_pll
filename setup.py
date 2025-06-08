@@ -23,7 +23,7 @@ install_reqs = [
     "gitpython",
     "protobuf==3.20.*",
     "cvxpylayers @ git+https://github.com/egordon/cvxpylayers", # includes solve_only for no_grad + multiprocessing
-    "diffcp @ git+https://github.com/egordon/diffcp.git@v1.0.25/fix_pool", # includes solve_only + fixed multiprocessing
+    "diffcp @ git+https://github.com/egordon/diffcp.git@v1.1.4/fix_pool", # includes solve_only + fixed multiprocessing
     "gin-config",
     # documentation
     "networkx",
