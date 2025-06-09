@@ -276,6 +276,13 @@ def main(
             gui_vis.sweep()
             print("Done!")
 
+        elif command_char == "o":
+            if len(data_trajectories.trajectories) == 0:
+                print("Need data for observed info.\n")
+                continue
+
+            learned_system.observed_info(data_trajectories)
+
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:
                 print("Cannot train without data.\n")

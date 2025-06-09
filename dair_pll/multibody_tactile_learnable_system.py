@@ -34,6 +34,7 @@ import torch
 from torch import Tensor
 from torch.nn import Module, Parameter
 
+from dair_pll.dataset_management import TrajectorySet
 from dair_pll.drake_utils import (
     unique_body_identifier,
     get_bodies_in_model_instance,
@@ -310,7 +311,8 @@ class MultibodyLearnableTactileSystem(Module):
         assert step_q.size() == batch_dims + (self.space.n_q,)
         assert step_v.size() == batch_dims + (self.space.n_v,)
         assert step_u.size() == batch_dims + (self._controlled_space.n_v,)
-        dt = self._hyperparameters.default_dt if step_dt is None else step_dt
+        dt = self._hyperparameters.default_dt * torch.ones(batch_dims + (1,)) if step_dt is None else step_dt.expand(batch_dims + (1,))
+        assert dt.size() == batch_dims + (1,)
         phi_eps = 1e-2
         eps = torch.finfo(step_q.dtype).eps
         (
@@ -333,7 +335,7 @@ class MultibodyLearnableTactileSystem(Module):
         phi_then_zero = torch.cat((m_phi, double_zero_vector), dim=-1).unsqueeze(-1)
 
         step_v_minus = step_v + dt * non_contact_acceleration
-        q_full = pbmm(m_jac, step_v_minus.unsqueeze(-1)) + (1 / dt) * phi_then_zero
+        q_full = pbmm(m_jac, step_v_minus.unsqueeze(-1)) + torch.reciprocal(dt).unsqueeze(-1) * phi_then_zero
 
         ### Construct contact forces / normals
         ret_contact_forces = {}  # Dict[Tuple[str, str], Tensor]
@@ -348,7 +350,10 @@ class MultibodyLearnableTactileSystem(Module):
                 ]
                 ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1, 1))
 
-        # Trajectory Jumps, return 0s
+        # Trajectory Jumps, assume default dt
+        dt[dt > self._hyperparameters.dt_thresh] = self._hyperparameters.default_dt
+        # TODO: Can safely return 0s
+        """
         if dt > self._hyperparameters.dt_thresh:
             # print("Trajectory Jump, Assuming No Contact")
             return (
@@ -357,6 +362,7 @@ class MultibodyLearnableTactileSystem(Module):
                 ret_contact_normals,
                 ret_phis,
             )
+        """
 
         ## Solve Impulses
         reorder_mat = sappy_reorder_mat(n_contacts)
@@ -393,9 +399,9 @@ class MultibodyLearnableTactileSystem(Module):
             mr_wf_i = mr_fw_list[index].transpose(-1, -2)
             ret_contact_normals[key][..., 0, :] = mr_wf_i[..., :, 2]
             # Force in contact_frame
-            ret_contact_force[..., 0, 2] = impulse[..., index, 0] / dt
+            ret_contact_force[..., 0, 2] = impulse[..., index, 0] * torch.reciprocal(dt).squeeze(-1)
             ret_contact_force[..., 0, :2] = (
-                mu_list[index] * impulse[..., fric_index : fric_index + 2, 0] / dt
+                mu_list[index] * impulse[..., fric_index : fric_index + 2, 0] * torch.reciprocal(dt)
             )
             # Rotate into world frame
             ret_contact_forces[key] = pbmm(
@@ -1356,6 +1362,117 @@ class MultibodyLearnableTactileSystem(Module):
             forward_args[1],  # plant control
         )
 
+    def observed_info(self, traj_data: TrajectorySet) -> Tensor:
+        """Calculate Observed Information
+
+        Args:
+            traj_data: Trajectory Data Collected
+
+        Returns:
+            Let n_params = len(current_learned_q) + len(self._multibody_terms.parameters())
+            Returns Observed Info Matrix: (n_params, n_params)
+        """
+
+        # TODO: generalize for >1 robot and object
+        assert len(self._controlled_model_names) == 1
+        assert len(self._learned_model_names) == 1
+
+        print("Calculating Observed Info")
+        print("Getting Current Pose Trajectory (no-diff)...")
+        start = time.time()
+        with torch.no_grad():
+            timestamps = traj_data.get_full_trajectory(key="time")
+            traj_len = timestamps.size()[0]
+            plant_x, plant_u, _, _, _ = self.forward(
+                ctrl_desired=traj_data.get_full_trajectory(
+                    key=self.controlled_model_names[0] + "_desired"
+                ),
+                timestamps=timestamps,
+                ctrl_actual=traj_data.get_full_trajectory(
+                    key=self.controlled_model_names[0] + "_state"
+                ),
+            )
+            plant_x = self._multibody_terms.model_states_from_state_tensor(plant_x)
+            pose_params = [
+                self._learned_trajectory.space.q(
+                    plant_x[self._learned_model_names[0] + "_state"][idx, :]
+                    .clone()
+                    .requires_grad_(True)
+                )
+                for idx in range(traj_len)
+            ]
+        print(f"... Done in {time.time() - start}s")
+
+        print("Calculating per-timestep gradients")
+        start = time.time()
+        for idx, pose_param in enumerate(pose_params[:-1]):
+            param_list = pose_params + [
+                param
+                for param in self._multibody_terms.parameters()
+                if param.requires_grad
+            ]
+            n_params = sum(param.numel() for param in param_list)
+            step_x = plant_x[idx]
+            step_x[self._learned_model_names[0] + "_state"] = (
+                self._learned_trajectory.space.x(
+                    pose_param,
+                    self._learned_trajectory.space.v(
+                        step_x[self._learned_model_names[0] + "_state"]
+                    ),
+                )
+            )
+            step_x = self._multibody_terms.construct_state_tensor(step_x)
+            step_dts = timestamps[idx+1] - timestamps[idx]
+            step_vplus, step_forces, step_normals, step_phis = self.forward_dynamics(
+                self.space.q(step_x),
+                self.space.v(step_x),
+                plant_u[idx],
+                step_dts,
+            )
+            output_phi = torch.stack(list(step_phis.values()), dim=-2)
+            output_normals = torch.stack(list(step_normals.values()), dim=-2)
+            output_forces = torch.stack(list(step_forces.values()), dim=-2)
+            output_q = self._learned_trajectory.space.q(
+                self._multibody_terms.model_states_from_state_tensor(
+                    self.space.x(
+                        self.space.euler_step(
+                            self.space.q(step_x), step_vplus, step_dts
+                        ),
+                        step_vplus,
+                    )
+                )[self._learned_model_names[0] + "_state"]
+            )
+
+            # Take Derivatives of outputs
+            output_combined = torch.cat(
+                [
+                    output_phi.flatten(),
+                    output_forces.flatten(),
+                    output_normals.flatten(),
+                    output_q.flatten(),
+                ]
+            )
+
+            def get_vjp(output, v):
+                grad = torch.autograd.grad(
+                    output.flatten(),
+                    param_list,
+                    v,
+                    create_graph=False,
+                    retain_graph=False,
+                    allow_unused=True,
+                    materialize_grads=True,
+                )
+                return torch.cat([gr.flatten() for gr in grad])
+
+            grads_combined = torch.vmap(partial(get_vjp, output_combined))(
+                torch.eye(output_combined.numel())
+            )
+        print(f"... Done in {time.time() - start}s")
+        breakpoint()
+
+        return None
+
     def expected_fisher_info(
         self,
         ctrl_desired: Tensor,
@@ -1379,7 +1496,7 @@ class MultibodyLearnableTactileSystem(Module):
         """
 
         # pylint: disable=too-many-locals
-
+        self.zero_grad()
         print("Calculating Expected Information...")
 
         # Input Validation
@@ -1405,7 +1522,7 @@ class MultibodyLearnableTactileSystem(Module):
         pose_param = (
             self._learned_trajectory.current_pose_params(traj_num=-1)
             if current_learned_q is None
-            else Parameter(current_learned_q.detach().clone(), requires_grad=True)
+            else current_learned_q.detach().clone().requires_grad_(True)
         )
         assert pose_param.size() == (self._learned_trajectory.space.n_q,)
         assert pose_param.requires_grad
