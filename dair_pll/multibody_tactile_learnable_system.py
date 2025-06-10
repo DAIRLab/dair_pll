@@ -202,8 +202,6 @@ class MultibodyLearnableTactileSystem(Module):
             ProductSpace(learn_spaces), init_state
         )
 
-        self.test_param = None
-
     @property
     def space(self):
         """Space of full system"""
@@ -320,16 +318,14 @@ class MultibodyLearnableTactileSystem(Module):
                 step_dt_expanded < self._hyperparameters.dt_thresh
             ]
         # TODO: Can safely return 0s if above threshold
-        """
-        if dt > self._hyperparameters.dt_thresh:
-            # print("Trajectory Jump, Assuming No Contact")
-            return (
-                torch.zeros_like(step_v),
-                ret_contact_forces,
-                ret_contact_normals,
-                ret_phis,
-            )
-        """
+        #if dt > self._hyperparameters.dt_thresh:
+        #    return (
+        #        torch.zeros_like(step_v),
+        #        ret_contact_forces,
+        #        ret_contact_normals,
+        #        ret_phis,
+        #    )
+
         assert dt.size() == batch_dims + (1,)
         phi_eps = 1e-2
         eps = torch.finfo(step_q.dtype).eps
@@ -390,7 +386,7 @@ class MultibodyLearnableTactileSystem(Module):
         impulse[contact_filter] += impulse_full[contact_filter]
 
         # pylint doesn't know about torch
-        # pylint: disable=not-callable
+        # pylint: disable-next=not-callable
         step_v_add = torch.linalg.solve(
             m_mass, pbmm(m_jac.transpose(-1, -2), impulse)
         ).squeeze(-1)
@@ -859,7 +855,7 @@ class MultibodyLearnableTactileSystem(Module):
             contact_bool[
                 torch.isclose(
                     # pylint doesn't know about torch
-                    # pylint: disable=not-callable
+                    # pylint: disable-next=not-callable
                     torch.linalg.vector_norm(meas_contact_normals[key], dim=-1),
                     torch.zeros(batch_dims + (traj_len - 1,)),
                 )
@@ -1303,7 +1299,7 @@ class MultibodyLearnableTactileSystem(Module):
                 contact_bool[
                     torch.isclose(
                         # pylint doesn't know about torch
-                        # pylint: disable=not-callable
+                        # pylint: disable-next=not-callable
                         torch.linalg.vector_norm(meas_contact_normals[key], dim=-1),
                         torch.zeros(batch_dims + (traj_len - 1,)),
                     )
@@ -1384,6 +1380,8 @@ class MultibodyLearnableTactileSystem(Module):
             Returns Observed Info Matrix: (n_params, n_params)
         """
 
+        # pylint: disable=too-many-locals, too-many-statements
+
         # TODO: generalize for >1 robot and object
         assert len(self._controlled_model_names) == 1
         assert len(self._learned_model_names) == 1
@@ -1430,6 +1428,18 @@ class MultibodyLearnableTactileSystem(Module):
         outputs_phi = []
         outputs_normals = []
         outputs_forces = []
+
+        def get_vjp(output, param_list, v):
+            grad = torch.autograd.grad(
+                output.flatten(),
+                param_list,
+                v,
+                create_graph=False,
+                retain_graph=False,
+            )
+            return torch.cat([gr.flatten() for gr in grad])
+
+
         for idx, pose_param in enumerate(pose_params):
             param_list = [pose_param] + [
                 param
@@ -1451,8 +1461,7 @@ class MultibodyLearnableTactileSystem(Module):
             except IndexError:
                 # Just assume last dt is next dt
                 # This is a dummy to get final phi anyway
-                stdp_dts = timestamps[idx] - timestamps[idx - 1]
-            self.test_param = pose_param
+                step_dts = timestamps[idx] - timestamps[idx - 1]
             step_vplus, step_forces, step_normals, step_phis = self.forward_dynamics(
                 self.space.q(step_x),
                 self.space.v(step_x),
@@ -1495,17 +1504,7 @@ class MultibodyLearnableTactileSystem(Module):
             if jac_outs_params is None:
                 jac_outs_params = torch.zeros((traj_len, n_outs, n_params))
 
-            def get_vjp(output, v):
-                grad = torch.autograd.grad(
-                    output.flatten(),
-                    param_list,
-                    v,
-                    create_graph=False,
-                    retain_graph=False,
-                )
-                return torch.cat([gr.flatten() for gr in grad])
-
-            grads_combined = torch.vmap(partial(get_vjp, output_combined))(
+            grads_combined = torch.vmap(partial(get_vjp, output_combined, param_list))(
                 torch.eye(output_combined.numel())
             )
             assert torch.all(
@@ -1528,6 +1527,8 @@ class MultibodyLearnableTactileSystem(Module):
             # jac_outs_xnp.T = leftinv(jac_xnp_xn.T) @ jac_outs_xn.T
             # jac_outs_xnp = (pinv(jac_xnp_xn) @ jac_outs_xn.T).T
             # TODO: add Jacobian damp coefficient as hyperparameter
+            # pylint doesn't know about torch
+            # pylint: disable-next=not-callable
             jac_outs_xnp = torch.linalg.lstsq(
                 (jac_xnp_xn + torch.eye(n_q)).unsqueeze(0),
                 jac_outs_xn.transpose(-1, -2),
@@ -1556,7 +1557,7 @@ class MultibodyLearnableTactileSystem(Module):
             ### End loop: jac_outs_params combines jac_out_xT and jac_out_geom
             ###           also have all outputs
 
-        assert torch.all(~torch.isnan(jac_outs_params)), f"NaN in jac_outs_params"
+        assert torch.all(~torch.isnan(jac_outs_params)), "NaN in jac_outs_params"
 
         print(f"... Done in {time.time() - start}s")
         print("Calculating info matrix...")
@@ -1809,10 +1810,9 @@ class MultibodyLearnableTactileSystem(Module):
             return ret_fisher
 
         ## TODO: get pydrake pickle-able
-        """
-        with Pool(5) as p:
-            ret_fishers.extend(p.map(calc_info, range(n_batches)))
-        """
+        #with Pool(5) as p:
+        #    ret_fishers.extend(p.map(calc_info, range(n_batches)))
+
         for batch_idx in range(n_batches):
             self.zero_grad()
             ret_fishers.append(calc_info(batch_idx))
