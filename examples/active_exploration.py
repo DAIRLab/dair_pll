@@ -169,7 +169,11 @@ def main(
             gui_vis.learned_plant_traj = temp[0]
             gui_vis.update()
             """
-            fisher = learned_system.expected_fisher_info(
+            fisher2 = learned_system.expected_fisher_info_v2(
+                ctrl_desired=robot_traj,
+                timestamps=traj_time,
+            )
+            fisher1 = learned_system.expected_fisher_info(
                 ctrl_desired=robot_traj,
                 timestamps=traj_time,
             )
