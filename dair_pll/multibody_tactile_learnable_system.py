@@ -202,6 +202,8 @@ class MultibodyLearnableTactileSystem(Module):
             ProductSpace(learn_spaces), init_state
         )
 
+        self.test_param = None
+
     @property
     def space(self):
         """Space of full system"""
@@ -311,7 +313,23 @@ class MultibodyLearnableTactileSystem(Module):
         assert step_q.size() == batch_dims + (self.space.n_q,)
         assert step_v.size() == batch_dims + (self.space.n_v,)
         assert step_u.size() == batch_dims + (self._controlled_space.n_v,)
-        dt = self._hyperparameters.default_dt * torch.ones(batch_dims + (1,)) if step_dt is None else step_dt.expand(batch_dims + (1,))
+        dt = self._hyperparameters.default_dt * torch.ones(batch_dims + (1,))
+        if step_dt is not None:
+            step_dt_expanded = step_dt.expand(batch_dims + (1,))
+            dt[step_dt_expanded < self._hyperparameters.dt_thresh] = step_dt_expanded[
+                step_dt_expanded < self._hyperparameters.dt_thresh
+            ]
+        # TODO: Can safely return 0s if above threshold
+        """
+        if dt > self._hyperparameters.dt_thresh:
+            # print("Trajectory Jump, Assuming No Contact")
+            return (
+                torch.zeros_like(step_v),
+                ret_contact_forces,
+                ret_contact_normals,
+                ret_phis,
+            )
+        """
         assert dt.size() == batch_dims + (1,)
         phi_eps = 1e-2
         eps = torch.finfo(step_q.dtype).eps
@@ -335,7 +353,10 @@ class MultibodyLearnableTactileSystem(Module):
         phi_then_zero = torch.cat((m_phi, double_zero_vector), dim=-1).unsqueeze(-1)
 
         step_v_minus = step_v + dt * non_contact_acceleration
-        q_full = pbmm(m_jac, step_v_minus.unsqueeze(-1)) + torch.reciprocal(dt).unsqueeze(-1) * phi_then_zero
+        q_full = (
+            pbmm(m_jac, step_v_minus.unsqueeze(-1))
+            + torch.reciprocal(dt).unsqueeze(-1) * phi_then_zero
+        )
 
         ### Construct contact forces / normals
         ret_contact_forces = {}  # Dict[Tuple[str, str], Tensor]
@@ -349,20 +370,6 @@ class MultibodyLearnableTactileSystem(Module):
                     0
                 ]
                 ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1, 1))
-
-        # Trajectory Jumps, assume default dt
-        dt[dt > self._hyperparameters.dt_thresh] = self._hyperparameters.default_dt
-        # TODO: Can safely return 0s
-        """
-        if dt > self._hyperparameters.dt_thresh:
-            # print("Trajectory Jump, Assuming No Contact")
-            return (
-                torch.zeros_like(step_v),
-                ret_contact_forces,
-                ret_contact_normals,
-                ret_phis,
-            )
-        """
 
         ## Solve Impulses
         reorder_mat = sappy_reorder_mat(n_contacts)
@@ -399,9 +406,13 @@ class MultibodyLearnableTactileSystem(Module):
             mr_wf_i = mr_fw_list[index].transpose(-1, -2)
             ret_contact_normals[key][..., 0, :] = mr_wf_i[..., :, 2]
             # Force in contact_frame
-            ret_contact_force[..., 0, 2] = impulse[..., index, 0] * torch.reciprocal(dt).squeeze(-1)
+            ret_contact_force[..., 0, 2] = impulse[..., index, 0] * torch.reciprocal(
+                dt
+            ).squeeze(-1)
             ret_contact_force[..., 0, :2] = (
-                mu_list[index] * impulse[..., fric_index : fric_index + 2, 0] * torch.reciprocal(dt)
+                mu_list[index]
+                * impulse[..., fric_index : fric_index + 2, 0]
+                * torch.reciprocal(dt)
             )
             # Rotate into world frame
             ret_contact_forces[key] = pbmm(
@@ -1394,24 +1405,37 @@ class MultibodyLearnableTactileSystem(Module):
             )
             plant_x = self._multibody_terms.model_states_from_state_tensor(plant_x)
             pose_params = [
-                self._learned_trajectory.space.q(
-                    plant_x[self._learned_model_names[0] + "_state"][idx, :]
-                    .clone()
-                    .requires_grad_(True)
+                Parameter(
+                    self._learned_trajectory.space.q(
+                        plant_x[self._learned_model_names[0] + "_state"][idx, :].clone()
+                    ),
+                    requires_grad=True,
                 )
                 for idx in range(traj_len)
             ]
         print(f"... Done in {time.time() - start}s")
 
-        print("Calculating per-timestep gradients")
+        print("Calculating per-timestep gradients...")
         start = time.time()
-        for idx, pose_param in enumerate(pose_params[:-1]):
-            param_list = pose_params + [
+        n_geom = sum(
+            param.numel()
+            for param in self._multibody_terms.parameters()
+            if param.requires_grad
+        )
+        n_q = self._learned_trajectory.space.n_q
+        n_params = n_geom + n_q
+        n_outs = -1  # Will be populated once the number of outputs is known
+        jac_outs_params = None  # Will be populated once the number of outputs is known
+        jac_xn_geom = torch.zeros((n_q, n_geom))
+        outputs_phi = []
+        outputs_normals = []
+        outputs_forces = []
+        for idx, pose_param in enumerate(pose_params):
+            param_list = [pose_param] + [
                 param
                 for param in self._multibody_terms.parameters()
                 if param.requires_grad
             ]
-            n_params = sum(param.numel() for param in param_list)
             step_x = plant_x[idx]
             step_x[self._learned_model_names[0] + "_state"] = (
                 self._learned_trajectory.space.x(
@@ -1422,7 +1446,13 @@ class MultibodyLearnableTactileSystem(Module):
                 )
             )
             step_x = self._multibody_terms.construct_state_tensor(step_x)
-            step_dts = timestamps[idx+1] - timestamps[idx]
+            try:
+                step_dts = timestamps[idx + 1] - timestamps[idx]
+            except IndexError:
+                # Just assume last dt is next dt
+                # This is a dummy to get final phi anyway
+                stdp_dts = timestamps[idx] - timestamps[idx - 1]
+            self.test_param = pose_param
             step_vplus, step_forces, step_normals, step_phis = self.forward_dynamics(
                 self.space.q(step_x),
                 self.space.v(step_x),
@@ -1444,14 +1474,26 @@ class MultibodyLearnableTactileSystem(Module):
             )
 
             # Take Derivatives of outputs
+            outputs_phi.append(output_phi.detach())
+            outputs_normals.append(output_normals.detach())
+            outputs_forces.append(output_forces.detach())
             output_combined = torch.cat(
                 [
+                    output_q.flatten(),
                     output_phi.flatten(),
                     output_forces.flatten(),
                     output_normals.flatten(),
-                    output_q.flatten(),
                 ]
             )
+            n_outs = sum(
+                [
+                    len(output_phi.flatten()),
+                    len(output_forces.flatten()),
+                    len(output_normals.flatten()),
+                ]
+            )
+            if jac_outs_params is None:
+                jac_outs_params = torch.zeros((traj_len, n_outs, n_params))
 
             def get_vjp(output, v):
                 grad = torch.autograd.grad(
@@ -1460,18 +1502,126 @@ class MultibodyLearnableTactileSystem(Module):
                     v,
                     create_graph=False,
                     retain_graph=False,
-                    allow_unused=True,
-                    materialize_grads=True,
                 )
                 return torch.cat([gr.flatten() for gr in grad])
 
             grads_combined = torch.vmap(partial(get_vjp, output_combined))(
                 torch.eye(output_combined.numel())
             )
-        print(f"... Done in {time.time() - start}s")
-        breakpoint()
+            assert torch.all(
+                ~torch.isnan(grads_combined)
+            ), f"NaN in grads_combined, idx {idx}"
+            # Populate d(outputs)/d(x_n)
+            jac_out_xn = grads_combined[
+                output_q.numel() :, : output_q.numel()
+            ]  # n_phis x n_q
+            jac_outs_params[idx, :, :n_q] = jac_out_xn
 
-        return None
+            # Bring all previous d(outputs)/d(x_n) to d(outputs)/d(x_[n+1])
+            jac_xnp_xn = grads_combined[
+                : output_q.numel(), : output_q.numel()
+            ]  # n_q x n_q
+            jac_outs_xn = jac_outs_params[: idx + 1, :, :n_q]
+
+            # jac_outs_xnp @ jac_xnp_xn = jac_outs_xn
+            # jac_xnp_xn.T @ jac_outs_xnp.T = jac_outs_xn.T
+            # jac_outs_xnp.T = leftinv(jac_xnp_xn.T) @ jac_outs_xn.T
+            # jac_outs_xnp = (pinv(jac_xnp_xn) @ jac_outs_xn.T).T
+            # TODO: add Jacobian damp coefficient as hyperparameter
+            jac_outs_xnp = torch.linalg.lstsq(
+                (jac_xnp_xn + torch.eye(n_q)).unsqueeze(0),
+                jac_outs_xn.transpose(-1, -2),
+            ).solution.transpose(-1, -2)
+            assert jac_outs_xnp.size() == jac_outs_xn.size()
+            assert torch.all(
+                ~torch.isnan(jac_outs_xnp)
+            ), f"NaN in jac_outs_xnp, idx {idx}"
+            jac_outs_params[: idx + 1, :, :n_q] = jac_outs_xnp
+
+            # Populate total derivative d(outputs)/d(geom)
+            jac_partial_out_geom = grads_combined[
+                output_q.numel() :, output_q.numel() :
+            ]  # n_phis x n_geom
+            jac_out_geom = jac_partial_out_geom + jac_out_xn @ jac_xn_geom
+            jac_outs_params[idx, :, n_q:] = jac_out_geom
+
+            # Update d(x_[n+1])/d(geom)
+            jac_partial_xnp_geom = grads_combined[
+                : output_q.numel(), output_q.numel() :
+            ]  # n_q x n_geom
+            jac_xnp_geom = jac_partial_xnp_geom + jac_xnp_xn @ jac_xn_geom
+            ###
+            jac_xn_geom = jac_xnp_geom
+
+            ### End loop: jac_outs_params combines jac_out_xT and jac_out_geom
+            ###           also have all outputs
+
+        assert torch.all(~torch.isnan(jac_outs_params)), f"NaN in jac_outs_params"
+
+        print(f"... Done in {time.time() - start}s")
+        print("Calculating info matrix...")
+        start = time.time()
+        outputs_phi = torch.cat(outputs_phi, dim=0)
+        outputs_normals = torch.cat(outputs_normals, dim=0)
+        outputs_forces = torch.cat(outputs_forces, dim=0)
+        ret_info = torch.zeros((n_params, n_params))
+        # Extract Contact Boolean
+        phi_alpha = (
+            np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
+            / self._hyperparameters.w_phi_nominal
+        )
+        ### Phi Term
+        grads_phi = jac_outs_params[1:, : outputs_phi[0].numel()].reshape(
+            (traj_len - 1,) + outputs_phi.size()[1:] + (n_params,)
+        )
+        phi_mult = (
+            phi_alpha
+            * phi_alpha
+            * torch.exp(phi_alpha * outputs_phi[1:])
+            / torch.square(1.0 + torch.exp(phi_alpha * outputs_phi[1:]))
+        ).unsqueeze(-1)
+        info_phi = (
+            pbmm(grads_phi.transpose(-1, -2), pbmm(phi_mult, grads_phi))
+            .reshape((-1, n_params, n_params))
+            .sum(dim=0)
+        )
+        ret_info += info_phi
+
+        ### Forces Term
+        grads_forces = jac_outs_params[
+            :-1,
+            output_phi[0].numel() : output_phi[0].numel() + output_forces[0].numel(),
+        ].reshape((traj_len - 1,) + outputs_forces.size()[1:] + (n_params,))
+        contact_bool = torch.reciprocal(
+            1.0 + torch.exp(phi_alpha * outputs_phi[1:])
+        ).unsqueeze(-1)
+        info_forces = (
+            (
+                contact_bool
+                * (1.0 / self._hyperparameters.w_force_var)
+                * pbmm(grads_forces.transpose(-1, -2), grads_forces)
+            )
+            .reshape((-1, n_params, n_params))
+            .sum(dim=0)
+        )
+        ret_info += info_forces
+
+        ### Normals Term
+        grads_normals = jac_outs_params[
+            :-1, output_phi[0].numel() + output_forces[0].numel() :
+        ].reshape((traj_len - 1,) + outputs_normals.size()[1:] + (n_params,))
+        info_normals = (
+            (
+                contact_bool
+                * (1.0 / self._hyperparameters.w_normal_var)
+                * pbmm(grads_normals.transpose(-1, -2), grads_normals)
+            )
+            .reshape((-1, n_params, n_params))
+            .sum(dim=0)
+        )
+        ret_info += info_normals
+        print(f"...Done in {(time.time()-start):.6f}s")
+        return ret_info
 
     def expected_fisher_info(
         self,

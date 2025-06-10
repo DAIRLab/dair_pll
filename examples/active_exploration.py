@@ -151,7 +151,7 @@ def main(
 
         elif command_char == "a":
             traj_x, traj_time = interpolate_sampled_action(
-                data=torch.stack([torch.tensor(np.array(sample_action(index=idx))) for idx in [0,1]]),
+                data=torch.stack([torch.tensor(np.array(sample_action(index=idx))) for idx in [0]]),
                 trifinger=trifinger_lcm,
             )
             robot_traj = extract_robot_trajectory(
@@ -281,7 +281,7 @@ def main(
                 print("Need data for observed info.\n")
                 continue
 
-            learned_system.observed_info(data_trajectories)
+            obs_info = learned_system.observed_info(data_trajectories)
 
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:
