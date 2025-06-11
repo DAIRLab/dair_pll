@@ -21,7 +21,7 @@ import pdb
 import signal
 import sys
 import time
-from typing import Type
+from typing import Type, Optional
 
 import gin
 import gin.torch.external_configurables
@@ -42,6 +42,7 @@ from dair_pll.trifinger_utils import (
     TrifingerLCMService,
     sample_action,
     interpolate_sampled_action,
+    Action,
 )
 
 # Repository directory (default for file operations)
@@ -77,6 +78,7 @@ def main(
     storage_folder_name: str = "storage_active",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
+    action_library: Optional[list[Action]] = None,
 ):
     """Main function for online learning loop"""
     ### Signal Handling
@@ -117,7 +119,7 @@ def main(
     # Initialize LCM
     trifinger_lcm = TrifingerLCMService()
     print("Sample Initial Random Action...")
-    selected_action = sample_action()
+    selected_action = sample_action(library=action_library)
     new_trajectory = None
 
     # Initialize Optimizer and Data config
@@ -150,8 +152,16 @@ def main(
             pdb.Pdb(nosigint=True).set_trace()
 
         elif command_char == "a":
+            ## Compute Expected Info per-action
             traj_x, traj_time = interpolate_sampled_action(
-                data=torch.stack([torch.tensor(np.array(sample_action(index=idx))) for idx in [0]]),
+                data=torch.stack(
+                    [
+                        torch.tensor(
+                            np.array(sample_action(library=action_library, index=idx))
+                        )
+                        for idx in range(len(action_library))
+                    ]
+                ),
                 trifinger=trifinger_lcm,
             )
             robot_traj = extract_robot_trajectory(
@@ -159,19 +169,29 @@ def main(
                 learned_system,
                 trifinger_lcm,
             )
-            """
-            print("Temp Diffsim")
-            temp = learned_system(
-                ctrl_desired=robot_traj,
-                timestamps=traj_time,
-                nimp_override=True,
-            )
-            gui_vis.learned_plant_traj = temp[0]
-            gui_vis.update()
-            """
             fisher = learned_system.expected_fisher_info(
                 ctrl_desired=robot_traj,
                 timestamps=traj_time,
+            )
+
+            ## Weight by observed info
+            obs_info = (
+                torch.zeros_like(fisher[0])
+                if len(data_trajectories.trajectories) == 0
+                else learned_system.observed_info(data_trajectories)
+            )
+            obs_info_inv = torch.linalg.inv(
+                obs_info + 1e-1 * torch.eye(obs_info.size()[0])
+            )
+            fisher_obs_weighted = fisher @ obs_info_inv
+            fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)
+            print(f"Fisher Traces:")
+            for action, trace in zip(action_library, fisher_traces):
+                print(f"{action} : {trace}")
+            print(f"Best Action: {action_library[torch.argmax(fisher_traces)]}")
+
+            selected_action = sample_action(
+                library=action_library, index=torch.argmax(fisher_traces)
             )
 
         elif command_char == "e":
@@ -269,7 +289,7 @@ def main(
                 action_idx = None
                 print("Sampling random action...")
 
-            selected_action = sample_action(index=action_idx)
+            selected_action = sample_action(library=action_library, index=action_idx)
 
         elif command_char == "v":
             print("Visualizing entire trajectory.")

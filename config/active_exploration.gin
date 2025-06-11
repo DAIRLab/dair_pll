@@ -77,9 +77,12 @@ xpinch/Action.negx_start_azimuth = 0.
 xpinch/Action.negx_end_radius = 0.
 xpinch/Action.negx_end_angle = 0.
 
-sample_action.library = [
+library = [
+	@xsingle/Action(),
+	@xpinch/Action(),
 	@zsingle/Action(),
 ]
+main.action_library = %library
 interpolate_sampled_action.traj_len_s = %traj_len_s
 interpolate_sampled_action.traj_n_steps = 61
 

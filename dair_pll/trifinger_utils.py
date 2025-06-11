@@ -335,6 +335,9 @@ class Action:
     negx_end_radius: float = 1.0
     negx_end_angle: float = np.pi / 2
 
+    def __str__(self):
+        return f"Action {self.name}"
+
     def __post_init__(self):
         """Method to check validity of parameters."""
         assert 0.0 <= self.posx_start_polar <= np.pi / 2
@@ -392,6 +395,10 @@ def sample_action(
     Args:
     library: list of discrete possible actions
     """
+
+    # Input Validation
+    if index is not None:
+        assert library is not None
 
     fixed_240_traj = np.array(params.fixed_240_w)
     rng = np.random.default_rng()
