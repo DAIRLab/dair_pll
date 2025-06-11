@@ -57,6 +57,16 @@ xsingle/Action.posx_start_azimuth = 0.
 xsingle/Action.posx_end_radius = 0.
 xsingle/Action.posx_end_angle = 0.
 
+zsingle/Action.name = "ZSINGLE"
+zsingle/Action.posx_start_polar = 0.
+zsingle/Action.posx_start_azimuth = 0.
+zsingle/Action.posx_end_radius = 0.
+zsingle/Action.posx_end_angle = 0.
+zsingle/Action.negx_start_polar = %PI2
+zsingle/Action.negx_start_azimuth = %PI2
+zsingle/Action.negx_end_radius = 1.
+zsingle/Action.negx_end_angle = 0.
+
 xpinch/Action.name = "XPINCH"
 xpinch/Action.posx_start_polar = %PI2
 xpinch/Action.posx_start_azimuth = 0.
@@ -68,7 +78,7 @@ xpinch/Action.negx_end_radius = 0.
 xpinch/Action.negx_end_angle = 0.
 
 sample_action.library = [
-	@xpinch/Action(),
+	@zsingle/Action(),
 ]
 interpolate_sampled_action.traj_len_s = %traj_len_s
 interpolate_sampled_action.traj_n_steps = 61
