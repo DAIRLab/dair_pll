@@ -46,7 +46,7 @@ ActionLibraryParams.workspace_xy_center = (0., 0.)
 ActionLibraryParams.workspace_z_rot = 0. # 0.785398163 # pi/4
 ActionLibraryParams.workspace_radius = %workspace_radius
 ActionLibraryParams.robot_radius = %robot_radius
-ActionLibraryParams.fixed_240_w = (0., 0.1, 0.1)
+ActionLibraryParams.fixed_240_w = (0.15, 0.15, 0.15)
 ActionLibraryParams.ground_buffer = True
 ActionLibraryParams.yplane_buffer = False
 

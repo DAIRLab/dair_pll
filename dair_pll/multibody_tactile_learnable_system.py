@@ -1402,12 +1402,9 @@ class MultibodyLearnableTactileSystem(Module):
                     key=self.controlled_model_names[0] + "_state"
                 ),
             )
-            plant_x = self._multibody_terms.model_states_from_state_tensor(plant_x)
-            pose_params = [
+            state_params = [
                 Parameter(
-                    self._learned_trajectory.space.q(
-                        plant_x[self._learned_model_names[0] + "_state"][idx, :].clone()
-                    ),
+                    plant_x[idx, :].clone(),
                     requires_grad=True,
                 )
                 for idx in range(traj_len)
@@ -1421,11 +1418,10 @@ class MultibodyLearnableTactileSystem(Module):
             for param in self._multibody_terms.parameters()
             if param.requires_grad
         )
-        n_q = self._learned_trajectory.space.n_q
-        n_params = n_geom + n_q
+        n_params = n_geom + self.space.n_x
         n_outs = -1  # Will be populated once the number of outputs is known
         jac_outs_params = None  # Will be populated once the number of outputs is known
-        jac_xn_geom = torch.zeros((n_q, n_geom))
+        jac_xn_geom = torch.zeros((self.space.n_x, n_geom))
         outputs_phi = []
         outputs_normals = []
         outputs_forces = []
@@ -1440,22 +1436,12 @@ class MultibodyLearnableTactileSystem(Module):
             )
             return torch.cat([gr.flatten() for gr in grad])
 
-        for idx, pose_param in enumerate(pose_params):
-            param_list = [pose_param] + [
+        for idx, step_x in enumerate(state_params):
+            param_list = [step_x] + [
                 param
                 for param in self._multibody_terms.parameters()
                 if param.requires_grad
             ]
-            step_x = plant_x[idx]
-            step_x[self._learned_model_names[0] + "_state"] = (
-                self._learned_trajectory.space.x(
-                    pose_param,
-                    self._learned_trajectory.space.v(
-                        step_x[self._learned_model_names[0] + "_state"]
-                    ),
-                )
-            )
-            step_x = self._multibody_terms.construct_state_tensor(step_x)
             try:
                 step_dts = timestamps[idx + 1] - timestamps[idx]
             except IndexError:
@@ -1471,15 +1457,9 @@ class MultibodyLearnableTactileSystem(Module):
             output_phi = torch.stack(list(step_phis.values()), dim=-2)
             output_normals = torch.stack(list(step_normals.values()), dim=-2)
             output_forces = torch.stack(list(step_forces.values()), dim=-2)
-            output_q = self._learned_trajectory.space.q(
-                self._multibody_terms.model_states_from_state_tensor(
-                    self.space.x(
-                        self.space.euler_step(
-                            self.space.q(step_x), step_vplus, step_dts
-                        ),
-                        step_vplus,
-                    )
-                )[self._learned_model_names[0] + "_state"]
+            output_x = self.space.x(
+                self.space.euler_step(self.space.q(step_x), step_vplus, step_dts),
+                step_vplus,
             )
 
             # Take Derivatives of outputs
@@ -1488,7 +1468,7 @@ class MultibodyLearnableTactileSystem(Module):
             outputs_forces.append(output_forces.detach())
             output_combined = torch.cat(
                 [
-                    output_q.flatten(),
+                    output_x.flatten(),
                     output_phi.flatten(),
                     output_forces.flatten(),
                     output_normals.flatten(),
@@ -1511,12 +1491,14 @@ class MultibodyLearnableTactileSystem(Module):
                 ~torch.isnan(grads_combined)
             ), f"NaN in grads_combined, idx {idx}"
             # Populate d(outputs)/d(x_n)
-            jac_out_xn = grads_combined[n_q:, :n_q]  # n_phis x n_q
-            jac_outs_params[idx, :, :n_q] = jac_out_xn
+            jac_out_xn = grads_combined[
+                self.space.n_x :, : self.space.n_x
+            ]  # n_phis x n_x
+            jac_outs_params[idx, :, : self.space.n_x] = jac_out_xn
 
             # Bring all previous d(outputs)/d(x_n) to d(outputs)/d(x_[n+1])
-            jac_xnp_xn = grads_combined[:n_q, :n_q]  # n_q x n_q
-            jac_outs_xn = jac_outs_params[: idx + 1, :, :n_q]
+            jac_xnp_xn = grads_combined[: self.space.n_x, : self.space.n_x]  # n_q x n_q
+            jac_outs_xn = jac_outs_params[: idx + 1, :, : self.space.n_x]
 
             # jac_outs_xnp @ jac_xnp_xn = jac_outs_xn
             # jac_xnp_xn.T @ jac_outs_xnp.T = jac_outs_xn.T
@@ -1526,22 +1508,26 @@ class MultibodyLearnableTactileSystem(Module):
             # pylint doesn't know about torch
             # pylint: disable-next=not-callable
             jac_outs_xnp = torch.linalg.lstsq(
-                (jac_xnp_xn + torch.eye(n_q)).unsqueeze(0),
+                (jac_xnp_xn + torch.eye(self.space.n_x)).unsqueeze(0),
                 jac_outs_xn.transpose(-1, -2),
             ).solution.transpose(-1, -2)
             assert jac_outs_xnp.size() == jac_outs_xn.size()
             assert torch.all(
                 ~torch.isnan(jac_outs_xnp)
             ), f"NaN in jac_outs_xnp, idx {idx}"
-            jac_outs_params[: idx + 1, :, :n_q] = jac_outs_xnp
+            jac_outs_params[: idx + 1, :, : self.space.n_x] = jac_outs_xnp
 
             # Populate total derivative d(outputs)/d(geom)
-            jac_partial_out_geom = grads_combined[n_q:, n_q:]  # n_phis x n_geom
+            jac_partial_out_geom = grads_combined[
+                self.space.n_x :, self.space.n_x :
+            ]  # n_phis x n_geom
             jac_out_geom = jac_partial_out_geom + jac_out_xn @ jac_xn_geom
-            jac_outs_params[idx, :, n_q:] = jac_out_geom
+            jac_outs_params[idx, :, self.space.n_x :] = jac_out_geom
 
             # Update d(x_[n+1])/d(geom)
-            jac_partial_xnp_geom = grads_combined[:n_q, n_q:]  # n_q x n_geom
+            jac_partial_xnp_geom = grads_combined[
+                : self.space.n_x, self.space.n_x :
+            ]  # n_q x n_geom
             jac_xnp_geom = jac_partial_xnp_geom + jac_xnp_xn @ jac_xn_geom
             ###
             jac_xn_geom = jac_xnp_geom
@@ -1552,6 +1538,15 @@ class MultibodyLearnableTactileSystem(Module):
         assert torch.all(~torch.isnan(jac_outs_params)), "NaN in jac_outs_params"
 
         print(f"... Done in {time.time() - start}s")
+        # Switch to position parameter only
+        n_params = n_geom + self._learned_trajectory.space.n_q
+        jac_outs_params = torch.cat(
+            [
+                self.get_learned_trajectory(jac_outs_params[..., : self.space.n_x]),
+                jac_outs_params[..., self.space.n_x :],
+            ],
+            dim=-1,
+        )
         print("Calculating info matrix...")
         start = time.time()
         outputs_phi = torch.cat(outputs_phi, dim=0)
