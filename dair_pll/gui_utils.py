@@ -139,12 +139,12 @@ class PLLMeshcatVisualizer:
             self._meshcat.SetObject(
                 "/robot/0",
                 self._system.get_body_geometry("finger_0"),
-                Rgba(0.8, 0.0, 0.0, 0.8),
+                Rgba(0.0, 0.8, 0.0, 0.8),
             )
             self._meshcat.SetObject(
                 "/robot/1",
                 self._system.get_body_geometry("finger_1"),
-                Rgba(0.8, 0.0, 0.0, 0.8),
+                Rgba(0.0, 0.8, 0.0, 0.8),
             )
             """
             robot_traj = (

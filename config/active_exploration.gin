@@ -24,10 +24,10 @@ DynamicCvxpyLCQPLayer.solver_args = {
     "solve_method": "ECOS",
     "n_jobs_forward": -1,
     "n_jobs_backward": 1,
-    "max_iters": 500,
-    "abstol": 1e-9,
-    "reltol": 1e-9,
-    "feastol": 1e-9,
+    "max_iters": 800,
+    "abstol": 1e-8,
+    "reltol": 1e-8,
+    "feastol": 1e-8,
 }
 
 ## LCM Trajectory Execution
@@ -123,16 +123,16 @@ TactileSystem.learnable_body_dict = {
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.03, # m
-	"length_y": 0.03, # m
-	"length_z": 0.03, # m
+	"length_x": 0.01, # m
+	"length_y": 0.01, # m
+	"length_z": 0.01, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
 
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.1, 0.1, 0.0325,     # XYZ
+	0.1, -0.1, 0.0325,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -149,7 +149,7 @@ object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMI
 TactileHyperparameters.default_dt = %default_dt
 TactileHyperparameters.ctrl_kp = 10.0
 TactileHyperparameters.ctrl_kd = 5.0
-TactileHyperparameters.loss_fn = %LossFunction.NIMP
+TactileHyperparameters.loss_fn = %LossFunction.VIMP
 TactileHyperparameters.supervise_non_contact_force = True
 
 TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
