@@ -71,7 +71,13 @@ def get_true_geometry() -> Shape:
 
 ## Main Function
 signal_pressed = False
-
+def signal_handler(_sig, _frame):
+    """Handle SIGINT"""
+    # pylint: disable=global-statement
+    global signal_pressed
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal_pressed = True
+    signal.signal(signal.SIGINT, signal_handler)
 
 @gin.configurable
 def main(
@@ -84,12 +90,7 @@ def main(
     ### Signal Handling
     # pylint: disable=global-statement
     global signal_pressed
-
-    def signal_handler(_sig, _frame):
-        """Handle SIGINT"""
-        # pylint: disable=global-statement
-        global signal_pressed
-        signal_pressed = True
+    signal_pressed = False
 
     signal.signal(signal.SIGINT, signal_handler)
     # torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
@@ -360,6 +361,7 @@ def main(
                 total_epochs += 1
                 print(total_epochs, f"Loss: {loss_total:.3e};\n", *loss_print)
 
+                print(f"Quit Training Signal?: {signal_pressed}")
                 if signal_pressed:
                     signal_pressed = False
                     print("Training cancelled...")
