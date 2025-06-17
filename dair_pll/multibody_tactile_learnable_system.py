@@ -1541,13 +1541,12 @@ class MultibodyLearnableTactileSystem(Module):
             jac_out_xn = jac_outs_params[idx, :, : self.space.n_x]
             # jac_outs_xT @ jac_xT_xn = jac_outs_xn
             # jac_xT_xn.T @ jac_outs_xT.T = jac_outs_xn.T
-            # jac_outs_xT.T = leftinv(jac_xT_xn.T) @ jac_outs_xn.T
-            # jac_outs_xT = (inv(jac_xT_xn) @ jac_outs_xn.T).T
+            # jac_outs_xT.T = inv(jac_xT_xn.T) @ jac_outs_xn.T
             # pylint doesn't know about torch
             # pylint: disable-next=not-callable
             jac_out_xT = torch.linalg.solve(
                 (
-                    jac_xT_xn[idx, :, :]
+                    torch.round(jac_xT_xn[idx, :, :], decimals=3).transpose(-1, -2)
                     + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
                 ),
                 jac_out_xn.transpose(-1, -2),
@@ -1860,13 +1859,14 @@ class MultibodyLearnableTactileSystem(Module):
             jac_out_xn_batch = jac_outs_params_batch[..., idx, :, : self.space.n_x]
             # jac_outs_xT @ jac_xT_xn = jac_outs_xn
             # jac_xT_xn.T @ jac_outs_xT.T = jac_outs_xn.T
-            # jac_outs_xT.T = leftinv(jac_xT_xn.T) @ jac_outs_xn.T
-            # jac_outs_xT = (inv(jac_xT_xn) @ jac_outs_xn.T).T
+            # jac_outs_xT.T = inv(jac_xT_xn.T) @ jac_outs_xn.T
             # pylint doesn't know about torch
             # pylint: disable-next=not-callable
             jac_out_xT_batch = torch.linalg.solve(
                 (
-                    jac_xT_xn_batch[..., idx, :, :]
+                    torch.round(jac_xT_xn_batch[..., idx, :, :], decimals=3).transpose(
+                        -1, -2
+                    )
                     + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
                 ),
                 jac_out_xn_batch.transpose(-1, -2),
