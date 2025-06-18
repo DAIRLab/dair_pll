@@ -151,7 +151,7 @@ TactileHyperparameters.ctrl_kp = 10.0
 TactileHyperparameters.ctrl_kd = 5.0
 TactileHyperparameters.loss_fn = %LossFunction.VIMP
 TactileHyperparameters.supervise_non_contact_force = True
-TactileHyperparameters.rsim_eps = 1e-3
+TactileHyperparameters.rsim_eps = 1e-1
 
 TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above

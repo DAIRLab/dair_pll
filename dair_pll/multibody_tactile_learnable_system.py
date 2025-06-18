@@ -1425,12 +1425,22 @@ class MultibodyLearnableTactileSystem(Module):
         n_params = n_geom + self.space.n_x
         n_outs = -1  # Will be populated once the number of outputs is known
         jac_outs_params = None  # Will be populated once the number of outputs is known
-        jac_xT_xn = (
+        jac_xf_xn = (
             torch.eye(self.space.n_x)
             .reshape((1, self.space.n_x, self.space.n_x))
             .repeat((traj_len, 1, 1))
         )
-        jac_xn_geom = torch.zeros((self.space.n_x, n_geom))
+        jac_partial_xnp_geom = torch.zeros((traj_len, self.space.n_x, n_geom))
+        jac_xnp_xn = (
+            torch.eye(self.space.n_x)
+            .reshape((1, self.space.n_x, self.space.n_x))
+            .repeat((traj_len, 1, 1))
+        )
+        jac_xnp_xz = (
+            torch.eye(self.space.n_x)
+            .reshape((1, self.space.n_x, self.space.n_x))
+            .repeat((traj_len, 1, 1))
+        )
         outputs_phi = []
         outputs_normals = []
         outputs_forces = []
@@ -1500,58 +1510,87 @@ class MultibodyLearnableTactileSystem(Module):
                 ~torch.isnan(grads_combined)
             ), f"NaN in grads_combined, idx {idx}"
 
-            # Populate d(outputs)/d(x_n)
+            # Populate partial d(outputs)/d(x_n)
             jac_out_xn = grads_combined[
                 self.space.n_x :, : self.space.n_x
             ]  # n_phis x n_x
             jac_outs_params[idx, :, : self.space.n_x] = jac_out_xn
 
-            # Populate total derivative d(outputs)/d(geom)
+            # Populate partial d(outputs)/d(geom)
             jac_partial_out_geom = grads_combined[
                 self.space.n_x :, self.space.n_x :
             ]  # n_phis x n_geom
-            jac_out_geom = jac_partial_out_geom + jac_out_xn @ jac_xn_geom
-            jac_outs_params[idx, :, self.space.n_x :] = jac_out_geom
+            jac_outs_params[idx, :, self.space.n_x :] = jac_partial_out_geom
 
             # No need to deal with x_{n+1} (past horizon)
             if idx < traj_len - 1:
                 # Update d(xT)/d(xt) for all previous timesteps to be d(xn+1)/d(xt)
-                jac_xnp_xn = grads_combined[
+                jac_xnp_xn[idx, :, :] = grads_combined[
                     : self.space.n_x, : self.space.n_x
                 ]  # n_x x n_x
 
-                jac_xT_xn[: idx + 1, :, :] = (
-                    jac_xnp_xn.unsqueeze(-3) @ jac_xT_xn[: idx + 1, :, :]
+                jac_xf_xn[: idx + 1, :, :] = (
+                    jac_xnp_xn[idx, :, :].unsqueeze(-3) @ jac_xf_xn[: idx + 1, :, :]
                 )
 
-                # Update d(x_[n+1])/d(geom)
-                jac_partial_xnp_geom = grads_combined[
+                jac_xn_xz = jac_xnp_xz[idx:, :, :]
+                jac_xnp_xz[idx:, :, :] = jac_xnp_xn[idx, :, :].unsqueeze(-3) @ jac_xn_xz
+
+                # Populate partial d(x_[n+1])/d(geom)
+                jac_partial_xnp_geom[..., idx, :, :] = grads_combined[
                     : self.space.n_x, self.space.n_x :
-                ]  # n_q x n_geom
-                jac_xnp_geom = jac_partial_xnp_geom + jac_xnp_xn @ jac_xn_geom
-                ###
-                jac_xn_geom = jac_xnp_geom
+                ]  # n_x x n_geom
 
             ### End loop: jac_outs_params combines jac_out_xn and jac_out_geom
             ###           also have all outputs
 
         assert torch.all(~torch.isnan(jac_outs_params)), "NaN in jac_outs_params"
-        ### Computer jac_out_xT instead of jac_out_xn
+
+        ### Compute jac_xz_geom
+        jac_xz_geom = torch.zeros((self.space.n_x, n_geom))
         for idx in range(traj_len):
-            jac_out_xn = jac_outs_params[idx, :, : self.space.n_x]
-            # jac_outs_xT @ jac_xT_xn = jac_outs_xn
-            # jac_xT_xn.T @ jac_outs_xT.T = jac_outs_xn.T
-            # jac_outs_xT.T = inv(jac_xT_xn.T) @ jac_outs_xn.T
             # pylint doesn't know about torch
             # pylint: disable-next=not-callable
-            jac_out_xT = torch.linalg.solve(
+            jac_xz_geom -= torch.linalg.solve(
                 (
-                    torch.round(jac_xT_xn[idx, :, :], decimals=3).transpose(-1, -2)
+                    torch.round(jac_xnp_xz[idx, :, :], decimals=3)
+                    + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
+                ),
+                jac_partial_xnp_geom[idx, :, :],
+            )
+
+        ### Compute jac_out_geom total instead of partial
+        jac_xn_geom = jac_xz_geom.clone()
+        for idx in range(traj_len):
+            jac_out_xn = jac_outs_params[idx, :, : self.space.n_x]
+            jac_partial_out_geom = jac_outs_params[idx, :, self.space.n_x :]
+
+            jac_outs_params[idx, :, self.space.n_x :] = (
+                jac_partial_out_geom + jac_out_xn @ jac_xn_geom
+            )
+
+            if idx < traj_len - 1:
+                jac_xn_geom = (
+                    jac_partial_xnp_geom[..., idx, :, :]
+                    + jac_xnp_xn[..., idx, :, :] @ jac_xn_geom
+                )
+
+        ### Compute jac_out_xh instead of jac_out_xn
+        for idx in range(traj_len):
+            jac_out_xn = jac_outs_params[idx, :, : self.space.n_x]
+            # jac_outs_xT @ jac_xf_xn = jac_outs_xn
+            # jac_xf_xn.T @ jac_outs_xT.T = jac_outs_xn.T
+            # jac_outs_xT.T = inv(jac_xf_xn.T) @ jac_outs_xn.T
+            # pylint doesn't know about torch
+            # pylint: disable-next=not-callable
+            jac_out_xh = torch.linalg.solve(
+                (
+                    torch.round(jac_xf_xn[idx, :, :], decimals=3).transpose(-1, -2)
                     + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
                 ),
                 jac_out_xn.transpose(-1, -2),
             ).transpose(-1, -2)
-            jac_outs_params[idx, :, : self.space.n_x] = jac_out_xT
+            jac_outs_params[idx, :, : self.space.n_x] = jac_out_xh
         # Switch to position parameter only
         n_params = n_geom + self._learned_trajectory.space.n_q
         jac_outs_params = torch.cat(
@@ -1710,8 +1749,20 @@ class MultibodyLearnableTactileSystem(Module):
         jac_outs_params_batch = (
             None  # Will be populated once the number of outputs is known
         )
-        jac_xn_geom_batch = torch.zeros(batch_dims + (self.space.n_x, n_geom))
-        jac_xT_xn_batch = (
+        jac_xf_xn_batch = (
+            torch.eye(self.space.n_x)
+            .reshape((1,) * len(batch_dims) + (1, self.space.n_x, self.space.n_x))
+            .repeat(batch_dims + (traj_len, 1, 1))
+        )
+        jac_partial_xnp_geom_batch = torch.zeros(
+            batch_dims + (traj_len, self.space.n_x, n_geom)
+        )
+        jac_xnp_xn_batch = (
+            torch.eye(self.space.n_x)
+            .reshape((1,) * len(batch_dims) + (1, self.space.n_x, self.space.n_x))
+            .repeat(batch_dims + (traj_len, 1, 1))
+        )
+        jac_xnp_xz_batch = (
             torch.eye(self.space.n_x)
             .reshape((1,) * len(batch_dims) + (1, self.space.n_x, self.space.n_x))
             .repeat(batch_dims + (traj_len, 1, 1))
@@ -1811,42 +1862,41 @@ class MultibodyLearnableTactileSystem(Module):
                 ~torch.isnan(grads_combined_batch)
             ), f"NaN in grads_combined, idx {idx}"
 
-            # Populate d(outputs)/d(x_n)
+            # Populate partial d(outputs)/d(x_n)
             jac_out_xn_batch = grads_combined_batch[
                 ..., self.space.n_x :, : self.space.n_x
             ]  # n_outs x self.space.n_x
             jac_outs_params_batch[..., idx, :, : self.space.n_x] = jac_out_xn_batch
 
-            # Populate total derivative d(outputs)/d(geom)
+            # Populate partial d(outputs)/d(geom)
             jac_partial_out_geom_batch = grads_combined_batch[
                 ..., self.space.n_x :, self.space.n_x :
             ]  # n_phis x n_geom
-            jac_out_geom_batch = (
-                jac_partial_out_geom_batch + jac_out_xn_batch @ jac_xn_geom_batch
+            jac_outs_params_batch[..., idx, :, self.space.n_x :] = (
+                jac_partial_out_geom_batch
             )
-            jac_outs_params_batch[..., idx, :, self.space.n_x :] = jac_out_geom_batch
 
             # No need to deal with x_{n+1} (past horizon)
             if idx < traj_len - 1:
                 # Update d(xT)/d(xt) for all previous timesteps to be d(xn+1)/d(xt)
-                jac_xnp_xn_batch = grads_combined_batch[
+                jac_xnp_xn_batch[..., idx, :, :] = grads_combined_batch[
                     ..., : self.space.n_x, : self.space.n_x
                 ]  # n_x x n_x
 
-                jac_xT_xn_batch[..., : idx + 1, :, :] = (
-                    jac_xnp_xn_batch.unsqueeze(-3)
-                    @ jac_xT_xn_batch[..., : idx + 1, :, :]
+                jac_xf_xn_batch[..., : idx + 1, :, :] = (
+                    jac_xnp_xn_batch[..., idx, :, :].unsqueeze(-3)
+                    @ jac_xf_xn_batch[..., : idx + 1, :, :]
                 )
 
-                # Update d(x_[n+1])/d(geom)
-                jac_partial_xnp_geom_batch = grads_combined_batch[
+                jac_xn_xz_batch = jac_xnp_xz_batch[..., idx:, :, :]
+                jac_xnp_xz_batch[..., idx:, :, :] = (
+                    jac_xnp_xn_batch[..., idx, :, :].unsqueeze(-3) @ jac_xn_xz_batch
+                )
+
+                # Populate partial d(x_[n+1])/d(geom)
+                jac_partial_xnp_geom_batch[..., idx, :, :] = grads_combined_batch[
                     ..., : self.space.n_x, self.space.n_x :
                 ]  # n_x x n_geom
-                jac_xnp_geom_batch = (
-                    jac_partial_xnp_geom_batch + jac_xnp_xn_batch @ jac_xn_geom_batch
-                )
-                ###
-                jac_xn_geom_batch = jac_xnp_geom_batch
 
             ### End loop: jac_outs_params_batch combines jac_out_xn and jac_out_geom
             ###           also have all outputs
@@ -1854,24 +1904,55 @@ class MultibodyLearnableTactileSystem(Module):
             ~torch.isnan(jac_outs_params_batch)
         ), "NaN in jac_outs_params_batch"
 
-        ### Computer jac_out_xT instead of jac_out_xn
+        ### Compute jac_xz_geom_batch
+        jac_xz_geom_batch = torch.zeros(batch_dims + (self.space.n_x, n_geom))
         for idx in range(traj_len):
-            jac_out_xn_batch = jac_outs_params_batch[..., idx, :, : self.space.n_x]
-            # jac_outs_xT @ jac_xT_xn = jac_outs_xn
-            # jac_xT_xn.T @ jac_outs_xT.T = jac_outs_xn.T
-            # jac_outs_xT.T = inv(jac_xT_xn.T) @ jac_outs_xn.T
             # pylint doesn't know about torch
             # pylint: disable-next=not-callable
-            jac_out_xT_batch = torch.linalg.solve(
+            jac_xz_geom_batch -= torch.linalg.solve(
                 (
-                    torch.round(jac_xT_xn_batch[..., idx, :, :], decimals=3).transpose(
+                    torch.round(jac_xnp_xz_batch[..., idx, :, :], decimals=3)
+                    + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
+                ),
+                jac_partial_xnp_geom_batch[..., idx, :, :],
+            )
+
+        ### Compute jac_out_geom total instead of partial
+        jac_xn_geom_batch = jac_xz_geom_batch.clone()
+        for idx in range(traj_len):
+            jac_out_xn_batch = jac_outs_params_batch[..., idx, :, : self.space.n_x]
+            jac_partial_out_geom_batch = jac_outs_params_batch[
+                ..., idx, :, self.space.n_x :
+            ]
+
+            jac_outs_params_batch[..., idx, :, self.space.n_x :] = (
+                jac_partial_out_geom_batch + jac_out_xn_batch @ jac_xn_geom_batch
+            )
+
+            if idx < traj_len - 1:
+                jac_xn_geom_batch = (
+                    jac_partial_xnp_geom_batch[..., idx, :, :]
+                    + jac_xnp_xn_batch[..., idx, :, :] @ jac_xn_geom_batch
+                )
+
+        ### Computer jac_out_xh instead of jac_out_xn
+        for idx in range(traj_len):
+            jac_out_xn_batch = jac_outs_params_batch[..., idx, :, : self.space.n_x]
+            # jac_outs_xT @ jac_xf_xn = jac_outs_xn
+            # jac_xf_xn.T @ jac_outs_xT.T = jac_outs_xn.T
+            # jac_outs_xT.T = inv(jac_xf_xn.T) @ jac_outs_xn.T
+            # pylint doesn't know about torch
+            # pylint: disable-next=not-callable
+            jac_out_xh_batch = torch.linalg.solve(
+                (
+                    torch.round(jac_xf_xn_batch[..., idx, :, :], decimals=3).transpose(
                         -1, -2
                     )
                     + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
                 ),
                 jac_out_xn_batch.transpose(-1, -2),
             ).transpose(-1, -2)
-            jac_outs_params_batch[..., idx, :, : self.space.n_x] = jac_out_xT_batch
+            jac_outs_params_batch[..., idx, :, : self.space.n_x] = jac_out_xh_batch
 
         # Switch to position parameter only
         n_params = n_geom + self._learned_trajectory.space.n_q
@@ -1918,6 +1999,7 @@ class MultibodyLearnableTactileSystem(Module):
             .sum(dim=-3)
         )
         ret_info_batch += info_phi_batch
+        # TODO: Investigate asymmetry in ZSINGLE between X and Y
 
         ### Forces Term
         n_forces = n_contacts * 3
