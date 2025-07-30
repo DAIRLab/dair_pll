@@ -131,6 +131,7 @@ def main(
     def print_help():
         print(
             "\nUsage:\n"
+            "a - Action Selecton\n"
             "e - Execute selected action + collect data\n"
             "s - Sample random action\n"
             "t - Train\n"
@@ -298,11 +299,27 @@ def main(
             print("Done!")
 
         elif command_char == "o":
-            if len(data_trajectories.trajectories) == 0:
-                print("Need data for observed info.\n")
-                continue
-
-            obs_info = learned_system.observed_info(data_trajectories)
+            ## Compute Expected Info per-action
+            traj_x, traj_time = interpolate_sampled_action(
+                data=torch.stack(
+                    [
+                        torch.tensor(
+                            np.array(sample_action(library=action_library, index=idx))
+                        )
+                        for idx in range(len(action_library))
+                    ]
+                ),
+                trifinger=trifinger_lcm,
+            )
+            robot_traj = extract_robot_trajectory(
+                traj_x,
+                learned_system,
+                trifinger_lcm,
+            )
+            fisher = learned_system.expected_fisher_info(
+                ctrl_desired=robot_traj,
+                timestamps=traj_time,
+            )
 
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:

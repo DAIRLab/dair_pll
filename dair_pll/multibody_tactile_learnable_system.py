@@ -43,7 +43,7 @@ from dair_pll.drake_utils import (
 from dair_pll.geometry import CollisionGeometry, PydrakeToCollisionGeometryFactory
 from dair_pll.learnable_trajectory import LearnableTrajectories
 from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
-from dair_pll.solvers import DynamicCvxpyLCQPLayer
+from dair_pll.solvers import jaxopt_solver, DynamicCvxpyLCQPLayer
 from dair_pll.state_space import StateSpace, ProductSpace
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, sappy_reorder_mat
 
@@ -169,7 +169,8 @@ class MultibodyLearnableTactileSystem(Module):
         # Fill other class attributes
         # Pylint doesn't know about gin
         # pylint: disable=no-value-for-parameter
-        self._solver = DynamicCvxpyLCQPLayer()
+        self._solver = jaxopt_solver
+        #self._solver = DynamicCvxpyLCQPLayer()
         self._hyperparameters = hyperparameters
 
         ## Populate Model Spaces
@@ -1736,6 +1737,26 @@ class MultibodyLearnableTactileSystem(Module):
                 for idx in range(traj_len)
             ]
         print(f"... Done in {time.time() - start}s")
+        print("Doing it again to check JIT timing...")
+        print("Getting Pose Trajectories (no-diff)...")
+        start = time.time()
+        with torch.no_grad():
+            plant_x_batch, plant_u_batch, _, _, _ = self.diff_simulate(
+                ctrl_desired,
+                timestamps,
+                learned_start_state=self._learned_trajectory.space.x(
+                    pose_start, torch.zeros((self._learned_trajectory.space.n_v))
+                ),
+            )
+            state_params_batch = [
+                Parameter(
+                    plant_x_batch[..., idx, :].clone(),
+                    requires_grad=True,
+                )
+                for idx in range(traj_len)
+            ]
+        print(f"... Done in {time.time() - start}s")
+        breakpoint()
 
         print("Calculating per-timestep gradients...")
         start = time.time()
