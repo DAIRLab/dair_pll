@@ -1737,29 +1737,8 @@ class MultibodyLearnableTactileSystem(Module):
                 for idx in range(traj_len)
             ]
         print(f"... Done in {time.time() - start}s")
-        print("Doing it again to check JIT timing...")
-        print("Getting Pose Trajectories (no-diff)...")
-        start = time.time()
-        with torch.no_grad():
-            plant_x_batch, plant_u_batch, _, _, _ = self.diff_simulate(
-                ctrl_desired,
-                timestamps,
-                learned_start_state=self._learned_trajectory.space.x(
-                    pose_start, torch.zeros((self._learned_trajectory.space.n_v))
-                ),
-            )
-            state_params_batch = [
-                Parameter(
-                    plant_x_batch[..., idx, :].clone(),
-                    requires_grad=True,
-                )
-                for idx in range(traj_len)
-            ]
-        print(f"... Done in {time.time() - start}s")
-        breakpoint()
 
         print("Calculating per-timestep gradients...")
-        start = time.time()
         n_geom = sum(
             param.numel()
             for param in self._multibody_terms.parameters()
@@ -1802,6 +1781,7 @@ class MultibodyLearnableTactileSystem(Module):
             )
             return torch.cat([gr.flatten() for gr in grad])
 
+        cumtime = 0.
         for idx, step_x_batch in enumerate(state_params_batch):
             param_list = [step_x_batch] + [
                 param
@@ -1858,12 +1838,16 @@ class MultibodyLearnableTactileSystem(Module):
                 jac_outs_params_batch = torch.zeros(
                     batch_dims + (traj_len, n_outs, n_params)
                 )
-
+            print(f"Time {idx}, running vmap on shape {output_combined_batch.shape}")
+            start = time.time()
             grads_combined = torch.vmap(
                 partial(get_vjp, output_combined_batch, param_list)
             )(torch.eye(output_combined_batch.numel())).reshape(
                 (-1, self.space.n_x + n_outs, n_batches * self.space.n_x + n_geom)
             )
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"... Done in {end}s, total {cumtime}s")
             # Unbatch param_list, which is [n_x_batch1, ..., n_x_batchn, n_geom]
             grads_combined_batch = torch.zeros(
                 batch_dims + (self.space.n_x + n_outs, n_params)
@@ -1986,8 +1970,6 @@ class MultibodyLearnableTactileSystem(Module):
             ],
             dim=-1,
         )
-
-        print(f"... Done in {time.time() - start}s")
         print("Calculating info matrix...")
         start = time.time()
         outputs_phi_batch = torch.cat(outputs_phi_batch, dim=-3)
