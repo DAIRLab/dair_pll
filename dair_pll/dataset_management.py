@@ -51,7 +51,6 @@ class TrajectorySliceDataset(Dataset):
         """Remove oldest n slices from training"""
         self.first_idx += n_slices
 
-
     def add_slices_from_trajectory(self, trajectory: Tensor) -> None:
         """Incorporate trajectory into dataset as a set of slices.
 
@@ -89,7 +88,10 @@ class TrajectorySliceDataset(Dataset):
 
     def __getitem__(self, idx) -> Tuple[Tensor, Tensor]:
         """Retrieve slice pair at index."""
-        return self.previous_states_slices[idx + self.first_idx], self.future_states_slices[idx + self.first_idx]
+        return (
+            self.previous_states_slices[idx + self.first_idx],
+            self.future_states_slices[idx + self.first_idx],
+        )
 
 
 @dataclass
@@ -116,7 +118,6 @@ class TrajectorySet:
         assert self.indices.nelement() == len(self.trajectories)
         # assure all indices are unique
         assert self.indices.unique().nelement() == self.indices.nelement()
-
 
     def cull_oldest_trajectory(self) -> None:
         """Remove oldest trajectory from training"""
@@ -153,7 +154,9 @@ class TrajectorySet:
 
     def get_full_trajectory(self, key: Optional[str] = None):
         """Get the entire trajectory optionally for a given key"""
-        return torch.cat([(traj if key is None else traj[key]) for traj in self.trajectories], dim=0)
+        return torch.cat(
+            [(traj if key is None else traj[key]) for traj in self.trajectories], dim=0
+        )
 
 
 class ExperimentDataManager:

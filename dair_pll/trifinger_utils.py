@@ -79,7 +79,6 @@ class TrifingerLCMService:
     def safe_height(self):
         """Safe height to move trifinger straight up"""
         return self._safe_height
-    
 
     def sub_handler(self, channel: str, data: Any):
         """
@@ -430,7 +429,11 @@ def sample_action(
         start_s[2] += params.robot_radius if params.ground_buffer else 0.0
         start_s[0] *= flip_factor
         max_radius = params.workspace_radius - params.robot_radius
-        end_radius = rng.uniform(0.0, max_radius) if end_radius is None else end_radius*max_radius
+        end_radius = (
+            rng.uniform(0.0, max_radius)
+            if end_radius is None
+            else end_radius * max_radius
+        )
         end_angle = rng.uniform(0.0, np.pi) if end_angle is None else end_angle
         end_s = np.array(
             [

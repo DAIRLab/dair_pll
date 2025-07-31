@@ -19,6 +19,7 @@ import scipy.linalg
 # Enable default_collate for TensorDict
 from tensordict.tensordict import TensorDict
 
+
 def collate_tensordict_fn(batch, *, collate_fn_map: Optional[Any] = None):
     out = None
     if torch.utils.data.get_worker_info() is not None:
@@ -34,9 +35,14 @@ torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = (
     collate_tensordict_fn
 )
 
+
 def tensor_is_int(tensor: Tensor):
     """Returns true if tensor is of any torch integral type"""
-    return tensor.dtype == torch.int or tensor.dtype == torch.long or tensor.dtype == torch.short
+    return (
+        tensor.dtype == torch.int
+        or tensor.dtype == torch.long
+        or tensor.dtype == torch.short
+    )
 
 
 ####

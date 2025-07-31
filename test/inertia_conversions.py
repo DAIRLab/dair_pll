@@ -1,5 +1,4 @@
-"""Test script for InertialParameterConverter.
-"""
+"""Test script for InertialParameterConverter."""
 
 import torch
 import pdb

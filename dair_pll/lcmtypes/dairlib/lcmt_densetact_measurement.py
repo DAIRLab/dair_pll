@@ -9,8 +9,15 @@ except ImportError:
     from io import BytesIO
 import struct
 
+
 class lcmt_densetact_measurement(object):
-    __slots__ = ["timestamp", "inContact", "contactFrame", "scaledNormal", "scaledFriction"]
+    __slots__ = [
+        "timestamp",
+        "inContact",
+        "contactFrame",
+        "scaledNormal",
+        "scaledFriction",
+    ]
 
     __typenames__ = ["int64_t", "boolean", "double", "double", "double"]
 
@@ -19,9 +26,9 @@ class lcmt_densetact_measurement(object):
     def __init__(self):
         self.timestamp = 0
         self.inContact = False
-        self.contactFrame = [ [ 0.0 for dim1 in range(4) ] for dim0 in range(4) ]
+        self.contactFrame = [[0.0 for dim1 in range(4)] for dim0 in range(4)]
         self.scaledNormal = 0.0
-        self.scaledFriction = [ 0.0 for dim0 in range(2) ]
+        self.scaledFriction = [0.0 for dim0 in range(2)]
 
     def encode(self):
         buf = BytesIO()
@@ -32,47 +39,57 @@ class lcmt_densetact_measurement(object):
     def _encode_one(self, buf):
         buf.write(struct.pack(">qb", self.timestamp, self.inContact))
         for i0 in range(4):
-            buf.write(struct.pack('>4d', *self.contactFrame[i0][:4]))
+            buf.write(struct.pack(">4d", *self.contactFrame[i0][:4]))
         buf.write(struct.pack(">d", self.scaledNormal))
-        buf.write(struct.pack('>2d', *self.scaledFriction[:2]))
+        buf.write(struct.pack(">2d", *self.scaledFriction[:2]))
 
     def decode(data):
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             buf = data
         else:
             buf = BytesIO(data)
         if buf.read(8) != lcmt_densetact_measurement._get_packed_fingerprint():
             raise ValueError("Decode error")
         return lcmt_densetact_measurement._decode_one(buf)
+
     decode = staticmethod(decode)
 
     def _decode_one(buf):
         self = lcmt_densetact_measurement()
         self.timestamp = struct.unpack(">q", buf.read(8))[0]
-        self.inContact = bool(struct.unpack('b', buf.read(1))[0])
+        self.inContact = bool(struct.unpack("b", buf.read(1))[0])
         self.contactFrame = []
         for i0 in range(4):
-            self.contactFrame.append(struct.unpack('>4d', buf.read(32)))
+            self.contactFrame.append(struct.unpack(">4d", buf.read(32)))
         self.scaledNormal = struct.unpack(">d", buf.read(8))[0]
-        self.scaledFriction = struct.unpack('>2d', buf.read(16))
+        self.scaledFriction = struct.unpack(">2d", buf.read(16))
         return self
+
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
-        if lcmt_densetact_measurement in parents: return 0
-        tmphash = (0x4b2b183bb89e4dab) & 0xffffffffffffffff
-        tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
+        if lcmt_densetact_measurement in parents:
+            return 0
+        tmphash = (0x4B2B183BB89E4DAB) & 0xFFFFFFFFFFFFFFFF
+        tmphash = (
+            ((tmphash << 1) & 0xFFFFFFFFFFFFFFFF) + (tmphash >> 63)
+        ) & 0xFFFFFFFFFFFFFFFF
         return tmphash
+
     _get_hash_recursive = staticmethod(_get_hash_recursive)
     _packed_fingerprint = None
 
     def _get_packed_fingerprint():
         if lcmt_densetact_measurement._packed_fingerprint is None:
-            lcmt_densetact_measurement._packed_fingerprint = struct.pack(">Q", lcmt_densetact_measurement._get_hash_recursive([]))
+            lcmt_densetact_measurement._packed_fingerprint = struct.pack(
+                ">Q", lcmt_densetact_measurement._get_hash_recursive([])
+            )
         return lcmt_densetact_measurement._packed_fingerprint
+
     _get_packed_fingerprint = staticmethod(_get_packed_fingerprint)
 
     def get_hash(self):
         """Get the LCM hash of the struct"""
-        return struct.unpack(">Q", lcmt_densetact_measurement._get_packed_fingerprint())[0]
-
+        return struct.unpack(
+            ">Q", lcmt_densetact_measurement._get_packed_fingerprint()
+        )[0]

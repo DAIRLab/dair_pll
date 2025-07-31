@@ -76,6 +76,7 @@ _DEEP_SUPPORT_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
 
+
 @gin.constants_from_enum
 class GeometryRepresentation(Enum):
     NONE = 0
@@ -187,7 +188,6 @@ class BoundedConvexCollisionGeometry(CollisionGeometry):
         Returns:
             :py:mod:`fcl` bounding volume
         """
-
 
 
 class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
@@ -590,20 +590,27 @@ class PydrakeToCollisionGeometryFactory:
     def reverse_convert(
         geometry: CollisionGeometry,
     ) -> Shape:
-        """ Converts ``CollisionGeometry`` back into ``pydrake.geometry.shape``
-        """
+        """Converts ``CollisionGeometry`` back into ``pydrake.geometry.shape``"""
         if isinstance(geometry, Box):
-            return DrakeBox(*((2.0*geometry.get_half_lengths()).flatten().tolist()))
+            return DrakeBox(*((2.0 * geometry.get_half_lengths()).flatten().tolist()))
         elif isinstance(geometry, Plane):
             return DrakeHalfSpace()
         elif isinstance(geometry, Sphere):
             return DrakeSphere(geometry.get_radius())
         elif isinstance(geometry, Polygon):
-            mesh_data = extract_obj_from_mesh_summary(get_mesh_summary_from_polygon(geometry))
-            return DrakeMesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+            mesh_data = extract_obj_from_mesh_summary(
+                get_mesh_summary_from_polygon(geometry)
+            )
+            return DrakeMesh(
+                InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh"))
+            )
         elif isinstance(geometry, DeepSupportConvex):
-            mesh_data = extract_obj_from_mesh_summary(extract_mesh_from_support_function(geometry.network))
-            return DrakeMesh(InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh")))
+            mesh_data = extract_obj_from_mesh_summary(
+                extract_mesh_from_support_function(geometry.network)
+            )
+            return DrakeMesh(
+                InMemoryMesh(mesh_file=MemoryFile(mesh_data, ".obj", "polygon_mesh"))
+            )
 
     @staticmethod
     def convert(
@@ -655,13 +662,20 @@ class PydrakeToCollisionGeometryFactory:
 
     @staticmethod
     def convert_box(
-        drake_box: DrakeBox, representation: GeometryRepresentation, learnable: bool = True
+        drake_box: DrakeBox,
+        representation: GeometryRepresentation,
+        learnable: bool = True,
     ) -> Union[Box, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
         if representation == GeometryRepresentation.NONE:
-            print("Warning: no representation supplied for DrakeBox, default to PRIMITIVE")
-        if representation in [GeometryRepresentation.PRIMITIVE, GeometryRepresentation.NONE]:
+            print(
+                "Warning: no representation supplied for DrakeBox, default to PRIMITIVE"
+            )
+        if representation in [
+            GeometryRepresentation.PRIMITIVE,
+            GeometryRepresentation.NONE,
+        ]:
             return Box(half_widths, 4, learnable)
 
         if representation == GeometryRepresentation.POLYGON:
@@ -670,40 +684,93 @@ class PydrakeToCollisionGeometryFactory:
         if representation == GeometryRepresentation.MESH:
             # Construct from corner vertices
             vertices = torch.zeros((8, 3))
-            vertices[0, :] = torch.tensor([1., 1., 1.,])
-            vertices[1, :] = torch.tensor([-1., 1., 1.,])
-            vertices[2, :] = torch.tensor([1., -1., 1.,])
-            vertices[3, :] = torch.tensor([-1., -1., 1.,])
-            vertices[4, :] = torch.tensor([1., 1., -1.,])
-            vertices[5, :] = torch.tensor([-1., 1., -1.,])
-            vertices[6, :] = torch.tensor([1., -1., -1.,])
-            vertices[7, :] = torch.tensor([-1., -1., -1.,])
+            vertices[0, :] = torch.tensor(
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                ]
+            )
+            vertices[1, :] = torch.tensor(
+                [
+                    -1.0,
+                    1.0,
+                    1.0,
+                ]
+            )
+            vertices[2, :] = torch.tensor(
+                [
+                    1.0,
+                    -1.0,
+                    1.0,
+                ]
+            )
+            vertices[3, :] = torch.tensor(
+                [
+                    -1.0,
+                    -1.0,
+                    1.0,
+                ]
+            )
+            vertices[4, :] = torch.tensor(
+                [
+                    1.0,
+                    1.0,
+                    -1.0,
+                ]
+            )
+            vertices[5, :] = torch.tensor(
+                [
+                    -1.0,
+                    1.0,
+                    -1.0,
+                ]
+            )
+            vertices[6, :] = torch.tensor(
+                [
+                    1.0,
+                    -1.0,
+                    -1.0,
+                ]
+            )
+            vertices[7, :] = torch.tensor(
+                [
+                    -1.0,
+                    -1.0,
+                    -1.0,
+                ]
+            )
             vertices[:, 0] *= half_widths[0]
             vertices[:, 1] *= half_widths[1]
             vertices[:, 2] *= half_widths[2]
             return DeepSupportConvex(vertices, learnable=learnable)
 
         raise NotImplementedError(
-            "Cannot presently represent a DrakeBox()"
-            + f" as {representation} type."
+            "Cannot presently represent a DrakeBox()" + f" as {representation} type."
         )
 
     @staticmethod
     def convert_sphere(
-        drake_sphere: DrakeSphere, representation: GeometryRepresentation, learnable: bool = True
+        drake_sphere: DrakeSphere,
+        representation: GeometryRepresentation,
+        learnable: bool = True,
     ) -> Union[Sphere, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
         if representation == GeometryRepresentation.NONE:
-            print("Warning: no representation supplied for DrakeSphere, default to PRIMITIVE")
-        if representation in [GeometryRepresentation.PRIMITIVE, GeometryRepresentation.NONE]:
+            print(
+                "Warning: no representation supplied for DrakeSphere, default to PRIMITIVE"
+            )
+        if representation in [
+            GeometryRepresentation.PRIMITIVE,
+            GeometryRepresentation.NONE,
+        ]:
             return Sphere(torch.tensor([drake_sphere.radius()]), learnable)
 
         if representation == GeometryRepresentation.POLYGON:
             pass  # TODO
 
         raise NotImplementedError(
-            "Cannot presently represent a DrakeSphere()"
-            + f"as {representation} type."
+            "Cannot presently represent a DrakeSphere()" + f"as {representation} type."
         )
 
     @staticmethod
@@ -713,7 +780,9 @@ class PydrakeToCollisionGeometryFactory:
 
     @staticmethod
     def convert_mesh(
-        drake_mesh: DrakeMesh, representation: GeometryRepresentation, learnable: bool = True
+        drake_mesh: DrakeMesh,
+        representation: GeometryRepresentation,
+        learnable: bool = True,
     ) -> Union[DeepSupportConvex, Polygon]:
         """Converts ``pydrake.geometry.Mesh`` to ``Polygon`` or
         ``DeepSupportConvex``."""
@@ -728,8 +797,7 @@ class PydrakeToCollisionGeometryFactory:
             return Polygon(vertices, learnable)
 
         raise NotImplementedError(
-            "Cannot presently represent a "
-            + f"DrakeMesh() as {representation} type."
+            "Cannot presently represent a " + f"DrakeMesh() as {representation} type."
         )
 
 
@@ -796,11 +864,15 @@ class GeometryCollider:
             )
 
         # case 3: compact-convex to sphere collision (e.g. robot)
-        if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(geometry_b, Sphere):
+        if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
+            geometry_b, Sphere
+        ):
             return GeometryCollider.collide_convex_sphere(
                 geometry_a, geometry_b, R_AB, p_AoBo_A, estimated_normals_A
             )
-        if isinstance(geometry_a, Sphere) and isinstance(geometry_b, BoundedConvexCollisionGeometry):
+        if isinstance(geometry_a, Sphere) and isinstance(
+            geometry_b, BoundedConvexCollisionGeometry
+        ):
             return GeometryCollider.collide_convex_sphere(
                 geometry_b,
                 geometry_a,
@@ -843,8 +915,10 @@ class GeometryCollider:
         nx = torch.zeros(batch_dim)
         is_nan = torch.isclose(torch.norm(dx, dim=-1), torch.zeros(batch_dim))
         assert is_nan.shape == batch_dim
-        nx[is_nan] = 0.
-        nx[~is_nan] = -(line_O[~is_nan][..., 0, :] * dx[~is_nan]).sum(dim=-1) / torch.norm(dx[~is_nan], dim=-1)
+        nx[is_nan] = 0.0
+        nx[~is_nan] = -(line_O[~is_nan][..., 0, :] * dx[~is_nan]).sum(
+            dim=-1
+        ) / torch.norm(dx[~is_nan], dim=-1)
         assert nx.shape == batch_dim
         nx = torch.clamp(nx, 0.0, 1.0)
         ret = dx * nx.unsqueeze(-1) + line_O[..., 0, :]
@@ -921,7 +995,9 @@ class GeometryCollider:
             new_p_OAc_A = GeometryCollider.closest_point_to_origin(p_OSimplex_A).clone()
 
             # Check if changes in normals are <thresh
-            diff = (torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh).unsqueeze(-1)
+            diff = (torch.norm(new_p_OAc_A - p_OAc_A, dim=-1) < gjk_thresh).unsqueeze(
+                -1
+            )
             if torch.all(diff):
                 p_OAc_A = new_p_OAc_A.clone()
                 break
@@ -929,9 +1005,11 @@ class GeometryCollider:
             # Next iteration
             p_OAc_A = new_p_OAc_A.clone()
             p_OSimplex_A = p_OAc_A.unsqueeze(-2).clone()
-        if cur_iter == (gjk_max_iter-1):
+        if cur_iter == (gjk_max_iter - 1):
             print("Warning: Reached max GJK iterations")
-            import ipdb; ipdb.set_trace()
+            import ipdb
+
+            ipdb.set_trace()
 
         # p_OAc_A is location of closest point to origin in object
         assert p_OAc_A.shape == batch_dim + (3,)
@@ -947,7 +1025,7 @@ class GeometryCollider:
 
         # Handle exact middle corner case, just arbitrary normal
         exact_middle = torch.norm(normals_A, dim=-1) < inside_thresh
-        normals_A[exact_middle] = torch.tensor([1., 0., 0.])
+        normals_A[exact_middle] = torch.tensor([1.0, 0.0, 0.0])
 
         # Actually normalize normal vectors and calculate phi
         normals_A = torch.nn.functional.normalize(normals_A, dim=-1)
@@ -1118,7 +1196,9 @@ class GeometryCollider:
         # Calculate directions (use torch nn functional normalize)
         directions_A = torch.nn.functional.normalize(p_AcBo_A, dim=-1)
         # Check if internal, if so, flip directions_A
-        directions_A[torch.norm(p_AoBo_A, dim=-1) < torch.norm(p_AoAc_A, dim=-1)] *= -1.0
+        directions_A[
+            torch.norm(p_AoBo_A, dim=-1) < torch.norm(p_AoAc_A, dim=-1)
+        ] *= -1.0
         # In the unlikely event p_AcBo_A == 0, use an arbitrary surface normal
         on_surface_idxs = torch.norm(directions_A, dim=-1) == 0
         directions_A[on_surface_idxs] = (
@@ -1140,7 +1220,9 @@ class GeometryCollider:
                 torch.norm(estimated_normals_A.detach(), dim=-1), torch.zeros(batch_dim)
             )
             directions_A2[zeros_idx] = directions_A[zeros_idx].squeeze(-2)
-            directions_A2[~zeros_idx] = torch.nn.functional.normalize(estimated_normals_A[~zeros_idx], dim=-1)
+            directions_A2[~zeros_idx] = torch.nn.functional.normalize(
+                estimated_normals_A[~zeros_idx], dim=-1
+            )
             p_AoAc_A2 = box_a.support_points(directions_A2)[..., :1, :]
             p_AoAc_A = torch.cat([p_AoAc_A, p_AoAc_A2], dim=-2)
             directions_A = torch.cat(

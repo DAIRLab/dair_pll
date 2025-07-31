@@ -48,18 +48,23 @@ def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
 # TODO: clean up
 # Disable JAX vram hogging
 import os
+
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 import jax
 from jaxopt import OSQP
 from jax2torch import jax2torch
+
 
 # TODO: edit jax2torch.py to remove to_dlpack calls
 # TODO: edit jax2torch.py to call .detach in t2j()
 @jax2torch
 @jax.vmap
 @jax.jit
-def jaxopt_qp_run(Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array) -> jax.Array:
+def jaxopt_qp_run(
+    Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array
+) -> jax.Array:
     return OSQP().run(params_obj=(Qj, qj), params_ineq=(Gj, hj)).params.primal
+
 
 def jaxopt_solver(Qin: Tensor, qin: Tensor) -> Tensor:
     """Solver using jaxopt and the pyramid approximation
@@ -75,7 +80,9 @@ def jaxopt_solver(Qin: Tensor, qin: Tensor) -> Tensor:
     n_c = Qin.shape[-1] // 3
     assert qin.shape[-1] == 3 * n_c
     # Map pyramid space to (l_tx, l_ty, l_n)
-    lamb_map = np.cos(np.pi/4) * np.array([[1, 0, -1, 0],[0, 1, 0, -1],[1, 1, 1, 1]])
+    lamb_map = np.cos(np.pi / 4) * np.array(
+        [[1, 0, -1, 0], [0, 1, 0, -1], [1, 1, 1, 1]]
+    )
     lamb_map_full = torch.tensor(np.kron(np.eye(n_c), lamb_map), dtype=Qin.dtype)
 
     # Wrap Q and q

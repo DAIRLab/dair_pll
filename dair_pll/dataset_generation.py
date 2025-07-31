@@ -1,4 +1,4 @@
-r""" This module also contains utilities for generating simulation data
+r"""This module also contains utilities for generating simulation data
 from a :class:`~dair_pll.system.System`\ .
 
 Centers around the :class:`ExperimentDatasetGenerator` type, which takes in a

@@ -257,7 +257,7 @@ def visualize_trajectory(
 
     # Clear the images before iterating through the trajectory (by default the
     # video starts with one image of the systems at the origin).
-    if not isinstance(vis, MeshcatVisualizer):  
+    if not isinstance(vis, MeshcatVisualizer):
         vis._pil_images = []  # type: ignore
 
     # Simulate the system according to the provided data.
@@ -266,7 +266,7 @@ def visualize_trajectory(
         drake_system.write_state_to_sim(x_current.unsqueeze(0))
 
         if isinstance(vis, MeshcatVisualizer):
-            time.sleep(2.0*drake_system.dt)
+            time.sleep(2.0 * drake_system.dt)
         else:
             # Force publish video frame.
             sim_context = sim.get_mutable_context()

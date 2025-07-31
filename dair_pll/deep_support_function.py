@@ -51,7 +51,7 @@ def get_mesh_summary_from_polygon(polygon) -> MeshSummary:
 
 
 def extract_obj_from_support_function(
-    support_function: Callable[[Tensor], Tensor]
+    support_function: Callable[[Tensor], Tensor],
 ) -> str:
     """Given a support function, extracts a Wavefront obj representation.
 
@@ -137,7 +137,7 @@ def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
 
 
 def extract_mesh_from_support_function(
-    support_function: Callable[[Tensor], Tensor]
+    support_function: Callable[[Tensor], Tensor],
 ) -> MeshSummary:
     """Given a support function, extracts a vertex/face mesh.
 

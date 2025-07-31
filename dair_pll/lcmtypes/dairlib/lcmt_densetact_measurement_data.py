@@ -11,6 +11,7 @@ import struct
 
 from . import lcmt_densetact_measurement
 
+
 class lcmt_densetact_measurement_data(object):
     __slots__ = ["numSensors", "sensorData"]
 
@@ -31,17 +32,21 @@ class lcmt_densetact_measurement_data(object):
     def _encode_one(self, buf):
         buf.write(struct.pack(">b", self.numSensors))
         for i0 in range(self.numSensors):
-            assert self.sensorData[i0]._get_packed_fingerprint() == lcmt_densetact_measurement._get_packed_fingerprint()
+            assert (
+                self.sensorData[i0]._get_packed_fingerprint()
+                == lcmt_densetact_measurement._get_packed_fingerprint()
+            )
             self.sensorData[i0]._encode_one(buf)
 
     def decode(data):
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             buf = data
         else:
             buf = BytesIO(data)
         if buf.read(8) != lcmt_densetact_measurement_data._get_packed_fingerprint():
             raise ValueError("Decode error")
         return lcmt_densetact_measurement_data._decode_one(buf)
+
     decode = staticmethod(decode)
 
     def _decode_one(buf):
@@ -51,24 +56,36 @@ class lcmt_densetact_measurement_data(object):
         for i0 in range(self.numSensors):
             self.sensorData.append(lcmt_densetact_measurement._decode_one(buf))
         return self
+
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
-        if lcmt_densetact_measurement_data in parents: return 0
+        if lcmt_densetact_measurement_data in parents:
+            return 0
         newparents = parents + [lcmt_densetact_measurement_data]
-        tmphash = (0x5eb95ea8bc9c69bf+ lcmt_densetact_measurement._get_hash_recursive(newparents)) & 0xffffffffffffffff
-        tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
+        tmphash = (
+            0x5EB95EA8BC9C69BF
+            + lcmt_densetact_measurement._get_hash_recursive(newparents)
+        ) & 0xFFFFFFFFFFFFFFFF
+        tmphash = (
+            ((tmphash << 1) & 0xFFFFFFFFFFFFFFFF) + (tmphash >> 63)
+        ) & 0xFFFFFFFFFFFFFFFF
         return tmphash
+
     _get_hash_recursive = staticmethod(_get_hash_recursive)
     _packed_fingerprint = None
 
     def _get_packed_fingerprint():
         if lcmt_densetact_measurement_data._packed_fingerprint is None:
-            lcmt_densetact_measurement_data._packed_fingerprint = struct.pack(">Q", lcmt_densetact_measurement_data._get_hash_recursive([]))
+            lcmt_densetact_measurement_data._packed_fingerprint = struct.pack(
+                ">Q", lcmt_densetact_measurement_data._get_hash_recursive([])
+            )
         return lcmt_densetact_measurement_data._packed_fingerprint
+
     _get_packed_fingerprint = staticmethod(_get_packed_fingerprint)
 
     def get_hash(self):
         """Get the LCM hash of the struct"""
-        return struct.unpack(">Q", lcmt_densetact_measurement_data._get_packed_fingerprint())[0]
-
+        return struct.unpack(
+            ">Q", lcmt_densetact_measurement_data._get_packed_fingerprint()
+        )[0]

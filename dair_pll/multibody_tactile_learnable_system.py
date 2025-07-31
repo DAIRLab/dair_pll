@@ -170,7 +170,7 @@ class MultibodyLearnableTactileSystem(Module):
         # Pylint doesn't know about gin
         # pylint: disable=no-value-for-parameter
         self._solver = jaxopt_solver
-        #self._solver = DynamicCvxpyLCQPLayer()
+        # self._solver = DynamicCvxpyLCQPLayer()
         self._hyperparameters = hyperparameters
 
         ## Populate Model Spaces
@@ -320,6 +320,7 @@ class MultibodyLearnableTactileSystem(Module):
             dt[step_dt_expanded < self._hyperparameters.dt_thresh] = step_dt_expanded[
                 step_dt_expanded < self._hyperparameters.dt_thresh
             ]
+
         # TODO: Can safely return 0s if above threshold
         # if dt > self._hyperparameters.dt_thresh:
         #    return (
@@ -1693,11 +1694,14 @@ class MultibodyLearnableTactileSystem(Module):
         assert len(self._learned_model_names) == 1
 
         # Input Validation
-        batch_dims = ctrl_desired.size()[:-2]
-        if len(batch_dims) < 1:
-            batch_dims = (1,)
+        full_batch_dims = ctrl_desired.size()[:-2]
+        if len(full_batch_dims) < 1:
+            full_batch_dims = (1,)
             ctrl_desired = ctrl_desired.unsqueeze(0)
-        n_batches = math.prod(batch_dims)
+        n_batches = math.prod(full_batch_dims)
+        batch_dims = (n_batches,)
+        ctrl_desired = ctrl_desired.reshape(batch_dims + ctrl_desired.size()[-2:])
+
         traj_len = ctrl_desired.size()[-2]
         assert ctrl_desired.size() == batch_dims + (
             traj_len,
@@ -1771,23 +1775,64 @@ class MultibodyLearnableTactileSystem(Module):
         outputs_normals_batch = []
         outputs_forces_batch = []
 
-        def get_vjp(output, param_list, v):
-            grad = torch.autograd.grad(
-                output.flatten(),
+        def get_vjp(param_list, outputs, v):
+            return torch.autograd.grad(
+                outputs,
                 param_list,
                 v,
                 create_graph=False,
                 retain_graph=True,
+                allow_unused=True,
+                materialize_grads=True,
             )
-            return torch.cat([gr.flatten() for gr in grad])
 
-        cumtime = 0.
+        cumtime = 0.0
+        geom_param_list = [
+            param
+            for param in self._multibody_terms.parameters()
+            if param.requires_grad
+        ]
+
+        """
+        def get_outputs_from_step_geom(step_x_batch: Tensor, step_dts: Tensor, plant_step_u: Tensor, geom_size: list[Tensor]) -> Tensor:
+            breakpoint()
+            step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
+                self.forward_dynamics(
+                    self.space.q(step_x_batch),
+                    self.space.v(step_x_batch),
+                    plant_step_u,
+                    step_dts,
+                )
+            )
+            output_phi_batch = torch.stack(list(step_phis_batch.values()), dim=-2)
+            output_normals_batch = torch.stack(
+                list(step_normals_batch.values()), dim=-2
+            )
+            output_forces_batch = torch.stack(list(step_forces_batch.values()), dim=-2)
+            output_x_batch = self.space.x(
+                self.space.euler_step(
+                    self.space.q(step_x_batch), step_vplus_batch, step_dts
+                ),
+                step_vplus_batch,
+            )
+
+            # Take Derivatives of outputs
+            outputs_phi_batch.append(output_phi_batch.detach())
+            outputs_normals_batch.append(output_normals_batch.detach())
+            outputs_forces_batch.append(output_forces_batch.detach())
+            output_combined_batch = torch.cat(
+                [
+                    output_x_batch.reshape(batch_dims + (-1,)),
+                    output_phi_batch.reshape(batch_dims + (-1,)),
+                    output_forces_batch.reshape(batch_dims + (-1,)),
+                    output_normals_batch.reshape(batch_dims + (-1,)),
+                ],
+                dim=-1,
+            )
+            return output_combined_batch
+        """
+        
         for idx, step_x_batch in enumerate(state_params_batch):
-            param_list = [step_x_batch] + [
-                param
-                for param in self._multibody_terms.parameters()
-                if param.requires_grad
-            ]
             try:
                 step_dts = timestamps[idx + 1] - timestamps[idx]
             except IndexError:
@@ -1827,6 +1872,11 @@ class MultibodyLearnableTactileSystem(Module):
                 ],
                 dim=-1,
             )
+            """
+            output_from_step_geom_fn = partial(get_outputs_from_step_geom, step_x_batch, step_dts, plant_u_batch[..., idx, :])
+            test_output_combined_batch = output_from_step_geom_fn(geom_param_list[0])
+            breakpoint()
+            """
             n_outs = sum(
                 [
                     math.prod(output_phi_batch.size()[len(batch_dims) :]),
@@ -1838,17 +1888,80 @@ class MultibodyLearnableTactileSystem(Module):
                 jac_outs_params_batch = torch.zeros(
                     batch_dims + (traj_len, n_outs, n_params)
                 )
-            print(f"Time {idx}, running vmap on shape {output_combined_batch.shape}")
+            print(f"Timestep {idx}... ", end='')
             start = time.time()
+            
+            """
             grads_combined = torch.vmap(
-                partial(get_vjp, output_combined_batch, param_list)
+                partial(
+                    get_vjp,
+                    output_combined_batch,
+                    step_state_param_batch + geom_list,
+                )
             )(torch.eye(output_combined_batch.numel())).reshape(
-                (-1, self.space.n_x + n_outs, n_batches * self.space.n_x + n_geom)
+                output_combined_batch.shape + (n_batches * self.space.n_x + n_geom,)
             )
+            grads_combined = torch.zeros(output_combined_batch.shape + (n_batches * self.space.n_x + n_geom,))
+            # TODO: Make Hyperparameter, this has been optimized for time at 100 actions
+            batch_divide = 7
+            n_batch_grps = (n_batches // batch_divide) + 1
+            for batch_grp_idx in range(n_batch_grps):
+                start_idx = batch_grp_idx * batch_divide
+                end_idx = min((batch_grp_idx+1) * batch_divide, output_combined_batch.shape[0])
+                n_grp_batches = end_idx - start_idx
+                grads_grp = torch.vmap(
+                    partial(
+                        get_vjp,
+                        output_combined_batch[start_idx:end_idx],
+                        step_state_param_batch[start_idx:end_idx] + geom_list,
+                    )
+                )(torch.eye(output_combined_batch[start_idx:end_idx].numel())).reshape((-1, output_combined_batch.shape[-1], n_grp_batches * self.space.n_x + n_geom))
+                grads_combined[start_idx:end_idx, :, start_idx*self.space.n_x:end_idx*self.space.n_x] = grads_grp[..., :-n_geom]
+                grads_combined[start_idx:end_idx, :, -n_geom:] = grads_grp[..., -n_geom:]
+            """
+            assert output_combined_batch.shape == (n_batches, self.space.n_x + n_outs)
+            grads_combined_batch = torch.zeros(
+                batch_dims + (self.space.n_x + n_outs, n_params)
+            )
+            #for n_out in range(self.space.n_x + n_outs):
+            #    grads_combined_batch[:, n_out, :-n_geom] = torch.autograd.grad(output_combined_batch[:, n_out], step_x_batch, torch.ones(n_batches), retain_graph=True, create_graph=False)[0]
+            grad_outputs = []
+            for n_out in range(self.space.n_x + n_outs):
+                grad_out= torch.zeros_like(output_combined_batch.T)
+                grad_out[n_out, :] = torch.ones(n_batches)
+                grad_outputs.append(grad_out)
+            grad_outputs = torch.stack(grad_outputs)
+            state_vjp_vmap = torch.vmap(partial(get_vjp, step_x_batch, output_combined_batch.T))
+            grads_combined_batch[..., :-n_geom] = state_vjp_vmap(grad_outputs)[0].transpose(0, 1)
             end = time.time() - start
             cumtime = cumtime + end
-            print(f"... Done in {end}s, total {cumtime}s")
+            print(f" State in {end:.3f}s", end='')
+            start = time.time()
+            """
+            geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_list, output_combined_batch.flatten()))
+            grads_combined_batch[..., -n_geom:] = geom_vjp_vmap(torch.eye(output_combined_batch.numel()))[0].reshape(grads_combined_batch[..., -n_geom:].shape)
+            """
+            # TODO: Make Hyperparameter, this has been optimized for time at 100 actions
+            batch_divide = 7
+            n_batch_grps = (n_batches // batch_divide) + 1
+            for batch_grp_idx in range(n_batch_grps):
+                start_idx = batch_grp_idx * batch_divide
+                end_idx = min((batch_grp_idx+1) * batch_divide, output_combined_batch.shape[0])
+                n_grp_batches = end_idx - start_idx
+                grads_grp = torch.vmap(
+                    partial(
+                        get_vjp,
+                        geom_param_list,
+                        output_combined_batch[start_idx:end_idx].flatten(),
+                    )
+                )(torch.eye(output_combined_batch[start_idx:end_idx].numel()))[0]
+                grads_combined_batch[start_idx:end_idx, :, -n_geom:] = grads_grp.reshape(grads_combined_batch[start_idx:end_idx, :, -n_geom:].shape)
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"...Geom in {end:.3f}s, total {cumtime:.3f}s")
+            #grads_combined_batch = torch.stack(grads_combined)
             # Unbatch param_list, which is [n_x_batch1, ..., n_x_batchn, n_geom]
+            """
             grads_combined_batch = torch.zeros(
                 batch_dims + (self.space.n_x + n_outs, n_params)
             )
@@ -1863,6 +1976,7 @@ class MultibodyLearnableTactileSystem(Module):
                     :,
                     batch_idx * self.space.n_x : (batch_idx + 1) * self.space.n_x,
                 ]
+            """
             assert torch.all(
                 ~torch.isnan(grads_combined_batch)
             ), f"NaN in grads_combined, idx {idx}"

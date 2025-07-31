@@ -71,6 +71,8 @@ def get_true_geometry() -> Shape:
 
 ## Main Function
 signal_pressed = False
+
+
 def signal_handler(_sig, _frame):
     """Handle SIGINT"""
     # pylint: disable=global-statement
@@ -78,6 +80,7 @@ def signal_handler(_sig, _frame):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal_pressed = True
     signal.signal(signal.SIGINT, signal_handler)
+
 
 @gin.configurable
 def main(

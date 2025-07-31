@@ -396,7 +396,13 @@ def main(
     # next state's net_actuation / contact_forces are from the previous time step.
     # NOTE: need traj_num and index to index trajectory
     slice_config = TrajectorySliceConfig(
-        his_state_keys=["robot_state", "net_actuation", "contact_forces", "traj_num", "index"],
+        his_state_keys=[
+            "robot_state",
+            "net_actuation",
+            "contact_forces",
+            "traj_num",
+            "index",
+        ],
         pred_state_keys=["robot_state", "traj_num", "index"],
         shuffle=False,
     )

@@ -2,24 +2,24 @@
 Helper script to access the ContactNets elbow dataset and copy into PLL in the expected format.
 
 The ContactNets format is in:
-	[ position  quaternion  artic_angle  linear_velocity  angular_velocity  artic_velocity ]
-	where:
-		- position:  		[x, y, z] in BLOCK_HALF_WIDTHS
-		- quaternion: 		[qw, qx, qy, qz]
-		- artic_angle: 		[theta] in rad
-		- linear_velocity: 	[vx, vy, vz] in BLOCK_HALF_WIDTHS/second
-		- angular_velocity:	[wx, wy, wz] in rad/second in body frame
-		- artic_velocity:	[dtheta] in rad/second
+        [ position  quaternion  artic_angle  linear_velocity  angular_velocity  artic_velocity ]
+        where:
+                - position:  		[x, y, z] in BLOCK_HALF_WIDTHS
+                - quaternion: 		[qw, qx, qy, qz]
+                - artic_angle: 		[theta] in rad
+                - linear_velocity: 	[vx, vy, vz] in BLOCK_HALF_WIDTHS/second
+                - angular_velocity:	[wx, wy, wz] in rad/second in body frame
+                - artic_velocity:	[dtheta] in rad/second
 
 The PLL format is in:
-	[ quaternion  position  artic_angle  angular_velocity  linear_velocity  artic_velocity ]
-	where:
-		- position:  		[x, y, z] in meters
-		- quaternion: 		[qw, qx, qy, qz]
-		- artic_angle: 		[theta] in rad
-		- linear_velocity: 	[vx, vy, vz] in meters/second
-		- angular_velocity:	[wx, wy, wz] in rad/second in body frame
-		- artic_velocity:	[dtheta] in rad/second
+        [ quaternion  position  artic_angle  angular_velocity  linear_velocity  artic_velocity ]
+        where:
+                - position:  		[x, y, z] in meters
+                - quaternion: 		[qw, qx, qy, qz]
+                - artic_angle: 		[theta] in rad
+                - linear_velocity: 	[vx, vy, vz] in meters/second
+                - angular_velocity:	[wx, wy, wz] in rad/second in body frame
+                - artic_velocity:	[dtheta] in rad/second
 """
 
 import pdb

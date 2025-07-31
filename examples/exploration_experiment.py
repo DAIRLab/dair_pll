@@ -100,7 +100,10 @@ def get_loss_args(
 
     return ret
 
-def direct_loss_impulses(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory):
+
+def direct_loss_impulses(
+    traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory
+):
     """
     Return the impulses
     """
@@ -108,43 +111,82 @@ def direct_loss_impulses(traj: np.ndarray, data: DataLoader, system: MultibodyLe
     traj_model_name = system._trajectory_model_names[0] + "_state"
     traj_data = [d for d in data][0]
     assert len(traj) == (traj_data[0].shape[0] + 1) * system._trajectory.space.n_x
-    traj_state = torch.tensor(np.copy(traj)).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+    traj_state = torch.tensor(np.copy(traj)).reshape(
+        (traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x
+    )
     traj_data[0][traj_model_name] = traj_state[:-1].clone()
     traj_data[1][traj_model_name] = traj_state[1:].clone()
 
-    return system.calculate_contactnets_impulses(**get_loss_args(traj_data[0], traj_data[1], system))
+    return system.calculate_contactnets_impulses(
+        **get_loss_args(traj_data[0], traj_data[1], system)
+    )
 
-def direct_loss_jacobian(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory, impulses: Optional[Tensor] = None):
+
+def direct_loss_jacobian(
+    traj: np.ndarray,
+    data: DataLoader,
+    system: MultibodyLearnableSystemWithTrajectory,
+    impulses: Optional[Tensor] = None,
+):
     """
     Direct compute of the loss for the purpose of scipy minimize
     """
     traj_model_name = system._trajectory_model_names[0] + "_state"
     traj_data = [d for d in data][0]
-    traj_state = torch.tensor(traj).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+    traj_state = torch.tensor(traj).reshape(
+        (traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x
+    )
 
     def loss_from_tensor_jac(traj_tensor):
         traj_data[0][traj_model_name] = traj_tensor[:-1]
         traj_data[1][traj_model_name] = traj_tensor[1:]
-        return system.contactnets_loss(**get_loss_args(traj_data[0], traj_data[1], system, impulses)).mean()
+        return system.contactnets_loss(
+            **get_loss_args(traj_data[0], traj_data[1], system, impulses)
+        ).mean()
 
-    return torch.autograd.functional.jacobian(loss_from_tensor_jac, traj_state).flatten().cpu().numpy()
+    return (
+        torch.autograd.functional.jacobian(loss_from_tensor_jac, traj_state)
+        .flatten()
+        .cpu()
+        .numpy()
+    )
 
-def direct_loss_hessian(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory, impulses: Optional[Tensor] = None):
+
+def direct_loss_hessian(
+    traj: np.ndarray,
+    data: DataLoader,
+    system: MultibodyLearnableSystemWithTrajectory,
+    impulses: Optional[Tensor] = None,
+):
     """
     Direct compute of the loss for the purpose of scipy minimize
     """
     traj_model_name = system._trajectory_model_names[0] + "_state"
     traj_data = [d for d in data][0]
-    traj_state = torch.tensor(traj).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+    traj_state = torch.tensor(traj).reshape(
+        (traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x
+    )
 
     def loss_from_tensor_hes(traj_tensor):
         traj_data[0][traj_model_name] = traj_tensor[:-1]
         traj_data[1][traj_model_name] = traj_tensor[1:]
-        return system.contactnets_loss(**get_loss_args(traj_data[0], traj_data[1], system, impulses)).mean()
+        return system.contactnets_loss(
+            **get_loss_args(traj_data[0], traj_data[1], system, impulses)
+        ).mean()
 
-    return torch.autograd.functional.hessian(loss_from_tensor_hes, traj_state).cpu().numpy()
+    return (
+        torch.autograd.functional.hessian(loss_from_tensor_hes, traj_state)
+        .cpu()
+        .numpy()
+    )
 
-def direct_loss(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSystemWithTrajectory, impulses: Optional[Tensor] = None):
+
+def direct_loss(
+    traj: np.ndarray,
+    data: DataLoader,
+    system: MultibodyLearnableSystemWithTrajectory,
+    impulses: Optional[Tensor] = None,
+):
     """
     Direct compute of the loss for the purpose of scipy minimize
     """
@@ -152,12 +194,17 @@ def direct_loss(traj: np.ndarray, data: DataLoader, system: MultibodyLearnableSy
     traj_model_name = system._trajectory_model_names[0] + "_state"
     traj_data = [d for d in data][0]
     assert len(traj) == (traj_data[0].shape[0] + 1) * system._trajectory.space.n_x
-    traj_state = torch.tensor(traj).reshape((traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x)
+    traj_state = torch.tensor(traj).reshape(
+        (traj_data[0].shape[0] + 1), 1, system._trajectory.space.n_x
+    )
     traj_data[0][traj_model_name] = traj_state[:-1]
     traj_data[1][traj_model_name] = traj_state[1:]
 
-    return float(system.contactnets_loss(**get_loss_args(traj_data[0], traj_data[1], system, impulses)).mean())
-
+    return float(
+        system.contactnets_loss(
+            **get_loss_args(traj_data[0], traj_data[1], system, impulses)
+        ).mean()
+    )
 
 
 def train_epoch(
@@ -187,10 +234,10 @@ def train_epoch(
         # pylint: disable=E1120
         # Expect gin to handle missing arguments
         ### Profiling
-        #import cProfile, pstats, io
-        #from pstats import SortKey
-        #pr = cProfile.Profile()
-        #pr.enable()
+        # import cProfile, pstats, io
+        # from pstats import SortKey
+        # pr = cProfile.Profile()
+        # pr.enable()
         loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
         losses.append(loss.clone().detach())
 
@@ -204,12 +251,12 @@ def train_epoch(
             optimizer.step()
 
         ### Profiling
-        #s = io.StringIO()
-        #sortby = SortKey.CUMULATIVE
-        #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        #ps.print_stats()
-        #print(s.getvalue())
-        #breakpoint()
+        # s = io.StringIO()
+        # sortby = SortKey.CUMULATIVE
+        # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
+        # breakpoint()
 
     # Compute Epoch Average
     avg_loss = cast(Tensor, sum(losses) / len(losses))
@@ -220,10 +267,13 @@ def train_epoch(
 
 
 signal_pressed = False
+
+
 def signal_handler(sig, frame):
-    """ Handle SIGINT"""
+    """Handle SIGINT"""
     global signal_pressed
     signal_pressed = True
+
 
 ## Main Function
 @gin.configurable
@@ -308,12 +358,20 @@ def main(
                 print("Cannot optimize without sim data.\n")
                 continue
 
-            init_state = np.array([0., 0.05, 0., 0., 0., 0.])
+            init_state = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
             traj_0 = np.tile(init_state, len(sim_trajectories.slices) + 1)
 
-            #impulses = direct_loss_impulses(traj_0, traj_dataloader, learned_system)
+            # impulses = direct_loss_impulses(traj_0, traj_dataloader, learned_system)
 
-            res = scipy.optimize.minimize(direct_loss, traj_0, tol=1e-10, args=(traj_dataloader, learned_system), jac=direct_loss_jacobian, method='L-BFGS-B', options={"iprint": 100})
+            res = scipy.optimize.minimize(
+                direct_loss,
+                traj_0,
+                tol=1e-10,
+                args=(traj_dataloader, learned_system),
+                jac=direct_loss_jacobian,
+                method="L-BFGS-B",
+                options={"iprint": 100},
+            )
 
         elif command_char == "r":
             if traj_dataloader is None or len(traj_dataloader) == 0:
@@ -364,7 +422,15 @@ def main(
             # Extend Learnable Trajectory
             learned_system.add_trajectories(
                 traj_lens=[state.shape[0]],
-                traj_data=[learned_system.model_states_from_state_tensor(state)[learned_system._trajectory_model_names[0] + "_state"]] if use_true_traj else None,
+                traj_data=(
+                    [
+                        learned_system.model_states_from_state_tensor(state)[
+                            learned_system._trajectory_model_names[0] + "_state"
+                        ]
+                    ]
+                    if use_true_traj
+                    else None
+                ),
             )
 
             # Re-init optimizer and data-loader
@@ -398,15 +464,18 @@ def main(
 
             start_time = time.time()
             for idx in range(epochs):
-                train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
+                train_loss, loss_data = train_epoch(
+                    traj_dataloader, learned_system, optimizer
+                )
                 total_epochs += 1
-                print(total_epochs, 
-                    f"Loss (J): {train_loss:.3e};", 
-                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};", 
-                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};", 
-                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};", 
-                    f"Pen (m): {loss_data['mean_pen_m']:.3e};", 
-                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
+                print(
+                    total_epochs,
+                    f"Loss (J): {train_loss:.3e};",
+                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};",
+                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};",
+                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};",
+                    f"Pen (m): {loss_data['mean_pen_m']:.3e};",
+                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};",
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
                 )
                 train_losses.append(train_loss)
@@ -420,12 +489,16 @@ def main(
 
             vis_system = None  # Invalidate
 
-            print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
+            print(
+                f"Finished training {epochs} epochs in {time.time()-start_time} seconds!"
+            )
 
         elif command_char == "u":
             print("Enter comma-space-separated floats.\n")
             try:
-                updated_ref = np.array(list(map(float, input("New State: ").split(", "))))
+                updated_ref = np.array(
+                    list(map(float, input("New State: ").split(", ")))
+                )
             except ValueError:
                 print("Could not interpret as comma-space-separated float list")
                 continue
@@ -440,7 +513,9 @@ def main(
                 continue
 
             # (Re)Create Vis System
-            recreate_vis = (vis_system is None) or (bool(command_char == "m") != vis_system.plant_diagram.vis_is_meshcat())
+            recreate_vis = (vis_system is None) or (
+                bool(command_char == "m") != vis_system.plant_diagram.vis_is_meshcat()
+            )
             if recreate_vis:
                 vis_system = vis_utils.generate_visualization_system(
                     base_system=base_system,

@@ -111,20 +111,26 @@ class MultibodyLearnableSystemConfig:
 
     def generate_mls_hyperparameters(self) -> MultibodyLearnableSystemHyperparameters:
         return MultibodyLearnableSystemHyperparameters(
-            w_pred = float(self.w_pred),
-            w_q_pred =  float(self.w_q_pred),
-            w_comp = float(self.w_comp),
-            w_fdiss = float(self.w_fdiss),
-            w_ndiss = float(self.w_ndiss),
-            w_pen = float(self.w_pen),
-            w_dev = float(self.w_dev),
-            w_reg_iner = float(self.w_reg_iner),
-            n_fisher_samples = int(self.n_fisher_samples),
+            w_pred=float(self.w_pred),
+            w_q_pred=float(self.w_q_pred),
+            w_comp=float(self.w_comp),
+            w_fdiss=float(self.w_fdiss),
+            w_ndiss=float(self.w_ndiss),
+            w_pen=float(self.w_pen),
+            w_dev=float(self.w_dev),
+            w_reg_iner=float(self.w_reg_iner),
+            n_fisher_samples=int(self.n_fisher_samples),
         )
 
     @gin.register
-    def generate_mls_system(self, with_trajectory = True) -> MultibodyLearnableSystemWithTrajectory:
-        ret_cls = MultibodyLearnableSystemWithTrajectory if with_trajectory else MultibodyLearnableSystem
+    def generate_mls_system(
+        self, with_trajectory=True
+    ) -> MultibodyLearnableSystemWithTrajectory:
+        ret_cls = (
+            MultibodyLearnableSystemWithTrajectory
+            if with_trajectory
+            else MultibodyLearnableSystem
+        )
         kwargs = {
             "init_urdfs": self.init_urdfs,
             "default_dt": self.default_dt,
@@ -134,7 +140,7 @@ class MultibodyLearnableSystemConfig:
         if with_trajectory:
             kwargs["trajectory_model_names"] = str(self.trajectory_model_name)
             kwargs["init_traj_state"] = self.init_traj_state
-        
+
         return ret_cls(**kwargs)
 
 
@@ -460,7 +466,7 @@ class DrakeMultibodyLearnableExperiment(DrakeExperiment):
         )
 
         # Calculate the average loss components.
-        losses_pred, losses_q_pred, losses_comp, losses_pen, losses_diss, losses_dev= (
+        losses_pred, losses_q_pred, losses_comp, losses_pen, losses_diss, losses_dev = (
             [],
             [],
             [],

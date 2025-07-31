@@ -155,7 +155,11 @@ class PLLMeshcatVisualizer:
                 .numpy()
             )
             """
-            robot_traj = self._system.get_controlled_trajectory(self._learned_plant_traj).cpu().numpy()
+            robot_traj = (
+                self._system.get_controlled_trajectory(self._learned_plant_traj)
+                .cpu()
+                .numpy()
+            )
 
             zero_rot = np.array([1.0, 0.0, 0.0, 0.0])
             robot_0_traj = np.hstack(

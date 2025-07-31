@@ -63,6 +63,7 @@ REPO_DIR = os.path.normpath(
 )
 DEFAULT_CONFIG = "rss_experiment.gin"
 
+
 ## Training Functions
 @gin.configurable
 def get_loss_args(
@@ -85,7 +86,7 @@ def get_loss_args(
     x_plus = system.construct_state_tensor(plus)
 
     # Add Ground Noise
-    sampler_ground = Normal(loc = 0., scale = ground_std)
+    sampler_ground = Normal(loc=0.0, scale=ground_std)
     state_names = system.multibody_terms.plant_diagram.plant.GetStateNames()
     z_mask = torch.tensor([s.endswith("z_x") or s.endswith("_z") for s in state_names])
     sample = sampler_ground.sample(x_past[..., z_mask].size())
@@ -124,6 +125,7 @@ def get_loss_args(
 
     return ret
 
+
 def train_epoch(
     data: DataLoader,
     system: MultibodyLearnableSystemWithTrajectory,
@@ -151,10 +153,10 @@ def train_epoch(
         # pylint: disable=E1120
         # Expect gin to handle missing arguments
         ### Profiling
-        #import cProfile, pstats, io
-        #from pstats import SortKey
-        #pr = cProfile.Profile()
-        #pr.enable()
+        # import cProfile, pstats, io
+        # from pstats import SortKey
+        # pr = cProfile.Profile()
+        # pr.enable()
         loss = system.contactnets_loss(**get_loss_args(x_past, x_plus, system)).mean()
         losses.append(loss.clone().detach())
 
@@ -168,12 +170,12 @@ def train_epoch(
             optimizer.step()
 
         ### Profiling
-        #s = io.StringIO()
-        #sortby = SortKey.CUMULATIVE
-        #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        #ps.print_stats()
-        #print(s.getvalue())
-        #breakpoint()
+        # s = io.StringIO()
+        # sortby = SortKey.CUMULATIVE
+        # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
+        # breakpoint()
 
     # Compute Epoch Average
     avg_loss = cast(Tensor, sum(losses) / len(losses))
@@ -189,6 +191,7 @@ class TrifingerLCMService:
     """
     Command robot and collect data over LCM
     """
+
     # pylint: disable=too-many-instance-attributes
 
     def __init__(
@@ -243,7 +246,7 @@ class TrifingerLCMService:
         Direct the robot to go to target_state.
         Record all incoming data over the next traj_time_len seconds.
 
-        NOTE: assumes that target_state is in order 
+        NOTE: assumes that target_state is in order
             (finger_0q, finger_120q, finger_240q, finger_0v, finger_120v, finger_240v)
         """
         # pylint: disable=too-many-locals
@@ -266,8 +269,8 @@ class TrifingerLCMService:
             self._lcm.handle_timeout(int((end_time - time.time()) * 1e3))
         print(f"Finished at: {time.time()}")
         print(
-            f"Collected {len(self._fingertip_pose_raw_data)}" +
-            f" / {len(self._force_raw_data)} / {len(self._object_raw_data)} samples."
+            f"Collected {len(self._fingertip_pose_raw_data)}"
+            + f" / {len(self._force_raw_data)} / {len(self._object_raw_data)} samples."
         )
 
         # Return empty if not any force data
@@ -277,8 +280,10 @@ class TrifingerLCMService:
 
         assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
         assert len(self._fingertip_pose_raw_data) >= len(self._force_raw_data)
+
         def is_sorted(a: np.ndarray) -> bool:
             return np.all(a[:-1] <= a[1:])
+
         densetact_time_s = np.array(
             [
                 float(measurement.sensorData[0].timestamp) / 1e6
@@ -371,11 +376,13 @@ class TrifingerLCMService:
             body_R_CW = body_R_BW.inv() * body_R_CB
             fingertip_normal_W[body_name] = body_R_CW.apply(normal_C)
             # Zero out no contact normal
-            finger_in_contact = np.array([
-                measurement.sensorData[body_idx].inContact
-                        for measurement in self._force_raw_data
-                ])
-            fingertip_normal_W[body_name][~finger_in_contact] = 0.
+            finger_in_contact = np.array(
+                [
+                    measurement.sensorData[body_idx].inContact
+                    for measurement in self._force_raw_data
+                ]
+            )
+            fingertip_normal_W[body_name][~finger_in_contact] = 0.0
             force_C = np.array(
                 [
                     (
@@ -458,6 +465,7 @@ class ActionLibrary(Enum):
     CORNERSINGLE = 7
     EDGESINGLE = 8
 
+
 @gin.configurable
 def sample_action(
     workspace_xy_center: Tuple[float, float],
@@ -485,16 +493,16 @@ def sample_action(
     rng = np.random.default_rng()
 
     # Start in workspace frame
-    def sample_finger(flip_x: bool = False, library = library):
+    def sample_finger(flip_x: bool = False, library=library):
         flip_factor = -1.0 if flip_x else 1.0
         start_polar = rng.uniform(0.0, np.pi / 2.0)
         start_azimuth = rng.uniform(-np.pi / 2.0, np.pi / 2.0)
         if library in (ActionLibrary.XPINCH, ActionLibrary.XSINGLE):
             start_polar = np.pi / 2.0
-            start_azimuth = 0.
+            start_azimuth = 0.0
         elif library in (ActionLibrary.ZPINCH, ActionLibrary.ZSINGLE):
-            start_polar = 0.
-            start_azimuth = 0.
+            start_polar = 0.0
+            start_azimuth = 0.0
         elif library in (ActionLibrary.YPINCH, ActionLibrary.YSINGLE):
             start_polar = np.pi / 2.0
             start_azimuth = flip_factor * (np.pi / 2.0)
@@ -503,10 +511,18 @@ def sample_action(
             start_azimuth = np.pi / 2.5
         elif library in (ActionLibrary.EDGESINGLE,):
             start_polar = np.pi / 7.0
-            start_azimuth = 0.
-        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.CORNERSINGLE, ActionLibrary.EDGESINGLE)):
-            start_polar = 0.
-            start_azimuth = 0.
+            start_azimuth = 0.0
+        if flip_x and (
+            library
+            in (
+                ActionLibrary.XSINGLE,
+                ActionLibrary.YSINGLE,
+                ActionLibrary.CORNERSINGLE,
+                ActionLibrary.EDGESINGLE,
+            )
+        ):
+            start_polar = 0.0
+            start_azimuth = 0.0
         if flip_x and (library in (ActionLibrary.ZSINGLE,)):
             start_polar = np.pi / 2.0
             start_azimuth = -np.pi / 2.0
@@ -517,16 +533,25 @@ def sample_action(
                 np.cos(start_polar),
             ]
         )
-        #start_S[0] += sphere_radius
+        # start_S[0] += sphere_radius
         start_S[2] += sphere_radius
         start_S[0] *= flip_factor
         max_radius = workspace_radius - sphere_radius
         end_radius = rng.uniform(0.0, max_radius)
         end_angle = rng.uniform(0.0, np.pi)
         if not (library is ActionLibrary.NONE):
-            end_radius = 0.
-            end_angle = 0.
-        if flip_x and (library in (ActionLibrary.XSINGLE, ActionLibrary.YSINGLE, ActionLibrary.ZSINGLE, ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE)):
+            end_radius = 0.0
+            end_angle = 0.0
+        if flip_x and (
+            library
+            in (
+                ActionLibrary.XSINGLE,
+                ActionLibrary.YSINGLE,
+                ActionLibrary.ZSINGLE,
+                ActionLibrary.EDGESINGLE,
+                ActionLibrary.CORNERSINGLE,
+            )
+        ):
             end_radius = max_radius
             end_angle = np.pi / 2.0
         if flip_x and (library in (ActionLibrary.ZSINGLE,)):
@@ -534,7 +559,7 @@ def sample_action(
             end_angle = np.pi
         end_S = np.array(
             [
-                flip_factor * 0.,#sphere_radius,
+                flip_factor * 0.0,  # sphere_radius,
                 end_radius * np.cos(end_angle),
                 sphere_radius + end_radius * np.sin(end_angle),
             ]
@@ -578,19 +603,44 @@ def interpolate_sampled_action(
     batch_dims = data.size()[:-2]
     assert data.size() == batch_dims + (2, 18)
     ret = TensorDict({}, batch_size=batch_dims + (traj_n_steps,))
-    ret_timestamps = torch.linspace(0.0, traj_len_s, traj_n_steps) # (traj_n_steps,)
-    rel_timestamps = ((ret_timestamps - ret_timestamps[0]) / (ret_timestamps[-1] - ret_timestamps[0])).unsqueeze(0) # (1, traj_n_steps)
-    samples = data[..., :, :9] # (batch, 2, 9)
-    samples_dot = data[..., :, 9:] # (batch, 2, 9)
-    spline_a = samples[..., 0, :].unsqueeze(-1) # (batch, 9, 1)
-    spline_b = samples_dot[..., 0, :].unsqueeze(-1) # (batch, 9, 1)
-    spline_c = (3.*(samples[..., 1, :]-samples[..., 0, :]) - 2.*samples_dot[..., 0, :] - samples_dot[..., 1, :]).unsqueeze(-1) # (batch, 9, 1)
-    spline_d = (2.*(samples[..., 0, :]-samples[..., 1, :]) + samples_dot[..., 0, :] + samples_dot[..., 1, :]).unsqueeze(-1) # (batch, 9, 1)
+    ret_timestamps = torch.linspace(0.0, traj_len_s, traj_n_steps)  # (traj_n_steps,)
+    rel_timestamps = (
+        (ret_timestamps - ret_timestamps[0]) / (ret_timestamps[-1] - ret_timestamps[0])
+    ).unsqueeze(
+        0
+    )  # (1, traj_n_steps)
+    samples = data[..., :, :9]  # (batch, 2, 9)
+    samples_dot = data[..., :, 9:]  # (batch, 2, 9)
+    spline_a = samples[..., 0, :].unsqueeze(-1)  # (batch, 9, 1)
+    spline_b = samples_dot[..., 0, :].unsqueeze(-1)  # (batch, 9, 1)
+    spline_c = (
+        3.0 * (samples[..., 1, :] - samples[..., 0, :])
+        - 2.0 * samples_dot[..., 0, :]
+        - samples_dot[..., 1, :]
+    ).unsqueeze(
+        -1
+    )  # (batch, 9, 1)
+    spline_d = (
+        2.0 * (samples[..., 0, :] - samples[..., 1, :])
+        + samples_dot[..., 0, :]
+        + samples_dot[..., 1, :]
+    ).unsqueeze(
+        -1
+    )  # (batch, 9, 1)
 
     # (batch, traj_n_steps, 9)
-    data_lerp = spline_a @ torch.pow(rel_timestamps, 0.) + spline_b @ torch.pow(rel_timestamps, 1.) + spline_c @ torch.pow(rel_timestamps, 2.) + spline_d @ torch.pow(rel_timestamps, 3.)
+    data_lerp = (
+        spline_a @ torch.pow(rel_timestamps, 0.0)
+        + spline_b @ torch.pow(rel_timestamps, 1.0)
+        + spline_c @ torch.pow(rel_timestamps, 2.0)
+        + spline_d @ torch.pow(rel_timestamps, 3.0)
+    )
     data_lerp = torch.transpose(data_lerp, -1, -2)
-    data_lerp_dot = spline_b @ torch.pow(rel_timestamps, 0.) + 2.*spline_c @ torch.pow(rel_timestamps, 1.) + 3.*spline_d @ torch.pow(rel_timestamps, 2.)
+    data_lerp_dot = (
+        spline_b @ torch.pow(rel_timestamps, 0.0)
+        + 2.0 * spline_c @ torch.pow(rel_timestamps, 1.0)
+        + 3.0 * spline_d @ torch.pow(rel_timestamps, 2.0)
+    )
     data_lerp_dot = torch.transpose(data_lerp_dot, -1, -2)
 
     for fingertip in fingertip_body_names:
@@ -602,6 +652,7 @@ def interpolate_sampled_action(
         ret[fingertip, "velocity"][..., :] = data_lerp_dot[..., pos_idx : pos_idx + 3]
 
     return ret, ret_timestamps
+
 
 @gin.configurable(denylist=["system", "data"])
 def extract_robot_trajectory(
@@ -655,10 +706,13 @@ def get_true_geometry() -> Shape:
 
 ### Signal Handling
 signal_pressed = False
+
+
 def signal_handler(sig, frame):
-    """ Handle SIGINT"""
+    """Handle SIGINT"""
     global signal_pressed
     signal_pressed = True
+
 
 ## Main Function
 @gin.configurable
@@ -675,7 +729,7 @@ def main(
     """Main function for online learning loop"""
     global signal_pressed
     signal.signal(signal.SIGINT, signal_handler)
-    #torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
+    # torch.autograd.set_detect_anomaly(True) ## NOTE: doesn't work with vmap
     # Debug: Remove scientific notation for numpy printing
     np.set_printoptions(suppress=True)
     torch.set_default_device("cuda")
@@ -699,9 +753,7 @@ def main(
 
     # GUI Visualization
     gui_vis = PLLMeshcatVisualizer(
-        system = learned_system,
-        data = data_trajectories,
-        true_geom = get_true_geometry()
+        system=learned_system, data=data_trajectories, true_geom=get_true_geometry()
     )
 
     # Initialize LCM
@@ -711,7 +763,13 @@ def main(
     print("Move to initial trifinger state")
     trifinger_lcm.execute_trajectory(np.array(init_trifinger_state), no_data=True)
     print("Sample Initial Random Action...")
-    action_library = [ActionLibrary.XSINGLE, ActionLibrary.XPINCH, ActionLibrary.YSINGLE, ActionLibrary.YPINCH, ActionLibrary.ZSINGLE]#, ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE]
+    action_library = [
+        ActionLibrary.XSINGLE,
+        ActionLibrary.XPINCH,
+        ActionLibrary.YSINGLE,
+        ActionLibrary.YPINCH,
+        ActionLibrary.ZSINGLE,
+    ]  # , ActionLibrary.EDGESINGLE, ActionLibrary.CORNERSINGLE]
     selected_action = sample_action(library=ActionLibrary.ZSINGLE)
     new_trajectory = None
 
@@ -720,7 +778,7 @@ def main(
     traj_dataloader = None
     obs_info_inv = None
     total_epochs = 0
-    
+
     # Start Input Loop
     def print_help():
         print(
@@ -774,16 +832,24 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
             # Add data to dataset
-            add_trajectory = TensorDict({}, batch_size = new_trajectory.batch_size)
-            add_trajectory["robot_state"] = extract_robot_trajectory(learned_system, new_trajectory, robot_model_name)
+            add_trajectory = TensorDict({}, batch_size=new_trajectory.batch_size)
+            add_trajectory["robot_state"] = extract_robot_trajectory(
+                learned_system, new_trajectory, robot_model_name
+            )
             for finger_name in new_trajectory.keys():
                 try:
-                    add_trajectory["contact_forces", finger_name] = new_trajectory[finger_name]["contact_force_W"]
-                    add_trajectory["contact_normals", finger_name] = new_trajectory[finger_name]["contact_normal_W"]
-                except (IndexError, KeyError): # e.g. object, time
+                    add_trajectory["contact_forces", finger_name] = new_trajectory[
+                        finger_name
+                    ]["contact_force_W"]
+                    add_trajectory["contact_normals", finger_name] = new_trajectory[
+                        finger_name
+                    ]["contact_normal_W"]
+                except (IndexError, KeyError):  # e.g. object, time
                     continue
             add_trajectory["time"] = new_trajectory["time"]
-            add_trajectory[object_model_name + "_groundtruth"] = new_trajectory[object_model_name]["position"]
+            add_trajectory[object_model_name + "_groundtruth"] = new_trajectory[
+                object_model_name
+            ]["position"]
             data_trajectories.add_trajectories(
                 [add_trajectory.clone().detach()],
                 torch.tensor([len(data_trajectories.trajectories)], dtype=torch.int),
@@ -841,39 +907,65 @@ def main(
                 print(f"Sampling random action: {temp}")
                 selected_action = sample_action(library=temp)
             else:
-                print(f"Selecting Action: {action_library[action % len(action_library)]}")
-                selected_action = sample_action(library=action_library[action % len(action_library)])
+                print(
+                    f"Selecting Action: {action_library[action % len(action_library)]}"
+                )
+                selected_action = sample_action(
+                    library=action_library[action % len(action_library)]
+                )
 
         elif command_char == "a":
             print("Recording Inverse Observed Info")
             if obs_info_inv is None:
                 obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-                obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[-1]))
+                obs_info_inv = torch.linalg.inv(
+                    obs_info + 1e-1 * torch.eye(obs_info.size()[-1])
+                )
 
             print(f"Previously Observed Info: {torch.diagonal(obs_info)}")
 
             print(f"Sampling {len(action_library)} actions to optimize...")
             libaction = ActionLibrary.NONE
-            action_samples = torch.stack([
-                torch.vstack([torch.from_numpy(action).clone().to(torch.get_default_device()) for action in sample_action(library=libaction)])
-                #for _ in range(n_actions_optimized)
-                for libaction in action_library
-            ])
-            interpolated_actions, timestamps = interpolate_sampled_action(action_samples)
-            robot_trajectories = extract_robot_trajectory(learned_system, interpolated_actions, robot_model_name)
-            fishers = learned_system.expected_fisher_info(robot_trajectories, timestamps, robot_model_name)
-            fishers_obs_weighted = torch.matmul(fishers + 0 * torch.eye(fishers.size()[-1]), obs_info_inv)
+            action_samples = torch.stack(
+                [
+                    torch.vstack(
+                        [
+                            torch.from_numpy(action)
+                            .clone()
+                            .to(torch.get_default_device())
+                            for action in sample_action(library=libaction)
+                        ]
+                    )
+                    # for _ in range(n_actions_optimized)
+                    for libaction in action_library
+                ]
+            )
+            interpolated_actions, timestamps = interpolate_sampled_action(
+                action_samples
+            )
+            robot_trajectories = extract_robot_trajectory(
+                learned_system, interpolated_actions, robot_model_name
+            )
+            fishers = learned_system.expected_fisher_info(
+                robot_trajectories, timestamps, robot_model_name
+            )
+            fishers_obs_weighted = torch.matmul(
+                fishers + 0 * torch.eye(fishers.size()[-1]), obs_info_inv
+            )
 
             fishers_singvals = torch.linalg.svdvals(fishers_obs_weighted).real
             # sum the smaller singular values
-            #fishers_traces = fishers_singvals[..., 1:].sum(dim=-1)
+            # fishers_traces = fishers_singvals[..., 1:].sum(dim=-1)
             fishers_traces = torch.vmap(torch.trace)(fishers_obs_weighted)
             best_action = action_samples[torch.argmax(fishers_traces)]
             print(f"Fisher Traces:")
             for action, trace in zip(action_library, fishers_traces):
                 print(f"{action} : {trace}")
             print(f"Best Action: {action_library[torch.argmax(fishers_traces)]}")
-            selected_action = (best_action[0, :].detach().cpu().numpy(), best_action[1, :].detach().cpu().numpy())
+            selected_action = (
+                best_action[0, :].detach().cpu().numpy(),
+                best_action[1, :].detach().cpu().numpy(),
+            )
 
         elif command_char == "o":
             if traj_dataloader is None or len(traj_dataloader) == 0:
@@ -881,7 +973,9 @@ def main(
                 continue
 
             obs_info = learned_system.observed_info(traj_dataloader, get_loss_args)
-            obs_info_inv = torch.linalg.inv(obs_info + 1e0 * torch.eye(obs_info.size()[-1]))
+            obs_info_inv = torch.linalg.inv(
+                obs_info + 1e0 * torch.eye(obs_info.size()[-1])
+            )
 
         elif command_char == "v":
             print("Visualizing entire trajectory.")
@@ -903,21 +997,26 @@ def main(
             ### TODO: HACK don't repeat vis code
             # TODO: HACK don't hardcode object name
             object_name = "cube"
-            true_pose = np.array([1., 0., 0., 0., 0., 0., 0.])
+            true_pose = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             if new_trajectory is not None and len(new_trajectory) >= 1:
-                true_pose = new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
+                true_pose = (
+                    new_trajectory[object_name]["position"][-1].detach().cpu().numpy()
+                )
 
             start_time = time.time()
             for idx in range(epochs):
-                train_loss, loss_data = train_epoch(traj_dataloader, learned_system, optimizer)
+                train_loss, loss_data = train_epoch(
+                    traj_dataloader, learned_system, optimizer
+                )
                 total_epochs += 1
-                print(total_epochs, 
-                    f"Loss (J): {train_loss:.3e};", 
-                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};", 
-                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};", 
-                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};", 
-                    f"Pen (m): {loss_data['mean_pen_m']:.3e};", 
-                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};", 
+                print(
+                    total_epochs,
+                    f"Loss (J): {train_loss:.3e};",
+                    f"Pred (Nm): {loss_data['mean_pred_Nm']:.3e};",
+                    f"Pred (<m=rad>/s): {loss_data['mean_q_pred_mps']:.3e};",
+                    f"Comp (Nm): {loss_data['mean_comp_Nm']:.3e};",
+                    f"Pen (m): {loss_data['mean_pen_m']:.3e};",
+                    f"Diss (J/s): {loss_data['mean_diss_Jps']:.3e};",
                     f"Dev (N): {loss_data['mean_dev_N']:.3e};",
                     f"Norm (cosine): {loss_data['mean_norm_cosine']:.3e};",
                 )
@@ -931,7 +1030,9 @@ def main(
                     epochs = idx + 1
                     break
 
-            print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
+            print(
+                f"Finished training {epochs} epochs in {time.time()-start_time} seconds!"
+            )
             obs_info_inv = None
 
     # Quit

@@ -17,6 +17,7 @@ class SystemConfig:
     learning dynamics; all inheriting classes are expected to contain all
     necessary configuration attributes."""
 
+
 @gin.configurable
 @dataclass
 class OptimizerConfig:

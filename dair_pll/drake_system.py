@@ -95,7 +95,6 @@ class DrakeSystem(System):
         )
         sim.AdvancePendingEvents()
 
-
     def preprocess_initial_condition(
         self, x_0: Tensor, carry_0: Tensor
     ) -> Tuple[Tensor, Tensor]:
@@ -228,7 +227,7 @@ class DrakeSystem(System):
         # input("Step...")
         # Real Time Sim
         sleep_time = max(self.dt - (time.time() - self.prev_time), 0.0)
-        if sleep_time > 0.:
+        if sleep_time > 0.0:
             time.sleep(sleep_time)
         self.prev_time = time.time()
 

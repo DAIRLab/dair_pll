@@ -92,12 +92,14 @@ DEFAULT_SIMPLIFIER = drake_pytorch.Simplifier.QUICKTRIG
 @dataclass
 class LearnableBodySettings:
     """Class to specify which body parameters to learn"""
+
     inertia_mass: bool = False
     inertia_com: bool = False
     inertia_moments_products: bool = False
     geometry: bool = False
     friction: bool = False
     representation: GeometryRepresentation = GeometryRepresentation.PRIMITIVE
+
 
 # noinspection PyUnresolvedReferences
 def init_symbolic_plant_context_and_state(
@@ -504,7 +506,11 @@ class ContactTerms(Module):
                 and learnable_body_dict[body.name()].geometry
             )
 
-            representation = learnable_body_dict[body.name()].representation if (body.name() in learnable_body_dict) else GeometryRepresentation.NONE
+            representation = (
+                learnable_body_dict[body.name()].representation
+                if (body.name() in learnable_body_dict)
+                else GeometryRepresentation.NONE
+            )
 
             geometry_frame = body.body_frame()
 
@@ -582,7 +588,7 @@ class ContactTerms(Module):
         return torch.cat((J_n, J_t), dim=-2)
 
     def get_object_pairs(self) -> List[Tuple[str, str]]:
-        """ Get list of object pairs in the same order as forward()"""
+        """Get list of object pairs in the same order as forward()"""
         indices_a = self.collision_candidates[0, :]
         indices_b = self.collision_candidates[1, :]
 
@@ -596,7 +602,10 @@ class ContactTerms(Module):
         ]
 
         obj_pair_list = []
-        for geo_a, geo_b, in zip(geometries_a,geometries_b):
+        for (
+            geo_a,
+            geo_b,
+        ) in zip(geometries_a, geometries_b):
             obj_pair_list.append(key)
 
         return obj_pair_list
@@ -913,9 +922,7 @@ class MultibodyTerms(Module):
 
         # setup parameterization
         self.lagrangian_terms = LagrangianTerms(plant_diagram, learnable_body_dict)
-        self.contact_terms = ContactTerms(
-            plant_diagram, learnable_body_dict
-        )
+        self.contact_terms = ContactTerms(plant_diagram, learnable_body_dict)
         self.geometry_body_assignment = geometry_body_assignment
         self.plant_diagram = plant_diagram
         self.urdfs = urdfs
@@ -977,7 +984,9 @@ class MultibodyTerms(Module):
         model_states = []  # List of Tensors shape (batch, space_n_x)
         for space_idx, model_id in enumerate(self.plant_diagram.model_ids):
             key = self.plant_diagram.plant.GetModelInstanceName(model_id) + "_state"
-            model_state = self.plant_diagram.space.spaces[space_idx].zero_state().unsqueeze(0)
+            model_state = (
+                self.plant_diagram.space.spaces[space_idx].zero_state().unsqueeze(0)
+            )
             if key in data_state.keys():
                 model_state = data_state[key]
                 assert model_state.shape == data_state.shape + (

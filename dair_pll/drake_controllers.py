@@ -21,11 +21,11 @@ from pydrake.systems.primitives import (
 from pydrake.trajectories import Trajectory, PiecewisePolynomial
 
 
-@gin.configurable(denylist=['system'])
+@gin.configurable(denylist=["system"])
 def update_pid_reference(
     system: DrakeSystem,
     desired_state: np.ndarray,
-    reference_name: str = "pid_reference"
+    reference_name: str = "pid_reference",
 ):
     # Get underlying drake system and context
     pid_system = system.plant_diagram.diagram.GetSubsystemByName(reference_name)
@@ -39,7 +39,7 @@ def update_pid_reference(
     vector_source.set_value(desired_state)
 
 
-@gin.configurable(denylist=['builder', 'plant'])
+@gin.configurable(denylist=["builder", "plant"])
 def pid_controller_builder(
     builder: DiagramBuilder,
     plant: MultibodyPlant,
@@ -50,19 +50,18 @@ def pid_controller_builder(
     kd: float = 10.0,
 ):
     model = plant.GetModelInstanceByName(model_name)
-    control_size = plant.get_actuation_input_port(model).size() 
+    control_size = plant.get_actuation_input_port(model).size()
 
     if desired_state is None:
-        desired_state = np.zeros(2*control_size)
+        desired_state = np.zeros(2 * control_size)
     else:
         desired_state = np.array(desired_state)
 
-    assert desired_state.size == 2*control_size # Note assumes n_q == n_v
+    assert desired_state.size == 2 * control_size  # Note assumes n_q == n_v
 
     controller = PidController(
         kp * np.ones(control_size), np.zeros(control_size), kd * np.ones(control_size)
     )
-    
 
     controller = builder.AddSystem(controller)
     builder.Connect(
