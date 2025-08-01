@@ -58,7 +58,6 @@ from jax2torch import jax2torch
 # TODO: edit jax2torch.py to remove to_dlpack calls
 # TODO: edit jax2torch.py to call .detach in t2j()
 @jax2torch
-@jax.vmap
 @jax.jit
 def jaxopt_qp_run(
     Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array
@@ -90,7 +89,7 @@ def jaxopt_solver(Qin: Tensor, qin: Tensor) -> Tensor:
     q_solve = qin.reshape((-1,) + qin.size()[-1:]) @ lamb_map_full
     Gt = -1.0 * torch.eye(4 * n_c).unsqueeze(0).expand(Q_solve.shape[0], -1, -1)
     ht = torch.zeros(Q_solve.shape[0], 4 * n_c)
-    sol = jaxopt_qp_run(Q_solve, q_solve, Gt, ht)
+    sol = torch.vmap(jaxopt_qp_run)(Q_solve, q_solve, Gt, ht)
     return (sol.type(lamb_map_full.dtype) @ lamb_map_full.T).reshape(qin.shape)
 
 

@@ -684,6 +684,37 @@ class ProductSpace(StateSpace):
         # pylint: disable=E1103
         return cast(list, torch.tensor_split(q, self.q_splits, -1))
 
+    def q_split_fn(self, qin: Tensor) -> List[Tensor]:
+        """Splits configuration into list of subspace configurations."""
+        assert qin.shape[-1] == self.n_q
+
+        ret = []
+        idx = 0
+        for end_idx in self.q_splits:
+            ret.append(qin[..., idx:end_idx])
+            idx = end_idx
+        ret.append(qin[..., idx:])
+
+        # pylint: disable=E1103
+        return ret
+
+    def v_split_fn(self, vin: Tensor) -> List[Tensor]:
+        """Splits velocity into list of subspace velocities."""
+        assert vin.shape[-1] == self.n_v
+
+        ret = []
+        idx = 0
+        for end_idx in self.v_splits:
+            ret.append(vin[..., idx:end_idx])
+            idx = end_idx
+        ret.append(vin[..., idx:])
+
+        # pylint: disable=E1103
+        return ret
+
+        # pylint: disable=E1103
+        return cast(list, torch.tensor_split(v, self.v_splits, -1))
+
     def v_split(self, v: Tensor) -> List[Tensor]:
         """Splits velocity into list of subspace velocities."""
         assert v.shape[-1] == self.n_v
@@ -712,15 +743,21 @@ class ProductSpace(StateSpace):
         # pylint: disable=E1103
         return torch.cat(diffs, dim=-1)
 
-    def exponential(self, q: Tensor, dq: Tensor) -> Tensor:
+    def exponential(self, q_in: Tensor, dq_in: Tensor) -> Tensor:
         """Constructs perturbed configuration as concatenation of perturbed
         subspace configurations"""
-        assert q.shape[-1] == self.n_q
-        assert dq.shape[-1] == self.n_v
-        exps = [
-            space.exponential(qi, dqi)
-            for space, qi, dqi in zip(self.spaces, self.q_split(q), self.v_split(dq))
-        ]
+        assert q_in.shape[-1] == self.n_q
+        assert dq_in.shape[-1] == self.n_v
+        if torch._C._functorch.is_gradtrackingtensor(q_in):
+            exps = [
+                space.exponential(qi, dqi)
+                for space, qi, dqi in zip(self.spaces, self.q_split_fn(q_in), self.v_split_fn(dq_in))
+            ]
+        else:
+            exps = [
+                space.exponential(qi, dqi)
+                for space, qi, dqi in zip(self.spaces, self.q_split(q_in), self.v_split(dq_in))
+            ]
         # pylint: disable=E1103
         return torch.cat(exps, dim=-1)
 

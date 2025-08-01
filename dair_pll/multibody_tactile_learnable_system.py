@@ -243,6 +243,190 @@ class MultibodyLearnableTactileSystem(Module):
         for traj_len, traj_datum in zip(traj_lens, traj_data):
             self._learned_trajectory.add_trajectory(traj_len, traj_datum)
 
+    def forward_dynamics_functional(
+        self,
+        step_q: Tensor,
+        step_v: Tensor,
+        step_u: Tensor,
+        step_dt: Tensor,
+        multibody_params: dict[str, Tensor],
+    ) -> Tensor:
+        r"""Calculates delta velocity from current state and input.
+
+        Implements Anitescu's [1] convex formulation in dual form, derived
+        similarly to Tedrake [2] and described here.
+
+        Let v_minus be the contact-free next velocity, i.e.::
+
+            v + dt * non_contact_acceleration.
+
+        Let FC be the combined friction cone::
+
+            FC = {[beta_n beta_t]: beta_n_i >= ||beta_t_i||}.
+
+        The primal version of Anitescu's formulation is as follows::
+
+            min_{v_plus,s}  (v_plus - v_minus)^T M(q)(v_plus - v_minus)/2
+            s.t.            s = [I; 0]phi(q)/dt + J(q)v_plus,
+                            s \\in FC.
+
+        The KKT conditions are the mixed cone complementarity
+        problem [3, Theorem 2]::
+
+            s = [I; 0]phi(q)/dt + J(q)v_plus,
+            M(q)(v_plus - v_minus) = J(q)^T f,
+            FC \\ni s \\perp f \\in FC.
+
+        As M(q) is positive definite, we can solve for v_plus in terms of
+        lambda, and thus these conditions can be simplified to::
+
+            FC \\ni D(q)f + J(q)v_minus + [I;0]phi(q)/dt \\perp f \\in FC.
+
+        which in turn are the KKT conditions for the dual QCQP we solve::
+
+            min_{f}     f^T D(q) f/2 + f^T(J(q)v_minus + [I;0]phi(q)/dt)
+            s.t.        f \\in FC.
+
+        References:
+            [1] M. Anitescu, “Optimization-based simulation of nonsmooth rigid
+            multibody dynamics,” Mathematical Programming, 2006,
+            https://doi.org/10.1007/s10107-005-0590-7
+
+            [2] R. Tedrake. Underactuated Robotics: Algorithms for Walking,
+            Running, Swimming, Flying, and Manipulation (Course Notes for MIT
+            6.832), https://underactuated.mit.edu
+
+            [3] S. Z. N'emeth, G. Zhang, "Conic optimization and
+            complementarity problems," arXiv,
+            https://doi.org/10.48550/arXiv.1607.05161
+        Args:
+            step_q: (\*, space.n_q) current configuration batch.
+            step_v: (\*, space.n_v) current velocity batch.
+            step_u: (\*, ?) current control batch.
+            step_dt: (\*, 1) delta t
+
+        Returns:
+            (\*, space.n_v) delta velocity batch.
+        """
+        # pylint: disable=too-many-locals
+
+        # Input Validation
+        batch_dims = step_q.size()[:-1]
+        assert step_q.size() == batch_dims + (self.space.n_q,)
+        assert step_v.size() == batch_dims + (self.space.n_v,)
+        assert step_u.size() == batch_dims + (self._controlled_space.n_v,)
+        dt = self._hyperparameters.default_dt * torch.ones(batch_dims + (1,))
+        if step_dt is not None:
+            step_dt_expanded = step_dt.expand(batch_dims + (1,))
+            dt[step_dt_expanded < self._hyperparameters.dt_thresh] = step_dt_expanded[
+                step_dt_expanded < self._hyperparameters.dt_thresh
+            ]
+
+        # TODO: Can safely return 0s if above threshold
+        # if dt > self._hyperparameters.dt_thresh:
+        #    return (
+        #        torch.zeros_like(step_v),
+        #        ret_contact_forces,
+        #        ret_contact_normals,
+        #        ret_phis,
+        #    )
+
+        assert dt.size() == batch_dims + (1,)
+        phi_eps = 1e-2
+        eps = torch.finfo(step_q.dtype).eps
+        (
+            m_delassus,
+            m_mass,
+            m_jac,
+            m_phi,
+            non_contact_acceleration,
+            obj_pair_list,
+            mr_fw_list,
+            mu_list,
+        ) = torch.func.functional_call(self._multibody_terms, multibody_params, args=(step_q, step_v, step_u))
+        n_contacts = m_phi.shape[-1]
+        contact_filter = (broadcast_lorentz(m_phi) <= phi_eps).unsqueeze(-1)
+
+        mq_delassus = m_delassus + eps * torch.eye(3 * n_contacts)
+
+        # pylint: disable=E1103
+        double_zero_vector = torch.zeros(m_phi.shape[:-1] + (2 * n_contacts,))
+        phi_then_zero = torch.cat((m_phi, double_zero_vector), dim=-1).unsqueeze(-1)
+
+        step_v_minus = step_v + dt * non_contact_acceleration
+        q_full = (
+            pbmm(m_jac, step_v_minus.unsqueeze(-1))
+            + torch.reciprocal(dt).unsqueeze(-1) * phi_then_zero
+        )
+
+        ### Construct contact forces / normals
+        ret_contact_forces = {}  # Dict[Tuple[str, str], Tensor]
+        ret_contact_normals = {}  # Dict[Tuple[str, str], Tensor]
+        ret_phis = {}  # Dict[Tuple[str, str], Tensor]
+        for key in obj_pair_list:
+            if obj_pair_list.count(key) == 1:
+                ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
+                ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
+                index = np.array([i for i, x in enumerate(obj_pair_list) if x == key])[
+                    0
+                ]
+                ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1, 1))
+
+        ## Solve Impulses
+        reorder_mat = sappy_reorder_mat(n_contacts)
+        reorder_mat = reorder_mat.reshape(
+            (1,) * (m_delassus.dim() - 2) + reorder_mat.shape
+        ).expand(m_delassus.shape)
+        impulse_full = pbmm(
+            reorder_mat,
+            self._solver(
+                pbmm(
+                    reorder_mat.transpose(-1, -2), pbmm(mq_delassus, reorder_mat)
+                ),  # Quadratic Term
+                pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),  # Linear Term
+            ).unsqueeze(-1),
+        )
+
+        impulse = torch.zeros_like(impulse_full)
+        impulse[contact_filter] += impulse_full[contact_filter]
+
+        # pylint doesn't know about torch
+        # pylint: disable-next=not-callable
+        step_v_add = torch.linalg.solve(
+            m_mass, pbmm(m_jac.transpose(-1, -2), impulse)
+        ).squeeze(-1)
+
+        ### Populate contact forces / normals
+        for key, ret_contact_force in ret_contact_forces.items():
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            assert len(indices) == 1
+            index = indices[0]
+            fric_index = len(obj_pair_list) + 2 * index
+            mr_wf_i = mr_fw_list[index].transpose(-1, -2)
+            ret_contact_normals[key][..., 0, :] = mr_wf_i[..., :, 2]
+            # Force in contact_frame
+            ret_contact_force[..., 0, 2] = impulse[..., index, 0] * torch.reciprocal(
+                dt
+            ).squeeze(-1)
+            ret_contact_force[..., 0, :2] = (
+                mu_list[index]
+                * impulse[..., fric_index : fric_index + 2, 0]
+                * torch.reciprocal(dt)
+            )
+            # Rotate into world frame
+            ret_contact_forces[key] = pbmm(
+                mr_wf_i, ret_contact_force.transpose(-1, -2)
+            ).transpose(-1, -2)
+        ###
+        return (
+            step_v_minus + step_v_add,
+            ret_contact_forces,
+            ret_contact_normals,
+            ret_phis,
+        )
+
     def forward_dynamics(
         self,
         step_q: Tensor,
@@ -1782,8 +1966,6 @@ class MultibodyLearnableTactileSystem(Module):
                 v,
                 create_graph=False,
                 retain_graph=True,
-                allow_unused=True,
-                materialize_grads=True,
             )
 
         cumtime = 0.0
@@ -1793,15 +1975,14 @@ class MultibodyLearnableTactileSystem(Module):
             if param.requires_grad
         ]
 
-        """
-        def get_outputs_from_step_geom(step_x_batch: Tensor, step_dts: Tensor, plant_step_u: Tensor, geom_size: list[Tensor]) -> Tensor:
-            breakpoint()
+        def get_outputs_from_step_geom(step_dts: Tensor, step_x_batch: Tensor, plant_step_u: Tensor, multibody_params: dict[Tensor]) -> Tensor:
             step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
-                self.forward_dynamics(
+                self.forward_dynamics_functional(
                     self.space.q(step_x_batch),
                     self.space.v(step_x_batch),
                     plant_step_u,
                     step_dts,
+                    multibody_params,
                 )
             )
             output_phi_batch = torch.stack(list(step_phis_batch.values()), dim=-2)
@@ -1829,9 +2010,13 @@ class MultibodyLearnableTactileSystem(Module):
                 ],
                 dim=-1,
             )
-            return output_combined_batch
-        """
-        
+            return output_combined_batch.flatten()
+
+        ### Profiling
+        #import cProfile, pstats, io
+        #from pstats import SortKey
+        #pr = cProfile.Profile()
+        #pr.enable()
         for idx, step_x_batch in enumerate(state_params_batch):
             try:
                 step_dts = timestamps[idx + 1] - timestamps[idx]
@@ -1872,11 +2057,36 @@ class MultibodyLearnableTactileSystem(Module):
                 ],
                 dim=-1,
             )
+
+            """ THIS IS SLOWER!?
+            print(f"Geom jacrev... ", end='')
+            start = time.time()
+            output_from_step_geom_fn = partial(get_outputs_from_step_geom, step_dts.detach(), step_x_batch.detach(), plant_u_batch[..., idx, :].detach())
+            ## TODO: only use params we care about
+            #detached_params = {k: v.detach() for k, v in self._multibody_terms.named_parameters()}
+            detached_params = {'contact_terms.geometries.3.length_params': Parameter(torch.tensor([[0.1625, 0.1625, 0.1625]]), requires_grad=True)}
+            ## TODO: Remove this test
+            test_output_combined_batch = output_from_step_geom_fn(detached_params)
+            test_jac = torch.vmap(
+                    partial(
+                        get_vjp,
+                        detached_params['contact_terms.geometries.3.length_params'],
+                        test_output_combined_batch,
+                    )
+                )(torch.eye(len(test_output_combined_batch)))
+            #test_jac = torch.autograd.grad(test_output_combined_batch, detached_params['contact_terms.geometries.3.length_params'], grad_outputs=torch.eye(len(test_output_combined_batch)), is_grads_batched=True)
+            #assert torch.all(test_output_combined_batch == output_combined_batch)
+            ##
+            #output_geom_jac = torch.func.jacrev(output_from_step_geom_fn, argnums=3)(step_dts.detach(), step_x_batch.detach(), plant_u_batch[..., idx, :].detach(), detached_params)
+            #test_output_combined_batch, vjp_fn = torch.func.vjp(output_from_step_geom_fn, detached_params)
+            #assert torch.allclose(test_output_combined_batch.reshape(output_combined_batch.shape), output_combined_batch)
+            #output_geom_jac = torch.vmap(vjp_fn)(torch.eye(test_output_combined_batch.numel()))
+            #end = time.time() - start
+            #cumtime = cumtime + end
+            #print(f"Done in {end:.3f}s, total {cumtime:.3f}s")
+            #continue
             """
-            output_from_step_geom_fn = partial(get_outputs_from_step_geom, step_x_batch, step_dts, plant_u_batch[..., idx, :])
-            test_output_combined_batch = output_from_step_geom_fn(geom_param_list[0])
-            breakpoint()
-            """
+
             n_outs = sum(
                 [
                     math.prod(output_phi_batch.size()[len(batch_dims) :]),
@@ -1888,8 +2098,15 @@ class MultibodyLearnableTactileSystem(Module):
                 jac_outs_params_batch = torch.zeros(
                     batch_dims + (traj_len, n_outs, n_params)
                 )
+
+            # Test one outputs w.r.t. geometry
+            #print("Test One Output")
+            #test = torch.autograd.grad(output_combined_batch[0, 0], geom_param_list)
+            #breakpoint()
+
             print(f"Timestep {idx}... ", end='')
             start = time.time()
+
             
             """
             grads_combined = torch.vmap(
@@ -1923,26 +2140,8 @@ class MultibodyLearnableTactileSystem(Module):
             grads_combined_batch = torch.zeros(
                 batch_dims + (self.space.n_x + n_outs, n_params)
             )
-            #for n_out in range(self.space.n_x + n_outs):
-            #    grads_combined_batch[:, n_out, :-n_geom] = torch.autograd.grad(output_combined_batch[:, n_out], step_x_batch, torch.ones(n_batches), retain_graph=True, create_graph=False)[0]
-            grad_outputs = []
-            for n_out in range(self.space.n_x + n_outs):
-                grad_out= torch.zeros_like(output_combined_batch.T)
-                grad_out[n_out, :] = torch.ones(n_batches)
-                grad_outputs.append(grad_out)
-            grad_outputs = torch.stack(grad_outputs)
-            state_vjp_vmap = torch.vmap(partial(get_vjp, step_x_batch, output_combined_batch.T))
-            grads_combined_batch[..., :-n_geom] = state_vjp_vmap(grad_outputs)[0].transpose(0, 1)
-            end = time.time() - start
-            cumtime = cumtime + end
-            print(f" State in {end:.3f}s", end='')
-            start = time.time()
-            """
-            geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_list, output_combined_batch.flatten()))
-            grads_combined_batch[..., -n_geom:] = geom_vjp_vmap(torch.eye(output_combined_batch.numel()))[0].reshape(grads_combined_batch[..., -n_geom:].shape)
-            """
             # TODO: Make Hyperparameter, this has been optimized for time at 100 actions
-            batch_divide = 7
+            batch_divide = 100
             n_batch_grps = (n_batches // batch_divide) + 1
             for batch_grp_idx in range(n_batch_grps):
                 start_idx = batch_grp_idx * batch_divide
@@ -1958,7 +2157,26 @@ class MultibodyLearnableTactileSystem(Module):
                 grads_combined_batch[start_idx:end_idx, :, -n_geom:] = grads_grp.reshape(grads_combined_batch[start_idx:end_idx, :, -n_geom:].shape)
             end = time.time() - start
             cumtime = cumtime + end
-            print(f"...Geom in {end:.3f}s, total {cumtime:.3f}s")
+            print(f"Geom in {end:.3f}s", end='')
+            start = time.time()
+            #for n_out in range(self.space.n_x + n_outs):
+            #    grads_combined_batch[:, n_out, :-n_geom] = torch.autograd.grad(output_combined_batch[:, n_out], step_x_batch, torch.ones(n_batches), retain_graph=True, create_graph=False)[0]
+            grad_outputs = []
+            for n_out in range(self.space.n_x + n_outs):
+                grad_out= torch.zeros_like(output_combined_batch.T)
+                grad_out[n_out, :] = torch.ones(n_batches)
+                grad_outputs.append(grad_out)
+            grad_outputs = torch.stack(grad_outputs)
+            state_vjp_vmap = torch.vmap(partial(get_vjp, step_x_batch, output_combined_batch.T))
+            grads_combined_batch[..., :-n_geom] = state_vjp_vmap(grad_outputs)[0].transpose(0, 1)
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"...State in {end:.3f}s, total {cumtime:.3f}s")
+            """
+            geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_list, output_combined_batch.flatten()))
+            grads_combined_batch[..., -n_geom:] = geom_vjp_vmap(torch.eye(output_combined_batch.numel()))[0].reshape(grads_combined_batch[..., -n_geom:].shape)
+            """
+            
             #grads_combined_batch = torch.stack(grads_combined)
             # Unbatch param_list, which is [n_x_batch1, ..., n_x_batchn, n_geom]
             """
@@ -2022,6 +2240,14 @@ class MultibodyLearnableTactileSystem(Module):
         assert torch.all(
             ~torch.isnan(jac_outs_params_batch)
         ), "NaN in jac_outs_params_batch"
+
+        ### Profiling
+        #s = io.StringIO()
+        #sortby = SortKey.CUMULATIVE
+        #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        #ps.print_stats()
+        #print(s.getvalue())
+        #breakpoint()
 
         ### Compute jac_xz_geom_batch
         jac_xz_geom_batch = torch.zeros(batch_dims + (self.space.n_x, n_geom))
