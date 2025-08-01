@@ -48,7 +48,6 @@ def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
 # TODO: clean up
 # Disable JAX vram hogging
 import os
-
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 import jax
 from jaxopt import OSQP
@@ -60,6 +59,14 @@ from jax2torch import jax2torch
 @jax2torch
 @jax.jit
 def jaxopt_qp_run(
+    Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array
+) -> jax.Array:
+    return OSQP().run(params_obj=(Qj, qj), params_ineq=(Gj, hj)).params.primal
+
+@jax2torch
+@jax.jit
+@jax.vmap
+def jaxopt_qp_run_nograd(
     Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array
 ) -> jax.Array:
     return OSQP().run(params_obj=(Qj, qj), params_ineq=(Gj, hj)).params.primal
@@ -89,7 +96,10 @@ def jaxopt_solver(Qin: Tensor, qin: Tensor) -> Tensor:
     q_solve = qin.reshape((-1,) + qin.size()[-1:]) @ lamb_map_full
     Gt = -1.0 * torch.eye(4 * n_c).unsqueeze(0).expand(Q_solve.shape[0], -1, -1)
     ht = torch.zeros(Q_solve.shape[0], 4 * n_c)
-    sol = torch.vmap(jaxopt_qp_run)(Q_solve, q_solve, Gt, ht)
+    if Qin.requires_grad or qin.requires_grad:
+        sol = torch.vmap(jaxopt_qp_run)(Q_solve, q_solve, Gt, ht)
+    else:
+        sol = jaxopt_qp_run_nograd(Q_solve, q_solve, Gt, ht)
     return (sol.type(lamb_map_full.dtype) @ lamb_map_full.T).reshape(qin.shape)
 
 

@@ -2140,25 +2140,6 @@ class MultibodyLearnableTactileSystem(Module):
             grads_combined_batch = torch.zeros(
                 batch_dims + (self.space.n_x + n_outs, n_params)
             )
-            # TODO: Make Hyperparameter, this has been optimized for time at 100 actions
-            batch_divide = 100
-            n_batch_grps = (n_batches // batch_divide) + 1
-            for batch_grp_idx in range(n_batch_grps):
-                start_idx = batch_grp_idx * batch_divide
-                end_idx = min((batch_grp_idx+1) * batch_divide, output_combined_batch.shape[0])
-                n_grp_batches = end_idx - start_idx
-                grads_grp = torch.vmap(
-                    partial(
-                        get_vjp,
-                        geom_param_list,
-                        output_combined_batch[start_idx:end_idx].flatten(),
-                    )
-                )(torch.eye(output_combined_batch[start_idx:end_idx].numel()))[0]
-                grads_combined_batch[start_idx:end_idx, :, -n_geom:] = grads_grp.reshape(grads_combined_batch[start_idx:end_idx, :, -n_geom:].shape)
-            end = time.time() - start
-            cumtime = cumtime + end
-            print(f"Geom in {end:.3f}s", end='')
-            start = time.time()
             #for n_out in range(self.space.n_x + n_outs):
             #    grads_combined_batch[:, n_out, :-n_geom] = torch.autograd.grad(output_combined_batch[:, n_out], step_x_batch, torch.ones(n_batches), retain_graph=True, create_graph=False)[0]
             grad_outputs = []
@@ -2171,7 +2152,28 @@ class MultibodyLearnableTactileSystem(Module):
             grads_combined_batch[..., :-n_geom] = state_vjp_vmap(grad_outputs)[0].transpose(0, 1)
             end = time.time() - start
             cumtime = cumtime + end
-            print(f"...State in {end:.3f}s, total {cumtime:.3f}s")
+            print(f"State in {end:.3f}s... ", end='')
+            start = time.time()
+            # TODO: Make Hyperparameter, this has been optimized for time at 100 actions
+            output_divide = (self.space.n_x + n_outs) + 1
+            n_output_grps = ((self.space.n_x + n_outs) // output_divide) + 1
+            for output_grp_idx in range(n_output_grps):
+                start_idx = output_grp_idx * output_divide
+                end_idx = min((output_grp_idx+1) * output_divide, output_combined_batch.shape[1])
+                n_grp_outputs = end_idx - start_idx
+                grads_grp = torch.vmap(
+                    partial(
+                        get_vjp,
+                        geom_param_list,
+                        output_combined_batch[:, start_idx:end_idx].flatten(),
+                    )
+                )(torch.eye(output_combined_batch[:, start_idx:end_idx].numel()))[0]
+                grads_combined_batch[:, start_idx:end_idx, -n_geom:] = grads_grp.reshape(grads_combined_batch[:, start_idx:end_idx, -n_geom:].shape)
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"Geom in {end:.3f}s, total {cumtime:.3f}s")
+            # Clear the graph
+            output_combined_batch[0,0].backward()
             """
             geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_list, output_combined_batch.flatten()))
             grads_combined_batch[..., -n_geom:] = geom_vjp_vmap(torch.eye(output_combined_batch.numel()))[0].reshape(grads_combined_batch[..., -n_geom:].shape)
