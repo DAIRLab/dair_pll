@@ -302,6 +302,13 @@ def main(
             print("Done!")
 
         elif command_char == "o":
+            if len(data_trajectories.trajectories) == 0:
+                print("Cannot get obs_info without data.\n")
+                continue
+
+            obs_info = learned_system.observed_info(data_trajectories)
+
+            """
             ## Compute Expected Info per-action
             traj_x, traj_time = interpolate_sampled_action(
                 data=torch.stack(
@@ -323,6 +330,7 @@ def main(
                 ctrl_desired=robot_traj,
                 timestamps=traj_time,
             )
+            """
 
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:

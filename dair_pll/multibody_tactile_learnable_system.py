@@ -170,7 +170,7 @@ class MultibodyLearnableTactileSystem(Module):
         # Pylint doesn't know about gin
         # pylint: disable=no-value-for-parameter
         self._solver = jaxopt_solver
-        # self._solver = DynamicCvxpyLCQPLayer()
+        self._solver_learn = DynamicCvxpyLCQPLayer()
         self._hyperparameters = hyperparameters
 
         ## Populate Model Spaces
@@ -433,6 +433,7 @@ class MultibodyLearnableTactileSystem(Module):
         step_v: Tensor,
         step_u: Tensor,
         step_dt: Optional[float | Tensor] = None,
+        solver_torch_vmap: bool = False
     ) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
@@ -567,6 +568,7 @@ class MultibodyLearnableTactileSystem(Module):
                     reorder_mat.transpose(-1, -2), pbmm(mq_delassus, reorder_mat)
                 ),  # Quadratic Term
                 pbmm(reorder_mat.transpose(-1, -2), q_full).squeeze(-1),  # Linear Term
+                torch_vmap=solver_torch_vmap,
             ).unsqueeze(-1),
         )
 
@@ -1376,7 +1378,7 @@ class MultibodyLearnableTactileSystem(Module):
         with torch.no_grad():
             impulses = pbmm(
                 reorder_mat,
-                self._solver(
+                self._solver_learn(
                     pbmm(
                         reorder_mat.transpose(-1, -2), pbmm(qp_final, reorder_mat)
                     ),  # Quadratic Term
@@ -1641,6 +1643,8 @@ class MultibodyLearnableTactileSystem(Module):
             )
             return torch.cat([gr.flatten() for gr in grad])
 
+        # TODO: time-batch this for loop
+        #breakpoint()
         for idx, step_x in enumerate(state_params):
             param_list = [step_x] + [
                 param
@@ -1974,7 +1978,7 @@ class MultibodyLearnableTactileSystem(Module):
             for param in self._multibody_terms.parameters()
             if param.requires_grad
         ]
-
+        """
         def get_outputs_from_step_geom(step_dts: Tensor, step_x_batch: Tensor, plant_step_u: Tensor, multibody_params: dict[Tensor]) -> Tensor:
             step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
                 self.forward_dynamics_functional(
@@ -2011,7 +2015,7 @@ class MultibodyLearnableTactileSystem(Module):
                 dim=-1,
             )
             return output_combined_batch.flatten()
-
+        """
         ### Profiling
         #import cProfile, pstats, io
         #from pstats import SortKey
@@ -2030,6 +2034,7 @@ class MultibodyLearnableTactileSystem(Module):
                     self.space.v(step_x_batch),
                     plant_u_batch[..., idx, :],
                     step_dts,
+                    solver_torch_vmap=True,
                 )
             )
             output_phi_batch = torch.stack(list(step_phis_batch.values()), dim=-2)
@@ -2057,6 +2062,7 @@ class MultibodyLearnableTactileSystem(Module):
                 ],
                 dim=-1,
             )
+            assert torch.allclose(output_combined_batch[0], output_combined_batch[1]), f"Timestep {idx}"
 
             """ THIS IS SLOWER!?
             print(f"Geom jacrev... ", end='')
@@ -2140,6 +2146,7 @@ class MultibodyLearnableTactileSystem(Module):
             grads_combined_batch = torch.zeros(
                 batch_dims + (self.space.n_x + n_outs, n_params)
             )
+            assert torch.allclose(grads_combined_batch[0], grads_combined_batch[1]), f"Timestep {idx}"
             #for n_out in range(self.space.n_x + n_outs):
             #    grads_combined_batch[:, n_out, :-n_geom] = torch.autograd.grad(output_combined_batch[:, n_out], step_x_batch, torch.ones(n_batches), retain_graph=True, create_graph=False)[0]
             grad_outputs = []
@@ -2153,6 +2160,7 @@ class MultibodyLearnableTactileSystem(Module):
             end = time.time() - start
             cumtime = cumtime + end
             print(f"State in {end:.3f}s... ", end='')
+            assert torch.allclose(grads_combined_batch[0], grads_combined_batch[1]), f"Timestep {idx}"
             start = time.time()
             # TODO: Make Hyperparameter, this has been optimized for time at 100 actions
             output_divide = (self.space.n_x + n_outs) + 1
@@ -2172,6 +2180,7 @@ class MultibodyLearnableTactileSystem(Module):
             end = time.time() - start
             cumtime = cumtime + end
             print(f"Geom in {end:.3f}s, total {cumtime:.3f}s")
+            assert torch.allclose(grads_combined_batch[0], grads_combined_batch[1]), f"Timestep {idx}"
             # Clear the graph
             output_combined_batch[0,0].backward()
             """
