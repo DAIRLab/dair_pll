@@ -48,6 +48,7 @@ def construct_cvxpy_lcqp_layer(num_contacts: int) -> CvxpyLayer:
 # TODO: clean up
 # Disable JAX vram hogging
 import os
+
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 import jax
 from jaxopt import OSQP
@@ -62,6 +63,7 @@ def jaxopt_qp_run(
     Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array
 ) -> jax.Array:
     return OSQP().run(params_obj=(Qj, qj), params_ineq=(Gj, hj)).params.primal
+
 
 @jax2torch
 @jax.jit

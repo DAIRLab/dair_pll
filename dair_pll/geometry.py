@@ -1179,7 +1179,7 @@ class GeometryCollider:
         # Construct difference vector
         p_AoBo_A_clamp_sign_unmask = torch.sign(p_AoBo_A_clamp)
         # vmap doesn't support dynamic shapes
-        #p_AoBo_A_clamp_sign[p_AoBo_A_clamp_sign == 0.0] = 1.0
+        # p_AoBo_A_clamp_sign[p_AoBo_A_clamp_sign == 0.0] = 1.0
         mask_sign = (p_AoBo_A_clamp_sign_unmask == 0.0).float()
         p_AoBo_A_clamp_sign = p_AoBo_A_clamp_sign_unmask + mask_sign
 
@@ -1200,20 +1200,27 @@ class GeometryCollider:
         # Calculate directions (use torch nn functional normalize)
         directions_A_unflip = torch.nn.functional.normalize(p_AcBo_A, dim=-1)
         # Check if internal, if so, flip directions_A
-        mask_flip = (-2.0 * (torch.norm(p_AoBo_A, dim=-1) < torch.norm(p_AoAc_A, dim=-1)).float().unsqueeze(-1)) + 1.0
+        mask_flip = (
+            -2.0
+            * (torch.norm(p_AoBo_A, dim=-1) < torch.norm(p_AoAc_A, dim=-1))
+            .float()
+            .unsqueeze(-1)
+        ) + 1.0
         directions_A_flip = directions_A_unflip * mask_flip
         # vmap doesn't support dynamic shapes
-        #directions_A[
+        # directions_A[
         #    torch.norm(p_AoBo_A, dim=-1) < torch.norm(p_AoAc_A, dim=-1)
-        #] *= -1.0
+        # ] *= -1.0
         # In the unlikely event p_AcBo_A == 0, use an arbitrary surface normal
-        mask_onsurface = (torch.norm(directions_A_flip, dim=-1) == 0).float().unsqueeze(-1)
+        mask_onsurface = (
+            (torch.norm(directions_A_flip, dim=-1) == 0).float().unsqueeze(-1)
+        )
         directions_A = directions_A_flip + mask_onsurface
         # vmap doesn't support dynamic shapes
-        #on_surface_idxs = torch.norm(directions_A, dim=-1) == 0
-        #directions_A[on_surface_idxs] = (
+        # on_surface_idxs = torch.norm(directions_A, dim=-1) == 0
+        # directions_A[on_surface_idxs] = (
         #    -mask[on_surface_idxs] * p_AoBo_A_clamp_sign[on_surface_idxs]
-        #)
+        # )
         # Unsqueeze witness point dimensions
         directions_A = directions_A.unsqueeze(-2)
         p_AoAc_A = p_AoAc_A.unsqueeze(-2)
@@ -1266,12 +1273,12 @@ class GeometryCollider:
             R_AB.unsqueeze(-3).expand(batch_dim + (n_c, 3, 3)).transpose(-1, -2),
         ).squeeze(-2)
         p_AcBc_A = -p_AoAc_A + p_AoBo_A.unsqueeze(-2) + p_BoBc_A
-        
+
         # Project Phi from Closest Point
         phi_closest = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
         # vmap doesn't support in-place operations
-        #phi = torch.zeros(batch_dim + (n_c,))
-        #phi[..., :1] = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
+        # phi = torch.zeros(batch_dim + (n_c,))
+        # phi[..., :1] = (p_AcBc_A[..., :1, :] * R_AC[..., :1, :, 2]).sum(dim=-1)
 
         # 2nd Witness Point
         # Vector Norm
@@ -1284,7 +1291,7 @@ class GeometryCollider:
         # temp = torch.abs((p_AcBc_A[..., 1:, :] * R_AC[..., 1:, :, 2]).sum(dim=-1))
         # Max with previous phi
         # vmap doesn't support in-place operations
-        #phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
+        # phi[..., 1:] = torch.maximum(temp, phi[..., :1].clone())
         phi_furthest = torch.maximum(temp, phi_closest.clone())
         phi = torch.cat([phi_closest, phi_furthest], dim=-1)
         assert phi.shape == batch_dim + (n_c,)  # (..., n_c == 2)
