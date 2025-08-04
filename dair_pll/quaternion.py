@@ -231,6 +231,9 @@ def sinc(x: Tensor) -> Tensor:
         ``(*,)`` :math:`\mathrm{sinc}` function evaluated at ``x``.
     """
     # pylint: disable=E1103
+    # vmap doesn't support boolean index, use eps instead
+    if torch._C._functorch.is_batchedtensor(x):
+        return torch.sin(x + torch.finfo(x.dtype).eps) / (x + torch.finfo(x.dtype).eps)
     notnull = torch.abs(x) > 0
     null = torch.logical_not(notnull)
     sinc_x = torch.zeros_like(x)

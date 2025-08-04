@@ -365,8 +365,9 @@ class MultibodyLearnableTactileSystem(Module):
         ret_phis = {}  # Dict[Tuple[str, str], Tensor]
         for key in obj_pair_list:
             if obj_pair_list.count(key) == 1:
-                ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
-                ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
+                # vmap doesn't support in-place operations
+                #ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
+                #ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
                 index = np.array([i for i, x in enumerate(obj_pair_list) if x == key])[
                     0
                 ]
@@ -387,8 +388,10 @@ class MultibodyLearnableTactileSystem(Module):
             ).unsqueeze(-1),
         )
 
-        impulse = torch.zeros_like(impulse_full)
-        impulse[contact_filter] += impulse_full[contact_filter]
+        impulse = impulse_full * contact_filter.float()
+        # vmap doesn't support dynamic shape
+        #impulse = torch.zeros_like(impulse_full)
+        #impulse[contact_filter] += impulse_full[contact_filter]
 
         # pylint doesn't know about torch
         # pylint: disable-next=not-callable
@@ -397,28 +400,30 @@ class MultibodyLearnableTactileSystem(Module):
         ).squeeze(-1)
 
         ### Populate contact forces / normals
-        for key, ret_contact_force in ret_contact_forces.items():
-            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
-            if len(indices) == 0:
-                continue
-            assert len(indices) == 1
-            index = indices[0]
-            fric_index = len(obj_pair_list) + 2 * index
-            mr_wf_i = mr_fw_list[index].transpose(-1, -2)
-            ret_contact_normals[key][..., 0, :] = mr_wf_i[..., :, 2]
-            # Force in contact_frame
-            ret_contact_force[..., 0, 2] = impulse[..., index, 0] * torch.reciprocal(
-                dt
-            ).squeeze(-1)
-            ret_contact_force[..., 0, :2] = (
-                mu_list[index]
-                * impulse[..., fric_index : fric_index + 2, 0]
-                * torch.reciprocal(dt)
-            )
-            # Rotate into world frame
-            ret_contact_forces[key] = pbmm(
-                mr_wf_i, ret_contact_force.transpose(-1, -2)
-            ).transpose(-1, -2)
+        for key in obj_pair_list:
+            if obj_pair_list.count(key) == 1:
+                indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+                if len(indices) == 0:
+                    continue
+                assert len(indices) == 1
+                index = indices[0]
+                fric_index = len(obj_pair_list) + 2 * index
+                mr_wf_i = mr_fw_list[index].transpose(-1, -2)
+                ret_contact_normals[key] = mr_wf_i[..., :, 2].unsqueeze(-2)
+                # Force in contact_frame
+                ret_contact_force_norm = impulse[..., index, 0] * torch.reciprocal(
+                    dt
+                ).squeeze(-1)
+                ret_contact_force_fric = (
+                    mu_list[index]
+                    * impulse[..., fric_index : fric_index + 2, 0]
+                    * torch.reciprocal(dt)
+                )
+                ret_contact_force = torch.cat([ret_contact_force_fric, ret_contact_force_norm.unsqueeze(-1)], dim=-1).unsqueeze(-2)
+                # Rotate into world frame
+                ret_contact_forces[key] = pbmm(
+                    mr_wf_i, ret_contact_force.transpose(-1, -2)
+                ).transpose(-1, -2)
         ###
         return (
             step_v_minus + step_v_add,
@@ -433,7 +438,8 @@ class MultibodyLearnableTactileSystem(Module):
         step_v: Tensor,
         step_u: Tensor,
         step_dt: Optional[float | Tensor] = None,
-        solver_torch_vmap: bool = False
+        solver_torch_vmap: bool = False,
+        solver = None,
     ) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
@@ -492,7 +498,9 @@ class MultibodyLearnableTactileSystem(Module):
         Returns:
             (\*, space.n_v) delta velocity batch.
         """
-        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals\
+        if solver is None:
+            solver = self._solver
 
         # Input Validation
         batch_dims = step_q.size()[:-1]
@@ -563,7 +571,7 @@ class MultibodyLearnableTactileSystem(Module):
         ).expand(m_delassus.shape)
         impulse_full = pbmm(
             reorder_mat,
-            self._solver(
+            solver(
                 pbmm(
                     reorder_mat.transpose(-1, -2), pbmm(mq_delassus, reorder_mat)
                 ),  # Quadratic Term
@@ -1978,15 +1986,16 @@ class MultibodyLearnableTactileSystem(Module):
             for param in self._multibody_terms.parameters()
             if param.requires_grad
         ]
-        """
-        def get_outputs_from_step_geom(step_dts: Tensor, step_x_batch: Tensor, plant_step_u: Tensor, multibody_params: dict[Tensor]) -> Tensor:
+
+        def get_outputs_from_step_geom(step_dts: Tensor, step_x_batch: Tensor, plant_step_u: Tensor, geom_param: Tensor) -> Tensor:
+            geom_param_dict = {'contact_terms.geometries.3.length_params': geom_param}
             step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
                 self.forward_dynamics_functional(
                     self.space.q(step_x_batch),
                     self.space.v(step_x_batch),
                     plant_step_u,
                     step_dts,
-                    multibody_params,
+                    geom_param_dict,
                 )
             )
             output_phi_batch = torch.stack(list(step_phis_batch.values()), dim=-2)
@@ -2001,21 +2010,21 @@ class MultibodyLearnableTactileSystem(Module):
                 step_vplus_batch,
             )
 
+            return output_x_batch,output_phi_batch, output_forces_batch, output_normals_batch
+            """
             # Take Derivatives of outputs
-            outputs_phi_batch.append(output_phi_batch.detach())
-            outputs_normals_batch.append(output_normals_batch.detach())
-            outputs_forces_batch.append(output_forces_batch.detach())
+            fn_batch_dim = step_x_batch.shape[:-1]
             output_combined_batch = torch.cat(
                 [
-                    output_x_batch.reshape(batch_dims + (-1,)),
-                    output_phi_batch.reshape(batch_dims + (-1,)),
-                    output_forces_batch.reshape(batch_dims + (-1,)),
-                    output_normals_batch.reshape(batch_dims + (-1,)),
+                    output_x_batch.reshape(fn_batch_dim + (-1,)),
+                    output_phi_batch.reshape(fn_batch_dim + (-1,)),
+                    output_forces_batch.reshape(fn_batch_dim + (-1,)),
+                    output_normals_batch.reshape(fn_batch_dim + (-1,)),
                 ],
                 dim=-1,
             )
-            return output_combined_batch.flatten()
-        """
+            return output_combined_batch
+            """
         ### Profiling
         #import cProfile, pstats, io
         #from pstats import SortKey
@@ -2028,6 +2037,7 @@ class MultibodyLearnableTactileSystem(Module):
                 # Just assume last dt is next dt
                 # This is a dummy to get final phi anyway
                 step_dts = timestamps[idx] - timestamps[idx - 1]
+            """ OLD non-functional approach
             step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
                 self.forward_dynamics(
                     self.space.q(step_x_batch),
@@ -2048,6 +2058,15 @@ class MultibodyLearnableTactileSystem(Module):
                 ),
                 step_vplus_batch,
             )
+            """
+            output_from_step_geom_fn = partial(get_outputs_from_step_geom, step_dts.detach())
+            # TODO: search for all parameters in multibody terms state dict with requires_grad == True
+            geom_param_batch = Parameter(torch.tensor([[0.1625, 0.1625, 0.1625]]).unsqueeze(0).expand((n_batches,) + torch.tensor([[0.1625, 0.1625, 0.1625]]).shape), requires_grad=True)
+            output_x_batch, output_phi_batch, output_forces_batch, output_normals_batch = torch.vmap(output_from_step_geom_fn)(step_x_batch, plant_u_batch[..., idx, :].detach(), geom_param_batch)
+
+            #test_output_combined_batch = torch.vmap(output_from_step_geom_fn)(step_x_batch, plant_u_batch[..., idx, :].detach(), geom_param_batch)
+            #assert test_output_combined_batch.shape == output_combined_batch.shape
+            #assert torch.allclose(test_output_combined_batch, output_combined_batch)
 
             # Take Derivatives of outputs
             outputs_phi_batch.append(output_phi_batch.detach())
@@ -2063,6 +2082,7 @@ class MultibodyLearnableTactileSystem(Module):
                 dim=-1,
             )
             assert torch.allclose(output_combined_batch[0], output_combined_batch[1]), f"Timestep {idx}"
+            
 
             """ THIS IS SLOWER!?
             print(f"Geom jacrev... ", end='')
@@ -2110,8 +2130,31 @@ class MultibodyLearnableTactileSystem(Module):
             #test = torch.autograd.grad(output_combined_batch[0, 0], geom_param_list)
             #breakpoint()
 
+            grads_combined_batch = torch.zeros(
+                batch_dims + (self.space.n_x + n_outs, n_params)
+            )
+            grad_outputs = []
+            for n_out in range(self.space.n_x + n_outs):
+                grad_out= torch.zeros_like(output_combined_batch.T)
+                grad_out[n_out, :] = torch.ones(n_batches)
+                grad_outputs.append(grad_out)
+            grad_outputs = torch.stack(grad_outputs)
+
             print(f"Timestep {idx}... ", end='')
             start = time.time()
+            state_vjp_vmap = torch.vmap(partial(get_vjp, step_x_batch, output_combined_batch.T))
+            grads_combined_batch[..., :-n_geom] = state_vjp_vmap(grad_outputs)[0].transpose(0, 1)
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"State in {end:.3f}s... ", end='')
+            geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_batch, output_combined_batch.T))
+            grads_combined_batch[..., -n_geom:] = geom_vjp_vmap(grad_outputs)[0].transpose(0, 1).squeeze(-2)
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"Test Geom in {end:.3f}s, total {cumtime:.3f}s")
+
+            #print(f"Timestep {idx}... ", end='')
+            #start = time.time()
 
             
             """
@@ -2142,6 +2185,7 @@ class MultibodyLearnableTactileSystem(Module):
                 grads_combined[start_idx:end_idx, :, start_idx*self.space.n_x:end_idx*self.space.n_x] = grads_grp[..., :-n_geom]
                 grads_combined[start_idx:end_idx, :, -n_geom:] = grads_grp[..., -n_geom:]
             """
+            """ OLD non-functional geom params
             assert output_combined_batch.shape == (n_batches, self.space.n_x + n_outs)
             grads_combined_batch = torch.zeros(
                 batch_dims + (self.space.n_x + n_outs, n_params)
@@ -2181,6 +2225,8 @@ class MultibodyLearnableTactileSystem(Module):
             cumtime = cumtime + end
             print(f"Geom in {end:.3f}s, total {cumtime:.3f}s")
             assert torch.allclose(grads_combined_batch[0], grads_combined_batch[1]), f"Timestep {idx}"
+            """
+
             # Clear the graph
             output_combined_batch[0,0].backward()
             """

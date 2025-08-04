@@ -94,8 +94,9 @@ def jaxopt_solver(Qin: Tensor, qin: Tensor, torch_vmap=False) -> Tensor:
     # Wrap Q and q
     Q_solve = lamb_map_full.T @ Qin.reshape((-1,) + Qin.size()[-2:]) @ lamb_map_full
     q_solve = qin.reshape((-1,) + qin.size()[-1:]) @ lamb_map_full
-    Gt = -1.0 * torch.eye(4 * n_c).unsqueeze(0).expand(Q_solve.shape[0], -1, -1)
-    ht = torch.zeros(Q_solve.shape[0], 4 * n_c)
+    Gt_zero = torch.zeros_like(Q_solve)
+    Gt = Gt_zero - torch.eye(4 * n_c).unsqueeze(0).expand(Q_solve.shape[0], -1, -1)
+    ht = torch.zeros_like(q_solve)
     if torch_vmap:
         sol = torch.vmap(jaxopt_qp_run)(Q_solve, q_solve, Gt, ht)
     else:
@@ -127,7 +128,7 @@ class DynamicCvxpyLCQPLayer:
             self._cvxpy_layers[num_contacts] = construct_cvxpy_lcqp_layer(num_contacts)
         return self._cvxpy_layers[num_contacts]
 
-    def __call__(self, Q: Tensor, q: Tensor) -> Tensor:
+    def __call__(self, Q: Tensor, q: Tensor, torch_vmap=False) -> Tensor:
         """Solve an LCQP.
         Args:
             Q: (*, 3 * num_contacts, 3 * num_contacts) Cost matrices.

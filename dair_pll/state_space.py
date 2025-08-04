@@ -748,7 +748,8 @@ class ProductSpace(StateSpace):
         subspace configurations"""
         assert q_in.shape[-1] == self.n_q
         assert dq_in.shape[-1] == self.n_v
-        if torch._C._functorch.is_gradtrackingtensor(q_in):
+        wrapped = (torch._C._functorch.is_gradtrackingtensor(q_in) or torch._C._functorch.is_gradtrackingtensor(dq_in) or torch._C._functorch.is_batchedtensor(dq_in) or torch._C._functorch.is_batchedtensor(q_in))
+        if wrapped:
             exps = [
                 space.exponential(qi, dqi)
                 for space, qi, dqi in zip(self.spaces, self.q_split_fn(q_in), self.v_split_fn(dq_in))
