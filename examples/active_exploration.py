@@ -139,6 +139,7 @@ def main(
             "s - Sample random action\n"
             "t - Train\n"
             "b - breakpoint()\n"
+            "o - DEBUGGING COMMAND\n"
             "v - Visualize\n"
             "h - Print Help\n"
             "q - Quit\n"
@@ -158,6 +159,7 @@ def main(
 
         elif command_char == "a":
             ## Compute Expected Info per-action
+            start = time.time()
             traj_x, traj_time = interpolate_sampled_action(
                 data=torch.stack(
                     [
@@ -197,6 +199,9 @@ def main(
 
             selected_action = sample_action(
                 library=action_library, index=torch.argmax(fisher_traces)
+            )
+            print(
+                f"Evaluated {len(fisher_traces)} actions in {(time.time()-start):.3f}s"
             )
 
         elif command_char == "e":
