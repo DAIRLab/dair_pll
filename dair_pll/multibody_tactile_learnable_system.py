@@ -1987,8 +1987,7 @@ class MultibodyLearnableTactileSystem(Module):
             if param.requires_grad
         ]
 
-        def get_outputs_from_step_geom(step_dts: Tensor, step_x_batch: Tensor, plant_step_u: Tensor, geom_param: Tensor) -> Tensor:
-            geom_param_dict = {'contact_terms.geometries.3.length_params': geom_param}
+        def get_outputs_from_step_geom(step_dts: Tensor, step_x_batch: Tensor, plant_step_u: Tensor, geom_param_dict: dict[str, Tensor]) -> Tensor:
             step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
                 self.forward_dynamics_functional(
                     self.space.q(step_x_batch),
@@ -2061,12 +2060,24 @@ class MultibodyLearnableTactileSystem(Module):
             """
             output_from_step_geom_fn = partial(get_outputs_from_step_geom, step_dts.detach())
             # TODO: search for all parameters in multibody terms state dict with requires_grad == True
-            geom_param_batch = Parameter(torch.tensor([[0.1625, 0.1625, 0.1625]]).unsqueeze(0).expand((n_batches,) + torch.tensor([[0.1625, 0.1625, 0.1625]]).shape), requires_grad=True)
-            output_x_batch, output_phi_batch, output_forces_batch, output_normals_batch = torch.vmap(output_from_step_geom_fn)(step_x_batch, plant_u_batch[..., idx, :].detach(), geom_param_batch)
-
+            geom_param_dict = {k: Parameter(v.detach().unsqueeze(0).expand((n_batches,) + v.shape), requires_grad=True) for k,v in self._multibody_terms.state_dict(keep_vars=True).items() if v.requires_grad == True}
+            in_dims = (0, 0, {k: 0 for k, _ in geom_param_dict.items()})
+            output_x_batch, output_phi_batch, output_forces_batch, output_normals_batch = torch.vmap(output_from_step_geom_fn, in_dims = in_dims)(step_x_batch, plant_u_batch[..., idx, :].detach(), geom_param_dict)
+            """
+            step_x_single = step_x_batch[:1]
+            geom_param_single = geom_param_batch[:1]
+            test_output_x_batch, test_output_phi_batch, test_output_forces_batch, test_output_normals_batch = torch.vmap(output_from_step_geom_fn)(step_x_single, plant_u_batch[..., idx, :].detach()[:1], geom_param_single)
             #test_output_combined_batch = torch.vmap(output_from_step_geom_fn)(step_x_batch, plant_u_batch[..., idx, :].detach(), geom_param_batch)
             #assert test_output_combined_batch.shape == output_combined_batch.shape
             #assert torch.allclose(test_output_combined_batch, output_combined_batch)
+            assert torch.allclose(output_x_batch[:1], test_output_x_batch)
+            assert torch.allclose(output_phi_batch[:1], test_output_phi_batch)
+            assert torch.allclose(output_forces_batch[:1], test_output_forces_batch)
+            assert torch.allclose(output_normals_batch[:1], test_output_normals_batch)
+            #print(f"Phi Sum: {torch.sum(output_phi_batch[0])}")
+            #print(f"Forces Sum: {torch.sum(output_forces_batch[0])}")
+            #print(f"Normals Sum: {torch.sum(output_normals_batch[0])}")
+            """
 
             # Take Derivatives of outputs
             outputs_phi_batch.append(output_phi_batch.detach())
@@ -2081,7 +2092,18 @@ class MultibodyLearnableTactileSystem(Module):
                 ],
                 dim=-1,
             )
-            assert torch.allclose(output_combined_batch[0], output_combined_batch[1]), f"Timestep {idx}"
+            """
+            test_output_combined_batch = torch.cat(
+                [
+                    test_output_x_batch.reshape((1, -1,)),
+                    test_output_phi_batch.reshape((1, -1,)),
+                    test_output_forces_batch.reshape((1, -1,)),
+                    test_output_normals_batch.reshape((1, -1,)),
+                ],
+                dim=-1,
+            )
+            assert torch.allclose(test_output_combined_batch, output_combined_batch[:1]), f"Timestep {idx}"
+            """
             
 
             """ THIS IS SLOWER!?
@@ -2147,11 +2169,43 @@ class MultibodyLearnableTactileSystem(Module):
             end = time.time() - start
             cumtime = cumtime + end
             print(f"State in {end:.3f}s... ", end='')
-            geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_batch, output_combined_batch.T))
-            grads_combined_batch[..., -n_geom:] = geom_vjp_vmap(grad_outputs)[0].transpose(0, 1).squeeze(-2)
+            geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_dict.values(), output_combined_batch.T))
+            # TODO: Handle more than one geometry value
+            grads_geom_ret = geom_vjp_vmap(grad_outputs)
+            grads_geom_batch = torch.cat([grad.transpose(0, 1).squeeze(-2) for grad in grads_geom_ret], dim=-1)
+            assert grads_geom_batch.shape == (n_batches, self.space.n_x + n_outs, n_geom)
+            grads_combined_batch[..., -n_geom:] = grads_geom_batch
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"Geom in {end:.3f}s, total {cumtime:.3f}s")
+
+            """
+            test_grads_combined_batch = torch.zeros(
+                (1, self.space.n_x + n_outs, n_params)
+            )
+            test_grad_outputs = []
+            for n_out in range(self.space.n_x + n_outs):
+                test_grad_out= torch.zeros_like(test_output_combined_batch.T)
+                test_grad_out[n_out, :] = torch.ones(1)
+                test_grad_outputs.append(test_grad_out)
+            test_grad_outputs = torch.stack(test_grad_outputs)
+
+            print(f"Test Timestep {idx}... ", end='')
+            start = time.time()
+            test_state_vjp_vmap = torch.vmap(partial(get_vjp, step_x_single, test_output_combined_batch.T))
+            test_grads_combined_batch[..., :-n_geom] = test_state_vjp_vmap(test_grad_outputs)[0].transpose(0, 1)
+            end = time.time() - start
+            cumtime = cumtime + end
+            print(f"Test State in {end:.3f}s... ", end='')
+            test_geom_vjp_vmap = torch.vmap(partial(get_vjp, geom_param_single, test_output_combined_batch.T))
+            test_grads_combined_batch[..., -n_geom:] = test_geom_vjp_vmap(test_grad_outputs)[0].transpose(0, 1).squeeze(-2)
             end = time.time() - start
             cumtime = cumtime + end
             print(f"Test Geom in {end:.3f}s, total {cumtime:.3f}s")
+
+            assert torch.allclose(test_grads_combined_batch, grads_combined_batch[:1]), f"Timestep {idx}"
+            """
+
 
             #print(f"Timestep {idx}... ", end='')
             #start = time.time()
