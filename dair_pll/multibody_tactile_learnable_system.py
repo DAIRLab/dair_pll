@@ -975,7 +975,7 @@ class MultibodyLearnableTactileSystem(Module):
 
     def _loss_nimp(
         self,
-        meas_contact_forces: dict[tuple[str, str], Tensor],
+        meas_contact_forces: Optional[dict[tuple[str, str], Tensor]],
         meas_contact_normals: dict[tuple[str, str], Tensor],
         est_contact_forces: dict[tuple[str, str], Tensor],
         est_contact_normals: dict[tuple[str, str], Tensor],
@@ -1043,10 +1043,11 @@ class MultibodyLearnableTactileSystem(Module):
                 traj_len - 1,
                 3,
             ), meas_contact_normals[key].size()
-            assert meas_contact_forces[key].size() == batch_dims + (
-                traj_len - 1,
-                3,
-            ), meas_contact_forces[key].size()
+            if meas_contact_forces is not None:
+                assert meas_contact_forces[key].size() == batch_dims + (
+                    traj_len - 1,
+                    3,
+                ), meas_contact_forces[key].size()
 
         ret_loss = {
             "loss_meas_bool": torch.zeros(batch_dims + (traj_len - 1,)),
@@ -1058,7 +1059,10 @@ class MultibodyLearnableTactileSystem(Module):
         # Supervise each key
         for key in supervised_keys:
             # Input Validation
-            assert key in meas_contact_forces, f"Key {key} not in meas_contact_forces"
+            if meas_contact_forces is not None:
+                assert (
+                    key in meas_contact_forces
+                ), f"Key {key} not in meas_contact_forces"
             assert key in meas_contact_normals, f"Key {key} not in meas_contact_normals"
             assert key in est_contact_forces, f"Key {key} not in est_contact_forces"
             assert key in est_contact_normals, f"Key {key} not in est_contact_normals"
@@ -1109,25 +1113,30 @@ class MultibodyLearnableTactileSystem(Module):
             ret_loss["loss_meas_normal"] += loss_meas_normal
 
             # Force Loss
-            loss_meas_force = (
-                0.5
-                * (
-                    torch.ones_like(contact_bool)
-                    if self._hyperparameters.supervise_non_contact_force
-                    else contact_bool
+            if meas_contact_forces is not None:
+                loss_meas_force = (
+                    0.5
+                    * (
+                        torch.ones_like(contact_bool)
+                        if self._hyperparameters.supervise_non_contact_force
+                        else contact_bool
+                    )
+                    * (1.0 / self._hyperparameters.w_force_var)
+                    * pbmm(
+                        (est_contact_forces[key] - meas_contact_forces[key]).unsqueeze(
+                            -2
+                        ),
+                        (est_contact_forces[key] - meas_contact_forces[key]).unsqueeze(
+                            -1
+                        ),
+                    )
+                    .squeeze(-2)
+                    .squeeze(-1)
                 )
-                * (1.0 / self._hyperparameters.w_force_var)
-                * pbmm(
-                    (est_contact_forces[key] - meas_contact_forces[key]).unsqueeze(-2),
-                    (est_contact_forces[key] - meas_contact_forces[key]).unsqueeze(-1),
-                )
-                .squeeze(-2)
-                .squeeze(-1)
-            )
-            assert loss_meas_force.size() == batch_dims + (
-                traj_len - 1,
-            ), loss_meas_force.size()
-            ret_loss["loss_meas_force"] += loss_meas_force
+                assert loss_meas_force.size() == batch_dims + (
+                    traj_len - 1,
+                ), loss_meas_force.size()
+                ret_loss["loss_meas_force"] += loss_meas_force
 
             # Penetration Loss (start only for NIMP, assume sim avoids penetration)
             ret_loss["loss_pen"] += self._hyperparameters.w_pen * torch.maximum(
@@ -1154,7 +1163,7 @@ class MultibodyLearnableTactileSystem(Module):
 
     def _loss_vimp(
         self,
-        meas_contact_forces: dict[tuple[str, str], Tensor],
+        meas_contact_forces: Optional[dict[tuple[str, str], Tensor]],
         meas_contact_normals: dict[tuple[str, str], Tensor],
         timestamps: Tensor,
         plant_x: Tensor,
@@ -1194,15 +1203,16 @@ class MultibodyLearnableTactileSystem(Module):
         batch_dims = plant_x.size()[:-2]
         traj_len = plant_x.size()[-2]
         assert timestamps.size() == (traj_len,)
-        for key in list(meas_contact_forces):
+        for key in list(meas_contact_normals):
             assert meas_contact_normals[key].size() == batch_dims + (
                 traj_len - 1,
                 3,
             ), meas_contact_normals[key].size()
-            assert meas_contact_forces[key].size() == batch_dims + (
-                traj_len - 1,
-                3,
-            ), meas_contact_forces[key].size()
+            if meas_contact_forces is not None:
+                assert meas_contact_forces[key].size() == batch_dims + (
+                    traj_len - 1,
+                    3,
+                ), meas_contact_forces[key].size()
         assert plant_x.size() == batch_dims + (traj_len, self.space.n_x), plant_x.size()
         assert plant_u.size() == batch_dims + (
             traj_len,
@@ -1315,65 +1325,69 @@ class MultibodyLearnableTactileSystem(Module):
         qp_meas_force = torch.zeros_like(qp_v_pred)
         const_meas_force = torch.zeros_like(const_v_pred)
 
-        for key in meas_contact_forces.keys():
-            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
-            if len(indices) == 0:
-                continue
-            mu_i = mu_list[indices[0]]
-            # qp_meas_force = diag(mu)RS^TSR^Tdiag(mu)^T; diag(mu) = 1 if normal, mu otherwise
-            # R is block diagonal rotation matrices, S is summation matrix
-            diag_f_mu = torch.zeros(
-                q_meas_force.shape[:-1] + ((len(indices) * 3),)
-            )  # (batch x (n_c_tot*3) x (n_c_obj*3))
-            r_fw_mat = torch.zeros(
-                q_meas_force.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))
-            )  # (batch x (n_c_obj*3) x (n_c_obj*3))
-            sum_w_mat = torch.zeros(
-                q_meas_force.shape[:-2] + (3, (len(indices) * 3))
-            )  # (batch x 3 x (n_c_obj*3))
-            for contact, idx in enumerate(indices):
-                # Map Normal Force
-                diag_f_mu[..., idx, contact * 3 + 2] = 1.0
-                # Map Tangent Forces
-                diag_f_mu[..., len(obj_pair_list) + 2 * idx, contact * 3] = mu_i
-                diag_f_mu[..., len(obj_pair_list) + 2 * idx + 1, contact * 3 + 1] = mu_i
+        if meas_contact_forces is not None:
+            for key in meas_contact_forces.keys():
+                indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+                if len(indices) == 0:
+                    continue
+                mu_i = mu_list[indices[0]]
+                # qp_meas_force = diag(mu)RS^TSR^Tdiag(mu)^T; diag(mu) = 1 if normal, mu otherwise
+                # R is block diagonal rotation matrices, S is summation matrix
+                diag_f_mu = torch.zeros(
+                    q_meas_force.shape[:-1] + ((len(indices) * 3),)
+                )  # (batch x (n_c_tot*3) x (n_c_obj*3))
+                r_fw_mat = torch.zeros(
+                    q_meas_force.shape[:-2] + ((len(indices) * 3), (len(indices) * 3))
+                )  # (batch x (n_c_obj*3) x (n_c_obj*3))
+                sum_w_mat = torch.zeros(
+                    q_meas_force.shape[:-2] + (3, (len(indices) * 3))
+                )  # (batch x 3 x (n_c_obj*3))
+                for contact, idx in enumerate(indices):
+                    # Map Normal Force
+                    diag_f_mu[..., idx, contact * 3 + 2] = 1.0
+                    # Map Tangent Forces
+                    diag_f_mu[..., len(obj_pair_list) + 2 * idx, contact * 3] = mu_i
+                    diag_f_mu[
+                        ..., len(obj_pair_list) + 2 * idx + 1, contact * 3 + 1
+                    ] = mu_i
 
-                # Create Block diagonal matrix (note torch.block_diag isn't vectorized)
-                r_fw_mat[
-                    ...,
-                    contact * 3 : (contact + 1) * 3,
-                    contact * 3 : (contact + 1) * 3,
-                ] = mr_fw_list[idx]
+                    # Create Block diagonal matrix (note torch.block_diag isn't vectorized)
+                    r_fw_mat[
+                        ...,
+                        contact * 3 : (contact + 1) * 3,
+                        contact * 3 : (contact + 1) * 3,
+                    ] = mr_fw_list[idx]
 
-                # Summation
-                sum_w_mat[..., 0, contact * 3] = 1.0
-                sum_w_mat[..., 1, contact * 3 + 1] = 1.0
-                sum_w_mat[..., 2, contact * 3 + 2] = 1.0
-            q_meas_force_part = pbmm(
-                sum_w_mat, pbmm(r_fw_mat.transpose(-1, -2), diag_f_mu.transpose(-1, -2))
-            )  # (batch, 3, (n_c_tot*3))
-            assert q_meas_force_part.size() == batch_dims + (
-                traj_len - 1,
-                3,
-                n_contacts * 3,
-            )
-            qp_meas_force += pbmm(
-                q_meas_force_part.transpose(-1, -2), q_meas_force_part
-            )
+                    # Summation
+                    sum_w_mat[..., 0, contact * 3] = 1.0
+                    sum_w_mat[..., 1, contact * 3 + 1] = 1.0
+                    sum_w_mat[..., 2, contact * 3 + 2] = 1.0
+                q_meas_force_part = pbmm(
+                    sum_w_mat,
+                    pbmm(r_fw_mat.transpose(-1, -2), diag_f_mu.transpose(-1, -2)),
+                )  # (batch, 3, (n_c_tot*3))
+                assert q_meas_force_part.size() == batch_dims + (
+                    traj_len - 1,
+                    3,
+                    n_contacts * 3,
+                )
+                qp_meas_force += pbmm(
+                    q_meas_force_part.transpose(-1, -2), q_meas_force_part
+                )
 
-            # Linear Term is lambda_mSR^Tdiag(mu)^T
-            impulse_measured = (meas_contact_forces[key] * dts).unsqueeze(
-                -2
-            )  # (batch, 1, 3)
-            assert impulse_measured.size() == batch_dims + (traj_len - 1, 1, 3)
-            q_meas_force -= pbmm(impulse_measured, q_meas_force_part).transpose(
-                -1, -2
-            )  # (batch, n_c_tot*3, 1)
+                # Linear Term is lambda_mSR^Tdiag(mu)^T
+                impulse_measured = (meas_contact_forces[key] * dts).unsqueeze(
+                    -2
+                )  # (batch, 1, 3)
+                assert impulse_measured.size() == batch_dims + (traj_len - 1, 1, 3)
+                q_meas_force -= pbmm(impulse_measured, q_meas_force_part).transpose(
+                    -1, -2
+                )  # (batch, n_c_tot*3, 1)
 
-            # Constant term is lambda_m magnitude, multiply by 0.5 here to match constant_pred
-            const_meas_force += 0.5 * pbmm(
-                impulse_measured, impulse_measured.transpose(-1, -2)
-            )
+                # Constant term is lambda_m magnitude, multiply by 0.5 here to match constant_pred
+                const_meas_force += 0.5 * pbmm(
+                    impulse_measured, impulse_measured.transpose(-1, -2)
+                )
 
         qp_final = (
             self._hyperparameters.w_v_pred * qp_v_pred
@@ -1568,7 +1582,11 @@ class MultibodyLearnableTactileSystem(Module):
         # NIMP needs
         if self._hyperparameters.loss_fn == LossFunction.NIMP:
             return self._loss_nimp(
-                {k: v[..., 1:, :] for k, v in meas_contact_forces.items()},
+                (
+                    {k: v[..., 1:, :] for k, v in meas_contact_forces.items()}
+                    if meas_contact_forces is not None
+                    else None
+                ),
                 {k: v[..., 1:, :] for k, v in meas_contact_normals.items()},
                 forward_args[2],  # estimated contact forces
                 forward_args[3],  # estimated contact normals
@@ -1577,7 +1595,11 @@ class MultibodyLearnableTactileSystem(Module):
 
         # VIMP needs timestamps, plant trajectory, and control
         return self._loss_vimp(
-            {k: v[..., 1:, :] for k, v in meas_contact_forces.items()},
+            (
+                {k: v[..., 1:, :] for k, v in meas_contact_forces.items()}
+                if meas_contact_forces is not None
+                else None
+            ),
             {k: v[..., 1:, :] for k, v in meas_contact_normals.items()},
             timestamps,
             forward_args[0],  # plant states
@@ -1861,6 +1883,9 @@ class MultibodyLearnableTactileSystem(Module):
             np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
             / self._hyperparameters.w_phi_nominal
         )
+        outputs_phi = outputs_phi.detach()
+        outputs_forces = outputs_forces.detach()
+        outputs_normals = outputs_normals.detach()
         ### Phi Term
         grads_phi = jac_outs_params[1:, : outputs_phi[0].numel()].reshape(
             (traj_len - 1,) + outputs_phi.size()[1:] + (n_params,)
@@ -2327,6 +2352,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ret_info_batch += info_normals_batch
         print(f"...Done in {(time.time()-start):.6f}s")
+        # TODO: HACK make info max a hyperparameter
         return ret_info_batch
 
     @torch.no_grad

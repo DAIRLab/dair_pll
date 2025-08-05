@@ -229,7 +229,23 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
             # Add data to dataset
+            first_contact = len(new_trajectory["time"])
+            for finger_name in new_trajectory.keys():
+                try:
+                    test_firstcontact = int(
+                        torch.nonzero(
+                            torch.linalg.vector_norm(
+                                new_trajectory[finger_name]["contact_normal_W"], dim=-1
+                            )
+                        )[0]
+                    )
+                    if test_firstcontact < first_contact:
+                        first_contact = test_firstcontact
+                except (IndexError, KeyError):  # e.g. object, time
+                    continue
+            new_trajectory = new_trajectory[first_contact:]
             add_trajectory = TensorDict({}, batch_size=new_trajectory.batch_size)
+            add_trajectory["time"] = new_trajectory["time"]
             add_trajectory[learned_system.controlled_model_names[0] + "_state"] = (
                 extract_robot_trajectory(new_trajectory, learned_system, trifinger_lcm)
             )
@@ -259,7 +275,6 @@ def main(
                     ]["contact_normal_W"]
                 except (IndexError, KeyError):  # e.g. object, time
                     continue
-            add_trajectory["time"] = new_trajectory["time"]
             add_trajectory[learned_system.learned_model_names[0] + "_groundtruth"] = (
                 new_trajectory[learned_system.learned_model_names[0]]["position"]
             )
@@ -380,7 +395,7 @@ def main(
                 gui_vis.update()
 
                 loss_dict = learned_system.loss_fn(
-                    meas_contact_forces, meas_contact_normals, timestamps, *forward_args
+                    None, meas_contact_normals, timestamps, *forward_args
                 )
                 loss_total = sum(torch.sum(v) for _, v in loss_dict.items())
                 loss_total.backward()
