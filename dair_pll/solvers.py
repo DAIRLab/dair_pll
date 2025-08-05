@@ -66,8 +66,8 @@ def jaxopt_qp_run(
 
 
 @jax2torch
-@jax.jit
 @jax.vmap
+@jax.jit
 def jaxopt_qp_run_jax_vmap(
     Qj: jax.Array, qj: jax.Array, Gj: jax.Array, hj: jax.Array
 ) -> jax.Array:
