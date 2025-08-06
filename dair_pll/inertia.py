@@ -98,7 +98,9 @@ from dair_pll.tensor_utils import (
     trace_identity,
 )
 
-torch.set_default_dtype(torch.float64)  # pylint: disable=no-member
+# TODO: HACK why is this here!?
+# Way too much memory use!
+# torch.set_default_dtype(torch.float64)  # pylint: disable=no-member
 
 INERTIA_INDICES = [(0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2)]
 INERTIA_SCALARS = ["I_xx", "I_yy", "I_zz", "I_xy", "I_xz", "I_yz"]

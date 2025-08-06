@@ -18,7 +18,7 @@ _LINEAR_SPACE = torch.linspace(-1, 1, steps=8)
 _GRID = torch.cartesian_prod(_LINEAR_SPACE, _LINEAR_SPACE, _LINEAR_SPACE)
 _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
-_SURFACE = _SURFACE.to(torch.float64)
+_SURFACE = _SURFACE.to(torch.float32)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
 
@@ -128,7 +128,7 @@ def extract_outward_normal_hyperplanes(vertices: Tensor, faces: Tensor):
     v_a = vertices[batch_range, faces[..., 0]]
     v_b = vertices[batch_range, faces[..., 1]]
     v_c = vertices[batch_range, faces[..., 2]]
-    outward_normals = torch.cross(v_b - v_a, v_c - v_a)
+    outward_normals = torch.cross(v_b - v_a, v_c - v_a, dim=-1)
     outward_normals /= outward_normals.norm(dim=-1, keepdim=True)
     backwards = (outward_normals * (v_a - centroids)).sum(dim=-1) < 0.0
     outward_normals[backwards] *= -1
@@ -151,6 +151,8 @@ def extract_mesh_from_support_function(
     support_point_hashes = set()
     unique_support_points = []
 
+    if torch._C._functorch.is_batchedtensor(support_points):
+        raise AssertionError("extract_mesh doesn't support vmap")
     # remove duplicate vertices
     for vertex in support_points:
         vertex_hash = hash(vertex.cpu().numpy().tobytes())
@@ -227,7 +229,7 @@ class HomogeneousICNN(Module):
         input_weights = []
         for layer in range(depth):
             input_weight = torch.empty((3, width))
-            torch.nn.init.kaiming_uniform(input_weight)
+            torch.nn.init.kaiming_uniform_(input_weight)
             if layer > 0:
                 input_weight *= 2 ** (-0.5)
             input_weights.append(Parameter(input_weight, requires_grad=learnable))
@@ -260,8 +262,14 @@ class HomogeneousICNN(Module):
         Returns:
             `(*, width)` activation jacobian.
         """
-        jacobian = torch.ones_like(activations)
-        jacobian[activations <= 0] *= self.activation.negative_slope
+
+        # vmap doesn't support in-place or boolean select operations
+        # jacobian = torch.ones_like(activations)
+        # jacobian[activations <= 0] *= self.activation.negative_slope
+        neg_activations = (activations <= 0).float()
+        jacobian = neg_activations * self.activation.negative_slope + (
+            1.0 - neg_activations
+        )
         return jacobian
 
     def network_activations(self, directions: Tensor) -> Tuple[List[Tensor], Tensor]:
@@ -288,6 +296,43 @@ class HomogeneousICNN(Module):
         output = pbmm(hiddens[-1], output_wt)
         return hiddens, output.squeeze(-1)
 
+    def forward_devmap(self, directions: Tensor) -> Tensor:
+        hidden_wts_wrap, output_wt_wrap = self.abs_weights()
+        hiddens_wrap, _ = self.network_activations(directions)
+        input_wts_wrap = self.input_weights
+
+        # Unwrap all network elements and take first batch
+        hidden_wts = [
+            torch._C._functorch.get_unwrapped(wt)[0] for wt in hidden_wts_wrap
+        ]
+        output_wt = torch._C._functorch.get_unwrapped(output_wt_wrap)[0]
+        hiddens = [torch._C._functorch.get_unwrapped(wt)[0] for wt in hiddens_wrap]
+        input_wts = [
+            torch._C._functorch.get_unwrapped(wt)[0] for wt in self.input_weights
+        ]
+
+        hidden_jacobian = (
+            output_wt.expand(hiddens[-1].shape) * self.activation_jacobian(hiddens[-1])
+        ).unsqueeze(-1)
+
+        # Directions may not be vmap-ed, initialize later
+        jacobian = torch.zeros_like(directions)
+        layer_bundle = zip(
+            reversed(hiddens[:-1]), reversed(hidden_wts), reversed(list(input_wts[1:]))
+        )
+
+        for hidden, hidden_wt, input_wt in layer_bundle:
+            new_jac = pbmm(input_wt, hidden_jacobian).squeeze(-1)
+            jacobian += new_jac
+
+            hidden_jacobian = pbmm(
+                hidden_wt, hidden_jacobian
+            ) * self.activation_jacobian(hidden).unsqueeze(-1)
+
+        jacobian += pbmm(input_wts[0], hidden_jacobian).squeeze(-1)
+
+        return jacobian
+
     def forward(self, directions: Tensor) -> Tensor:
         """Evaluates support function Jacobian at provided inputs.
 
@@ -297,21 +342,31 @@ class HomogeneousICNN(Module):
         Returns:
             ``(*, 3)`` network input Jacobian.
         """
+
         hidden_wts, output_wt = self.abs_weights()
         hiddens, _ = self.network_activations(directions)
-        input_wts = self.input_weights
+        input_wts = list(self.input_weights)  # ParameterList works weird w/ vmap
+
+        # if directions isn't vmap'ed, we can get away with a single network
+        # Since in this codebase vmap over this network is solely for identical params
+        if torch._C._functorch.is_batchedtensor(
+            hidden_wts[0]
+        ) and not torch._C._functorch.is_batchedtensor(directions):
+            return self.forward_devmap(directions)
 
         hidden_jacobian = (
             output_wt.expand(hiddens[-1].shape) * self.activation_jacobian(hiddens[-1])
         ).unsqueeze(-1)
 
+        # Directions may not be vmap-ed, initialize later
         jacobian = torch.zeros_like(directions)
         layer_bundle = zip(
-            reversed(hiddens[:-1]), reversed(hidden_wts), reversed(list(input_wts[1:]))
+            reversed(hiddens[:-1]), reversed(hidden_wts), reversed(input_wts[1:])
         )
 
         for hidden, hidden_wt, input_wt in layer_bundle:
-            jacobian += pbmm(input_wt, hidden_jacobian).squeeze(-1)
+            new_jac = pbmm(input_wt, hidden_jacobian).squeeze(-1)
+            jacobian += new_jac
 
             hidden_jacobian = pbmm(
                 hidden_wt, hidden_jacobian

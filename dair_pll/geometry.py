@@ -28,6 +28,7 @@ import gin
 import numpy as np
 import pywavefront  # type: ignore
 import torch
+import trimesh
 from pydrake.geometry import Box as DrakeBox  # type: ignore
 from pydrake.geometry import Sphere as DrakeSphere  # type: ignore
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
@@ -72,7 +73,8 @@ _NOMINAL_HALF_LENGTH = 2e-1  # Note: matches Box/Polygon space to trajectory spa
 _total_ordering = ["Plane", "Polygon", "Box", "Sphere", "DeepSupportConvex"]
 
 _POLYGON_DEFAULT_N_QUERY = 4
-_DEEP_SUPPORT_DEFAULT_N_QUERY = 4
+_DEEP_SUPPORT_DEFAULT_N_QUERY = 5
+_DEEP_SUPPORT_EVAL_N_QUERY = 10
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
 
@@ -83,6 +85,209 @@ class GeometryRepresentation(Enum):
     PRIMITIVE = 1
     POLYGON = 2
     MESH = 3
+
+
+def sample_hemisphere(directions, num_samples):
+    """
+    Generate uniform random points on hemispheres oriented around given directions.
+    The input directions are guaranteed to be the first samples.
+
+    Args:
+        directions (torch.Tensor): Tensor of shape (**, 3) containing unit vectors
+        num_samples (int): Number of points to generate per direction (including the direction)
+
+    Returns:
+        torch.Tensor: Tensor of shape (**, num_samples, 3) containing the sampled points
+    """
+    # Ensure directions are unit vectors
+    directions = torch.as_tensor(directions, dtype=torch.float)
+    directions = directions / torch.norm(directions, dim=-1, keepdim=True)
+    device = directions.device
+
+    # Get batch shape and reshape directions to (-1, 3)
+    batch_shape = directions.shape[:-1]
+    batch_size = torch.prod(torch.tensor(batch_shape))
+    directions_2d = directions.reshape(-1, 3)
+
+    # Generate random points for one less than num_samples
+    n = num_samples - 1
+
+    # Generate random points in spherical coordinates
+    phi = 2 * torch.pi * torch.rand(batch_size, n, device=device)
+    theta = torch.arccos(torch.rand(batch_size, n, device=device))
+
+    # Convert to Cartesian coordinates
+    x = torch.sin(theta) * torch.cos(phi)
+    y = torch.sin(theta) * torch.sin(phi)
+    z = torch.cos(theta)
+    points = torch.stack([x, y, z], dim=-1)  # Shape: (batch_size, n, 3)
+
+    # Handle rotation for each direction in the batch
+    z_axis = torch.tensor([0.0, 0.0, 1.0], device=device, dtype=directions.dtype)
+
+    # Compute rotation matrices for all directions at once
+    # Find rotation axes and angles
+    v = torch.cross(z_axis.expand_as(directions_2d), directions_2d)
+    s = torch.norm(v, dim=-1, keepdim=True)
+    c = torch.sum(z_axis * directions_2d, dim=-1, keepdim=True)
+
+    # Create batch of rotation matrices
+    # Handle both cases where direction is parallel to z-axis and where it isn't
+    is_parallel = s.squeeze(-1) < 1e-6
+    rotation_matrices = torch.eye(3, device=device).expand(batch_size, 3, 3).clone()
+
+    # Compute rotation matrices only for non-parallel cases
+    non_parallel = ~is_parallel
+    if torch.any(non_parallel):
+        v_non_parallel = v[non_parallel]
+        s_non_parallel = s[non_parallel]
+        c_non_parallel = c[non_parallel]
+
+        v_cross = torch.zeros(non_parallel.sum(), 3, 3, device=device)
+        v_cross[:, 0, 1] = -v_non_parallel[:, 2]
+        v_cross[:, 0, 2] = v_non_parallel[:, 1]
+        v_cross[:, 1, 0] = v_non_parallel[:, 2]
+        v_cross[:, 1, 2] = -v_non_parallel[:, 0]
+        v_cross[:, 2, 0] = -v_non_parallel[:, 1]
+        v_cross[:, 2, 1] = v_non_parallel[:, 0]
+
+        rotation_matrices[non_parallel] = (
+            torch.eye(3, device=device)
+            + v_cross
+            + torch.matmul(v_cross, v_cross)
+            * (1 - c_non_parallel[..., None])
+            / (s_non_parallel[..., None] * s_non_parallel[..., None])
+        )
+
+    # Apply rotations to all points in batch
+    points = torch.matmul(points, rotation_matrices.transpose(-2, -1))
+
+    # Add the directions as first samples
+    points = torch.cat([directions_2d.unsqueeze(1), points], dim=1)
+
+    # Reshape to original batch dimensions
+    output_shape = batch_shape + (num_samples, 3)
+    points = points.reshape(output_shape)
+
+    return points
+
+
+def sample_symmetric_ring(
+    directions: torch.Tensor,
+    num_samples: int,
+    elevation: Optional[torch.Tensor] = None,
+    azimuth_offset: Optional[torch.Tensor] = None,
+    random_elevation: bool = True,
+    random_azimuth_offset: bool = True,
+    seed: Optional[int] = None,
+) -> torch.Tensor:
+    """
+    Generate symmetrically distributed points forming a single ring around given directions.
+    """
+    if seed is not None:
+        torch.manual_seed(seed)
+
+    device = directions.device
+
+    # Get batch shape and reshape directions to (-1, 3)
+    batch_shape = directions.shape[:-1]
+    batch_size = torch.prod(torch.tensor(batch_shape))
+    directions_2d = directions.reshape(-1, 3)
+
+    # Generate random points for one less than num_samples
+    n_points_in_ring = num_samples - 1
+
+    z_axis = torch.tensor([0.0, 0.0, 1.0], device=device)
+    cos_angle = (directions * z_axis.expand_as(directions)).sum(dim=-1, keepdim=True)
+
+    # Generate or use provided elevation angle
+    if elevation is not None:
+        if not isinstance(elevation, torch.Tensor):
+            elevation = torch.tensor(elevation, device=device)
+        elevation = elevation.expand(*batch_shape, 1)
+    else:
+        if random_elevation:
+            # Generate random elevation angle between 0 and acos(0.5)=pi/3
+            elevation = torch.arccos(
+                torch.rand(*batch_shape, 1, device=device) * 0.5 + 0.5
+            )
+        else:
+            elevation = torch.tensor(np.pi / 4, device=device).expand(*batch_shape, 1)
+
+    # Generate or use provided azimuth offset
+    if azimuth_offset is not None:
+        if not isinstance(azimuth_offset, torch.Tensor):
+            azimuth_offset = torch.tensor(azimuth_offset, device=device)
+        azimuth_offset = azimuth_offset.expand(*batch_shape, 1)
+    else:
+        if random_azimuth_offset:
+            azimuth_offset = 2 * np.pi * torch.rand(*batch_shape, 1, device=device)
+        else:
+            azimuth_offset = torch.zeros(*batch_shape, 1, device=device)
+
+    # Generate evenly spaced points in the ring
+    azimuths = torch.linspace(0, 2 * np.pi, n_points_in_ring + 1, device=device)[:-1]
+    # Correct expansion of azimuths
+    azimuths = azimuths.view(1, -1).expand(*batch_shape, n_points_in_ring)
+    azimuths = azimuths + azimuth_offset
+
+    # Convert to Cartesian coordinates (around z-axis)
+    sin_elevation = torch.sin(elevation)
+    cos_elevation = torch.cos(elevation)
+    x = sin_elevation * torch.cos(azimuths)
+    y = sin_elevation * torch.sin(azimuths)
+    z = cos_elevation.expand_as(x)
+
+    points = torch.stack([x, y, z], dim=-1)
+
+    # Handle rotation for each direction in the batch
+    z_axis = torch.tensor([0.0, 0.0, 1.0], device=device, dtype=directions.dtype)
+
+    # Compute rotation matrices for all directions at once
+    # Find rotation axes and angles
+    v = torch.cross(z_axis.expand_as(directions_2d), directions_2d, dim=-1)
+    s = torch.norm(v, dim=-1, keepdim=True)
+    c = torch.sum(z_axis * directions_2d, dim=-1, keepdim=True)
+
+    # Create batch of rotation matrices
+    # Handle both cases where direction is parallel to z-axis and where it isn't
+    is_parallel = s.squeeze(-1) < 1e-6
+    rotation_matrices = torch.eye(3, device=device).expand(batch_size, 3, 3).clone()
+
+    # Compute rotation matrices only for non-parallel cases
+    non_parallel = ~is_parallel
+    if torch.any(non_parallel):
+        v_non_parallel = v[non_parallel]
+        s_non_parallel = s[non_parallel]
+        c_non_parallel = c[non_parallel]
+
+        v_cross = torch.zeros(non_parallel.sum(), 3, 3, device=device)
+        v_cross[:, 0, 1] = -v_non_parallel[:, 2]
+        v_cross[:, 0, 2] = v_non_parallel[:, 1]
+        v_cross[:, 1, 0] = v_non_parallel[:, 2]
+        v_cross[:, 1, 2] = -v_non_parallel[:, 0]
+        v_cross[:, 2, 0] = -v_non_parallel[:, 1]
+        v_cross[:, 2, 1] = v_non_parallel[:, 0]
+
+        rotation_matrices[non_parallel] = (
+            torch.eye(3, device=device)
+            + v_cross
+            + torch.matmul(v_cross, v_cross)
+            * (1 - c_non_parallel[..., None])
+            / (s_non_parallel[..., None] * s_non_parallel[..., None])
+        )
+
+    # Apply rotations to all points in batch
+    points = torch.matmul(points, rotation_matrices.transpose(-2, -1))
+
+    # Add the directions as first samples
+    points = torch.cat([directions_2d.unsqueeze(1), points], dim=1)
+
+    # Reshape to original batch dimensions
+    output_shape = batch_shape + (num_samples, 3)
+    points = points.reshape(output_shape)
+
+    return points
 
 
 class CollisionGeometry(ABC, Module):
@@ -377,6 +582,7 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         width: int = _DEEP_SUPPORT_DEFAULT_WIDTH,
         perturbation: float = 0.4,
         learnable: bool = True,
+        sampling_method: str = "perturb",
     ) -> None:
         r"""Inits ``DeepSupportConvex`` object with initial vertex set.
 
@@ -391,6 +597,8 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             perturbation: support direction sampling parameter.
         """
         # pylint: disable=too-many-arguments,E1103
+        if n_query is None:
+            n_query = _DEEP_SUPPORT_DEFAULT_N_QUERY
         super().__init__(n_query)
         length_scale = (
             vertices.max(dim=0).values - vertices.min(dim=0).values
@@ -402,12 +610,21 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             (torch.zeros((1, 3)), perturbation * (torch.rand((n_query - 1, 3)) - 0.5))
         )
         self.learnable = learnable
+        self._sampling_method = sampling_method
 
-    def get_vertices(self, directions: Tensor) -> Tensor:
+    def get_vertices(
+        self,
+        directions: Tensor,
+        sample_entire_mesh: bool = False,
+        sample_surface_points: bool = False,
+        *kwargs: None,
+    ) -> Tensor:
         """Return batched view of support points of interest.
 
         Given a direction :math:`d`, this function finds the support point of
-        the object in that direction, calculated via envelope
+        the object in that direction, calculated via envelope theorem.  If
+        ``sample_entire_mesh`` is set to True, this function samples points
+        broadly across the whole surface of the object geometry.
 
         Args:
             directions: ``(*, 3)`` batch of support directions sample.
@@ -415,10 +632,50 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
         Returns:
             ``(*, n_query, 3)`` sampled support points.
         """
-        perturbed = directions.unsqueeze(-2)
-        perturbed = tile_dim(perturbed, self.n_query, -2)
-        perturbed += self.perturbations.expand(perturbed.shape)
-        perturbed /= perturbed.norm(dim=-1, keepdim=True)
+        assert not (
+            sample_entire_mesh and sample_surface_points
+        ), "Cannot sample both entire mesh and surface points."
+
+        if sample_surface_points:
+            # No duplication points check. Use this if simply want to sample
+            # surface points without converting them to a mesh.
+            points = extract_surface_points_from_support_function(self.network)
+            return points
+        elif sample_entire_mesh:
+            mesh = extract_mesh_from_support_function(self.network)
+            single_vertices = mesh.vertices
+            return single_vertices.expand(directions.shape[:-1] + single_vertices.shape)
+
+        # # Can query different number of directions during training/evaluation.
+        n_to_add = self.n_query if self.network.training else _DEEP_SUPPORT_EVAL_N_QUERY
+        # Note that the first train_epoch() called by
+        # SupervisedLearningExperiment.train() is in eval mode.
+        # n_query is _DEEP_SUPPORT_EVAL_N_QUERY in eval mode
+        # which is likely different from n_query in the training.
+        # They are filtered (top-selected) to n_query in
+        # SparseVertexConvexCollisionGeometry.support_point() function.
+
+        if self._sampling_method == "perturb":
+            perturbed = directions.unsqueeze(-2)
+            perturbed = tile_dim(perturbed, n_to_add, -2)
+
+            perturbed += torch.cat(
+                (torch.zeros((1, 3)), 1.99 * (torch.rand((n_to_add - 1, 3)) - 0.5))
+            ).expand(perturbed.shape)
+            # 1.99*[-0.5, 0.5]=(-1, 1), which is added to unit-length vectors,
+            # allowing the perturbations to cover a hemisphere.
+            # This is intentional to allow wider coverage of the support function.
+            perturbed /= perturbed.norm(dim=-1, keepdim=True)
+
+        elif self._sampling_method == "uniform":
+            perturbed = sample_hemisphere(directions, n_to_add)
+            # assert torch.all((perturbed*directions.unsqueeze(-2)).sum(-1) > 0)
+        elif self._sampling_method == "deterministic":
+            perturbed = sample_symmetric_ring(directions, n_to_add)
+            # assert torch.all((perturbed*directions.unsqueeze(-2)).sum(-1) > 0)
+        else:
+            raise ValueError(f"Unknown sampling method: {self._sampling_method}")
+
         return self.network(perturbed)
 
     def train(self, mode: bool = True) -> DeepSupportConvex:
@@ -863,7 +1120,23 @@ class GeometryCollider:
                 -pbmm(estimated_normals_A.unsqueeze(-2), R_AB).squeeze(-2),
             )
 
-        # case 3: compact-convex to sphere collision (e.g. robot)
+        # case 3: sparse-convex to sphere collision (e.g. DSC to robot)
+        if isinstance(geometry_a, Sphere) and isinstance(
+            geometry_b, SparseVertexConvexCollisionGeometry
+        ):
+            return GeometryCollider.collide_sphere_sparse_convex_parallel(
+                geometry_a, geometry_b, R_AB, p_AoBo_A
+            )
+        if isinstance(geometry_a, SparseVertexConvexCollisionGeometry) and isinstance(
+            geometry_b, Sphere
+        ):
+            return GeometryCollider.collide_sphere_sparse_convex_parallel(
+                geometry_b,
+                geometry_a,
+                R_AB.transpose(-1, -2),
+                -pbmm(p_AoBo_A.unsqueeze(-2), R_AB).squeeze(-2),
+            )
+        # case 3.5: compact-convex to sphere collision (e.g. robot)
         if isinstance(geometry_a, BoundedConvexCollisionGeometry) and isinstance(
             geometry_b, Sphere
         ):
@@ -1327,6 +1600,160 @@ class GeometryCollider:
         # axis of A points out of the plane.
         # pylint: disable=E1103
         R_AC = torch.eye(3).expand(p_AoAc_A.shape + (3,))
+        return phi, R_AC, p_AoAc_A, p_BoBc_B
+
+    @staticmethod
+    def collide_sphere_sparse_convex_parallel(
+        geometry_a: Sphere,
+        geometry_b: SparseVertexConvexCollisionGeometry,
+        R_AB: Tensor,
+        p_AoBo_A: Tensor,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        """Implementation of ``GeometryCollider.collide()`` when the first
+        geometry is a sphere and the second geometry is a sparse vertex convex
+        collision geometry.  Leverages trimesh for signed distance queries.
+
+        This is a parallelized version of ``collide_sphere_sparse_convex`` that
+        seems to have similar quality of results while running anywhere from
+        2.5x to 10x faster.
+
+        Returns:
+        phi (batch, n_c=1): distance between objects
+        R_AC (batch, n_c=1, 3, 3): A model frame to contact frame [i.e. z == contact normal]
+        p_AoAc_A (batch, n_c=1, 3): A's contact in A's frame
+        p_BoBc_B (batch, n_c=1, 3): B's contact in B's frame
+        """
+        # Call network directly for DeepSupportConvex objects.
+        support_fn_a = geometry_a.support_points
+        support_fn_b = geometry_b.support_points
+        if isinstance(geometry_b, DeepSupportConvex):
+            support_fn_b = geometry_b.network
+
+        # Get shapes of inputs, ensuring of correct dimensions.
+        p_AoBo_A = p_AoBo_A.unsqueeze(-2)
+        original_batch_dims = p_AoBo_A.shape[:-2]
+        p_AoBo_A = p_AoBo_A.view(-1, 3)
+        R_AB = R_AB.view(-1, 3, 3)
+
+        with torch.no_grad():
+            ## REMOVE VMAP FOR EVERYTHING IN HERE
+            vmap_size = -1
+            if torch._C._functorch.is_batchedtensor(p_AoBo_A):
+                p_AoBo_A_unwrap = torch._C._functorch.get_unwrapped(p_AoBo_A)
+                assert len(p_AoBo_A_unwrap.shape) == 3
+                vmap_size = p_AoBo_A_unwrap.shape[0]
+                p_AoBo_A_unwrap = p_AoBo_A_unwrap.view(-1, 3)
+                R_AB_unwrap = torch._C._functorch.get_unwrapped(R_AB).view(-1, 3, 3)
+                vmap_level = torch._C._functorch.maybe_get_level(p_AoBo_A)
+                vmap_bdim = torch._C._functorch.maybe_get_bdim(p_AoBo_A)
+                # Only supports one level of vmap
+                assert vmap_level == 1, str(vmap_level)
+                assert vmap_bdim == 0, str(vmap_bdim)
+            else:
+                p_AoBo_A_unwrap = p_AoBo_A
+                R_AB_unwrap = R_AB
+
+            # Fix the geometry B origin, and compute new locations for A expressed
+            # in B frame.  This allows us to query the mesh at the same location for
+            # multiple relative sphere locations at a time, speeding up the signed
+            # distance queries.
+            p_BoAo_B = -pbmm(p_AoBo_A_unwrap.unsqueeze(-2), R_AB_unwrap).squeeze(-2)
+            R_BA = R_AB_unwrap.transpose(-1, -2)
+
+            # Get the vertex set of the second geometry and define a trimesh object
+            # from it.
+
+            # No Vmap over geometry for this part
+            directions_A_to_B_in_B = torch.zeros(p_BoAo_B.shape)
+
+            b_vertices_B = geometry_b.get_vertices(
+                directions_A_to_B_in_B, sample_entire_mesh=True
+            )
+            trimesh_mesh = trimesh.Trimesh(
+                vertices=b_vertices_B[0].detach().cpu().numpy()
+            ).convex_hull
+            trimesh_mesh.process()
+
+            # Find nearest points on mesh to the centers of the sphere at its
+            # various locations.
+            closest_points, _distances, _triangle_ids = trimesh.proximity.closest_point(
+                trimesh_mesh, p_BoAo_B.detach().cpu()
+            )
+            # closest_points.shape == (*, 3)
+
+            # Query the signed distances from the mesh to the sphere centers.
+            # NOTE: Negative sign here because trimesh uses points inside the mesh
+            # have positive signed distance, which is opposite of our convention.
+            signed_distances = (
+                -trimesh.proximity.signed_distance(
+                    trimesh_mesh, p_BoAo_B.detach().cpu()
+                )
+                - geometry_a.get_radius().item()
+            )
+
+            # Use the vector from the sphere center to the closest point on the mesh
+            # as the contact direction.  If the sphere's origin is inside the mesh,
+            # flip the direction to ensure it always points from the sphere into the
+            # mesh.
+            directions_A_to_B_in_B = closest_points - p_BoAo_B.detach().cpu().numpy()
+            to_flip_mask = signed_distances < -geometry_a.get_radius().item()
+            directions_A_to_B_in_B[to_flip_mask] *= -1
+
+            directions_A_to_B_in_B = torch.tensor(
+                directions_A_to_B_in_B, dtype=torch.get_default_dtype()
+            )
+
+            directions_A_to_B_in_A = pbmm(
+                directions_A_to_B_in_B.unsqueeze(-2), R_BA
+            ).squeeze(-2)
+            # R_AC[..., 2] is normalized directions_A_to_B_in_A
+            # Get normal directions in each object frame.
+            directions_B_unwrap = -directions_A_to_B_in_B / directions_A_to_B_in_B.norm(
+                dim=-1, keepdim=True
+            )
+            directions_A_unwrap = -pbmm(
+                directions_B_unwrap.unsqueeze(-2), R_BA
+            ).squeeze(-2)
+
+            if vmap_size >= 0:
+                # Re-wrap directions
+                directions_A_unwrap = directions_A_unwrap.reshape(
+                    (vmap_size,) + p_AoBo_A.shape
+                )
+                directions_B_unwrap = directions_A_unwrap.reshape(
+                    (vmap_size,) + p_AoBo_A.shape
+                )
+                directions_A = torch._C._functorch._add_batch_dim(
+                    directions_A_unwrap, vmap_bdim, vmap_level
+                )
+                directions_B = torch._C._functorch._add_batch_dim(
+                    directions_B_unwrap, vmap_bdim, vmap_level
+                )
+            else:
+                directions_A = directions_A_unwrap
+                directions_B = directions_B_unwrap
+
+        # For differentiability, derive from p_BoBc_B
+        p_BoBc_B = support_fn_b(directions_B)
+        p_BoBc_A = pbmm(p_BoBc_B.unsqueeze(-2), R_AB.transpose(-1, -2)).squeeze(-2)
+
+        # Connect normal to derivative graph
+        # TODO: HACK not accurate, assumes infinite object curvature (i.e. point contact)
+        p_AoBc_A_norm = torch.nn.functional.normalize(p_AoBo_A + p_BoBc_A, dim=-1)
+        assert p_AoBc_A_norm.shape == directions_A.shape
+        # TODO: This *differs* from directions_A, this comes from the mesh approx
+        """
+        assert torch.allclose(p_AoBc_A_norm, directions_A)
+        """
+        p_AoAc_A = support_fn_a(p_AoBc_A_norm).squeeze(-2)
+        p_AcBc_A = -p_AoAc_A + p_AoBo_A + p_BoBc_A
+        R_AC = rotation_matrix_from_one_vector(p_AoBc_A_norm, 2)
+
+        phi = (p_AcBc_A * R_AC[..., 2]).sum(dim=-1)
+        phi = phi.reshape(original_batch_dims + (1,))
+        R_AC = R_AC.reshape(original_batch_dims + (1, 3, 3))
+        p_AoAc_A = p_AoAc_A.reshape(original_batch_dims + (1, 3))
+        p_BoBc_B = p_BoBc_B.reshape(original_batch_dims + (1, 3))
         return phi, R_AC, p_AoAc_A, p_BoBc_B
 
     @staticmethod

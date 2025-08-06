@@ -164,7 +164,10 @@ def main(
                 data=torch.stack(
                     [
                         torch.tensor(
-                            np.array(sample_action(library=action_library, index=idx))
+                            np.array(
+                                sample_action(library=action_library, index=idx),
+                                dtype="float32",
+                            )
                         )
                         for idx in range(len(action_library))
                     ]

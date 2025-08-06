@@ -43,6 +43,9 @@ install_reqs = [
     "drake-pytorch @ git+https://github.com/DAIRLab/drake-pytorch.git#egg=drake-pytorch-0.1",
     # parse URDF
     "xacro @ git+https://github.com/ros/xacro@ros2#egg=xacro",
+    "trimesh",
+    # Req for trimesh, not pip-tracked for some reason
+    "rtree",
 ]
 
 try:

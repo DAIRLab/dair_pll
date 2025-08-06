@@ -1514,11 +1514,16 @@ class MultibodyLearnableTactileSystem(Module):
             / self._hyperparameters.w_phi_nominal
         )
         for key in meas_contact_normals.keys():
-            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            revkey = (key[1], key[0])
+            indices = np.array(
+                [i for i, x in enumerate(obj_pair_list) if x == key or x == revkey]
+            )
             if len(indices) == 0:
                 continue
             for idx in indices:
-                normals_guess = mr_fw_list[idx].transpose(-1, -2)[..., 2]
+                objkey = obj_pair_list[idx]
+                norm_mult = -1.0 if objkey == revkey else 1.0
+                normals_guess = norm_mult * mr_fw_list[idx].transpose(-1, -2)[..., 2]
                 assert normals_guess.size() == batch_dims + (traj_len - 1, 3)
                 assert meas_contact_normals[key].size() == batch_dims + (
                     traj_len - 1,
@@ -1718,6 +1723,8 @@ class MultibodyLearnableTactileSystem(Module):
             )
 
         # Get outputs for each timestep
+        print(f"Calc Outputs... ", end="")
+        start = time.time()
         geom_param_dict = {
             k: Parameter(
                 v.detach().unsqueeze(0).expand((traj_len,) + v.shape),
@@ -1732,7 +1739,9 @@ class MultibodyLearnableTactileSystem(Module):
             [timestamps[1:] - timestamps[:-1], timestamps[-1:] - timestamps[-2:-1]]
         )
         outputs_x, outputs_phi, outputs_forces, outputs_normals = torch.vmap(
-            get_outputs_from_step_geom, in_dims=in_dims
+            get_outputs_from_step_geom,
+            in_dims=in_dims,
+            randomness="different",
         )(step_dts, state_param, plant_u.detach(), geom_param_dict)
         output_combined = torch.cat(
             [
@@ -1755,6 +1764,8 @@ class MultibodyLearnableTactileSystem(Module):
             grad_outputs.append(grad_out)
         grad_outputs = torch.stack(grad_outputs)
 
+        end = time.time() - start
+        print(f"Done in {end:.3f}s")
         print(f"Calc Autodiff... ", end="")
         start = time.time()
 
@@ -2083,6 +2094,8 @@ class MultibodyLearnableTactileSystem(Module):
             )
 
         # Get outputs for each timestep
+        print(f"Calc Outputs... ", end="")
+        start = time.time()
         geom_param_dict = {
             k: Parameter(
                 v.detach().unsqueeze(0).expand((n_batches * traj_len,) + v.shape),
@@ -2102,7 +2115,9 @@ class MultibodyLearnableTactileSystem(Module):
             .flatten()
         )
         outputs_x, outputs_phi, outputs_forces, outputs_normals = torch.vmap(
-            get_outputs_from_step_geom, in_dims=in_dims
+            get_outputs_from_step_geom,
+            in_dims=in_dims,
+            randomness="different",
         )(
             step_dts,
             state_param_batch,
@@ -2124,6 +2139,11 @@ class MultibodyLearnableTactileSystem(Module):
                 batch_dims + (traj_len, n_outs, n_params)
             )
 
+        end = time.time() - start
+        print(f"Done in {end:.3f}s")
+        print(f"Calc Autodiff... ", end="")
+        start = time.time()
+
         grads_combined_batch = torch.zeros(
             batch_dims + (traj_len, self.space.n_x + n_outs, n_params)
         )
@@ -2133,9 +2153,6 @@ class MultibodyLearnableTactileSystem(Module):
             grad_out[n_out, :] = torch.ones(n_batches * traj_len)
             grad_outputs.append(grad_out)
         grad_outputs = torch.stack(grad_outputs)
-
-        print(f"Calc Autodiff... ", end="")
-        start = time.time()
 
         vjp_vmap = torch.vmap(
             partial(
@@ -2268,28 +2285,29 @@ class MultibodyLearnableTactileSystem(Module):
         )
         print("Calculating info matrix...")
         start = time.time()
-        outputs_phi_batch = outputs_phi.reshape(
+        outputs_phi_batch = outputs_phi.detach().reshape(
             (
                 n_batches,
                 traj_len,
             )
             + outputs_phi.shape[1:]
         )
-        outputs_normals_batch = outputs_normals.reshape(
+        outputs_normals_batch = outputs_normals.detach().reshape(
             (
                 n_batches,
                 traj_len,
             )
             + outputs_normals.shape[1:]
         )
-        outputs_forces_batch = outputs_forces.reshape(
+        outputs_forces_batch = outputs_forces.detach().reshape(
             (
                 n_batches,
                 traj_len,
             )
             + outputs_forces.shape[1:]
         )
-        ret_info_batch = torch.zeros(batch_dims + (n_params, n_params))
+        # TODO: this runs out of memory for large n_params, consider
+        # ret_info_batch = torch.zeros(batch_dims + (n_params, n_params))
         # Extract Contact Boolean
         phi_alpha = (
             np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
@@ -2308,6 +2326,9 @@ class MultibodyLearnableTactileSystem(Module):
                 1.0 + torch.exp(phi_alpha * outputs_phi_batch[..., 1:, :, :])
             )
         ).unsqueeze(-1)
+        # Nan -> inf/inf, but lim(outputs_phi -> inf) == 0
+        phi_mult_batch[torch.isnan(phi_mult_batch)] = 0.0
+        breakpoint()
         info_phi_batch = (
             pbmm(
                 grads_phi_batch.transpose(-1, -2), pbmm(phi_mult_batch, grads_phi_batch)
