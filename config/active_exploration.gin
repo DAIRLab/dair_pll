@@ -182,6 +182,12 @@ Adam.lr = 3e-4
 Adam.amsgrad=True
 Adam.fused=False
 
+# Geometry Parameters
+DeepSupportConvex.depth = 2
+DeepSupportConvex.width = 40
+DeepSupportConvex.perturbation = 0.4
+DeepSupportConvex.n_query = 5
+
 ## Exploration Params
 
 ## True System (for Metrics)

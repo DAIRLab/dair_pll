@@ -18,7 +18,6 @@ _LINEAR_SPACE = torch.linspace(-1, 1, steps=8)
 _GRID = torch.cartesian_prod(_LINEAR_SPACE, _LINEAR_SPACE, _LINEAR_SPACE)
 _SURFACE = _GRID[_GRID.abs().max(dim=-1).values >= 1.0]
 _SURFACE = _SURFACE / _SURFACE.norm(dim=-1, keepdim=True)
-_SURFACE = _SURFACE.to(torch.float32)
 _SURFACE_ROTATIONS = rotation_matrix_from_one_vector(_SURFACE, 2)
 
 
@@ -147,7 +146,9 @@ def extract_mesh_from_support_function(
     Returns:
         Object vertices and face indices.
     """
-    support_points = support_function(_SURFACE.to(torch.get_default_device())).detach()
+    support_points = support_function(
+        _SURFACE.to(device=torch.get_default_device(), dtype=torch.get_default_dtype())
+    ).detach()
     support_point_hashes = set()
     unique_support_points = []
 

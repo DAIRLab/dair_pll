@@ -1554,6 +1554,7 @@ class MultibodyLearnableTactileSystem(Module):
                 )
 
                 ### Loss: Contact Boolean Measurement (loss_meas_bool)
+                # TODO: get rid of log(exp(x)) for large X (replace w/ linear)
                 ret_loss["loss_meas_bool"] += (contact_bool - 1.0) * phi_alpha * m_phi[
                     ..., idx
                 ] + torch.log(1.0 + torch.exp(phi_alpha * m_phi[..., idx]))
@@ -1830,7 +1831,6 @@ class MultibodyLearnableTactileSystem(Module):
             ###           also have all outputs
 
         assert torch.all(~torch.isnan(jac_outs_params)), "NaN in jac_outs_params"
-
         ### Compute jac_xz_geom
         jac_xz_geom = torch.zeros((self.space.n_x, n_geom))
         for idx in range(traj_len):
@@ -1856,8 +1856,8 @@ class MultibodyLearnableTactileSystem(Module):
 
             if idx < traj_len - 1:
                 jac_xn_geom = (
-                    jac_partial_xnp_geom[..., idx, :, :]
-                    + jac_xnp_xn[..., idx, :, :] @ jac_xn_geom
+                    jac_partial_xnp_geom[idx, :, :]
+                    + jac_xnp_xn[idx, :, :] @ jac_xn_geom
                 )
 
         ### Compute jac_out_xh instead of jac_out_xn
@@ -1876,6 +1876,7 @@ class MultibodyLearnableTactileSystem(Module):
                 jac_out_xn.transpose(-1, -2),
             ).transpose(-1, -2)
             jac_outs_params[idx, :, : self.space.n_x] = jac_out_xh
+
         # Switch to position parameter only
         n_params = n_geom + self._learned_trajectory.space.n_q
         jac_outs_params = torch.cat(
@@ -1885,6 +1886,9 @@ class MultibodyLearnableTactileSystem(Module):
             ],
             dim=-1,
         )
+        # TODO: Make Hyperparameter
+        # Clamp to 1e6 for stability
+        clamp_val = 1e3
         print(f"... Done in {time.time() - start}s")
         print("Calculating info matrix...", end="")
         start = time.time()
@@ -1898,8 +1902,12 @@ class MultibodyLearnableTactileSystem(Module):
         outputs_forces = outputs_forces.detach()
         outputs_normals = outputs_normals.detach()
         ### Phi Term
-        grads_phi = jac_outs_params[1:, : outputs_phi[0].numel()].reshape(
-            (traj_len - 1,) + outputs_phi.size()[1:] + (n_params,)
+        grads_phi = torch.clamp(
+            jac_outs_params[1:, : outputs_phi[0].numel()].reshape(
+                (traj_len - 1,) + outputs_phi.size()[1:] + (n_params,)
+            ),
+            min=-clamp_val,
+            max=clamp_val,
         )
         phi_mult = (
             phi_alpha
@@ -1931,12 +1939,17 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape((-1, n_params, n_params))
             .sum(dim=0)
         )
-        ret_info += info_forces
+        # TODO: make argument, remove forces from info
+        # ret_info += info_forces
 
         ### Normals Term
-        grads_normals = jac_outs_params[
-            :-1, outputs_phi[0].numel() + outputs_forces[0].numel() :
-        ].reshape((traj_len - 1,) + outputs_normals.size()[1:] + (n_params,))
+        grads_normals = torch.clamp(
+            jac_outs_params[
+                :-1, outputs_phi[0].numel() + outputs_forces[0].numel() :
+            ].reshape((traj_len - 1,) + outputs_normals.size()[1:] + (n_params,)),
+            min=-clamp_val,
+            max=clamp_val,
+        )
         info_normals = (
             (
                 contact_bool
@@ -2283,6 +2296,9 @@ class MultibodyLearnableTactileSystem(Module):
             ],
             dim=-1,
         )
+        # TODO: Make Hyperparameter
+        # Clamp to 1e6 for stability
+        clamp_val = 1e3
         print("Calculating info matrix...")
         start = time.time()
         outputs_phi_batch = outputs_phi.detach().reshape(
@@ -2306,8 +2322,8 @@ class MultibodyLearnableTactileSystem(Module):
             )
             + outputs_forces.shape[1:]
         )
-        # TODO: this runs out of memory for large n_params, consider
-        # ret_info_batch = torch.zeros(batch_dims + (n_params, n_params))
+        # TODO: consider returning a batch of gradients instead
+        ret_info_batch = torch.zeros(batch_dims + (n_params, n_params))
         # Extract Contact Boolean
         phi_alpha = (
             np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
@@ -2315,8 +2331,12 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ### Phi Term
         n_contacts = outputs_phi_batch.size()[-2]
-        grads_phi_batch = jac_outs_params_batch[..., 1:, :n_contacts, :].reshape(
-            batch_dims + (traj_len - 1, n_contacts, 1, n_params)
+        grads_phi_batch = torch.clamp(
+            jac_outs_params_batch[..., 1:, :n_contacts, :].reshape(
+                batch_dims + (traj_len - 1, n_contacts, 1, n_params)
+            ),
+            min=-clamp_val,
+            max=clamp_val,
         )
         phi_mult_batch = (
             phi_alpha
@@ -2328,7 +2348,7 @@ class MultibodyLearnableTactileSystem(Module):
         ).unsqueeze(-1)
         # Nan -> inf/inf, but lim(outputs_phi -> inf) == 0
         phi_mult_batch[torch.isnan(phi_mult_batch)] = 0.0
-        breakpoint()
+
         info_phi_batch = (
             pbmm(
                 grads_phi_batch.transpose(-1, -2), pbmm(phi_mult_batch, grads_phi_batch)
@@ -2337,7 +2357,6 @@ class MultibodyLearnableTactileSystem(Module):
             .sum(dim=-3)
         )
         ret_info_batch += info_phi_batch
-        # TODO: Investigate asymmetry in ZSINGLE between X and Y
 
         ### Forces Term
         n_forces = n_contacts * 3
@@ -2356,12 +2375,17 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape(batch_dims + (-1, n_params, n_params))
             .sum(dim=-3)
         )
-        ret_info_batch += info_forces_batch
+        # TODO: make argument to remove forces from info
+        # ret_info_batch += info_forces_batch
 
         ### Normals Term
-        grads_normals_batch = jac_outs_params_batch[
-            ..., :-1, n_contacts + n_forces :, :
-        ].reshape(batch_dims + (traj_len - 1, n_contacts, 3, n_params))
+        grads_normals_batch = torch.clamp(
+            jac_outs_params_batch[..., :-1, n_contacts + n_forces :, :].reshape(
+                batch_dims + (traj_len - 1, n_contacts, 3, n_params)
+            ),
+            min=-clamp_val,
+            max=clamp_val,
+        )
         info_normals_batch = (
             (
                 contact_bool_batch
@@ -2373,7 +2397,6 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ret_info_batch += info_normals_batch
         print(f"...Done in {(time.time()-start):.6f}s")
-        # TODO: HACK make info max a hyperparameter
         return ret_info_batch
 
     @torch.no_grad

@@ -545,6 +545,7 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         raise NotImplementedError("Polygon doesn't support FCL")
 
 
+@gin.configurable(denylist=["vertices", "learnable"])
 class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
     r"""Deep support function convex shape.
 
@@ -1720,7 +1721,7 @@ class GeometryCollider:
                 directions_A_unwrap = directions_A_unwrap.reshape(
                     (vmap_size,) + p_AoBo_A.shape
                 )
-                directions_B_unwrap = directions_A_unwrap.reshape(
+                directions_B_unwrap = directions_B_unwrap.reshape(
                     (vmap_size,) + p_AoBo_A.shape
                 )
                 directions_A = torch._C._functorch._add_batch_dim(

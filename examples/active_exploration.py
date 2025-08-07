@@ -100,6 +100,7 @@ def main(
     # Debug: Remove scientific notation for numpy printing
     np.set_printoptions(suppress=True)
     torch.set_default_device("cuda")
+    torch.set_default_dtype(torch.float64)
 
     # Create run directory
     print("Active Tactile Exploration")
@@ -166,8 +167,7 @@ def main(
                         torch.tensor(
                             np.array(
                                 sample_action(library=action_library, index=idx),
-                                dtype="float32",
-                            )
+                            ),
                         )
                         for idx in range(len(action_library))
                     ]
