@@ -232,7 +232,11 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
             # Add data to dataset
-            first_contact = len(new_trajectory["time"])
+            first_contact = (
+                len(new_trajectory["time"])
+                if (len(data_trajectories.trajectories) == 0)
+                else 0
+            )
             for finger_name in new_trajectory.keys():
                 try:
                     test_firstcontact = int(

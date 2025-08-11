@@ -166,10 +166,10 @@ TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
 TactileHyperparameters.w_normal_var = 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
-TactileHyperparameters.w_pen = 1e1
+TactileHyperparameters.w_pen = 1e2
 TactileHyperparameters.w_v_pred = 1e4
 TactileHyperparameters.w_q_pred = 1e2
-TactileHyperparameters.w_comp = 1e1
+TactileHyperparameters.w_comp = 1e2
 TactileHyperparameters.w_diss = 1e3
 TactileHyperparameters.w_elas = 1e0
 

@@ -1555,9 +1555,15 @@ class MultibodyLearnableTactileSystem(Module):
 
                 ### Loss: Contact Boolean Measurement (loss_meas_bool)
                 # TODO: get rid of log(exp(x)) for large X (replace w/ linear)
-                ret_loss["loss_meas_bool"] += (contact_bool - 1.0) * phi_alpha * m_phi[
-                    ..., idx
-                ] + torch.log(1.0 + torch.exp(phi_alpha * m_phi[..., idx]))
+                m_phi_close = torch.clamp(
+                    m_phi[..., idx], max=self._hyperparameters.w_phi_nominal
+                )
+                m_phi_far = torch.clamp(m_phi[..., idx] - m_phi_close, min=0.0)
+                ret_loss["loss_meas_bool"] += (
+                    (contact_bool - 1.0) * phi_alpha * m_phi[..., idx]
+                    + torch.log(1.0 + torch.exp(phi_alpha * m_phi_close))
+                    + phi_alpha * m_phi_far
+                )
                 assert ret_loss["loss_meas_bool"].size() == batch_dims + (traj_len - 1,)
 
         return ret_loss
