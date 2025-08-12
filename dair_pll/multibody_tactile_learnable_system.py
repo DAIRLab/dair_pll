@@ -1894,7 +1894,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
         # TODO: Make Hyperparameter
         # Clamp to 1e6 for stability
-        clamp_val = 1e3
+        clamp_val = 1e2
         print(f"... Done in {time.time() - start}s")
         print("Calculating info matrix...", end="")
         start = time.time()
@@ -2304,7 +2304,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
         # TODO: Make Hyperparameter
         # Clamp to 1e6 for stability
-        clamp_val = 1e3
+        clamp_val = 1e2
         print("Calculating info matrix...")
         start = time.time()
         outputs_phi_batch = outputs_phi.detach().reshape(

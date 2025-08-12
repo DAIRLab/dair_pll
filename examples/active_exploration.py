@@ -179,16 +179,17 @@ def main(
                 learned_system,
                 trifinger_lcm,
             )
+            # ignore object qw
             fisher = learned_system.expected_fisher_info(
                 ctrl_desired=robot_traj,
                 timestamps=traj_time,
-            )
+            )[..., 1:, 1:]
 
-            ## Weight by observed info
+            ## Weight by observed info, ignore object qw
             obs_info = (
                 torch.zeros_like(fisher[0])
                 if len(data_trajectories.trajectories) == 0
-                else learned_system.observed_info(data_trajectories)
+                else learned_system.observed_info(data_trajectories)[..., 1:, 1:]
             )
             obs_info_inv = torch.linalg.inv(
                 obs_info + 1e-1 * torch.eye(obs_info.size()[0])
@@ -232,11 +233,7 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
 
             # Add data to dataset
-            first_contact = (
-                len(new_trajectory["time"])
-                if (len(data_trajectories.trajectories) == 0)
-                else 0
-            )
+            first_contact = len(new_trajectory["time"])
             for finger_name in new_trajectory.keys():
                 try:
                     test_firstcontact = int(

@@ -140,7 +140,7 @@ object_init/get_urdf_asset_contents.mappings = {
 
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.0325,     # XYZ
+	0.1, 0.0, 0.015,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -177,8 +177,8 @@ TactileHyperparameters.w_elas = 1e0
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-#Adam.lr=3e-3
-Adam.lr = 3e-4
+Adam.lr=3e-3
+#Adam.lr = 3e-4
 Adam.amsgrad=True
 Adam.fused=False
 
