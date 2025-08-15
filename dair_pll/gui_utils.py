@@ -137,12 +137,12 @@ class PLLMeshcatVisualizer:
 
             ## Robot
             self._meshcat.SetObject(
-                "/robot/0",
+                "/robot/finger_0",
                 self._system.get_body_geometry("finger_0"),
                 Rgba(0.0, 0.8, 0.0, 0.8),
             )
             self._meshcat.SetObject(
-                "/robot/1",
+                "/robot/finger_1",
                 self._system.get_body_geometry("finger_1"),
                 Rgba(0.0, 0.8, 0.0, 0.8),
             )
@@ -172,11 +172,27 @@ class PLLMeshcatVisualizer:
                 ]
             )
             self._meshcat.SetTransform(
-                "/robot/0", transform_from_state_q(robot_0_traj[timestep, :])
+                "/robot/finger_0", transform_from_state_q(robot_0_traj[timestep, :])
             )
             self._meshcat.SetTransform(
-                "/robot/1", transform_from_state_q(robot_1_traj[timestep, :])
+                "/robot/finger_1", transform_from_state_q(robot_1_traj[timestep, :])
             )
+
+            # Draw Contact Normals
+            for body_name, normals in self._data.get_full_trajectory(
+                key="contact_normals"
+            ).items():
+                str_key = f"/robot/{body_name}/normal"
+                start_loc = np.zeros(3)
+                end_loc = start_loc + 0.02 * normals.detach().cpu().numpy()[timestep]
+                vertices = np.stack([start_loc, end_loc], axis=1)
+                assert vertices.shape == (3, 2), str(vertices.shape)
+                self._meshcat.SetLine(
+                    path=str_key,
+                    vertices=vertices,
+                    line_width=4.0,
+                    rgba=Rgba(r=0.9, g=0.1, b=0.9, a=1.0),
+                )
 
     def sweep(self, dt=0.033) -> None:
         """

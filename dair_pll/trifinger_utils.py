@@ -41,6 +41,7 @@ class TrifingerLCMService:
         self,
         lcm_channels: dict[str, str],
         fingertip_body_names: list[str],
+        object_name: Optional[str] = "cube",
         traj_time_len=2.0,
         safe_height=0.15,
     ):
@@ -48,6 +49,7 @@ class TrifingerLCMService:
         self._traj_time_len = traj_time_len
         self._fingertip_body_names = fingertip_body_names
         self._safe_height = safe_height
+        self._object_name = object_name
 
         self._force_raw_data = []
         self._fingertip_pose_raw_data = []
@@ -133,7 +135,7 @@ class TrifingerLCMService:
         if no_data or len(self._force_raw_data) < 1:
             return ret
 
-        assert self._force_raw_data[0].numSensors == len(self._fingertip_body_names)
+        assert self._force_raw_data[0].numSensors >= len(self._fingertip_body_names)
         assert len(self._fingertip_pose_raw_data) >= len(self._force_raw_data)
 
         def is_sorted(a: np.ndarray) -> bool:
@@ -267,6 +269,9 @@ class TrifingerLCMService:
 
         # Interp ground-truth object data
         if len(self._object_raw_data) > 0:
+            obj_name = self._object_name
+            if obj_name is None:
+                obj_name = self._object_raw_data[0].object_name
             # Position Interpolation
             num_positions = self._object_raw_data[0].num_positions
             object_pos = np.array(
@@ -280,7 +285,7 @@ class TrifingerLCMService:
                 ]
             ).T
             assert object_pos_interp.shape == (len(densetact_time_s), num_positions)
-            ret[self._object_raw_data[0].object_name, "position"] = torch.tensor(
+            ret[obj_name, "position"] = torch.tensor(
                 object_pos_interp,
             )
 
@@ -297,7 +302,7 @@ class TrifingerLCMService:
                 ]
             ).T
             assert object_vel_interp.shape == (len(densetact_time_s), num_velocities)
-            ret[self._object_raw_data[0].object_name, "velocity"] = torch.tensor(
+            ret[obj_name, "velocity"] = torch.tensor(
                 object_vel_interp,
             )
 

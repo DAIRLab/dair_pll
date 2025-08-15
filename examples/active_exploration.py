@@ -212,6 +212,7 @@ def main(
             ## Execute selected action
             # Move to start state
             trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
+            breakpoint()
 
             # Execute and collect data
             new_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
@@ -220,7 +221,8 @@ def main(
                 print("WARNING: No data collected")
                 continue
 
-            # Move straight up
+            # Move straight up (DONT DO THIS)
+            """
             safe_state = np.copy(selected_action[0])
             safe_state[:3] = (
                 new_trajectory["finger_0"]["position"][-1].cpu().clone().numpy()
@@ -231,9 +233,13 @@ def main(
             )
             safe_state[5] = trifinger_lcm.safe_height
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
+            """
+            # Move back to start state
+            # trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
 
             # Add data to dataset
-            first_contact = len(new_trajectory["time"])
+            first_contact = 0
+            # first_contact = len(new_trajectory["time"])
             for finger_name in new_trajectory.keys():
                 try:
                     test_firstcontact = int(

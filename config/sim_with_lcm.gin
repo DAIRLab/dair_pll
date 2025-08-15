@@ -68,7 +68,7 @@ sim_diagram_builder.lcm_channels = {
 	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
-	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS_SIMULATION", #lcmt_fingertips_target_kinematics
 }
 sim_diagram_builder.robot_model_name = %robot_model_name
 sim_diagram_builder.object_model_name = %object_model_name
@@ -77,5 +77,5 @@ FingerTipIOSystem.fingertip_body_names = %robot_sensor_bodies
 DensetactIOSystem.densetact_body_names = %robot_sensor_bodies
 DensetactIOSystem.normal_scale = 1.0
 DensetactIOSystem.friction_scale = 1.0
-SetpointFromTargetSystem.traj_time_len = 2.0
+SetpointFromTargetSystem.traj_time_len = 1.0
 SetpointFromTargetSystem.fingertip_body_names = %robot_sensor_bodies

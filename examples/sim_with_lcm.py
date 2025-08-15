@@ -5,6 +5,7 @@ Run a simulated with LCM interface to mimic hardware
 import os
 from typing import cast, Any, Dict, List, Type, Optional
 import sys
+import time
 
 import gin
 import git
@@ -233,7 +234,9 @@ class DensetactIOSystem(LeafSystem):
         avg_contact = self._avg_contact_input_port.Eval(context)
         densetact_msg.get_mutable_value().numSensors = len(self._body_names)
         densetact_msg.get_mutable_value().sensorData.clear()
-        utime = int(context.get_time() * 1e6)
+        utime = int(time.time() * 1e6)
+        # TODO: Make a flag of realtime vs. sim time
+        # utime = int(context.get_time() * 1e6)
         for fingertip_idx, body_name in zip(
             finger_idx_from_body_name(self._plant, self._robot_id, self._body_names),
             self._body_names,
@@ -370,9 +373,7 @@ class FingerTipIOSystem(LeafSystem):
         body_poses = self._body_poses_port.Eval(context)
         body_vels = self._body_vels_port.Eval(context)
         # using the time from the context
-        fingertips_positions_msg.get_mutable_value().utime = int(
-            context.get_time() * 1e6
-        )
+        fingertips_positions_msg.get_mutable_value().utime = int(time.time() * 1e6)
         # Populate position / velocity
         for body_enum, body_name in enumerate(self._fingertip_body_names):
             body_idx = self._plant.GetBodyByName(body_name).index()
@@ -393,7 +394,7 @@ class FingerTipIOSystem(LeafSystem):
     def calc_object_output(self, context, object_msg):
         state = self.EvalVectorInput(context, self._object_state_input_port.get_index())
         # using the time from the context
-        object_msg.get_mutable_value().utime = int(context.get_time() * 1e6)
+        object_msg.get_mutable_value().utime = int(time.time() * 1e6)
         object_msg.get_mutable_value().object_name = self._object_name
         object_msg.get_mutable_value().num_positions = self._object_nq
         object_msg.get_mutable_value().num_velocities = self._object_nv

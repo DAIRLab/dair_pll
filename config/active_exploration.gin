@@ -2,14 +2,15 @@
 
 ## General Config
 robot_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
+#workspace_radius = 0.1
 workspace_radius = 0.15
 robot_model_name = "robot"
 object_model_name = "cube"
 # The actual Drake body name within the object model
 object_body_name = "cube_body" 
-fingertip_body_names = ["finger_0", "finger_1", "finger_2"]
+fingertip_body_names = ["finger_0", "finger_1"]
 default_dt = 0.03333333333333333 # 30 Hz
-traj_len_s = 2.0 # s, how long each trajectory is
+traj_len_s = 1.0 # s, how long each trajectory is
 
 # CONSTANTS
 PI = 3.141592653589793
@@ -32,19 +33,20 @@ DynamicCvxpyLCQPLayer.solver_args = {
 
 ## LCM Trajectory Execution
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names
+TrifingerLCMService.object_name = %object_model_name
 TrifingerLCMService.traj_time_len = %traj_len_s
 TrifingerLCMService.safe_height = %workspace_radius
 TrifingerLCMService.lcm_channels = {
 	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
 	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
-	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS_SIMULATION", #lcmt_fingertips_target_kinematics
 }
 
 ## Action Sampling
 sample_action.params = @ActionLibraryParams()
 ActionLibraryParams.workspace_xy_center = (0., 0.)
-ActionLibraryParams.workspace_z_rot = 0. # 0.785398163 # pi/4
+ActionLibraryParams.workspace_z_rot = 0. #3.14159 # 0.785398163 # pi/4
 ActionLibraryParams.workspace_radius = %workspace_radius
 ActionLibraryParams.robot_radius = %robot_radius
 ActionLibraryParams.fixed_240_w = (0.15, 0.15, 0.15)
@@ -57,6 +59,12 @@ xsingle/Action.posx_start_polar = %PI2
 xsingle/Action.posx_start_azimuth = 0.
 xsingle/Action.posx_end_radius = 0.
 xsingle/Action.posx_end_angle = 0.
+
+xsingle120/Action.name = "XSINGLE120"
+xsingle120/Action.negx_start_polar = %PI2
+xsingle120/Action.negx_start_azimuth = 0.
+xsingle120/Action.negx_end_radius = 0.
+xsingle120/Action.negx_end_angle = 0.
 
 xpinch/Action.name = "XPINCH"
 xpinch/Action.posx_start_polar = %PI2
@@ -103,7 +111,7 @@ library = [
 ]
 main.action_library = %library
 interpolate_sampled_action.traj_len_s = %traj_len_s
-interpolate_sampled_action.traj_n_steps = 61
+interpolate_sampled_action.traj_n_steps = 31
 
 ## Robot config
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
@@ -161,7 +169,7 @@ TactileHyperparameters.loss_fn = %LossFunction.VIMP
 TactileHyperparameters.supervise_non_contact_force = True
 TactileHyperparameters.rsim_eps = 1e0
 
-TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
+TactileHyperparameters.w_phi_nominal = 0.005  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
 TactileHyperparameters.w_normal_var = 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
