@@ -904,6 +904,12 @@ class MultibodyLearnableTactileSystem(Module):
         )
         assert timestamps.size() == (traj_len,)
 
+        # Nan checks
+        assert ~torch.any(torch.isnan(ctrl_desired))
+        if ctrl_actual is not None:
+            assert ~torch.any(torch.isnan(ctrl_actual))
+
+
         # Naive Implicit Loss
         if self._hyperparameters.loss_fn == LossFunction.NIMP or nimp_override:
             # Run Differential Simulation
@@ -1218,6 +1224,10 @@ class MultibodyLearnableTactileSystem(Module):
             traj_len,
             self._controlled_space.n_v,
         ), plant_u.size()
+
+        # Nan Checks
+        assert ~torch.any(torch.isnan(plant_x))
+        assert ~torch.any(torch.isnan(plant_u))
 
         ret_loss = {
             "loss_meas_bool": torch.zeros(batch_dims + (traj_len - 1,)),

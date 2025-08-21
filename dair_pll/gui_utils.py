@@ -17,6 +17,7 @@ from scipy.spatial.transform import Rotation as R
 from dair_pll.multibody_learnable_system import MultibodyLearnableSystemWithTrajectory
 from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactileSystem
 from dair_pll.dataset_management import TrajectorySet
+from dair_pll.hack_utils import finger_idx_from_body_name
 
 
 def transform_from_state_q(state_q: np.ndarray):
@@ -136,6 +137,7 @@ class PLLMeshcatVisualizer:
             self._scale.configure(to=true_traj.shape[0] - 1)
 
             ## Robot
+            """
             self._meshcat.SetObject(
                 "/robot/finger_0",
                 self._system.get_body_geometry("finger_0"),
@@ -146,7 +148,6 @@ class PLLMeshcatVisualizer:
                 self._system.get_body_geometry("finger_1"),
                 Rgba(0.0, 0.8, 0.0, 0.8),
             )
-            """
             robot_traj = (
                 self._data.get_full_trajectory(
                     key=self._system.controlled_model_names[0] + "_state"
@@ -155,28 +156,40 @@ class PLLMeshcatVisualizer:
                 .numpy()
             )
             """
+            # TODO: make gin-config param
+            fingertip_body_names = ["finger_0", "finger_1"]
             robot_traj = (
                 self._system.get_controlled_trajectory(self._learned_plant_traj)
                 .cpu()
                 .numpy()
             )
+            plant = self._system.plant
+            robot_model_name = self._system.controlled_model_names[0]
+            for finger_name, state_idx in zip(
+                fingertip_body_names,
+                finger_idx_from_body_name(
+                    plant, plant.GetModelInstanceByName(robot_model_name), fingertip_body_names
+                ),
+            ):
+                if state_idx < 0:
+                    continue
+                pos_idx = 3 * state_idx
+                body_pos_traj = robot_traj[..., pos_idx : pos_idx + 3]
+                self._meshcat.SetObject(
+                    f"/robot/{finger_name}",
+                    self._system.get_body_geometry(finger_name),
+                    Rgba(0.0, 0.8, 0.0, 0.8),
+                )
 
-            zero_rot = np.array([1.0, 0.0, 0.0, 0.0])
-            robot_0_traj = np.hstack(
-                [np.broadcast_to(zero_rot, (robot_traj.shape[0], 4)), robot_traj[:, :3]]
-            )
-            robot_1_traj = np.hstack(
-                [
-                    np.broadcast_to(zero_rot, (robot_traj.shape[0], 4)),
-                    robot_traj[:, 3:6],
-                ]
-            )
-            self._meshcat.SetTransform(
-                "/robot/finger_0", transform_from_state_q(robot_0_traj[timestep, :])
-            )
-            self._meshcat.SetTransform(
-                "/robot/finger_1", transform_from_state_q(robot_1_traj[timestep, :])
-            )
+
+                zero_rot = np.array([1.0, 0.0, 0.0, 0.0])
+                body_traj = np.hstack(
+                    [np.broadcast_to(zero_rot, (robot_traj.shape[0], 4)), body_pos_traj]
+                )
+            
+                self._meshcat.SetTransform(
+                    f"/robot/{finger_name}", transform_from_state_q(body_traj[timestep, :])
+                )
 
             # Draw Contact Normals
             for body_name, normals in self._data.get_full_trajectory(
@@ -184,7 +197,8 @@ class PLLMeshcatVisualizer:
             ).items():
                 str_key = f"/robot/{body_name}/normal"
                 start_loc = np.zeros(3)
-                end_loc = start_loc + 0.02 * normals.detach().cpu().numpy()[timestep]
+                # Negative normal to go into object
+                end_loc = start_loc - 0.02 * normals.detach().cpu().numpy()[timestep]
                 vertices = np.stack([start_loc, end_loc], axis=1)
                 assert vertices.shape == (3, 2), str(vertices.shape)
                 self._meshcat.SetLine(

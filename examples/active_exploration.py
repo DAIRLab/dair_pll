@@ -212,14 +212,10 @@ def main(
             ## Execute selected action
             # Move to start state
             trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
-            breakpoint()
+            time.sleep(0.1)
 
             # Execute and collect data
             new_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
-
-            if len(new_trajectory) < 1:
-                print("WARNING: No data collected")
-                continue
 
             # Move straight up (DONT DO THIS)
             """
@@ -235,7 +231,11 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
             """
             # Move back to start state
-            # trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
+            trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
+
+            if len(new_trajectory) < 1:
+                print("WARNING: No data collected")
+                continue
 
             # Add data to dataset
             first_contact = 0

@@ -1,7 +1,7 @@
 # Default GIN Config File for rss_experiment.py
 
 ## General Config
-robot_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
+robot_radius = 0.03 # 0.01575 from trifingeredu.urdf + buffer
 #workspace_radius = 0.1
 workspace_radius = 0.15
 robot_model_name = "robot"
@@ -25,28 +25,28 @@ DynamicCvxpyLCQPLayer.solver_args = {
     "solve_method": "ECOS",
     "n_jobs_forward": -1,
     "n_jobs_backward": 1,
-    "max_iters": 800,
-    "abstol": 1e-8,
-    "reltol": 1e-8,
-    "feastol": 1e-8,
+    "max_iters": 1000,
+    "abstol": 1e-6,
+    "reltol": 1e-6,
+    "feastol": 1e-6,
 }
 
 ## LCM Trajectory Execution
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names
 TrifingerLCMService.object_name = %object_model_name
 TrifingerLCMService.traj_time_len = %traj_len_s
-TrifingerLCMService.safe_height = %workspace_radius
+TrifingerLCMService.action_params = @ActionLibraryParams()
 TrifingerLCMService.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
-	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
+	"object_state": "CUBE_STATE", # lcmt_object_state
 	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
-	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS_SIMULATION", #lcmt_fingertips_target_kinematics
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
 }
 
 ## Action Sampling
 sample_action.params = @ActionLibraryParams()
 ActionLibraryParams.workspace_xy_center = (0., 0.)
-ActionLibraryParams.workspace_z_rot = 0. #3.14159 # 0.785398163 # pi/4
+ActionLibraryParams.workspace_z_rot = 3.14159 # 0.785398163 # pi/4
 ActionLibraryParams.workspace_radius = %workspace_radius
 ActionLibraryParams.robot_radius = %robot_radius
 ActionLibraryParams.fixed_240_w = (0.15, 0.15, 0.15)
@@ -106,8 +106,6 @@ zsingle/Action.negx_end_angle = 0.
 
 library = [
 	@xpinch/Action(),
-	@ypinch/Action(),
-	@zsingle/Action(),
 ]
 main.action_library = %library
 interpolate_sampled_action.traj_len_s = %traj_len_s
@@ -148,7 +146,7 @@ object_init/get_urdf_asset_contents.mappings = {
 
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.1, 0.0, 0.015,     # XYZ
+	0.1, 0.1, 0.015,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -171,7 +169,7 @@ TactileHyperparameters.rsim_eps = 1e0
 
 TactileHyperparameters.w_phi_nominal = 0.005  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
-TactileHyperparameters.w_normal_var = 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
+TactileHyperparameters.w_normal_var = 0.04557672783 #30deg # 0.01519224261  # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
 TactileHyperparameters.w_pen = 1e2
@@ -186,7 +184,7 @@ main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
 Adam.lr=3e-3
-#Adam.lr = 3e-4
+#Adam.lr = 8e-4
 Adam.amsgrad=True
 Adam.fused=False
 
@@ -204,11 +202,10 @@ DrakeSystem.urdfs = {
 	%object_model_name: @object/get_urdf_asset_contents()
 }
 DrakeSystem.visualization_file = None
-object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_asset_uri.asset_file_basename = "active/d6_4cm_mmscale.obj"
+object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
-	"length_x": 0.065, # m
-	"length_y": 0.065, # m
-	"length_z": 0.065, # m
+	"mesh": @object/get_asset_uri(),
 	"mu": 0.1,
 	"planar_xz": "false",
 }

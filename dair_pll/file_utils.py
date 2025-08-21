@@ -57,6 +57,9 @@ LOG_DIR = assure_created(os.path.join(MAIN_DIR, "logs"))
 ASSETS_DIR = assure_created(os.path.join(MAIN_DIR, "assets"))
 # str: locations of key static directories
 
+@gin.configurable
+def get_asset_uri(asset_file_basename: str) -> str:
+    return f"file://{get_asset(asset_file_basename)}"
 
 def get_asset(asset_file_basename: str) -> str:
     """Gets

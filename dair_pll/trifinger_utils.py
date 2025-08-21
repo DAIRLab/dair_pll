@@ -27,6 +27,79 @@ from dair_pll.lcmtypes.dairlib import (
     lcmt_fingertips_target_kinematics,
 )
 
+## Action / Workspace Parameters
+@gin.configurable
+@dataclass
+class Action:
+    """Action specification.
+
+    Each action starts at the edge of the workspace at angle (polar, azimuth).
+    Each action ends at the intersection of the workspace dome and the Y-Z plane.
+    At location (radius where 1 = workspace_radius) and angle off +Y-axis (angle).
+    """
+
+    # pylint: disable=too-many-instance-attributes
+
+    name: str = ""
+
+    posx_start_polar: float = 0.0
+    posx_start_azimuth: float = 0.0
+    posx_end_radius: float = 1.0
+    posx_end_angle: float = np.pi / 2
+
+    negx_start_polar: float = 0.0
+    negx_start_azimuth: float = 0.0
+    negx_end_radius: float = 1.0
+    negx_end_angle: float = np.pi / 2
+
+    def __str__(self):
+        return f"Action {self.name}"
+
+    def __post_init__(self):
+        """Method to check validity of parameters."""
+        assert 0.0 <= self.posx_start_polar <= np.pi / 2
+        assert -np.pi / 2 <= self.posx_start_azimuth <= np.pi / 2
+        assert 0.0 <= self.posx_end_radius <= 1.0
+        assert 0.0 <= self.posx_end_angle <= np.pi
+
+        assert 0.0 <= self.negx_start_polar <= np.pi / 2
+        assert -np.pi / 2 <= self.negx_start_azimuth <= np.pi / 2
+        assert 0.0 <= self.negx_end_radius <= 1.0
+        assert 0.0 <= self.negx_end_angle <= np.pi
+
+
+@gin.configurable
+@dataclass
+class ActionLibraryParams:
+    """Class to specify workspace setup and discrete action space"""
+
+    # pylint: disable=too-many-instance-attributes
+    workspace_xy_center: tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))
+    """2D Center of the workspace"""
+    workspace_z_rot: float = 0.0  # rad
+    r"""Rotation of workspace x/y plane about world z axis"""
+    workspace_radius: float = 0.15  # m
+    r"""Radius of workspace"""
+    robot_radius: float = 0.01575  # m
+    r"""Radius of robot spheres"""
+    fixed_240_w: tuple[float, float, float] = field(
+        default_factory=lambda: (0.0, 0.0, 0.0)
+    )  # m
+    r"""Where to keep the trifinger's unused 240deg arm"""
+
+    # Switches
+    ground_buffer: bool = True
+    r"""Truncate bottom of workspace at robot radius"""
+    yplane_buffer: bool = False
+    r"""Target separate planes for both robot fingers to guarantee no contact"""
+
+    def __post_init__(self):
+        """Method to check validity of parameters."""
+        assert self.workspace_radius > 0.0
+        assert 0.0 < self.robot_radius < self.workspace_radius
+        assert len(self.workspace_xy_center) == 2
+        assert len(self.fixed_240_w) == 3
+
 
 ## LCM Service
 @gin.configurable
@@ -43,13 +116,14 @@ class TrifingerLCMService:
         fingertip_body_names: list[str],
         object_name: Optional[str] = "cube",
         traj_time_len=2.0,
-        safe_height=0.15,
+        action_params: ActionLibraryParams = ActionLibraryParams(),
     ):
         self._lcm_channels = lcm_channels
         self._traj_time_len = traj_time_len
         self._fingertip_body_names = fingertip_body_names
-        self._safe_height = safe_height
         self._object_name = object_name
+
+        self._action_params = action_params
 
         self._force_raw_data = []
         self._fingertip_pose_raw_data = []
@@ -76,11 +150,6 @@ class TrifingerLCMService:
     def fingertip_body_names(self):
         """Fingertip body names"""
         return self._fingertip_body_names
-
-    @property
-    def safe_height(self):
-        """Safe height to move trifinger straight up"""
-        return self._safe_height
 
     def sub_handler(self, channel: str, data: Any):
         """
@@ -148,6 +217,7 @@ class TrifingerLCMService:
             ]
         ).flatten()
         assert is_sorted(densetact_time_s)
+        densetact_dt = np.expand_dims(densetact_time_s[1:] - densetact_time_s[:-1], axis=-1)
         fingerpos_time_s = np.array(
             [
                 float(measurement.utime) / 1e6
@@ -167,6 +237,7 @@ class TrifingerLCMService:
         fingertip_force_w = {}
         fingertip_normal_w = {}
         for body_idx, body_name in enumerate(self._fingertip_body_names):
+            body_r_zrot = Rotation.from_rotvec(self._action_params.workspace_z_rot * np.array([0., 0., 1.]))
             # Position Interpolation
             body_pos = np.array(
                 [
@@ -185,6 +256,8 @@ class TrifingerLCMService:
             fingertip_pos_w[body_name] = body_pos_interp
 
             # Velocity Interpolation
+            # DONT DO: Just take average velocity, backwards Euler
+            """
             body_vel = np.array(
                 [
                     measurement.curVel[3 * body_idx : 3 * body_idx + 3]
@@ -200,6 +273,10 @@ class TrifingerLCMService:
             ).T
             assert body_vel_interp.shape == (len(densetact_time_s), 3)
             fingertip_vel_w[body_name] = body_vel_interp
+            """
+            fingertip_vel_w[body_name] = np.zeros_like(fingertip_pos_w[body_name])
+            fingertip_vel_w[body_name][1:] = (fingertip_pos_w[body_name][1:] - fingertip_pos_w[body_name][:-1]) / densetact_dt
+
 
             # Quat Interpolation
             body_quat = np.array(
@@ -230,7 +307,8 @@ class TrifingerLCMService:
             normal_c = np.broadcast_to(
                 np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
             )
-            body_r_cw = body_r_bw.inv() * body_r_cb
+            
+            body_r_cw = body_r_bw * body_r_cb
             fingertip_normal_w[body_name] = body_r_cw.apply(normal_c)
             # Zero out no contact normal
             finger_in_contact = np.array(
@@ -307,81 +385,10 @@ class TrifingerLCMService:
             )
 
         # Return
-        return ret
-
-
-## Action / Workspace Parameters
-@gin.configurable
-@dataclass
-class Action:
-    """Action specification.
-
-    Each action starts at the edge of the workspace at angle (polar, azimuth).
-    Each action ends at the intersection of the workspace dome and the Y-Z plane.
-    At location (radius where 1 = workspace_radius) and angle off +Y-axis (angle).
-    """
-
-    # pylint: disable=too-many-instance-attributes
-
-    name: str = ""
-
-    posx_start_polar: float = 0.0
-    posx_start_azimuth: float = 0.0
-    posx_end_radius: float = 1.0
-    posx_end_angle: float = np.pi / 2
-
-    negx_start_polar: float = 0.0
-    negx_start_azimuth: float = 0.0
-    negx_end_radius: float = 1.0
-    negx_end_angle: float = np.pi / 2
-
-    def __str__(self):
-        return f"Action {self.name}"
-
-    def __post_init__(self):
-        """Method to check validity of parameters."""
-        assert 0.0 <= self.posx_start_polar <= np.pi / 2
-        assert -np.pi / 2 <= self.posx_start_azimuth <= np.pi / 2
-        assert 0.0 <= self.posx_end_radius <= 1.0
-        assert 0.0 <= self.posx_end_angle <= np.pi
-
-        assert 0.0 <= self.negx_start_polar <= np.pi / 2
-        assert -np.pi / 2 <= self.negx_start_azimuth <= np.pi / 2
-        assert 0.0 <= self.negx_end_radius <= 1.0
-        assert 0.0 <= self.negx_end_angle <= np.pi
-
-
-@gin.configurable
-@dataclass
-class ActionLibraryParams:
-    """Class to specify workspace setup and discrete action space"""
-
-    # pylint: disable=too-many-instance-attributes
-    workspace_xy_center: tuple[float, float] = field(default_factory=lambda: (0.0, 0.0))
-    """2D Center of the workspace"""
-    workspace_z_rot: float = 0.0  # rad
-    r"""Rotation of workspace x/y plane about world z axis"""
-    workspace_radius: float = 0.15  # m
-    r"""Radius of workspace"""
-    robot_radius: float = 0.01575  # m
-    r"""Radius of robot spheres"""
-    fixed_240_w: tuple[float, float, float] = field(
-        default_factory=lambda: (0.0, 0.0, 0.0)
-    )  # m
-    r"""Where to keep the trifinger's unused 240deg arm"""
-
-    # Switches
-    ground_buffer: bool = True
-    r"""Truncate bottom of workspace at robot radius"""
-    yplane_buffer: bool = False
-    r"""Target separate planes for both robot fingers to guarantee no contact"""
-
-    def __post_init__(self):
-        """Method to check validity of parameters."""
-        assert self.workspace_radius > 0.0
-        assert 0.0 < self.robot_radius < self.workspace_radius
-        assert len(self.workspace_xy_center) == 2
-        assert len(self.fixed_240_w) == 3
+        # Prune repeat timestamps
+        ret_pruned = torch.cat([ret[:1], ret[1:][np.nonzero(densetact_dt.flatten())]])
+        print(f"Number of unique samples: {len(ret_pruned)}")
+        return ret_pruned
 
 
 @gin.configurable
