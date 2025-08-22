@@ -32,18 +32,13 @@ from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from tensordict import TensorDict
 import torch
 
-from dair_pll import file_utils
+from dair_pll import file_utils, action_utils
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.dataset_management import TrajectorySet
 from dair_pll.gui_utils import PLLMeshcatVisualizer
 from dair_pll.hack_utils import extract_robot_trajectory
 from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactileSystem
-from dair_pll.trifinger_utils import (
-    TrifingerLCMService,
-    sample_action,
-    interpolate_sampled_action,
-    Action,
-)
+from dair_pll.trifinger_utils import TrifingerLCMService
 
 # Repository directory (default for file operations)
 REPO_DIR = os.path.normpath(
@@ -87,7 +82,7 @@ def main(
     storage_folder_name: str = "storage_active",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
-    action_library: Optional[list[Action]] = None,
+    action_params: action_utils.ActionWorkspaceParams = ActionWorkspaceParams(),
 ):
     """Main function for online learning loop"""
     ### Signal Handling
@@ -123,8 +118,8 @@ def main(
 
     # Initialize LCM
     trifinger_lcm = TrifingerLCMService()
-    print("Sample Initial Random Action...")
-    selected_action = sample_action(library=action_library)
+    print("Resetting Trifinger Position...")
+    trifinger_lcm.execute_trajectory(action_params.get_reset_knot(), no_data=True)
     new_trajectory = None
 
     # Initialize Optimizer and Data config
@@ -142,6 +137,7 @@ def main(
             "b - breakpoint()\n"
             "o - DEBUGGING COMMAND\n"
             "v - Visualize\n"
+            "r - Reset Trifinger\n"
             "h - Print Help\n"
             "q - Quit\n"
         )
@@ -157,6 +153,10 @@ def main(
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
             pdb.Pdb(nosigint=True).set_trace()
+
+        elif command_char == "r":
+            print("Resetting Trifinger Position...")
+            trifinger_lcm.execute_trajectory(action_params.get_reset_knot(), no_data=True)
 
         elif command_char == "a":
             ## Compute Expected Info per-action
