@@ -25,11 +25,13 @@ from enum import Enum
 from functools import partial
 import math
 import time
-from typing import override, Optional, cast
+from typing import override, Optional, cast, Union
 
 import gin
 import numpy as np
+import pydrake
 from pydrake.geometry import Shape
+from scipy.spatial.transform import Rotation
 from tensordict import TensorDict
 import torch
 from torch import Tensor
@@ -2427,7 +2429,7 @@ class MultibodyLearnableTactileSystem(Module):
         return bodies[0].name()
 
     @torch.no_grad
-    def get_learned_geometry(self) -> Shape:
+    def get_learned_geometry(self, surface_sample=False, sample_count=1000) -> Shape:
         """Current geometry as a Drake Shape."""
         assert len(self._learned_model_names) == 1, "Only 1 learnable object supported"
         model_name = self._learned_model_names[0]
@@ -2443,10 +2445,29 @@ class MultibodyLearnableTactileSystem(Module):
             CollisionGeometry,
             self._multibody_terms.contact_terms.geometries[body_geometry_indices[0]],
         )
+        if surface_sample:
+            return body_geometry.sample_surface(sample_count)
         return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
 
     @torch.no_grad
-    def get_body_geometry(self, body_name: str) -> Shape:
+    def get_learned_centroid(self) -> np.ndarray:
+        """Current geometric centroid for learned object"""
+        pose = self.get_learned_pose().detach().cpu().numpy()
+        shape = self.get_learned_geometry()
+        if isinstance(shape, pydrake.geometry.Mesh) or isinstance(
+            shape, pydrake.geometry.Convex
+        ):
+            centroid = shape.GetConvexHull().centroid()
+            pose[4:] = (
+                Rotation.from_quat(pose[:4], scalar_first=True).apply(centroid)
+                + pose[4:]
+            )
+        return pose
+
+    @torch.no_grad
+    def get_body_geometry(
+        self, body_name: str, surface_sample=False, sample_count=500
+    ) -> Union[Shape, np.ndarray]:
         """Current geometry of body based on name"""
         plant = self._multibody_terms.plant_diagram.plant
         body = plant.GetBodyByName(body_name)
@@ -2457,6 +2478,8 @@ class MultibodyLearnableTactileSystem(Module):
             CollisionGeometry,
             self._multibody_terms.contact_terms.geometries[body_geometry_indices[0]],
         )
+        if surface_sample:
+            return body_geometry.sample_surface(sample_count)
         return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
 
     @torch.no_grad

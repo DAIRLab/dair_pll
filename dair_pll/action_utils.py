@@ -9,6 +9,7 @@ The main contents of this file are as follows:
 """
 
 from dataclasses import dataclass, field
+import random
 from typing import Optional, Callable
 
 import gin
@@ -45,8 +46,8 @@ class ActionWorkspaceParams:
     r"""Preferred approach axis for each finger"""
 
     # Switches
-    ground_buffer: bool = True
-    r"""Truncate bottom of workspace at robot radius"""
+    ground_buffer: float = True
+    r"""Truncate bottom of workspace at multiple of robot radius"""
     robot_buffer: bool = False
     r"""Target separate planes for both robot fingers to guarantee no contact"""
 
@@ -115,6 +116,10 @@ class Action:
                 self.finger_120_dec,
             ]
         )
+
+    # Order is arbitrary
+    def __lt__(self, _):
+        return bool(random.getrandbits(1))
 
     def __str__(self):
         return f"F0: ({self.finger_0_ra:.2f}, {self.finger_0_dec:.2f};\
@@ -205,9 +210,12 @@ class ActionCEM:
                 vis_fn(batch_actions)
 
             ## Score each action and sort
-            _, sorted_actions = zip(
-                *sorted(zip(score_fn(batch_actions), batch_actions), reverse=True)
-            )
+            try:
+                _, sorted_actions = zip(
+                    *sorted(zip(score_fn(batch_actions), batch_actions), reverse=True)
+                )
+            except TypeError:
+                breakpoint()
 
             ## Take best N actions and create new mean and covariance
             best_actions = sorted_actions[: self._n_dist]

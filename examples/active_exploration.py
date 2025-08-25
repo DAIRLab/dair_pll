@@ -27,13 +27,10 @@ import gin
 import gin.torch.external_configurables
 import git
 import numpy as np
-from pydrake.geometry import Shape
-from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
 from tensordict import TensorDict
 import torch
 
-from dair_pll import file_utils, action_utils
-from dair_pll.drake_system import DrakeSystem
+from dair_pll import file_utils, action_utils, experiment_utils
 from dair_pll.dataset_management import TrajectorySet
 from dair_pll.gui_utils import PLLMeshcatVisualizer
 from dair_pll.hack_utils import extract_robot_trajectory
@@ -45,23 +42,6 @@ REPO_DIR = os.path.normpath(
     git.Repo(search_parent_directories=True).git.rev_parse("--show-toplevel")
 )
 DEFAULT_CONFIG = "active_exploration.gin"
-
-
-### Visualization
-def get_true_geometry() -> Shape:
-    """Get True Geometry from configured base system"""
-    # Pylint doesn't know about gin
-    # pylint: disable=no-value-for-parameter
-    system = DrakeSystem()
-    inspector = system.plant_diagram.scene_graph.model_inspector()
-    all_geom_ids = inspector.GetAllGeometryIds()
-    for geom_id in all_geom_ids:
-        true_geom = inspector.GetShape(geom_id)
-        if isinstance(true_geom, DrakeHalfSpace):
-            continue
-        return true_geom
-    assert False, "Could not find true geometry"
-    return None
 
 
 ## Main Function
@@ -118,23 +98,32 @@ def main(
     data_trajectories = TrajectorySet()
 
     # GUI Visualization
-    true_obj_pose = trifinger_lcm.get_current_object_pose()
+    true_geom, true_mesh = experiment_utils.get_true_geometry_and_mesh()
     gui_vis = PLLMeshcatVisualizer(
         system=learned_system,
         data=data_trajectories,
-        true_geom=get_true_geometry(),
-        true_pose=true_obj_pose,
+        true_geom=true_geom,
+        true_pose=trifinger_lcm.get_current_object_pose(),
     )
 
     # Sample initial action (from true obj pose)
-    selected_action = action_utils.action_to_knots(
-        action_params, [action_utils.Action()], true_obj_pose
+    action_cem = action_utils.ActionCEM()
+    selected_action = action_utils.Action()
+    selected_knots = action_utils.action_to_knots(
+        action_params, [selected_action], trifinger_lcm.get_current_object_pose()
     )[0]
-    gui_vis.draw_action_samples(selected_action[np.newaxis, :, :])
+    gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
     total_epochs = 0
+
+    ## Visualizing Action Samples
+    def action_vis(actions):
+        print("Visualizing...")
+        obj_pose_guess = learned_system.get_learned_centroid()
+        knots = action_utils.action_to_knots(action_params, actions, obj_pose_guess)
+        gui_vis.draw_action_samples(knots)
 
     # Start Input Loop
     def print_help():
@@ -171,7 +160,17 @@ def main(
             )
 
         elif command_char == "a":
-            ## Compute Expected Info per-action
+            ## Compute Next Action
+            selected_action = action_cem.best_action(
+                score_fn=experiment_utils.score_random, vis_fn=action_vis
+            )
+            obj_pose_guess = learned_system.get_learned_centroid()
+            selected_knots = action_utils.action_to_knots(
+                action_params, [selected_action], obj_pose_guess
+            )[0]
+            gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
+
+            """
             start = time.time()
             traj_x, traj_time = action_utils.interpolate_sampled_action(
                 data=torch.stack(
@@ -218,15 +217,16 @@ def main(
             print(
                 f"Evaluated {len(fisher_traces)} actions in {(time.time()-start):.3f}s"
             )
+            """
 
         elif command_char == "e":
             ## Execute selected action
             # Move to start state
-            trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
+            trifinger_lcm.execute_trajectory(selected_knots[0], no_data=True)
             time.sleep(0.1)
 
             # Execute and collect data
-            new_trajectory = trifinger_lcm.execute_trajectory(selected_action[1])
+            new_trajectory = trifinger_lcm.execute_trajectory(selected_knots[1])
 
             # Move straight up (DONT DO THIS)
             """
@@ -242,15 +242,17 @@ def main(
             trifinger_lcm.execute_trajectory(safe_state, no_data=True)
             """
             # Move back to start state
-            trifinger_lcm.execute_trajectory(selected_action[0], no_data=True)
+            trifinger_lcm.execute_trajectory(
+                selected_knots[0], no_data=True, non_blocking=True
+            )
 
             if len(new_trajectory) < 1:
                 print("WARNING: No data collected")
                 continue
 
             # Add data to dataset
-            first_contact = 0
-            # first_contact = len(new_trajectory["time"])
+            # first_contact = 0
+            first_contact = len(new_trajectory["time"])
             for finger_name in new_trajectory.keys():
                 try:
                     test_firstcontact = int(
@@ -273,7 +275,7 @@ def main(
             add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = (
                 extract_robot_trajectory(
                     action_utils.interpolate_sampled_action(
-                        data=torch.tensor(np.array(selected_action)),
+                        data=torch.tensor(np.array(selected_knots)),
                         traj_len_s=(
                             new_trajectory["time"][-1] - new_trajectory["time"][0]
                         ),
@@ -326,15 +328,21 @@ def main(
 
         elif command_char == "s":
             try:
-                action_idx = int(input("Which Action (<0 == random)? "))
+                action_params = [
+                    float(x)
+                    for x in input(
+                        "Enter Action Params (0RA 0Dec 120RA 120Dec): "
+                    ).split()
+                ]
             except ValueError:
                 print("Cancelling...")
                 continue
-            if action_idx < 0:
-                action_idx = None
-                print("Sampling random action...")
 
-            selected_action = sample_action(library=action_library, index=action_idx)
+            selected_action = action_utils.Action(*action_params)
+            selected_knots = action_utils.action_to_knots(
+                action_params, [selected_action], true_obj_pose
+            )[0]
+            gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
         elif command_char == "v":
             print("Visualizing entire trajectory.")
@@ -343,7 +351,11 @@ def main(
 
         elif command_char == "o":
             """DEBUGGING COMMAND"""
-            action_cem = action_utils.ActionCEM()
+            cham_dist = experiment_utils.chamfer_metric(
+                learned_system, true_mesh, trifinger_lcm.get_current_object_pose()
+            )
+            print(f"Chamfer Distance (m): {cham_dist}")
+            continue
 
             def score_fn(actions):
                 print("Scoring...")
@@ -352,18 +364,13 @@ def main(
                     for act in actions
                 ]
 
-            def vis_fn(actions):
-                print("Visualizing...")
-                obj_pose_guess = (
-                    learned_system.get_learned_trajectory()[-1].detach().cpu().numpy()
-                )
-                knots = action_utils.action_to_knots(
-                    action_params, actions, obj_pose_guess
-                )
-                gui_vis.draw_action_samples(knots)
-                breakpoint()
-
-            selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=vis_fn)
+            selected_action = action_cem.best_action(
+                score_fn=score_fn, vis_fn=action_vis
+            )
+            selected_knots = action_utils.action_to_knots(
+                action_params, [selected_action], true_obj_pose
+            )[0]
+            gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:

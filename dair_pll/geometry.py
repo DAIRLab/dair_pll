@@ -470,6 +470,12 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         return queries
 
     @abstractmethod
+    def sample_surface(self, count: int) -> np.ndarray:
+        """
+        Sample points from the surface of the geometry
+        """
+
+    @abstractmethod
     def get_vertices(self, directions: Tensor) -> Tensor:
         """Returns sparse witness point set as collection of vertices.
 
@@ -679,6 +685,17 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
 
         return self.network(perturbed)
 
+    def sample_surface(self, count: int) -> np.ndarray:
+        """
+        Sample points from the surface of the geometry
+        """
+        mesh = extract_mesh_from_support_function(self.network)
+        trimesh_mesh = trimesh.Trimesh(
+            vertices=mesh.vertices.detach().cpu().numpy()
+        ).convex_hull
+        trimesh_mesh.process()
+        return np.array(trimesh.sample.sample_surface(trimesh_mesh, count)[0])
+
     def train(self, mode: bool = True) -> DeepSupportConvex:
         r"""Override training-mode setter from :py:mod:`torch`.
 
@@ -755,6 +772,15 @@ class Box(SparseVertexConvexCollisionGeometry):
         )
         self.learnable = learnable
 
+    def sample_surface(self, count: int) -> np.ndarray:
+        """
+        Sample points from the surface of the geometry
+        """
+        trimesh_box = trimesh.primitives.Box(
+            extents=2.0 * self.get_half_lengths().detach().cpu().numpy().flatten()
+        )
+        return np.array(trimesh.sample.sample_surface(trimesh_box, count)[0])
+
     def get_half_lengths(self) -> Tensor:
         """From the stored :py:attr:`length_params`, compute the half lengths of
         the box as its absolute value."""
@@ -810,6 +836,15 @@ class Sphere(BoundedConvexCollisionGeometry):
         """From the stored :py:attr:`length_param`, compute the radius of the
         sphere as its absolute value."""
         return torch.abs(self.length_param)
+
+    def sample_surface(self, count: int) -> np.ndarray:
+        """
+        Sample points from the surface of the geometry
+        """
+        trimesh_sphere = trimesh.primitives.Sphere(
+            radius=self.get_radius().detach().cpu().numpy()
+        )
+        return np.array(trimesh.sample.sample_surface(trimesh_sphere, count)[0])
 
     def support_points(self, directions: Tensor, _: Optional[Tensor] = None) -> Tensor:
         """Implements ``BoundedConvexCollisionGeometry.support_points()``

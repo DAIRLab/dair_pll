@@ -2,7 +2,7 @@
 
 ## General Config
 robot_radius = 0.01575
-robot_buffer_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
+robot_buffer_radius = 0.025 # 0.01575 from trifingeredu.urdf + buffer
 #workspace_radius = 0.1
 workspace_radius = 0.15
 robot_model_name = "robot"
@@ -57,11 +57,16 @@ ActionWorkspaceParams.finger_0_vec = @finger_0_vec/np.array()
 finger_120_vec/np.array.object = [1., 0., 0.]
 ActionWorkspaceParams.finger_120_vec = @finger_120_vec/np.array()
 ActionWorkspaceParams.ground_buffer = True
-ActionWorkspaceParams.robot_buffer = False
+ActionWorkspaceParams.robot_buffer = True
 
 interpolate_sampled_action.fingertip_body_names = %fingertip_body_names
 interpolate_sampled_action.traj_len_s = %traj_len_s
 interpolate_sampled_action.traj_n_steps = %traj_len_dts
+
+## CEM
+ActionCEM.n_samples = 80
+ActionCEM.n_dist = 5
+ActionCEM.n_iter = 1
 
 ## Robot config
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
@@ -89,16 +94,16 @@ TactileSystem.learnable_body_dict = {
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.03, # m
-	"length_y": 0.03, # m
-	"length_z": 0.03, # m
+	"length_x": 0.04, # m
+	"length_y": 0.04, # m
+	"length_z": 0.04, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
 
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.03, 0.03, 0.015,     # XYZ
+	0.02, 0.0, 0.02,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
@@ -109,7 +114,7 @@ object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
 object_init/LearnableBodySettings.friction = False
-object_init/LearnableBodySettings.representation = %GeometryRepresentation.MESH
+object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
 
 # Learning hyperparams
 TactileHyperparameters.default_dt = %default_dt
@@ -135,14 +140,14 @@ TactileHyperparameters.w_elas = 1e0
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=3e-3
+Adam.lr=1e-3
 #Adam.lr = 8e-4
 Adam.amsgrad=True
 Adam.fused=False
 
 # Geometry Parameters
-DeepSupportConvex.depth = 2
-DeepSupportConvex.width = 40
+DeepSupportConvex.depth = 3
+DeepSupportConvex.width = 50
 DeepSupportConvex.perturbation = 0.4
 DeepSupportConvex.n_query = 5
 
