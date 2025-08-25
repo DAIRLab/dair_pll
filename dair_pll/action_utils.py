@@ -9,12 +9,15 @@ The main contents of this file are as follows:
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Callable
+from typing import Optional, Callable
 
 import gin
 import numpy as np
 from scipy.spatial.transform import Rotation
-from sklearn.preprocessing import normalize
+from tensordict import TensorDictBase, TensorDict
+import torch
+from torch import Tensor
+
 
 ## Action / Workspace Parameters
 @gin.configurable
@@ -30,13 +33,15 @@ class ActionWorkspaceParams:
     robot_radius: float = 0.01575  # m
     r"""Radius of robot spheres"""
     fixed_240_w: np.ndarray = field(
-        default_factory=lambda: np.ndarray([0.0, 0.0, 0.0])
+        default_factory=lambda: np.array([0.0, 0.0, 0.0])
     )  # m
     r"""Where to keep the trifinger's unused 240deg arm"""
-    approach_radius: float = 0.1 #m
+    approach_radius: float = 0.1  # m
     r"""How far way to start finger from center of object"""
-    finger_0_vec: np.ndarray = field(default_factory=lambda:np.array([1., 0., 0.]))
-    finger_120_vec: np.ndarray = field(default_factory=lambda:np.array([-1., 0., 0.]))
+    finger_0_vec: np.ndarray = field(default_factory=lambda: np.array([1.0, 0.0, 0.0]))
+    finger_120_vec: np.ndarray = field(
+        default_factory=lambda: np.array([-1.0, 0.0, 0.0])
+    )
     r"""Preferred approach axis for each finger"""
 
     # Switches
@@ -53,10 +58,15 @@ class ActionWorkspaceParams:
         return self.finger_120_vec
 
     def get_reset_knot(self) -> np.ndarray:
+        """Get safe positions to reset trifinger"""
         ret = np.zeros(18)
         ret[:3] = self.finger_0_vec * self.workspace_radius
         ret[3:6] = self.finger_120_vec * self.workspace_radius
         ret[6:9] = self.fixed_240_w
+        if self.ground_buffer:
+            ret[2] = np.clip(ret[2], a_min=self.robot_radius, a_max=None)
+            ret[5] = np.clip(ret[5], a_min=self.robot_radius, a_max=None)
+        return ret
 
     def __post_init__(self):
         """Method to check validity of parameters."""
@@ -64,50 +74,65 @@ class ActionWorkspaceParams:
         assert 0.0 < self.robot_radius < self.workspace_radius
         assert len(self.workspace_xy_center) == 2
         assert len(self.fixed_240_w) == 3
-        assert np.isclose(np.linalg.norm(finger_0_vec), 1.0)
-        assert np.isclose(np.linalg.norm(finger_120_vec), 1.0)
+        assert np.isclose(np.linalg.norm(self.finger_0_vec), 1.0)
+        assert np.isclose(np.linalg.norm(self.finger_120_vec), 1.0)
+
 
 N_ACTION_PARAMS = 4
+
+
 @gin.configurable
 @dataclass
 class Action:
     """Action specification.
 
     Each action is defined by R^4
-    For each finger: a right-ascension (i.e. rotation of primary axis about Z) 
+    For each finger: a right-ascension (i.e. rotation of primary axis about Z)
         and a declination (a rotation towards or away from +Z)
 
     """
+
     # pylint: disable=too-many-instance-attributes
-    finger_0_ra: float = 0.
-    finger_0_dec: float = 0.
-    finger_120_ra: float = 0.
-    finger_120_dec: float = 0.
+    finger_0_ra: float = 0.0
+    finger_0_dec: float = 0.0
+    finger_120_ra: float = 0.0
+    finger_120_dec: float = 0.0
 
     def get_ra_dec(self, finger_idx: int) -> np.ndarray:
         """Get RA and Dec as 2d array for a given finger idx"""
         assert finger_idx < 2, f"Requested nonexistent finger {finger_idx}"
         if finger_idx == 0:
-            return np.ndarray([finger_0_ra, finger_0_dec])
-        return np.ndarray([finger_120_ra, finger_120_dec])
+            return np.array([self.finger_0_ra, self.finger_0_dec])
+        return np.array([self.finger_120_ra, self.finger_120_dec])
 
     def get_params(self) -> np.ndarray:
-        return np.array([self.finger_0_ra, self.finger_0_dec, self.finger_120_ra, self.finger_120_dec])
+        """Get params as a numpy array"""
+        return np.array(
+            [
+                self.finger_0_ra,
+                self.finger_0_dec,
+                self.finger_120_ra,
+                self.finger_120_dec,
+            ]
+        )
 
     def __str__(self):
-        return f"F0: ({self.finger_0_ra:.2f}, {self.finger_0_dec:.2f}; F120: ({self.finger_120_ra:.2f}, {self.finger_120_dec:.2f}"
+        return f"F0: ({self.finger_0_ra:.2f}, {self.finger_0_dec:.2f};\
+            F120: ({self.finger_120_ra:.2f}, {self.finger_120_dec:.2f}"
 
     def __post_init__(self):
         """Method to check validity of parameters."""
-        self.finger_0_ra = np.clip(self.finger_0_ra, -np.pi/2.0, np.pi/2.0)
-        self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi/18.0, np.pi/2.0)
-        self.finger_120_ra = np.clip(self.finger_120_ra, -np.pi/2.0, np.pi/2.0)
-        self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi/18.0, np.pi/2.0)
+        self.finger_0_ra = np.clip(self.finger_0_ra, -np.pi / 2.0, np.pi / 2.0)
+        self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi / 18.0, np.pi / 2.0)
+        self.finger_120_ra = np.clip(self.finger_120_ra, -np.pi / 2.0, np.pi / 2.0)
+        self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi / 18.0, np.pi / 2.0)
 
 
 @gin.configurable
 class ActionCEM:
     """Class to handle CEM sampling of Actions"""
+
+    # pylint: disable=too-many-instance-attributes, too-many-arguments, too-many-positional-arguments
 
     _rng: np.random.Generator
 
@@ -120,17 +145,24 @@ class ActionCEM:
     _n_dist: int
     _n_iter: int
 
-    def __init__(self,
+    def __init__(
+        self,
         init_mean: Optional[list[float]] = None,
         init_var: Optional[float] = None,
         n_samples: int = 50,
         n_dist: int = 10,
         n_iter: int = 3,
     ) -> None:
-        self._init_mean = np.zeros(N_ACTION_PARAMS) if init_mean is None else np.array(init_mean)
+        self._init_mean = (
+            np.zeros(N_ACTION_PARAMS) if init_mean is None else np.array(init_mean)
+        )
         assert self._init_mean.shape == (N_ACTION_PARAMS,)
 
-        self._init_cov = np.eye(N_ACTION_PARAMS)*np.finfo(np.float32).eps if init_var is None else np.eye(N_ACTION_PARAMS) * init_var
+        self._init_cov = (
+            np.eye(N_ACTION_PARAMS) * np.finfo(np.float32).eps
+            if init_var is None
+            else np.eye(N_ACTION_PARAMS) * init_var
+        )
         assert self._init_cov.shape == (N_ACTION_PARAMS, N_ACTION_PARAMS)
 
         self._mean = np.clone(self._init_mean)
@@ -147,27 +179,40 @@ class ActionCEM:
 
         self._rng = np.random.default_rng()
 
-    def best_action(self, score_fn: Callable[[list[Action]], list[float]], final_iter_argmax: bool=True) -> Action:
+    def best_action(
+        self,
+        score_fn: Callable[[list[Action]], list[float]],
+        final_iter_argmax: bool = True,
+    ) -> Action:
         """Run CEM to determine the best action to take"""
 
         mean = np.clone(self._init_mean)
         cov = np.clone(self._init_cov)
 
-        for iter_idx in range(self._n_iter):
+        for _ in range(self._n_iter):
             ## Sample Batch of Actions
-            batch_actions = [Action(*param.tolist()) for param in self._rng.multivariate_normal(mean, cov, size=self._n_samples)]
-            assert len(batch_actions) == self._n_samples 
+            batch_actions = [
+                Action(*param.tolist())
+                for param in self._rng.multivariate_normal(
+                    mean, cov, size=self._n_samples
+                )
+            ]
+            assert len(batch_actions) == self._n_samples
 
             ## Score each action and sort
-            sorted_scores, sorted_actions = zip(*sorted(zip(score_fn(batch_actions), batch_actions), reverse=True))
+            _, sorted_actions = zip(
+                *sorted(zip(score_fn(batch_actions), batch_actions), reverse=True)
+            )
 
             ## Take best N actions and create new mean and covariance
-            best_actions = sorted_actions[:self._n_dist]
+            best_actions = sorted_actions[: self._n_dist]
             best_params = np.stack([act.get_params() for act in best_actions])
             assert best_params.shape == (self._n_dist, N_ACTION_PARAMS)
             mean = np.mean(best_params, axis=0)
             assert mean.shape == (N_ACTION_PARAMS,)
-            cov = np.cov(best_params, rowvar=False) # Each col is a variable, each row is a sample
+            cov = np.cov(
+                best_params, rowvar=False
+            )  # Each col is a variable, each row is a sample
             assert cov.shape == (N_ACTION_PARAMS, N_ACTION_PARAMS)
 
         if final_iter_argmax:
@@ -179,7 +224,12 @@ class ActionCEM:
 
 
 @gin.configurable
-def action_to_knots(params: ActionWorkspaceParams, actions: list[Action], object_pose_estimate: np.ndarray, include_finger_240: bool=False):
+def action_to_knots(
+    params: ActionWorkspaceParams,
+    actions: list[Action],
+    object_pose_estimate: np.ndarray,
+    include_finger_240: bool = True,
+):
     """
     Convert Actions into knot points
 
@@ -187,7 +237,9 @@ def action_to_knots(params: ActionWorkspaceParams, actions: list[Action], object
         np.ndarray (len(actions), n_knots, n_fingers * 6 in drake order [q then v])
         Likely (len(actions), 2, 18) or (len(actions), 2, 12)
     """
-    
+
+    # pylint: disable=too-many-locals
+
     # Input Validation
     assert params is not None
     assert len(actions) > 0
@@ -199,20 +251,26 @@ def action_to_knots(params: ActionWorkspaceParams, actions: list[Action], object
 
     # Get start knot point from action definition
     for finger_idx in range(2):
-        ra_axis = np.array([0., 0., 1.])
+        ra_axis = np.array([0.0, 0.0, 1.0])
         pref_axis = params.get_finger_vec(finger_idx)
         assert np.isclose(np.linalg.norm(pref_axis), 1.0)
         dec_axis = np.cross(pref_axis, ra_axis).reshape(1, 3)
-        assert np.linalg.norm(dec_axis) > 0., "Preferred finger axis parallel to +Z"
-        finger_ras_decs = np.stack([act.get_ra_dec(finger_idx) for act in ations])
+        assert np.linalg.norm(dec_axis) > 0.0, "Preferred finger axis parallel to +Z"
+        finger_ras_decs = np.stack([act.get_ra_dec(finger_idx) for act in actions])
         assert finger_ras_decs.shape == (len(actions), 2)
-        dec_rotvecs = Rotation.from_rotvec(dec_axis / np.linalg.norm(dec_axis) * finger_ras_decs[:, 1:])
-        ra_rotvecs = Rotation.from_rotvec(ra_axis.reshape(1, 3) * finger_ras_decs[:, :1])
+        dec_rotvecs = Rotation.from_rotvec(
+            dec_axis / np.linalg.norm(dec_axis) * finger_ras_decs[:, 1:]
+        )
+        ra_rotvecs = Rotation.from_rotvec(
+            ra_axis.reshape(1, 3) * finger_ras_decs[:, :1]
+        )
 
         # Rotate preferred axis and scale to fixed distance
-        start_poses = params.approach_radius * ra_rotvecs.apply(dec_rotvecs.apply(pref_axis))
+        start_poses = params.approach_radius * ra_rotvecs.apply(
+            dec_rotvecs.apply(pref_axis)
+        )
         assert start_poses.shape == (len(actions), 3)
-        ret2[:, 0, finger_idx*3:(finger_idx+1)*3] = start_poses
+        ret2[:, 0, finger_idx * 3 : (finger_idx + 1) * 3] = start_poses
 
     # End knot point and all velocities == 0
 
@@ -222,14 +280,23 @@ def action_to_knots(params: ActionWorkspaceParams, actions: list[Action], object
     # Clip to workspace edge
     # TODO: use ray-sphere intersection
     for finger_idx in range(2):
-        start_poses = ret2[:, 0, finger_idx*3:(finger_idx+1)*3]
-        end_poses = ret2[:, 1, finger_idx*3:(finger_idx+1)*3]
-        norm_ratio = np.clip(np.linalg.norm(test, axis=-1), max=params.workspace_radius) / np.linalg.norm(test, axis=-1)
-        norm_ratio[np.isnan(norm_ratio)] = 0.
+        start_poses = ret2[:, 0, finger_idx * 3 : (finger_idx + 1) * 3]
+        end_poses = ret2[:, 1, finger_idx * 3 : (finger_idx + 1) * 3]
+        norm_ratio = np.clip(
+            np.linalg.norm(start_poses, axis=-1),
+            a_min=None,
+            a_max=params.workspace_radius,
+        ) / np.linalg.norm(start_poses, axis=-1)
+        norm_ratio[np.isnan(norm_ratio)] = 0.0
         start_poses = start_poses * norm_ratio.reshape(-1, 1)
         # Clip to ground
         if params.ground_buffer:
-            np.clip(start_poses[:, 2], min=params.robot_radius, out=start_poses[:, 2])
+            np.clip(
+                start_poses[:, 2],
+                a_min=params.robot_radius,
+                a_max=None,
+                out=start_poses[:, 2],
+            )
 
         # Add displacement along preferred axis to guarantee no contact (if preferred axes are opposing)
         if params.robot_buffer:
@@ -237,8 +304,8 @@ def action_to_knots(params: ActionWorkspaceParams, actions: list[Action], object
             start_poses += pref_axis * params.robot_radius
             end_poses += pref_axis * params.robot_radius
 
-        ret2[:, 0, finger_idx*3:(finger_idx+1)*3] = start_poses
-        ret2[:, 1, finger_idx*3:(finger_idx+1)*3] = end_poses
+        ret2[:, 0, finger_idx * 3 : (finger_idx + 1) * 3] = start_poses
+        ret2[:, 1, finger_idx * 3 : (finger_idx + 1) * 3] = end_poses
 
     # Add fixed 240 position
     if include_finger_240:
@@ -250,7 +317,8 @@ def action_to_knots(params: ActionWorkspaceParams, actions: list[Action], object
 
     return ret
 
-@gin.configurable(denylist=["data", "trifinger"])
+
+@gin.configurable(denylist=["data"])
 def interpolate_sampled_action(
     data: Tensor, fingertip_body_names: list[str], traj_len_s=2.0, traj_n_steps=61
 ) -> TensorDictBase:
@@ -310,10 +378,10 @@ def interpolate_sampled_action(
     )
     data_lerp_dot = torch.transpose(data_lerp_dot, -1, -2)
 
-    for fingertip in trifinger.fingertip_body_names:
+    for fingertip in fingertip_body_names:
         ret[fingertip, "position"] = torch.zeros(batch_dims + (traj_n_steps, 3))
         ret[fingertip, "velocity"] = torch.zeros(batch_dims + (traj_n_steps, 3))
-    for finger_idx, fingertip in enumerate(trifinger.fingertip_body_names):
+    for finger_idx, fingertip in enumerate(fingertip_body_names):
         pos_idx = 3 * finger_idx
         ret[fingertip, "position"][..., :] = data_lerp[..., pos_idx : pos_idx + 3]
         ret[fingertip, "velocity"][..., :] = data_lerp_dot[..., pos_idx : pos_idx + 3]

@@ -82,7 +82,7 @@ def main(
     storage_folder_name: str = "storage_active",
     run_name: str = "default_run",
     optimizer_cls: Type = torch.optim.SGD,
-    action_params: action_utils.ActionWorkspaceParams = ActionWorkspaceParams(),
+    action_params: action_utils.ActionWorkspaceParams = action_utils.ActionWorkspaceParams(),
 ):
     """Main function for online learning loop"""
     ### Signal Handling
@@ -102,6 +102,12 @@ def main(
     storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
     print(f"Storing data and results at {file_utils.run_dir(storage_name, run_name)}")
 
+    # Initialize LCM
+    trifinger_lcm = TrifingerLCMService()
+    print("Resetting Trifinger Position...")
+    trifinger_lcm.execute_trajectory(action_params.get_reset_knot(), no_data=True)
+    new_trajectory = None
+
     # Create learnable system
     print("Loading Learned System...")
     # Pylint doesn't know about gin
@@ -112,15 +118,19 @@ def main(
     data_trajectories = TrajectorySet()
 
     # GUI Visualization
+    true_obj_pose = trifinger_lcm.get_current_object_pose()
     gui_vis = PLLMeshcatVisualizer(
-        system=learned_system, data=data_trajectories, true_geom=get_true_geometry()
+        system=learned_system,
+        data=data_trajectories,
+        true_geom=get_true_geometry(),
+        true_pose=true_obj_pose,
     )
 
-    # Initialize LCM
-    trifinger_lcm = TrifingerLCMService()
-    print("Resetting Trifinger Position...")
-    trifinger_lcm.execute_trajectory(action_params.get_reset_knot(), no_data=True)
-    new_trajectory = None
+    # Sample initial action (from true obj pose)
+    selected_action = action_utils.action_to_knots(
+        action_params, [action_utils.Action()], true_obj_pose
+    )[0]
+    gui_vis.draw_action_samples(selected_action[np.newaxis, :, :])
 
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
@@ -156,12 +166,14 @@ def main(
 
         elif command_char == "r":
             print("Resetting Trifinger Position...")
-            trifinger_lcm.execute_trajectory(action_params.get_reset_knot(), no_data=True)
+            trifinger_lcm.execute_trajectory(
+                action_params.get_reset_knot(), no_data=True, non_blocking=True
+            )
 
         elif command_char == "a":
             ## Compute Expected Info per-action
             start = time.time()
-            traj_x, traj_time = interpolate_sampled_action(
+            traj_x, traj_time = action_utils.interpolate_sampled_action(
                 data=torch.stack(
                     [
                         torch.tensor(
@@ -172,7 +184,6 @@ def main(
                         for idx in range(len(action_library))
                     ]
                 ),
-                trifinger=trifinger_lcm,
             )
             robot_traj = extract_robot_trajectory(
                 traj_x,
@@ -261,9 +272,8 @@ def main(
             )
             add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = (
                 extract_robot_trajectory(
-                    interpolate_sampled_action(
+                    action_utils.interpolate_sampled_action(
                         data=torch.tensor(np.array(selected_action)),
-                        trifinger=trifinger_lcm,
                         traj_len_s=(
                             new_trajectory["time"][-1] - new_trajectory["time"][0]
                         ),
@@ -332,35 +342,12 @@ def main(
             print("Done!")
 
         elif command_char == "o":
-            if len(data_trajectories.trajectories) == 0:
-                print("Cannot get obs_info without data.\n")
-                continue
-
-            obs_info = learned_system.observed_info(data_trajectories)
-
-            """
-            ## Compute Expected Info per-action
-            traj_x, traj_time = interpolate_sampled_action(
-                data=torch.stack(
-                    [
-                        torch.tensor(
-                            np.array(sample_action(library=action_library, index=idx))
-                        )
-                        for idx in range(len(action_library))
-                    ]
-                ),
-                trifinger=trifinger_lcm,
+            """DEBUGGING COMMAND"""
+            true_obj_pose = trifinger_lcm.get_current_object_pose()
+            knots = action_utils.action_to_knots(
+                action_params, [action_utils.Action()], true_obj_pose
             )
-            robot_traj = extract_robot_trajectory(
-                traj_x,
-                learned_system,
-                trifinger_lcm,
-            )
-            fisher = learned_system.expected_fisher_info(
-                ctrl_desired=robot_traj,
-                timestamps=traj_time,
-            )
-            """
+            gui_vis.draw_action_samples(knots)
 
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:
@@ -442,6 +429,7 @@ def main_fn():
         config_file = sys.argv[1]
 
     # Parse config file and start
+    gin.register(np.array, module="np")
     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
     # Pylint doesn't know about gin
     # pylint: disable=no-value-for-parameter

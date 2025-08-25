@@ -9,6 +9,7 @@ The main contents of this file are as follows:
 
 import time
 from tkinter import Tk, Scale, DoubleVar
+from typing import Optional
 
 import numpy as np
 from pydrake.geometry import StartMeshcat, Meshcat, Shape, Rgba
@@ -52,14 +53,21 @@ class PLLMeshcatVisualizer:
         ),
         data: TrajectorySet,
         true_geom: Shape,
+        true_pose: Optional[np.ndarray] = None,
     ) -> None:
         self._meshcat = StartMeshcat()
         self._data = data
         self._system = system
         self._meshcat.SetObject("/true", true_geom, Rgba(0.8, 0.0, 0.0, 0.3))
+
+        true_transform = (
+            true_pose
+            if true_pose is not None
+            else np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        )
         self._meshcat.SetTransform(
             "/true",
-            transform_from_state_q(np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])),
+            transform_from_state_q(true_transform),
         )
         self._meshcat.SetObject(
             "/learned", self._system.get_learned_geometry(), Rgba(0.0, 0.0, 0.8, 1.0)
@@ -82,6 +90,38 @@ class PLLMeshcatVisualizer:
     def learned_plant_traj(self, value):
         """Set optional learned full-plant trajectory"""
         self._learned_plant_traj = value.detach()
+
+    def draw_action_samples(self, action_knots: np.ndarray):
+        """Draw lines representing actions"""
+
+        self.clear_action_samples()
+
+        n_knots = action_knots.shape[0]
+        assert action_knots.shape == (n_knots, 2, 18)
+
+        # TODO: make gin-config param
+        fingertip_body_names = ["finger_0", "finger_1"]
+
+        for knot_idx in range(n_knots):
+            for finger_idx, finger_name in enumerate(fingertip_body_names):
+                str_key = f"/actions/{knot_idx}/{finger_name}"
+                start_loc = action_knots[
+                    knot_idx, 0, (finger_idx * 3) : ((finger_idx + 1) * 3)
+                ]
+                end_loc = action_knots[
+                    knot_idx, 1, (finger_idx * 3) : ((finger_idx + 1) * 3)
+                ]
+                vertices = np.stack([start_loc, end_loc], axis=1)
+                assert vertices.shape == (3, 2), str(vertices.shape)
+                self._meshcat.SetLine(
+                    path=str_key,
+                    vertices=vertices,
+                    line_width=4.0,
+                    rgba=Rgba(r=0.1, g=0.9, b=0.9, a=1.0),
+                )
+
+    def clear_action_samples(self):
+        self._meshcat.Delete("/actions")
 
     def reinit_tk(self, new_val=0.0) -> None:
         """Reset scale range to new value"""
@@ -168,7 +208,9 @@ class PLLMeshcatVisualizer:
             for finger_name, state_idx in zip(
                 fingertip_body_names,
                 finger_idx_from_body_name(
-                    plant, plant.GetModelInstanceByName(robot_model_name), fingertip_body_names
+                    plant,
+                    plant.GetModelInstanceByName(robot_model_name),
+                    fingertip_body_names,
                 ),
             ):
                 if state_idx < 0:
@@ -181,14 +223,14 @@ class PLLMeshcatVisualizer:
                     Rgba(0.0, 0.8, 0.0, 0.8),
                 )
 
-
                 zero_rot = np.array([1.0, 0.0, 0.0, 0.0])
                 body_traj = np.hstack(
                     [np.broadcast_to(zero_rot, (robot_traj.shape[0], 4)), body_pos_traj]
                 )
-            
+
                 self._meshcat.SetTransform(
-                    f"/robot/{finger_name}", transform_from_state_q(body_traj[timestep, :])
+                    f"/robot/{finger_name}",
+                    transform_from_state_q(body_traj[timestep, :]),
                 )
 
             # Draw Contact Normals

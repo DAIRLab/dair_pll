@@ -909,7 +909,6 @@ class MultibodyLearnableTactileSystem(Module):
         if ctrl_actual is not None:
             assert ~torch.any(torch.isnan(ctrl_actual))
 
-
         # Naive Implicit Loss
         if self._hyperparameters.loss_fn == LossFunction.NIMP or nimp_override:
             # Run Differential Simulation

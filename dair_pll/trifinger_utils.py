@@ -26,6 +26,7 @@ from dair_pll.lcmtypes.dairlib import (
     lcmt_fingertips_target_kinematics,
 )
 
+
 ## LCM Service
 @gin.configurable
 class TrifingerLCMService:
@@ -41,14 +42,11 @@ class TrifingerLCMService:
         fingertip_body_names: list[str],
         object_name: Optional[str] = "cube",
         traj_time_len=2.0,
-        action_params: ActionLibraryParams = ActionLibraryParams(),
     ):
         self._lcm_channels = lcm_channels
         self._traj_time_len = traj_time_len
         self._fingertip_body_names = fingertip_body_names
         self._object_name = object_name
-
-        self._action_params = action_params
 
         self._force_raw_data = []
         self._fingertip_pose_raw_data = []
@@ -75,6 +73,19 @@ class TrifingerLCMService:
     def fingertip_body_names(self):
         """Fingertip body names"""
         return self._fingertip_body_names
+
+    def get_current_object_pose(self) -> np.ndarray:
+        """Blocks and retrieves the most recent object position"""
+
+        print("Waiting for object pose...")
+        self._object_raw_data.clear()
+        while len(self._object_raw_data) < 1:
+            self._lcm.handle()
+
+        # Convert to position
+        ret = np.copy(np.array(self._object_raw_data[-1].position))
+        assert ret.shape == (self._object_raw_data[-1].num_positions,)
+        return ret
 
     def sub_handler(self, channel: str, data: Any):
         """
@@ -145,7 +156,9 @@ class TrifingerLCMService:
             ]
         ).flatten()
         assert is_sorted(densetact_time_s)
-        densetact_dt = np.expand_dims(densetact_time_s[1:] - densetact_time_s[:-1], axis=-1)
+        densetact_dt = np.expand_dims(
+            densetact_time_s[1:] - densetact_time_s[:-1], axis=-1
+        )
         fingerpos_time_s = np.array(
             [
                 float(measurement.utime) / 1e6
@@ -165,7 +178,6 @@ class TrifingerLCMService:
         fingertip_force_w = {}
         fingertip_normal_w = {}
         for body_idx, body_name in enumerate(self._fingertip_body_names):
-            body_r_zrot = Rotation.from_rotvec(self._action_params.workspace_z_rot * np.array([0., 0., 1.]))
             # Position Interpolation
             body_pos = np.array(
                 [
@@ -203,8 +215,9 @@ class TrifingerLCMService:
             fingertip_vel_w[body_name] = body_vel_interp
             """
             fingertip_vel_w[body_name] = np.zeros_like(fingertip_pos_w[body_name])
-            fingertip_vel_w[body_name][1:] = (fingertip_pos_w[body_name][1:] - fingertip_pos_w[body_name][:-1]) / densetact_dt
-
+            fingertip_vel_w[body_name][1:] = (
+                fingertip_pos_w[body_name][1:] - fingertip_pos_w[body_name][:-1]
+            ) / densetact_dt
 
             # Quat Interpolation
             body_quat = np.array(
@@ -235,7 +248,7 @@ class TrifingerLCMService:
             normal_c = np.broadcast_to(
                 np.array([0.0, 0.0, 1.0]), (len(densetact_time_s), 3)
             )
-            
+
             body_r_cw = body_r_bw * body_r_cb
             fingertip_normal_w[body_name] = body_r_cw.apply(normal_c)
             # Zero out no contact normal

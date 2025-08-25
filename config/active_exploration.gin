@@ -1,7 +1,8 @@
 # Default GIN Config File for rss_experiment.py
 
 ## General Config
-robot_radius = 0.03 # 0.01575 from trifingeredu.urdf + buffer
+robot_radius = 0.01575
+robot_buffer_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
 #workspace_radius = 0.1
 workspace_radius = 0.15
 robot_model_name = "robot"
@@ -11,6 +12,7 @@ object_body_name = "cube_body"
 fingertip_body_names = ["finger_0", "finger_1"]
 default_dt = 0.03333333333333333 # 30 Hz
 traj_len_s = 1.0 # s, how long each trajectory is
+traj_len_dts = 31 # 30Hz + 1
 
 # CONSTANTS
 PI = 3.141592653589793
@@ -35,88 +37,38 @@ DynamicCvxpyLCQPLayer.solver_args = {
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names
 TrifingerLCMService.object_name = %object_model_name
 TrifingerLCMService.traj_time_len = %traj_len_s
-TrifingerLCMService.action_params = @ActionLibraryParams()
 TrifingerLCMService.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
-	"object_state": "CUBE_STATE", # lcmt_object_state
-	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
-	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
+	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+	"densetact": "DENSETACT_DATA_SIMULATION", # lcmt_densetact_measurement_data
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS_SIMULATION", #lcmt_fingertips_target_kinematics
 }
 
 ## Action Sampling
-sample_action.params = @ActionLibraryParams()
-ActionLibraryParams.workspace_xy_center = (0., 0.)
-ActionLibraryParams.workspace_z_rot = 3.14159 # 0.785398163 # pi/4
-ActionLibraryParams.workspace_radius = %workspace_radius
-ActionLibraryParams.robot_radius = %robot_radius
-ActionLibraryParams.fixed_240_w = (0.15, 0.15, 0.15)
-ActionLibraryParams.ground_buffer = True
-ActionLibraryParams.yplane_buffer = False
+main.action_params = @ActionWorkspaceParams()
+ActionWorkspaceParams.workspace_xy_center = (0., 0.)
+ActionWorkspaceParams.workspace_radius = %workspace_radius
+ActionWorkspaceParams.robot_radius = %robot_buffer_radius
+fixed_240_w/np.array.object = [0.15, 0.15, 0.15]
+ActionWorkspaceParams.fixed_240_w = @fixed_240_w/np.array()
+ActionWorkspaceParams.approach_radius = 0.1
+finger_0_vec/np.array.object = [-1., 0., 0.]
+ActionWorkspaceParams.finger_0_vec = @finger_0_vec/np.array()
+finger_120_vec/np.array.object = [1., 0., 0.]
+ActionWorkspaceParams.finger_120_vec = @finger_120_vec/np.array()
+ActionWorkspaceParams.ground_buffer = True
+ActionWorkspaceParams.robot_buffer = False
 
-## Action Library
-xsingle/Action.name = "XSINGLE"
-xsingle/Action.posx_start_polar = %PI2
-xsingle/Action.posx_start_azimuth = 0.
-xsingle/Action.posx_end_radius = 0.
-xsingle/Action.posx_end_angle = 0.
-
-xsingle120/Action.name = "XSINGLE120"
-xsingle120/Action.negx_start_polar = %PI2
-xsingle120/Action.negx_start_azimuth = 0.
-xsingle120/Action.negx_end_radius = 0.
-xsingle120/Action.negx_end_angle = 0.
-
-xpinch/Action.name = "XPINCH"
-xpinch/Action.posx_start_polar = %PI2
-xpinch/Action.posx_start_azimuth = 0.
-xpinch/Action.posx_end_radius = 0.
-xpinch/Action.posx_end_angle = 0.
-xpinch/Action.negx_start_polar = %PI2
-xpinch/Action.negx_start_azimuth = 0.
-xpinch/Action.negx_end_radius = 0.
-xpinch/Action.negx_end_angle = 0.
-
-ypinch/Action.name = "YPINCH"
-ypinch/Action.posx_start_polar = %PI2
-ypinch/Action.posx_start_azimuth = %NPI2
-ypinch/Action.posx_end_radius = 0.
-ypinch/Action.posx_end_angle = 0.
-ypinch/Action.negx_start_polar = %PI2
-ypinch/Action.negx_start_azimuth = %PI2
-ypinch/Action.negx_end_radius = 0.
-ypinch/Action.negx_end_angle = 0.
-
-zsingle/Action.name = "ZSINGLE"
-zsingle/Action.posx_start_polar = 0.
-zsingle/Action.posx_start_azimuth = 0.
-zsingle/Action.posx_end_radius = 0.
-zsingle/Action.posx_end_angle = 0.
-
-# Unused Finger -X -> +Z
-#zsingle/Action.negx_start_polar = %PI2
-#zsingle/Action.negx_start_azimuth = 0.
-#zsingle/Action.negx_end_radius = 1.
-#zsingle/Action.negx_end_angle = %PI2
-
-# Unused Finger +Y
-zsingle/Action.negx_start_polar = %PI2
-zsingle/Action.negx_start_azimuth = %PI2
-zsingle/Action.negx_end_radius = 1.
-zsingle/Action.negx_end_angle = 0.
-
-library = [
-	@xpinch/Action(),
-]
-main.action_library = %library
+interpolate_sampled_action.fingertip_body_names = %fingertip_body_names
 interpolate_sampled_action.traj_len_s = %traj_len_s
-interpolate_sampled_action.traj_n_steps = 31
+interpolate_sampled_action.traj_n_steps = %traj_len_dts
 
 ## Robot config
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
 robot/get_urdf_asset_contents.mappings = {
 	"num_fingers": 2,
 	"mu": 1.0,
-	"radius": 0.01575,
+	"radius": %robot_radius,
 }
 
 ## Learnable URDF and State Config

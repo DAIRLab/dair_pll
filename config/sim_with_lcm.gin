@@ -25,11 +25,10 @@ PlantDiagram.urdfs = {
 }
 
 ## Base URDF and State Config
-object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_asset_uri.asset_file_basename = "active/d6_4cm_mmscale.obj"
+object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
-	"length_x": 0.065, # m
-	"length_y": 0.065, # m
-	"length_z": 0.065, # m
+	"mesh": @object/get_asset_uri(),
 	"mu": 0.1,
 	"planar_xz": "false",
 }
@@ -48,8 +47,8 @@ robot/get_urdf_asset_contents.mappings = {
 }
 robot_initial_state = [
 	0., 0.15, 0.15, # Finger 2 q
-	-0.1, 0., 0.05, # Finger 1 q
-	0.1, 0., 0.05, # Finger 0 q
+	0.1, 0., 0.05, # Finger 1 q
+	-0.1, 0., 0.05, # Finger 0 q
 	0., 0., 0.,   # Finger 2 v
 	0., 0., 0.,   # Finger 1 v
 	0., 0., 0.,   # Finger 0 v
