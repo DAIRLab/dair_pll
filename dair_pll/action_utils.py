@@ -159,14 +159,14 @@ class ActionCEM:
         assert self._init_mean.shape == (N_ACTION_PARAMS,)
 
         self._init_cov = (
-            np.eye(N_ACTION_PARAMS) * np.finfo(np.float32).eps
+            np.eye(N_ACTION_PARAMS) * (np.pi / 2.0)
             if init_var is None
             else np.eye(N_ACTION_PARAMS) * init_var
         )
         assert self._init_cov.shape == (N_ACTION_PARAMS, N_ACTION_PARAMS)
 
-        self._mean = np.clone(self._init_mean)
-        self._cov = np.clone(self._init_cov)
+        self._mean = np.copy(self._init_mean)
+        self._cov = np.copy(self._init_cov)
 
         self._n_samples = n_samples
         assert self._n_samples > 0
@@ -183,11 +183,12 @@ class ActionCEM:
         self,
         score_fn: Callable[[list[Action]], list[float]],
         final_iter_argmax: bool = True,
+        vis_fn: Optional[Callable[[list[Action]], None]] = None,
     ) -> Action:
         """Run CEM to determine the best action to take"""
 
-        mean = np.clone(self._init_mean)
-        cov = np.clone(self._init_cov)
+        mean = np.copy(self._init_mean)
+        cov = np.copy(self._init_cov)
 
         for _ in range(self._n_iter):
             ## Sample Batch of Actions
@@ -198,6 +199,10 @@ class ActionCEM:
                 )
             ]
             assert len(batch_actions) == self._n_samples
+
+            ## Visualize actions
+            if vis_fn is not None:
+                vis_fn(batch_actions)
 
             ## Score each action and sort
             _, sorted_actions = zip(

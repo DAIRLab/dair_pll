@@ -2491,7 +2491,7 @@ class MultibodyLearnableTactileSystem(Module):
                 self._learned_trajectory.space.n_q,
             ), ret.size()
             return ret
-        return self._learned_trajectory.get_current_pose_traj()
+        return self._learned_trajectory.get_current_traj()
 
     @torch.no_grad
     def get_controlled_trajectory(self, system_traj: Tensor) -> Tensor:

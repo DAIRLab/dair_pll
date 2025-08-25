@@ -343,11 +343,27 @@ def main(
 
         elif command_char == "o":
             """DEBUGGING COMMAND"""
-            true_obj_pose = trifinger_lcm.get_current_object_pose()
-            knots = action_utils.action_to_knots(
-                action_params, [action_utils.Action()], true_obj_pose
-            )
-            gui_vis.draw_action_samples(knots)
+            action_cem = action_utils.ActionCEM()
+
+            def score_fn(actions):
+                print("Scoring...")
+                return [
+                    -np.linalg.norm(act.get_params() - np.pi / 4.0 * np.ones(4))
+                    for act in actions
+                ]
+
+            def vis_fn(actions):
+                print("Visualizing...")
+                obj_pose_guess = (
+                    learned_system.get_learned_trajectory()[-1].detach().cpu().numpy()
+                )
+                knots = action_utils.action_to_knots(
+                    action_params, actions, obj_pose_guess
+                )
+                gui_vis.draw_action_samples(knots)
+                breakpoint()
+
+            selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=vis_fn)
 
         elif command_char == "t":
             if len(data_trajectories.trajectories) == 0:

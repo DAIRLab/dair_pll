@@ -98,7 +98,7 @@ object_init/get_urdf_asset_contents.mappings = {
 
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.1, 0.1, 0.015,     # XYZ
+	0.03, 0.03, 0.015,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]
