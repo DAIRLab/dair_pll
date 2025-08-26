@@ -611,7 +611,10 @@ class DeepSupportConvex(SparseVertexConvexCollisionGeometry):
             vertices.max(dim=0).values - vertices.min(dim=0).values
         ).norm() / 2
         self.network = HomogeneousICNN(
-            depth, width, scale=length_scale, learnable=learnable
+            depth,
+            width,
+            learnable=learnable,
+            scale=0.01,  # scale=length_scale,
         )
         self.perturbations = torch.cat(
             (torch.zeros((1, 3)), perturbation * (torch.rand((n_query - 1, 3)) - 0.5))

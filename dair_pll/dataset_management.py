@@ -93,6 +93,7 @@ class TrajectorySliceDataset(Dataset):
             self.future_states_slices[idx + self.first_idx],
         )
 
+obs_info_cache = None
 
 @dataclass
 class TrajectorySet:
@@ -121,10 +122,12 @@ class TrajectorySet:
 
     def cull_oldest_trajectory(self) -> None:
         """Remove oldest trajectory from training"""
+        global obs_info_cache
         if self.first_traj >= len(self.trajectories):
             return
         self.slices.cull_oldest_slices(self.trajectories[self.first_traj].shape[0] - 1)
         self.first_traj += 1
+        obs_info_cache = None
 
     def add_trajectories(self, trajectory_list: List[Tensor], indices: Tensor) -> None:
         """Add new subset of trajectories to set.
@@ -133,6 +136,7 @@ class TrajectorySet:
             trajectory_list: List of new ``(T, *)`` state trajectories.
             indices: indices associated with on-disk filenames.
         """
+        global obs_info_cache
         # Move to default device
         trajectory_list = [
             traj.to(torch.get_default_device()) for traj in trajectory_list
@@ -151,6 +155,7 @@ class TrajectorySet:
             self.slices.add_slices_from_trajectory(trajectory.squeeze())
         self.trajectories.extend(trajectory_list)
         self.indices = torch.cat([self.indices, indices.to(torch.get_default_device())])
+        obs_info_cache = None
 
     def get_full_trajectory(self, key: Optional[str] = None):
         """Get the entire trajectory optionally for a given key"""

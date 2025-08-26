@@ -207,7 +207,7 @@ class HomogeneousICNN(Module):
         depth: int,
         width: int,
         negative_slope: float = 0.5,
-        scale=1.0,
+        scale=0.01,
         learnable: bool = True,
     ) -> None:
         r"""

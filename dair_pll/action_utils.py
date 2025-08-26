@@ -304,21 +304,67 @@ def action_to_knots(
         start_poses = start_poses * norm_ratio.reshape(-1, 1)
         # Clip to ground
         if params.ground_buffer:
-            np.clip(
+            start_poses[:, 2] = np.clip(
                 start_poses[:, 2],
                 a_min=params.robot_radius,
                 a_max=None,
-                out=start_poses[:, 2],
             )
-
-        # Add displacement along preferred axis to guarantee no contact (if preferred axes are opposing)
-        if params.robot_buffer:
-            pref_axis = params.get_finger_vec(finger_idx).reshape(1, 3)
-            start_poses += pref_axis * params.robot_radius
-            end_poses += pref_axis * params.robot_radius
+            end_poses[:, 2] = np.clip(
+                end_poses[:, 2],
+                a_min=params.robot_radius,
+                a_max=None,
+            )
 
         ret2[:, 0, finger_idx * 3 : (finger_idx + 1) * 3] = start_poses
         ret2[:, 1, finger_idx * 3 : (finger_idx + 1) * 3] = end_poses
+
+    # Add displacement along preferred axis to guarantee no contact (if preferred axes are opposing)
+    if params.robot_buffer:
+        pref_0 = params.get_finger_vec(0)
+        pref_120 = params.get_finger_vec(1)
+
+        # Start Separation
+        start_0 = np.copy(ret2[:, 0, :3])
+        start_120 = np.copy(ret2[:, 0, 3:6])
+        start_dists = np.linalg.norm(start_0 - start_120, axis=-1)
+        start_penetration = np.clip(
+            2.0 * params.robot_radius - start_dists, a_min=0.0, a_max=None
+        )
+        new_start_0 = start_0 + (
+            start_penetration[:, np.newaxis] * 0.5 * pref_0[np.newaxis, :]
+        )
+        new_start_120 = start_120 + (
+            start_penetration[:, np.newaxis] * 0.5 * pref_120[np.newaxis, :]
+        )
+        ret2[:, 0, :3] = new_start_0
+        ret2[:, 0, 3:6] = new_start_120
+
+        # End Separation
+        end_0 = np.copy(ret2[:, 1, :3])
+        end_120 = np.copy(ret2[:, 1, 3:6])
+        # First separate by start penetration
+        new_end_0 = end_0 + (
+            start_penetration[:, np.newaxis] * 0.5 * pref_0[np.newaxis, :]
+        )
+        new_end_120 = end_120 + (
+            start_penetration[:, np.newaxis] * 0.5 * pref_120[np.newaxis, :]
+        )
+        end_dists = np.linalg.norm(new_end_0 - new_end_120, axis=-1)
+        end_penetration = np.clip(
+            2.0 * params.robot_radius - end_dists, a_min=0.0, a_max=None
+        )
+        # Separate along start-end diretion
+        dir_0 = (new_start_0 - new_end_0) / np.linalg.norm(
+            new_start_0 - new_end_0, axis=-1, keepdims=True
+        )
+        dir_120 = (new_start_120 - new_end_120) / np.linalg.norm(
+            new_start_120 - new_end_120, axis=-1, keepdims=True
+        )
+        new_new_end_0 = new_end_0 + (end_penetration[:, np.newaxis] * 0.5 * dir_0)
+        new_new_end_120 = new_end_120 + (end_penetration[:, np.newaxis] * 0.5 * dir_120)
+
+        ret2[:, 1, :3] = new_new_end_0
+        ret2[:, 1, 3:6] = new_new_end_120
 
     # Add fixed 240 position
     if include_finger_240:

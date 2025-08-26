@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 
 """Utility functions for running the experiment"""
+import time
 
 import numpy as np
 from pydrake.geometry import HalfSpace, Box, Mesh, Shape
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial.transform import Rotation
 import trimesh
+import torch
 
-from dair_pll.action_utils import Action
+from dair_pll import action_utils
+from dair_pll.action_utils import Action, ActionWorkspaceParams, action_to_knots
+from dair_pll.trifinger_utils import TrifingerLCMService
 from dair_pll.drake_system import DrakeSystem
+from dair_pll.hack_utils import extract_robot_trajectory
 from dair_pll.geometry import PydrakeToCollisionGeometryFactory, GeometryRepresentation
 from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactileSystem
-
+from dair_pll.dataset_management import TrajectorySet, obs_info_cache
 
 ### Evaluation Functions
 def get_true_geometry_and_mesh(sample_count: int = 1000) -> tuple[Shape, np.ndarray]:
@@ -27,7 +32,8 @@ def get_true_geometry_and_mesh(sample_count: int = 1000) -> tuple[Shape, np.ndar
         true_geom = inspector.GetShape(geom_id)
         if isinstance(true_geom, HalfSpace):
             continue
-        elif isinstance(true_geom, Box):
+        
+        if isinstance(true_geom, Box):
             trimesh_mesh = trimesh.primitives.Box(extents=true_geom.size())
         elif isinstance(true_geom, Mesh):
             vertices = np.stack(
@@ -133,4 +139,49 @@ def chamfer_distance(
 
 ### Scoring Functions
 def score_random(actions: list[Action]) -> list[float]:
+    """Random actions have equal score"""
     return [1.0] * len(actions)
+
+
+def score_eig(
+    params: ActionWorkspaceParams,
+    learned_system: MultibodyLearnableTactileSystem,
+    data_trajectories: TrajectorySet,
+    trifinger_lcm: TrifingerLCMService,
+    actions: list[Action],
+) -> list[float]:
+    """Score is EIG"""
+    start = time.time()
+    action_knots = action_to_knots(
+        params, actions, learned_system.get_learned_centroid()
+    )
+    traj_x, traj_time = action_utils.interpolate_sampled_action(
+        data=torch.tensor(action_knots)
+    )
+    robot_traj = extract_robot_trajectory(
+        traj_x,
+        learned_system,
+        trifinger_lcm,
+    )
+    # ignore object qw
+    fisher = learned_system.expected_fisher_info(
+        ctrl_desired=robot_traj,
+        timestamps=traj_time,
+    )[..., 1:, 1:]
+
+    ## Weight by observed info, ignore object qw
+    if obs_info_cache is None:
+        print("New Obs Info")
+        obs_info = (
+            torch.zeros_like(fisher[0])
+            if len(data_trajectories.trajectories) == 0
+            else learned_system.observed_info(data_trajectories)[..., 1:, 1:]
+        )
+    else:
+        print("Cached Obs Info")
+        obs_info = obs_info_cache
+    obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[0]))
+    fisher_obs_weighted = fisher @ obs_info_inv
+    fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)
+    print(f"Evaluated {len(fisher_traces)} actions in {(time.time()-start):.3f}s")
+    return fisher_traces.detach().cpu().numpy().tolist()

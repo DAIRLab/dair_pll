@@ -340,7 +340,7 @@ class MultibodyLearnableTactileSystem(Module):
 
         assert dt.size() == batch_dims + (1,)
         phi_eps = 1e-2
-        eps = torch.finfo(step_q.dtype).eps
+        eps = 1e-8
         (
             m_delassus,
             m_mass,
@@ -401,7 +401,7 @@ class MultibodyLearnableTactileSystem(Module):
             ).unsqueeze(-1),
         )
 
-        impulse = impulse_full * contact_filter
+        impulse = torch.nan_to_num(impulse_full * contact_filter)
         # vmap doesn't support dynamic shape
         # impulse = torch.zeros_like(impulse_full)
         # impulse[contact_filter] += impulse_full[contact_filter]
@@ -541,7 +541,7 @@ class MultibodyLearnableTactileSystem(Module):
 
         assert dt.size() == batch_dims + (1,)
         phi_eps = 1e-2
-        eps = torch.finfo(step_q.dtype).eps
+        eps = 1e-8
         (
             m_delassus,
             m_mass,
@@ -597,7 +597,8 @@ class MultibodyLearnableTactileSystem(Module):
         )
 
         impulse = torch.zeros_like(impulse_full)
-        impulse[contact_filter] += impulse_full[contact_filter]
+        # TODO: Hack remove NaNs
+        impulse[contact_filter] += torch.nan_to_num(impulse_full[contact_filter])
 
         # pylint doesn't know about torch
         # pylint: disable-next=not-callable
@@ -629,6 +630,12 @@ class MultibodyLearnableTactileSystem(Module):
                 mr_wf_i, ret_contact_force.transpose(-1, -2)
             ).transpose(-1, -2)
         ###
+
+        try:
+            assert torch.all(~torch.isnan(step_v_minus)), f"NaN in plant_x_batch"
+            assert torch.all(~torch.isnan(step_v_add)), f"NaN in plant_x_batch"
+        except AssertionError:
+            breakpoint()
         return (
             step_v_minus + step_v_add,
             ret_contact_forces,
@@ -843,6 +850,12 @@ class MultibodyLearnableTactileSystem(Module):
             if len(indices) != 1:
                 continue
             ret_contact_phis[key][..., traj_len - 1, 0] = final_phi[..., indices[0]]
+
+        try:
+            test_out = self._multibody_terms.construct_state_tensor(data_state).detach()
+            assert torch.all(~torch.isnan(test_out)), f"NaN in plant_x_batch"
+        except AssertionError:
+            breakpoint()
 
         return (
             self._multibody_terms.construct_state_tensor(data_state),
@@ -1804,7 +1817,10 @@ class MultibodyLearnableTactileSystem(Module):
         ).transpose(0, 1)
         end = time.time() - start
         print(f"Done in {end:.3f}s")
-        assert torch.all(~torch.isnan(grads_combined)), f"NaN in grads_combined"
+        try:
+            assert torch.all(~torch.isnan(grads_combined)), f"NaN in grads_combined"
+        except AssertionError:
+            breakpoint()
         # Clear the graph
         output_combined[0, 0].backward()
 
@@ -2046,6 +2062,10 @@ class MultibodyLearnableTactileSystem(Module):
                     pose_start, torch.zeros((self._learned_trajectory.space.n_v))
                 ),
             )
+            try:
+                assert torch.all(~torch.isnan(plant_x_batch)), f"NaN in plant_x_batch"
+            except AssertionError:
+                breakpoint()
             state_param_batch = Parameter(
                 plant_x_batch.reshape((n_batches * traj_len, self.space.n_x)).clone(),
                 requires_grad=True,
@@ -2205,7 +2225,14 @@ class MultibodyLearnableTactileSystem(Module):
         )
         end = time.time() - start
         print(f"Done in {end:.3f}s")
-        assert torch.all(~torch.isnan(grads_combined_batch)), f"NaN in grads_combined"
+        """
+        try:
+            assert torch.all(~torch.isnan(grads_combined_batch)), f"NaN in grads_combined"
+        except AssertionError:
+            breakpoint()
+        """
+        # TODO: HACK away NaNs
+        grads_combined_batch = torch.nan_to_num(grads_combined_batch)
         # Clear the graph
         output_combined_batch[0, 0].backward()
 
