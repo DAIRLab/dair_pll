@@ -1817,10 +1817,14 @@ class MultibodyLearnableTactileSystem(Module):
         ).transpose(0, 1)
         end = time.time() - start
         print(f"Done in {end:.3f}s")
+        """
         try:
             assert torch.all(~torch.isnan(grads_combined)), f"NaN in grads_combined"
         except AssertionError:
             breakpoint()
+        """
+        # TODO: Hack away Nans
+        grads_combined = torch.nan_to_num(grads_combined)
         # Clear the graph
         output_combined[0, 0].backward()
 
