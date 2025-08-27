@@ -47,7 +47,7 @@ from dair_pll.learnable_trajectory import LearnableTrajectories
 from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
 from dair_pll.solvers import jaxopt_solver, DynamicCvxpyLCQPLayer
 from dair_pll.state_space import StateSpace, ProductSpace
-from dair_pll.tensor_utils import pbmm, broadcast_lorentz, sappy_reorder_mat
+from dair_pll.tensor_utils import pbmm, broadcast_lorentz, sappy_reorder_mat, stable_inv
 
 
 @gin.constants_from_enum
@@ -1701,11 +1701,6 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape((1, self.space.n_x, self.space.n_x))
             .repeat((traj_len, 1, 1))
         )
-        jac_xnp_xz = (
-            torch.eye(self.space.n_x)
-            .reshape((1, self.space.n_x, self.space.n_x))
-            .repeat((traj_len, 1, 1))
-        )
         outputs_phi = []
         outputs_normals = []
         outputs_forces = []
@@ -1829,7 +1824,6 @@ class MultibodyLearnableTactileSystem(Module):
         output_combined[0, 0].backward()
 
         print(f"Calc Jacobians... ", end="")
-        debug_jac_partial_out_geoms = []
         start = time.time()
         for idx in range(traj_len):
             # Populate partial d(outputs)/d(x_n)
@@ -1842,22 +1836,19 @@ class MultibodyLearnableTactileSystem(Module):
             jac_partial_out_geom = grads_combined[
                 idx, self.space.n_x :, self.space.n_x :
             ]  # n_phis x n_geom
-            jac_outs_params[idx, :, self.space.n_x :] = jac_partial_out_geom.clone()
-            debug_jac_partial_out_geoms.append(jac_partial_out_geom.clone())
+            jac_outs_params[idx, :, self.space.n_x :] = jac_partial_out_geom
 
             # No need to deal with x_{n+1} (past horizon)
             if idx < traj_len - 1:
-                # Update d(xT)/d(xt) for all previous timesteps to be d(xn+1)/d(xt)
+                # Populate d(xn+1)/d(xt)
                 jac_xnp_xn[idx, :, :] = grads_combined[
                     idx, : self.space.n_x, : self.space.n_x
                 ]  # n_x x n_x
 
+                # Update d(xH)/d(xt) forall t
                 jac_xf_xn[: idx + 1, :, :] = (
                     jac_xnp_xn[idx, :, :].unsqueeze(-3) @ jac_xf_xn[: idx + 1, :, :]
                 )
-
-                jac_xn_xz = jac_xnp_xz[idx:, :, :]
-                jac_xnp_xz[idx:, :, :] = jac_xnp_xn[idx, :, :].unsqueeze(-3) @ jac_xn_xz
 
                 # Populate partial d(x_[n+1])/d(geom)
                 jac_partial_xnp_geom[..., idx, :, :] = grads_combined[
@@ -1868,43 +1859,32 @@ class MultibodyLearnableTactileSystem(Module):
             ###           also have all outputs
 
         assert torch.all(~torch.isnan(jac_outs_params)), "NaN in jac_outs_params"
-        ### Compute jac_xz_geom
-        jac_xz_geom = torch.zeros((self.space.n_x, n_geom))
-        for idx in range(traj_len):
-            # pylint doesn't know about torch
-            # pylint: disable-next=not-callable
-            jac_xz_geom -= torch.linalg.solve(
-                (
-                    torch.round(jac_xnp_xz[idx, :, :], decimals=3)
-                    + self._hyperparameters.rsim_eps * torch.eye(self.space.n_x)
-                ),
-                jac_partial_xnp_geom[idx, :, :],
-            )
-
-        ### Compute jac_out_geom total instead of partial
-        jac_xn_geom = jac_xz_geom.clone()
-        for idx in range(traj_len):
-            jac_out_xn = jac_outs_params[idx, :, : self.space.n_x]
+        for idx in reversed(range(traj_len)):
+            # Compute d(xn)/d(geom)
+            jac_xn_geom = torch.zeros((self.space.n_x, n_geom))
+            jac_xn2_xn = torch.eye(self.space.n_x)
+            for idx2 in range(idx, traj_len-1):
+                jac_xn2_xn = jac_xnp_xn[idx2] @ jac_xn2_xn
+                jac_partial_xn2_geom = jac_partial_xnp_geom[idx2]
+                jac_xn_geom -= stable_inv(jac_xn2_xn, self._hyperparameters.rsim_eps) @ jac_partial_xn2_geom
+            # Populate total derivative of jac_out_geom
             jac_partial_out_geom = jac_outs_params[idx, :, self.space.n_x :]
-
-            jac_outs_params[idx, :, self.space.n_x :] = (
-                jac_partial_out_geom + jac_out_xn @ jac_xn_geom
+            jac_partial_out_xn = jac_outs_params[idx, :, : self.space.n_x]
+            jac_out_geom = (
+                jac_partial_out_geom + jac_partial_out_xn @ jac_xn_geom
             )
-
-            if idx < traj_len - 1:
-                jac_xn_geom = (
-                    jac_partial_xnp_geom[idx, :, :]
-                    + jac_xnp_xn[idx, :, :] @ jac_xn_geom
-                )
+            jac_outs_params[idx, :, self.space.n_x :] = jac_out_geom
+            breakpoint()
 
         ### Compute jac_out_xh instead of jac_out_xn
-        for idx in range(traj_len):
-            jac_out_xn = jac_outs_params[idx, :, : self.space.n_x]
+        for idx in reversed(range(traj_len)):
+            jac_out_xn = jac_outs_params[idx, :, : self.space.n_x].clone()
             # jac_outs_xT @ jac_xf_xn = jac_outs_xn
             # jac_xf_xn.T @ jac_outs_xT.T = jac_outs_xn.T
             # jac_outs_xT.T = inv(jac_xf_xn.T) @ jac_outs_xn.T
             # pylint doesn't know about torch
             # pylint: disable-next=not-callable
+            """
             jac_out_xh = torch.linalg.solve(
                 (
                     torch.round(jac_xf_xn[idx, :, :], decimals=3).transpose(-1, -2)
@@ -1912,7 +1892,10 @@ class MultibodyLearnableTactileSystem(Module):
                 ),
                 jac_out_xn.transpose(-1, -2),
             ).transpose(-1, -2)
+            """
+            jac_out_xh = jac_out_xn @ stable_inv(jac_xf_xn[idx].T, self._hyperparameters.rsim_eps)
             jac_outs_params[idx, :, : self.space.n_x] = jac_out_xh
+            # breakpoint()
 
         # Switch to position parameter only
         n_params = n_geom + self._learned_trajectory.space.n_q
@@ -1925,7 +1908,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
         # TODO: Make Hyperparameter
         # Clamp to 1e6 for stability
-        clamp_val = 1e2
+        clamp_val = 1e8
         print(f"... Done in {time.time() - start}s")
         print("Calculating info matrix...", end="")
         start = time.time()
@@ -1998,6 +1981,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ret_info += info_normals
         print(f"...Done in {(time.time()-start):.6f}s")
+        breakpoint()
         return ret_info
 
     def expected_fisher_info(

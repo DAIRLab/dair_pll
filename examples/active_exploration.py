@@ -184,23 +184,24 @@ def main(
                     first_contact = test_firstcontact
             except (IndexError, KeyError):  # e.g. object, time
                 continue
+        # Get entire desired trajectory
+        desired_traj = extract_robot_trajectory(
+            action_utils.interpolate_sampled_action(
+                data=torch.tensor(np.array(selected_knots)),
+                traj_len_s=(new_trajectory["time"][-1] - new_trajectory["time"][0]),
+                traj_n_steps=len(new_trajectory),
+            )[0],
+            learned_system,
+            trifinger_lcm,
+        )
+        # Crop to first contact
         new_trajectory = new_trajectory[first_contact:]
         add_trajectory = TensorDict({}, batch_size=new_trajectory.batch_size)
         add_trajectory["time"] = new_trajectory["time"]
         add_trajectory[learned_system.controlled_model_names[0] + "_state"] = (
             extract_robot_trajectory(new_trajectory, learned_system, trifinger_lcm)
         )
-        add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = (
-            extract_robot_trajectory(
-                action_utils.interpolate_sampled_action(
-                    data=torch.tensor(np.array(selected_knots)),
-                    traj_len_s=(new_trajectory["time"][-1] - new_trajectory["time"][0]),
-                    traj_n_steps=len(new_trajectory),
-                )[0],
-                learned_system,
-                trifinger_lcm,
-            )
-        )
+        add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = desired_traj[first_contact:]
         # TensorDict requires keys() call
         # pylint: disable=consider-using-dict-items
         for finger_name in new_trajectory.keys():
@@ -370,8 +371,8 @@ def main(
                 collect_data()
                 print("Visualizing...")
                 gui_vis.sweep()
-                print("Training...")
-                train_on_data(n_epochs=500)
+                #print("Training...")
+                #train_on_data(n_epochs=500)
                 print("Record Chamfer Distance...")
                 report_chamfer_dist()
                 print(f"Chamfer Distances So Far: {cham_dists}")

@@ -36,6 +36,18 @@ torch.utils.data._utils.collate.default_collate_fn_map[TensorDict] = (
 )
 
 
+### Stable Matrix Inversion using Cofactor
+
+def stable_inv(tensor: Tensor, epsilon: float = 1e-8):
+    """Stable inverse (up to epsilon) using Matrix Adjugate
+
+    tensor: (/*, matdim1, matdim2)
+    """
+    Us, Ss, Vs = torch.linalg.svd(tensor, full_matrices=False, driver="gesvd" if tensor.is_cuda else None)
+    Ss_clipped = Ss + (Ss < epsilon).float()*epsilon
+    return Vs.transpose(-1, -2) @ torch.diag_embed(torch.reciprocal(Ss_clipped)) @ Us.transpose(-1, -2)
+
+###
 def tensor_is_int(tensor: Tensor):
     """Returns true if tensor is of any torch integral type"""
     return (

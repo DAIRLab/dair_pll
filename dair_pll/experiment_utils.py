@@ -10,14 +10,14 @@ from scipy.spatial.transform import Rotation
 import trimesh
 import torch
 
-from dair_pll import action_utils
+from dair_pll import action_utils, dataset_management
 from dair_pll.action_utils import Action, ActionWorkspaceParams, action_to_knots
 from dair_pll.trifinger_utils import TrifingerLCMService
 from dair_pll.drake_system import DrakeSystem
 from dair_pll.hack_utils import extract_robot_trajectory
 from dair_pll.geometry import PydrakeToCollisionGeometryFactory, GeometryRepresentation
 from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactileSystem
-from dair_pll.dataset_management import TrajectorySet, obs_info_cache
+from dair_pll.dataset_management import TrajectorySet
 
 ### Evaluation Functions
 def get_true_geometry_and_mesh(sample_count: int = 1000) -> tuple[Shape, np.ndarray]:
@@ -163,24 +163,27 @@ def score_eig(
         learned_system,
         trifinger_lcm,
     )
-    # ignore object qw
-    fisher = learned_system.expected_fisher_info(
-        ctrl_desired=robot_traj,
-        timestamps=traj_time,
-    )[..., 1:, 1:]
 
     ## Weight by observed info, ignore object qw
-    if obs_info_cache is None:
+    if dataset_management.obs_info_cache is None:
         print("New Obs Info")
         obs_info = (
             torch.zeros_like(fisher[0])
             if len(data_trajectories.trajectories) == 0
             else learned_system.observed_info(data_trajectories)[..., 1:, 1:]
         )
+        dataset_management.obs_info_cache = obs_info
     else:
         print("Cached Obs Info")
-        obs_info = obs_info_cache
+        obs_info = dataset_management.obs_info_cache
     obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[0]))
+    
+    # ignore object qw
+    fisher = learned_system.expected_fisher_info(
+        ctrl_desired=robot_traj,
+        timestamps=traj_time,
+    )[..., 1:, 1:]
+
     fisher_obs_weighted = fisher @ obs_info_inv
     fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)
     print(f"Evaluated {len(fisher_traces)} actions in {(time.time()-start):.3f}s")
