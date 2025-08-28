@@ -46,6 +46,8 @@ install_reqs = [
     "trimesh",
     # Req for trimesh, not pip-tracked for some reason
     "rtree",
+    "trimesh",
+    "scikit-learn",
 ]
 
 try:

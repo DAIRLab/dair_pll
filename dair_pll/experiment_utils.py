@@ -19,6 +19,7 @@ from dair_pll.geometry import PydrakeToCollisionGeometryFactory, GeometryReprese
 from dair_pll.multibody_tactile_learnable_system import MultibodyLearnableTactileSystem
 from dair_pll.dataset_management import TrajectorySet
 
+
 ### Evaluation Functions
 def get_true_geometry_and_mesh(sample_count: int = 1000) -> tuple[Shape, np.ndarray]:
     """Get True Geometry from configured base system"""
@@ -32,7 +33,7 @@ def get_true_geometry_and_mesh(sample_count: int = 1000) -> tuple[Shape, np.ndar
         true_geom = inspector.GetShape(geom_id)
         if isinstance(true_geom, HalfSpace):
             continue
-        
+
         if isinstance(true_geom, Box):
             trimesh_mesh = trimesh.primitives.Box(extents=true_geom.size())
         elif isinstance(true_geom, Mesh):
@@ -177,7 +178,7 @@ def score_eig(
         print("Cached Obs Info")
         obs_info = dataset_management.obs_info_cache
     obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[0]))
-    
+
     # ignore object qw
     fisher = learned_system.expected_fisher_info(
         ctrl_desired=robot_traj,

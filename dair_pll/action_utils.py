@@ -210,12 +210,9 @@ class ActionCEM:
                 vis_fn(batch_actions)
 
             ## Score each action and sort
-            try:
-                _, sorted_actions = zip(
-                    *sorted(zip(score_fn(batch_actions), batch_actions), reverse=True)
-                )
-            except TypeError:
-                breakpoint()
+            _, sorted_actions = zip(
+                *sorted(zip(score_fn(batch_actions), batch_actions), reverse=True)
+            )
 
             ## Take best N actions and create new mean and covariance
             best_actions = sorted_actions[: self._n_dist]

@@ -93,7 +93,9 @@ class TrajectorySliceDataset(Dataset):
             self.future_states_slices[idx + self.first_idx],
         )
 
+
 OBS_INFO_CACHE = None
+
 
 @dataclass
 class TrajectorySet:

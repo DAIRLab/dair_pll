@@ -252,6 +252,7 @@ class MultibodyLearnableTactileSystem(Module):
         step_u: Tensor,
         step_dt: Tensor,
         multibody_params: dict[str, Tensor],
+        all_phis: bool = False,
     ) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
@@ -377,14 +378,15 @@ class MultibodyLearnableTactileSystem(Module):
         ret_contact_normals = {}  # Dict[Tuple[str, str], Tensor]
         ret_phis = {}  # Dict[Tuple[str, str], Tensor]
         for key in obj_pair_list:
-            if obj_pair_list.count(key) == 1:
-                # vmap doesn't support in-place operations
-                # ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
-                # ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
-                index = np.array([i for i, x in enumerate(obj_pair_list) if x == key])[
-                    0
-                ]
-                ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1, 1))
+            if (not all_phis) and obj_pair_list.count(key) > 1:
+                continue
+            # vmap doesn't support in-place operations
+            # ret_contact_forces[key] = torch.zeros(batch_dims + (1, 3))
+            # ret_contact_normals[key] = torch.zeros(batch_dims + (1, 3))
+            indices = [i for i, x in enumerate(obj_pair_list) if x == key]
+            for index_idx, index in enumerate(indices):
+                dict_key = key if index_idx == 1 else (key, index_idx)
+                ret_phis[dict_key] = m_phi[..., index].reshape(batch_dims + (1, 1))
 
         ## Solve Impulses
         reorder_mat = sappy_reorder_mat(n_contacts)
@@ -414,15 +416,16 @@ class MultibodyLearnableTactileSystem(Module):
 
         ### Populate contact forces / normals
         for key in obj_pair_list:
-            if obj_pair_list.count(key) == 1:
-                indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
-                if len(indices) == 0:
-                    continue
-                assert len(indices) == 1
-                index = indices[0]
+            if (not all_phis) and obj_pair_list.count(key) > 1:
+                continue
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            for index_idx, index in enumerate(indices):
+                dict_key = key if index_idx == 1 else (key, index_idx)
                 fric_index = len(obj_pair_list) + 2 * index
                 mr_wf_i = mr_fw_list[index].transpose(-1, -2)
-                ret_contact_normals[key] = mr_wf_i[..., :, 2].unsqueeze(-2)
+                ret_contact_normals[dict_key] = mr_wf_i[..., :, 2].unsqueeze(-2)
                 # Force in contact_frame
                 ret_contact_force_norm = impulse[..., index, 0] * torch.reciprocal(
                     dt
@@ -437,7 +440,7 @@ class MultibodyLearnableTactileSystem(Module):
                     dim=-1,
                 ).unsqueeze(-2)
                 # Rotate into world frame
-                ret_contact_forces[key] = pbmm(
+                ret_contact_forces[dict_key] = pbmm(
                     mr_wf_i, ret_contact_force.transpose(-1, -2)
                 ).transpose(-1, -2)
         ###
@@ -1643,6 +1646,495 @@ class MultibodyLearnableTactileSystem(Module):
         )
 
     def observed_info(self, traj_data: TrajectorySet) -> Tensor:
+        """Calculate Observed Information using ONLY partial derivatives
+
+        Args:
+            traj_data: Trajectory Data Collected
+
+        Returns:
+            Let n_params = len(current_learned_q) + len(self._multibody_terms.parameters())
+            Returns Observed Info Matrix: (n_params, n_params)
+        """
+
+        # pylint: disable=too-many-locals, too-many-statements
+
+        # TODO: generalize for >1 robot and object
+        assert len(self._controlled_model_names) == 1
+        assert len(self._learned_model_names) == 1
+
+        print("Calculating Observed Info")
+        print("Getting Current Pose Trajectory (no-diff)...")
+        start = time.time()
+        with torch.no_grad():
+            timestamps = traj_data.get_full_trajectory(key="time")
+            traj_len = timestamps.size()[0]
+            plant_x, plant_u, _, _, _ = self.forward(
+                ctrl_desired=traj_data.get_full_trajectory(
+                    key=self.controlled_model_names[0] + "_desired"
+                ),
+                timestamps=timestamps,
+                ctrl_actual=traj_data.get_full_trajectory(
+                    key=self.controlled_model_names[0] + "_state"
+                ),
+            )
+            state_param = Parameter(
+                plant_x.detach().clone(),
+                requires_grad=True,
+            )
+        print(f"... Done in {time.time() - start}s")
+
+        print("Calculating per-timestep gradients...")
+        start = time.time()
+        n_geom = sum(
+            param.numel()
+            for param in self._multibody_terms.parameters()
+            if param.requires_grad
+        )
+        n_params = n_geom + self.space.n_x
+        outputs_phi = []
+        outputs_normals = []
+
+        def get_vjp(param_list, outputs, v):
+            return torch.autograd.grad(
+                outputs,
+                param_list,
+                v,
+                create_graph=False,
+                retain_graph=True,
+            )
+
+        def get_outputs_from_step_geom(
+            step_dts: Tensor,
+            step_x_batch: Tensor,
+            plant_step_u: Tensor,
+            geom_param_dict: dict[str, Tensor],
+        ) -> Tensor:
+            _, _, step_normals_batch, step_phis_batch = (
+                self.forward_dynamics_functional(
+                    self.space.q(step_x_batch),
+                    self.space.v(step_x_batch),
+                    plant_step_u,
+                    step_dts,
+                    geom_param_dict,
+                    all_phis=True,
+                )
+            )
+            output_phi_batch = torch.stack(list(step_phis_batch.values()), dim=-2)
+            output_normals_batch = torch.stack(
+                list(step_normals_batch.values()), dim=-2
+            )
+
+            return (
+                output_phi_batch,
+                output_normals_batch,
+            )
+
+        # Get outputs for each timestep
+        print(f"Calc Outputs... ", end="")
+        start = time.time()
+        geom_param_dict = {
+            k: Parameter(
+                v.detach().unsqueeze(0).expand((traj_len,) + v.shape),
+                requires_grad=True,
+            )
+            for k, v in self._multibody_terms.state_dict(keep_vars=True).items()
+            if v.requires_grad == True
+        }
+        in_dims = (0, 0, 0, {k: 0 for k, _ in geom_param_dict.items()})
+        # Repeat final DT for simulating to traj_len + 1
+        step_dts = torch.cat(
+            [timestamps[1:] - timestamps[:-1], timestamps[-1:] - timestamps[-2:-1]]
+        )
+        outputs_phi, outputs_normals = torch.vmap(
+            get_outputs_from_step_geom,
+            in_dims=in_dims,
+            randomness="different",
+        )(step_dts, state_param, plant_u.detach(), geom_param_dict)
+        output_combined = torch.cat(
+            [
+                outputs_phi.reshape((traj_len, -1)),
+                outputs_normals.reshape((traj_len, -1)),
+            ],
+            dim=-1,
+        )
+        n_outs = output_combined.shape[-1]
+        jac_outs_params = torch.zeros((traj_len, n_outs, n_params))
+
+        grad_outputs = []
+        for n_out in range(n_outs):
+            grad_out = torch.zeros_like(output_combined.T)
+            grad_out[n_out, :] = torch.ones(traj_len)
+            grad_outputs.append(grad_out)
+        grad_outputs = torch.stack(grad_outputs)
+
+        end = time.time() - start
+        print(f"Done in {end:.3f}s")
+        print(f"Calc Autodiff... ", end="")
+        start = time.time()
+
+        vjp_vmap = torch.vmap(
+            partial(
+                get_vjp,
+                [state_param] + list(geom_param_dict.values()),
+                output_combined.T,
+            )
+        )
+        grads_ret = vjp_vmap(grad_outputs)
+        jac_outs_params = torch.cat(
+            [grad.reshape((n_outs, traj_len, -1)) for grad in grads_ret],
+            dim=-1,
+        ).transpose(0, 1)
+        end = time.time() - start
+        print(f"Done in {end:.3f}s")
+        try:
+            assert torch.all(~torch.isnan(jac_outs_params)), f"NaN in grads_combined"
+        except AssertionError:
+            breakpoint()
+        # Clear the graph
+        output_combined[0, 0].backward()
+
+        # Switch to position parameter only
+        n_params = n_geom + self._learned_trajectory.space.n_q
+        jac_outs_params = torch.cat(
+            [
+                self.get_learned_trajectory(jac_outs_params[..., : self.space.n_x]),
+                jac_outs_params[..., self.space.n_x :],
+            ],
+            dim=-1,
+        )
+
+        print(f"... Done in {time.time() - start}s")
+        print("Calculating info matrix...", end="")
+        start = time.time()
+        ret_info = torch.zeros((n_params, n_params))
+        # Extract Contact Boolean
+        phi_alpha = (
+            np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
+            / self._hyperparameters.w_phi_nominal
+        )
+        outputs_phi = outputs_phi.detach()
+        outputs_normals = outputs_normals.detach()
+
+        ### Phi Term
+        grads_phi = jac_outs_params[1:, : outputs_phi[0].numel()].reshape(
+            (traj_len - 1,) + outputs_phi.size()[1:] + (n_params,)
+        )
+        phi_mult = (
+            phi_alpha
+            * phi_alpha
+            * torch.exp(phi_alpha * outputs_phi[1:])
+            / torch.square(1.0 + torch.exp(phi_alpha * outputs_phi[1:]))
+        ).unsqueeze(-1)
+        info_phi = (
+            pbmm(grads_phi.transpose(-1, -2), pbmm(phi_mult, grads_phi))
+            .reshape((-1, n_params, n_params))
+            .sum(dim=0)
+        )
+        ret_info += info_phi
+
+        ### Normals Term
+        contact_bool = torch.reciprocal(
+            1.0 + torch.exp(phi_alpha * outputs_phi[1:])
+        ).unsqueeze(-1)
+        grads_normals = jac_outs_params[:-1, outputs_phi[0].numel() :].reshape(
+            (traj_len - 1,) + outputs_normals.size()[1:] + (n_params,)
+        )
+        info_normals = (
+            (
+                contact_bool
+                * (1.0 / self._hyperparameters.w_normal_var)
+                * pbmm(grads_normals.transpose(-1, -2), grads_normals)
+            )
+            .reshape((-1, n_params, n_params))
+            .sum(dim=0)
+        )
+        ret_info += info_normals
+        print(f"...Done in {(time.time()-start):.6f}s")
+        return ret_info
+
+    def expected_fisher_info(
+        self,
+        ctrl_desired: Tensor,
+        timestamps: Optional[Tensor] = None,
+        current_learned_q: Optional[Tensor] = None,
+    ) -> Tensor:
+        """Calculate Expected Fisher Information
+
+        Args:
+            ctrl_desired: Input desired robot trajectory of size (batch, traj_len, self._controlled_space.n_x)
+            timestamps: (traj_len,), if not provided use hyperparameters.default_dt
+            current_learned_q: (self._learned_trajectory.space.n_q,), if not provided use current state
+
+        Returns:
+            Let n_params = len(current_learned_q) + len(self._multibody_terms.parameters())
+            Returns Expected Fisher Info Matrices: (batch, n_params, n_params)
+        """
+
+        # pylint: disable=too-many-locals, too-many-statements
+        self.zero_grad()
+        print("Calculating Expected Information...")
+
+        # TODO: generalize for >1 robot and object
+        assert len(self._controlled_model_names) == 1
+        assert len(self._learned_model_names) == 1
+
+        # Input Validation
+        full_batch_dims = ctrl_desired.size()[:-2]
+        if len(full_batch_dims) < 1:
+            full_batch_dims = (1,)
+            ctrl_desired = ctrl_desired.unsqueeze(0)
+        n_batches = math.prod(full_batch_dims)
+        batch_dims = (n_batches,)
+        ctrl_desired = ctrl_desired.reshape(batch_dims + ctrl_desired.size()[-2:])
+
+        traj_len = ctrl_desired.size()[-2]
+        assert ctrl_desired.size() == batch_dims + (
+            traj_len,
+            self._controlled_space.n_x,
+        )
+        timestamps = (
+            torch.arange(
+                traj_len * self._hyperparameters.default_dt,
+                step=self._hyperparameters.default_dt,
+            )
+            if timestamps is None
+            else timestamps
+        )
+        assert timestamps.size() == (traj_len,)
+        pose_start = (
+            self._learned_trajectory.current_pose_params(traj_num=-1)
+            if current_learned_q is None
+            else current_learned_q.detach().clone()
+        )
+        assert pose_start.size() == (self._learned_trajectory.space.n_q,)
+
+        print("Getting Pose Trajectories (no-diff)...")
+        start = time.time()
+        with torch.no_grad():
+            plant_x_batch, plant_u_batch, _, _, _ = self.diff_simulate(
+                ctrl_desired,
+                timestamps,
+                learned_start_state=self._learned_trajectory.space.x(
+                    pose_start, torch.zeros((self._learned_trajectory.space.n_v))
+                ),
+            )
+            try:
+                assert torch.all(~torch.isnan(plant_x_batch)), f"NaN in plant_x_batch"
+            except AssertionError:
+                breakpoint()
+            state_param_batch = Parameter(
+                plant_x_batch.reshape((n_batches * traj_len, self.space.n_x)).clone(),
+                requires_grad=True,
+            )
+        print(f"... Done in {time.time() - start}s")
+
+        print("Calculating per-timestep gradients...")
+        n_geom = sum(
+            param.numel()
+            for param in self._multibody_terms.parameters()
+            if param.requires_grad
+        )
+        n_params = n_geom + self.space.n_x
+
+        def get_vjp(param_list, outputs, v):
+            return torch.autograd.grad(
+                outputs,
+                param_list,
+                v,
+                create_graph=False,
+                retain_graph=True,
+            )
+
+        def get_outputs_from_step_geom(
+            step_dts: Tensor,
+            step_x_batch: Tensor,
+            plant_step_u: Tensor,
+            geom_param_dict: dict[str, Tensor],
+        ) -> Tensor:
+            step_vplus_batch, step_forces_batch, step_normals_batch, step_phis_batch = (
+                self.forward_dynamics_functional(
+                    self.space.q(step_x_batch),
+                    self.space.v(step_x_batch),
+                    plant_step_u,
+                    step_dts,
+                    geom_param_dict,
+                    all_phis=True,
+                )
+            )
+            output_phi_batch = torch.cat(list(step_phis_batch.values()), dim=-2)
+            output_normals_batch = torch.cat(list(step_normals_batch.values()), dim=-2)
+
+            return (
+                output_phi_batch,
+                output_normals_batch,
+            )
+
+        # Get outputs for each timestep
+        print(f"Calc Outputs... ", end="")
+        start = time.time()
+        geom_param_dict = {
+            k: Parameter(
+                v.detach().unsqueeze(0).expand((n_batches * traj_len,) + v.shape),
+                requires_grad=True,
+            )
+            for k, v in self._multibody_terms.state_dict(keep_vars=True).items()
+            if v.requires_grad == True
+        }
+        in_dims = (0, 0, 0, {k: 0 for k, _ in geom_param_dict.items()})
+        # Repeat final DT for simulating to traj_len + 1
+        step_dts = (
+            torch.cat(
+                [timestamps[1:] - timestamps[:-1], timestamps[-1:] - timestamps[-2:-1]]
+            )
+            .unsqueeze(0)
+            .expand((n_batches, traj_len))
+            .flatten()
+        )
+        outputs_phi, outputs_normals = torch.vmap(
+            get_outputs_from_step_geom,
+            in_dims=in_dims,
+            randomness="different",
+        )(
+            step_dts,
+            state_param_batch,
+            plant_u_batch.reshape((n_batches * traj_len, -1)),
+            geom_param_dict,
+        )
+        output_combined_batch = torch.cat(
+            [
+                outputs_phi.reshape((n_batches * traj_len, -1)),
+                outputs_normals.reshape((n_batches * traj_len, -1)),
+            ],
+            dim=-1,
+        )
+        n_outs = output_combined_batch.shape[-1]
+        jac_outs_params_batch = torch.zeros(batch_dims + (traj_len, n_outs, n_params))
+
+        end = time.time() - start
+        print(f"Done in {end:.3f}s")
+        print(f"Calc Autodiff... ", end="")
+        start = time.time()
+
+        grad_outputs = []
+        for n_out in range(n_outs):
+            grad_out = torch.zeros_like(output_combined_batch.T)
+            grad_out[n_out, :] = torch.ones(n_batches * traj_len)
+            grad_outputs.append(grad_out)
+        grad_outputs = torch.stack(grad_outputs)
+
+        vjp_vmap = torch.vmap(
+            partial(
+                get_vjp,
+                [state_param_batch] + list(geom_param_dict.values()),
+                output_combined_batch.T,
+            )
+        )
+        grads_ret_batch = vjp_vmap(grad_outputs)
+        jac_outs_params_batch = (
+            torch.cat(
+                [
+                    grad.reshape((n_outs, n_batches * traj_len, -1))
+                    for grad in grads_ret_batch
+                ],
+                dim=-1,
+            )
+            .transpose(0, 1)
+            .reshape((n_batches, traj_len, n_outs, -1))
+        )
+        end = time.time() - start
+        print(f"Done in {end:.3f}s")
+        try:
+            assert torch.all(
+                ~torch.isnan(jac_outs_params_batch)
+            ), f"NaN in grads_combined"
+        except AssertionError:
+            breakpoint()
+
+        # Clear the graph
+        output_combined_batch[0, 0].backward()
+
+        # Switch to position parameter only
+        n_params = n_geom + self._learned_trajectory.space.n_q
+        jac_outs_params_batch = torch.cat(
+            [
+                self.get_learned_trajectory(
+                    jac_outs_params_batch[..., : self.space.n_x]
+                ),
+                jac_outs_params_batch[..., self.space.n_x :],
+            ],
+            dim=-1,
+        )
+
+        print("Calculating info matrix...")
+        start = time.time()
+        outputs_phi_batch = outputs_phi.detach().reshape(
+            (
+                n_batches,
+                traj_len,
+            )
+            + outputs_phi.shape[1:]
+        )
+        outputs_normals_batch = outputs_normals.detach().reshape(
+            (
+                n_batches,
+                traj_len,
+            )
+            + outputs_normals.shape[1:]
+        )
+
+        # TODO: consider returning a batch of gradients instead
+        ret_info_batch = torch.zeros(batch_dims + (n_params, n_params))
+        # Extract Contact Boolean
+        phi_alpha = (
+            np.log((1.0 / self._hyperparameters.w_phi_ci) - 1.0)
+            / self._hyperparameters.w_phi_nominal
+        )
+        ### Phi Term
+        n_contacts = outputs_phi_batch.size()[-2]
+        grads_phi_batch = jac_outs_params_batch[..., 1:, :n_contacts, :].reshape(
+            batch_dims + (traj_len - 1, n_contacts, 1, n_params)
+        )
+        phi_mult_batch = (
+            phi_alpha
+            * phi_alpha
+            * torch.exp(phi_alpha * outputs_phi_batch[..., 1:, :, :])
+            / torch.square(
+                1.0 + torch.exp(phi_alpha * outputs_phi_batch[..., 1:, :, :])
+            )
+        ).unsqueeze(-1)
+        # Nan -> inf/inf, but lim(outputs_phi -> inf) == 0
+        phi_mult_batch[torch.isnan(phi_mult_batch)] = 0.0
+
+        info_phi_batch = (
+            pbmm(
+                grads_phi_batch.transpose(-1, -2), pbmm(phi_mult_batch, grads_phi_batch)
+            )
+            .reshape(batch_dims + (-1, n_params, n_params))
+            .sum(dim=-3)
+        )
+        ret_info_batch += info_phi_batch
+
+        ### Normals Term
+        contact_bool_batch = torch.reciprocal(
+            1.0 + torch.exp(phi_alpha * outputs_phi_batch[..., 1:, :, :])
+        ).unsqueeze(-1)
+        grads_normals_batch = jac_outs_params_batch[..., :-1, n_contacts:, :].reshape(
+            batch_dims + (traj_len - 1, n_contacts, 3, n_params)
+        )
+        info_normals_batch = (
+            (
+                contact_bool_batch
+                * (1.0 / self._hyperparameters.w_normal_var)
+                * pbmm(grads_normals_batch.transpose(-1, -2), grads_normals_batch)
+            )
+            .reshape(batch_dims + (-1, n_params, n_params))
+            .sum(dim=-3)
+        )
+        ret_info_batch += info_normals_batch
+        print(f"...Done in {(time.time()-start):.6f}s")
+        return ret_info_batch
+
+    def observed_info_full(self, traj_data: TrajectorySet) -> Tensor:
         """Calculate Observed Information
 
         Args:
@@ -1863,16 +2355,17 @@ class MultibodyLearnableTactileSystem(Module):
             # Compute d(xn)/d(geom)
             jac_xn_geom = torch.zeros((self.space.n_x, n_geom))
             jac_xn2_xn = torch.eye(self.space.n_x)
-            for idx2 in range(idx, traj_len-1):
+            for idx2 in range(idx, traj_len - 1):
                 jac_xn2_xn = jac_xnp_xn[idx2] @ jac_xn2_xn
                 jac_partial_xn2_geom = jac_partial_xnp_geom[idx2]
-                jac_xn_geom -= stable_inv(jac_xn2_xn, self._hyperparameters.rsim_eps) @ jac_partial_xn2_geom
+                jac_xn_geom -= (
+                    stable_inv(jac_xn2_xn, self._hyperparameters.rsim_eps)
+                    @ jac_partial_xn2_geom
+                )
             # Populate total derivative of jac_out_geom
             jac_partial_out_geom = jac_outs_params[idx, :, self.space.n_x :]
             jac_partial_out_xn = jac_outs_params[idx, :, : self.space.n_x]
-            jac_out_geom = (
-                jac_partial_out_geom + jac_partial_out_xn @ jac_xn_geom
-            )
+            jac_out_geom = jac_partial_out_geom + jac_partial_out_xn @ jac_xn_geom
             jac_outs_params[idx, :, self.space.n_x :] = jac_out_geom
             breakpoint()
 
@@ -1893,7 +2386,9 @@ class MultibodyLearnableTactileSystem(Module):
                 jac_out_xn.transpose(-1, -2),
             ).transpose(-1, -2)
             """
-            jac_out_xh = jac_out_xn @ stable_inv(jac_xf_xn[idx].T, self._hyperparameters.rsim_eps)
+            jac_out_xh = jac_out_xn @ stable_inv(
+                jac_xf_xn[idx].T, self._hyperparameters.rsim_eps
+            )
             jac_outs_params[idx, :, : self.space.n_x] = jac_out_xh
             # breakpoint()
 
@@ -1984,7 +2479,7 @@ class MultibodyLearnableTactileSystem(Module):
         breakpoint()
         return ret_info
 
-    def expected_fisher_info(
+    def expected_fisher_info_full(
         self,
         ctrl_desired: Tensor,
         timestamps: Optional[Tensor] = None,

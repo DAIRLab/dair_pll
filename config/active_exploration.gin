@@ -94,16 +94,16 @@ TactileSystem.learnable_body_dict = {
 # Initial guesses
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.04, # m
-	"length_y": 0.04, # m
-	"length_z": 0.04, # m
+	"length_x": 0.01, # m
+	"length_y": 0.01, # m
+	"length_z": 0.01, # m
 	"mu": 0.1,
 	"planar_xz": "false",
 }
 
 TactileSystem.init_learned_state = [
 	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.0, 0.0, 0.02,     # XYZ
+	0.02, 0.02, 0.02,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]

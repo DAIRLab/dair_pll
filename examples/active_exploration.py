@@ -138,11 +138,15 @@ def main(
 
     def select_action():
         nonlocal selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
-        #score_fn = experiment_utils.score_random
-        score_fn = partial(experiment_utils.score_eig, action_params, learned_system, data_trajectories, trifinger_lcm)
-        selected_action = action_cem.best_action(
-            score_fn=score_fn, vis_fn=action_vis
+        # score_fn = experiment_utils.score_random
+        score_fn = partial(
+            experiment_utils.score_eig,
+            action_params,
+            learned_system,
+            data_trajectories,
+            trifinger_lcm,
         )
+        selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=action_vis)
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params, [selected_action], obj_pose_guess
@@ -201,7 +205,9 @@ def main(
         add_trajectory[learned_system.controlled_model_names[0] + "_state"] = (
             extract_robot_trajectory(new_trajectory, learned_system, trifinger_lcm)
         )
-        add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = desired_traj[first_contact:]
+        add_trajectory[learned_system.controlled_model_names[0] + "_desired"] = (
+            desired_traj[first_contact:]
+        )
         # TensorDict requires keys() call
         # pylint: disable=consider-using-dict-items
         for finger_name in new_trajectory.keys():
@@ -371,8 +377,8 @@ def main(
                 collect_data()
                 print("Visualizing...")
                 gui_vis.sweep()
-                #print("Training...")
-                #train_on_data(n_epochs=500)
+                print("Training...")
+                train_on_data(n_epochs=500)
                 print("Record Chamfer Distance...")
                 report_chamfer_dist()
                 print(f"Chamfer Distances So Far: {cham_dists}")
