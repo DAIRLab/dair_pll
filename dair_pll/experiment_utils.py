@@ -2,6 +2,7 @@
 
 """Utility functions for running the experiment"""
 import time
+from typing import Optional
 
 import numpy as np
 from pydrake.geometry import HalfSpace, Box, Mesh, Shape
@@ -149,12 +150,16 @@ def score_eig(
     learned_system: MultibodyLearnableTactileSystem,
     data_trajectories: TrajectorySet,
     trifinger_lcm: TrifingerLCMService,
+    force_finger: int,
     actions: list[Action],
 ) -> list[float]:
     """Score is EIG"""
     start = time.time()
     action_knots = action_to_knots(
-        params, actions, learned_system.get_learned_centroid()
+        params,
+        actions,
+        learned_system.get_learned_centroid(),
+        force_finger=force_finger,
     )
     traj_x, traj_time = action_utils.interpolate_sampled_action(
         data=torch.tensor(action_knots)
@@ -184,6 +189,8 @@ def score_eig(
         ctrl_desired=robot_traj,
         timestamps=traj_time,
     )[..., 1:, 1:]
+
+    # breakpoint()
 
     fisher_obs_weighted = fisher @ obs_info_inv
     fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)

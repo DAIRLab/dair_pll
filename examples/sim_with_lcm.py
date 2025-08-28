@@ -253,27 +253,34 @@ class DensetactIOSystem(LeafSystem):
             force_W = np.array(avg_contact["force"][body_idx]) + self._rng.normal(
                 0.0, self._force_std, 3
             )
-            point = np.array(avg_contact["point"][body_idx]) - fingertip_pose_W
-            normal_W = np.array(avg_contact["normal"][body_idx])
+            point_W = np.array(avg_contact["point"][body_idx])
+            point_C = point_W - fingertip_pose_W
+            # Normal is just wrong for some reason, get it from point instead
+            normal_W_old = np.array(avg_contact["normal"][body_idx])
+            normal_W = -point_C / np.linalg.norm(point_C)
             normal_norm = np.linalg.norm(normal_W)
             if np.isclose(normal_norm, 1.0):
-                normal_W += self._rng.normal(0.0, self._normal_std, 3)
+                # normal_W += self._rng.normal(0.0, self._normal_std, 3)
                 normal_W = normal_W / np.linalg.norm(normal_W)
+                # print(f"Normal Vector: {normal_W}")
             measurement.timestamp = utime
             measurement.inContact = not np.all(
-                np.isclose(normal_W, np.zeros_like(normal_W))
+                np.isclose(normal_W_old, np.zeros_like(normal_W_old))
             )
             if measurement.inContact:
                 R_CW = DensetactIOSystem.rotation_matrix_from_vectors(
                     np.array([0.0, 0.0, 1.0]), normal_W
                 )
-                assert not np.any(np.isnan(R_CW))
+                try:
+                    assert not np.any(np.isnan(R_CW))
+                except AssertionError:
+                    breakpoint()
                 for idx in range(3):
                     for jdx in range(3):
                         # Copy Rotation of body frame -> contact frame
                         measurement.contactFrame[idx][jdx] = R_CW[idx][jdx]
                     # Copy Translation, i.e., contact point in body frame
-                    measurement.contactFrame[idx][3] = point[idx]
+                    measurement.contactFrame[idx][3] = point_C[idx]
                 measurement.contactFrame[3][3] = 1.0  # Valid affine transform
                 # Force in contact frame
                 force_C = R_CW.T.dot(force_W)

@@ -295,7 +295,7 @@ class ContactForceAveragerLeafSystem(LeafSystem):
         )  # Averaged Forces
         self._point_normal_index = self.DeclareAbstractState(
             Value(point_normal_pair_dict)
-        )  # Averaged Forces
+        )  # Averaged Normals
         self._n_index = self.DeclareDiscreteState(1)  # Number of samples in average
 
         self.DeclareAbstractOutputPort(

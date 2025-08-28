@@ -27,6 +27,7 @@ import math
 import time
 from typing import override, Optional, cast, Union
 
+import diffcp
 import gin
 import numpy as np
 import pydrake
@@ -42,7 +43,11 @@ from dair_pll.drake_utils import (
     unique_body_identifier,
     get_bodies_in_model_instance,
 )
-from dair_pll.geometry import CollisionGeometry, PydrakeToCollisionGeometryFactory
+from dair_pll.geometry import (
+    CollisionGeometry,
+    PydrakeToCollisionGeometryFactory,
+    _NOMINAL_HALF_LENGTH,
+)
 from dair_pll.learnable_trajectory import LearnableTrajectories
 from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
 from dair_pll.solvers import jaxopt_solver, DynamicCvxpyLCQPLayer
@@ -253,6 +258,7 @@ class MultibodyLearnableTactileSystem(Module):
         step_dt: Tensor,
         multibody_params: dict[str, Tensor],
         all_phis: bool = False,
+        no_sim: bool = False,
     ) -> Tensor:
         r"""Calculates delta velocity from current state and input.
 
@@ -388,6 +394,27 @@ class MultibodyLearnableTactileSystem(Module):
                 dict_key = key if index_idx == 1 else (key, index_idx)
                 ret_phis[dict_key] = m_phi[..., index].reshape(batch_dims + (1, 1))
 
+        ## Populate Contact Normals
+        for key in obj_pair_list:
+            if (not all_phis) and obj_pair_list.count(key) > 1:
+                continue
+            indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
+            if len(indices) == 0:
+                continue
+            for index_idx, index in enumerate(indices):
+                dict_key = key if index_idx == 1 else (key, index_idx)
+                fric_index = len(obj_pair_list) + 2 * index
+                mr_wf_i = mr_fw_list[index].transpose(-1, -2)
+                ret_contact_normals[dict_key] = mr_wf_i[..., :, 2].unsqueeze(-2)
+
+        if no_sim:
+            return (
+                None,
+                None,
+                ret_contact_normals,
+                ret_phis,
+            )
+
         ## Solve Impulses
         reorder_mat = sappy_reorder_mat(n_contacts)
         reorder_mat = reorder_mat.reshape(
@@ -414,7 +441,7 @@ class MultibodyLearnableTactileSystem(Module):
             m_mass, pbmm(m_jac.transpose(-1, -2), impulse)
         ).squeeze(-1)
 
-        ### Populate contact forces / normals
+        ### Populate contact forces
         for key in obj_pair_list:
             if (not all_phis) and obj_pair_list.count(key) > 1:
                 continue
@@ -425,7 +452,6 @@ class MultibodyLearnableTactileSystem(Module):
                 dict_key = key if index_idx == 1 else (key, index_idx)
                 fric_index = len(obj_pair_list) + 2 * index
                 mr_wf_i = mr_fw_list[index].transpose(-1, -2)
-                ret_contact_normals[dict_key] = mr_wf_i[..., :, 2].unsqueeze(-2)
                 # Force in contact_frame
                 ret_contact_force_norm = impulse[..., index, 0] * torch.reciprocal(
                     dt
@@ -519,7 +545,7 @@ class MultibodyLearnableTactileSystem(Module):
         """
         # pylint: disable=too-many-locals\
         if solver is None:
-            solver = self._solver
+            solver = self._solver_learn
 
         # Input Validation
         batch_dims = step_q.size()[:-1]
@@ -532,15 +558,6 @@ class MultibodyLearnableTactileSystem(Module):
             dt[step_dt_expanded < self._hyperparameters.dt_thresh] = step_dt_expanded[
                 step_dt_expanded < self._hyperparameters.dt_thresh
             ]
-
-        # TODO: Can safely return 0s if above threshold
-        # if dt > self._hyperparameters.dt_thresh:
-        #    return (
-        #        torch.zeros_like(step_v),
-        #        ret_contact_forces,
-        #        ret_contact_normals,
-        #        ret_phis,
-        #    )
 
         assert dt.size() == batch_dims + (1,)
         phi_eps = 1e-2
@@ -582,6 +599,14 @@ class MultibodyLearnableTactileSystem(Module):
                     0
                 ]
                 ret_phis[key] = m_phi[..., index].reshape(batch_dims + (1, 1))
+        # TODO: Can safely return 0s if above threshold
+        # if dt > self._hyperparameters.dt_thresh:
+        #    return (
+        #        torch.zeros_like(step_v),
+        #        ret_contact_forces,
+        #        ret_contact_normals,
+        #        ret_phis,
+        #    )
 
         ## Solve Impulses
         reorder_mat = sappy_reorder_mat(n_contacts)
@@ -609,7 +634,7 @@ class MultibodyLearnableTactileSystem(Module):
             m_mass, pbmm(m_jac.transpose(-1, -2), impulse)
         ).squeeze(-1)
 
-        ### Populate contact forces / normals
+        ### Populate contact forces
         for key, ret_contact_force in ret_contact_forces.items():
             indices = np.array([i for i, x in enumerate(obj_pair_list) if x == key])
             if len(indices) == 0:
@@ -634,6 +659,18 @@ class MultibodyLearnableTactileSystem(Module):
             ).transpose(-1, -2)
         ###
 
+        # Zero out bad dts
+        try:
+            mask = (step_dt_expanded < self._hyperparameters.dt_thresh).float()
+            step_v_minus *= mask
+            step_v_add *= mask
+            for key in ret_contact_forces.keys():
+                ret_contact_forces[key] *= mask.unsqueeze(-1)
+                ret_contact_normals[key] *= mask.unsqueeze(-1)
+                # Keep Phis
+        except RuntimeError:
+            breakpoint()
+
         try:
             assert torch.all(~torch.isnan(step_v_minus)), f"NaN in plant_x_batch"
             assert torch.all(~torch.isnan(step_v_add)), f"NaN in plant_x_batch"
@@ -652,6 +689,7 @@ class MultibodyLearnableTactileSystem(Module):
         timestamps: Optional[Tensor],
         ctrl_actual: Optional[Tensor] = None,
         learned_start_state: Optional[Tensor] = None,
+        solver=None,
     ) -> tuple[
         Tensor,
         Tensor,
@@ -793,7 +831,9 @@ class MultibodyLearnableTactileSystem(Module):
             # print(f"With robot_state: {data_state[..., sim_idx - 1]["robot_state"].detach().cpu().numpy()}")
             # print(f"With cube_state: {data_state[..., sim_idx - 1]["cube_state"].detach().cpu().numpy()}")
             step_vplus, step_contact_forces, step_contact_normals, step_contact_phis = (
-                self.forward_dynamics(step_q, step_v, torch.cat(step_u, dim=-1), sim_dt)
+                self.forward_dynamics(
+                    step_q, step_v, torch.cat(step_u, dim=-1), sim_dt, solver=solver
+                )
             )
             data_state[..., sim_idx] = (
                 self._multibody_terms.model_states_from_state_tensor(
@@ -1222,6 +1262,9 @@ class MultibodyLearnableTactileSystem(Module):
         # pylint: disable=too-many-arguments, too-many-positional-arguments,
         # pylint: disable=too-many-statements, too-many-locals
 
+        # TODO: Make Hyperparameter
+        eps = 1e-6
+
         # Input Validation
         batch_dims = plant_x.size()[:-2]
         traj_len = plant_x.size()[-2]
@@ -1294,7 +1337,7 @@ class MultibodyLearnableTactileSystem(Module):
                 torch.inverse(m_mass[..., velocity_mask, :][..., velocity_mask]),
                 m_jac[..., velocity_mask].transpose(-1, -2),
             ),
-        ) + torch.finfo(m_delassus.dtype).eps * torch.eye(
+        ) + eps * torch.eye(
             3 * n_contacts
         )  # Units: Energy. Must be positive-definite
         q_v_pred = -pbmm(
@@ -1325,8 +1368,7 @@ class MultibodyLearnableTactileSystem(Module):
 
         # Need non-0 norm for Hessian calculation, hence add eps to norm()
         sliding_speeds = (
-            sliding_velocities.reshape(m_phi.shape[:-1] + (n_contacts, 2))
-            + torch.finfo(sliding_velocities.dtype).eps
+            sliding_velocities.reshape(m_phi.shape[:-1] + (n_contacts, 2)) + eps
         ).norm(dim=-1, keepdim=True)
 
         q_diss = torch.cat((sliding_speeds, sliding_velocities), dim=-2)
@@ -1475,8 +1517,7 @@ class MultibodyLearnableTactileSystem(Module):
         try:
             assert ret_loss["loss_v_pred"].size() == batch_dims + (traj_len - 1,)
             assert np.all(
-                ret_loss["loss_v_pred"].detach().cpu().numpy()
-                >= -torch.finfo(impulses.dtype).eps
+                ret_loss["loss_v_pred"].detach().cpu().numpy() >= -eps
             ), f"Velocity Prediction Loss Negative: {np.min(ret_loss["loss_v_pred"].detach().cpu().numpy())}"
         except AssertionError as error:
             print(f"WARNING: {error}")
@@ -1507,8 +1548,7 @@ class MultibodyLearnableTactileSystem(Module):
         ).squeeze(-1).squeeze(-1)
         assert ret_loss["loss_meas_force"].size() == batch_dims + (traj_len - 1,)
         assert np.all(
-            ret_loss["loss_meas_force"].detach().cpu().numpy()
-            >= -torch.finfo(impulses.dtype).eps
+            ret_loss["loss_meas_force"].detach().cpu().numpy() >= -eps
         ), "Contact Force Measurement Loss Negative"
 
         ### Loss: Prediction: Position (loss_q_pred)
@@ -1717,6 +1757,7 @@ class MultibodyLearnableTactileSystem(Module):
                     step_dts,
                     geom_param_dict,
                     all_phis=True,
+                    no_sim=True,
                 )
             )
             output_phi_batch = torch.stack(list(step_phis_batch.values()), dim=-2)
@@ -1769,6 +1810,7 @@ class MultibodyLearnableTactileSystem(Module):
 
         end = time.time() - start
         print(f"Done in {end:.3f}s")
+
         print(f"Calc Autodiff... ", end="")
         start = time.time()
 
@@ -1802,6 +1844,9 @@ class MultibodyLearnableTactileSystem(Module):
             ],
             dim=-1,
         )
+
+        # Scale by Nominal Half Length
+        jac_outs_params[..., -n_geom:] /= _NOMINAL_HALF_LENGTH
 
         print(f"... Done in {time.time() - start}s")
         print("Calculating info matrix...", end="")
@@ -1850,7 +1895,35 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ret_info += info_normals
         print(f"...Done in {(time.time()-start):.6f}s")
+        # breakpoint()
         return ret_info
+
+    @torch.no_grad
+    def learned_trajectory_sim_overwrite(
+        self,
+        traj_data: TrajectorySet,
+    ) -> None:
+        """Overwrite trajectory parameters with a simulation"""
+        # TODO: generalize for >1 robot and object
+        assert len(self._controlled_model_names) == 1
+        assert len(self._learned_model_names) == 1
+        timestamps = traj_data.get_full_trajectory(key="time")
+        ctrl_desired = traj_data.get_full_trajectory(
+            key=self.controlled_model_names[0] + "_desired"
+        )
+        try:
+            plant_x, _, _, _, _ = self.diff_simulate(
+                ctrl_desired,
+                timestamps,
+                learned_start_state=self._learned_trajectory.space.x(
+                    self._learned_trajectory.current_pose_params(traj_num=0),
+                    torch.zeros((self._learned_trajectory.space.n_v)),
+                ),
+            )
+            obj_q = self.get_learned_trajectory(plant_x)
+            self._learned_trajectory.overwrite_pose_params(obj_q)
+        except diffcp.cone_program.SolverError:
+            print("WARNING: Solver Errored, not overwriting parameters")
 
     def expected_fisher_info(
         self,
@@ -1909,6 +1982,11 @@ class MultibodyLearnableTactileSystem(Module):
         assert pose_start.size() == (self._learned_trajectory.space.n_q,)
 
         print("Getting Pose Trajectories (no-diff)...")
+        ### PROFILING
+        # import cProfile, pstats, io
+        # from pstats import SortKey
+        # pr = cProfile.Profile()
+        # pr.enable()
         start = time.time()
         with torch.no_grad():
             plant_x_batch, plant_u_batch, _, _, _ = self.diff_simulate(
@@ -1926,7 +2004,15 @@ class MultibodyLearnableTactileSystem(Module):
                 plant_x_batch.reshape((n_batches * traj_len, self.space.n_x)).clone(),
                 requires_grad=True,
             )
-        print(f"... Done in {time.time() - start}s")
+        end = time.time()
+        print(f"... Done in {end - start}s")
+        ### PROFILING
+        # s = io.StringIO()
+        # sortby = SortKey.CUMULATIVE
+        # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        # ps.print_stats(10)
+        # print(s.getvalue())
+        # breakpoint()
 
         print("Calculating per-timestep gradients...")
         n_geom = sum(
@@ -1958,7 +2044,8 @@ class MultibodyLearnableTactileSystem(Module):
                     plant_step_u,
                     step_dts,
                     geom_param_dict,
-                    all_phis=True,
+                    all_phis=False,
+                    no_sim=True,
                 )
             )
             output_phi_batch = torch.cat(list(step_phis_batch.values()), dim=-2)

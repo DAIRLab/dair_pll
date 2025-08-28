@@ -122,6 +122,25 @@ class LearnableTrajectories(Module):
             self._trajectories_q0[-1], self.space.v(self.space.zero_state())
         )
 
+    @torch.no_grad
+    def overwrite_pose_params(self, new_poses: Tensor) -> None:
+        """Overwrite current pose parameters with new data."""
+        assert new_poses.shape == (len(self), self.space.n_q)
+        self._trajectories_q0[0].set_(new_poses[0].detach().clone())
+        new_idx = 0
+        for traj_idx, traj_pose_param in enumerate(self._trajectories_q):
+            # Average earlier pose
+            self._trajectories_q0[traj_idx].add_(new_poses[new_idx]).div_(2.0)
+            new_idx += 1
+            traj_pose_param.set_(
+                new_poses[new_idx : new_idx + len(traj_pose_param)].detach().clone()
+            )
+            new_idx += len(traj_pose_param)
+            self._trajectories_q0[traj_idx + 1].set_(new_poses[new_idx])
+            new_idx += 1
+
+        assert new_idx == len(self)
+
     def current_pose_params(
         self, traj_num: Optional[int] = None
     ) -> Union[List[Tensor], Tensor]:

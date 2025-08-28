@@ -110,10 +110,18 @@ def main(
 
     # Sample initial action (from true obj pose)
     action_cem = action_utils.ActionCEM()
-    selected_action = action_utils.Action()
-    selected_knots = action_utils.action_to_knots(
-        action_params, [selected_action], trifinger_lcm.get_current_object_pose()
+    selected_action = action_cem.random_action()
+    selected_knots = np.stack(
+        [action_params.get_reset_knot(), action_params.get_reset_knot()]
+    )
+    first_knots = action_utils.action_to_knots(
+        action_params,
+        [selected_action],
+        trifinger_lcm.get_current_object_pose(),
+        force_finger=0,
     )[0]
+    # Only move one finger
+    selected_knots[:, :3] = first_knots[:, :3]
     gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
     # Initialize Optimizer and Data config
@@ -136,8 +144,10 @@ def main(
             action_params.get_reset_knot(), no_data=True, non_blocking=non_blocking
         )
 
+    force_finger = 1
+
     def select_action():
-        nonlocal selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
+        nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
         # score_fn = experiment_utils.score_random
         score_fn = partial(
             experiment_utils.score_eig,
@@ -145,15 +155,20 @@ def main(
             learned_system,
             data_trajectories,
             trifinger_lcm,
+            force_finger,
         )
         selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=action_vis)
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
-            action_params, [selected_action], obj_pose_guess
+            action_params,
+            [selected_action],
+            obj_pose_guess,
+            force_finger=force_finger,
         )[0]
         gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
+        force_finger = 1 - force_finger
 
-    def collect_data():
+    def collect_data(sim_overwrite: bool = False):
         nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, selected_action, selected_knots, trifinger_lcm
         ## Execute selected action
         # Move to start state
@@ -173,8 +188,9 @@ def main(
             return
 
         # Add data to dataset
-        # first_contact = 0
-        first_contact = len(new_trajectory["time"])
+        first_contact = len(
+            new_trajectory["time"]
+        )  # if len(data_trajectories.trajectories) == 0 else 0
         for finger_name in new_trajectory.keys():
             try:
                 test_firstcontact = int(
@@ -188,6 +204,9 @@ def main(
                     first_contact = test_firstcontact
             except (IndexError, KeyError):  # e.g. object, time
                 continue
+        # Minimize ground truth teleportation
+        if first_contact > 0:
+            first_contact -= 1
         # Get entire desired trajectory
         desired_traj = extract_robot_trajectory(
             action_utils.interpolate_sampled_action(
@@ -232,6 +251,10 @@ def main(
             traj_lens=[len(add_trajectory["time"])],
         )
 
+        if sim_overwrite:
+            print("Running Sim...")
+            learned_system.learned_trajectory_sim_overwrite(data_trajectories)
+
         # Re-init visualizer
         print("Getting current trajectory and visualizing")
         temp = learned_system(
@@ -249,7 +272,9 @@ def main(
         # Re-init optimizer and data-loader
         optimizer = optimizer_cls(learned_system.parameters())
 
-    def train_on_data(n_epochs: Optional[int] = None, patience: int = 100):
+    def train_on_data(
+        n_epochs: Optional[int] = None, patience: int = 200, n_sim_overwrite: int = 300
+    ):
         nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, cham_dists
         global signal_pressed
         if len(data_trajectories.trajectories) == 0:
@@ -283,8 +308,18 @@ def main(
         best_loss = 0.0
         epochs_since_best = 0
         best_state = None
+        did_sim = False
+        do_sim = False
         for idx in range(epochs):
             optimizer.zero_grad()
+
+            # Overwrite with simulation
+            if do_sim:
+                do_sim = False
+                did_sim = True
+                learned_system.learned_trajectory_sim_overwrite(data_trajectories)
+                # Reset Patience
+                epochs_since_best = 0
 
             forward_args = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(
@@ -319,8 +354,13 @@ def main(
             else:
                 epochs_since_best += 1
                 if epochs_since_best >= patience:
-                    print("Patience ran out, exiting...")
-                    break
+                    if did_sim:
+                        print("Patience ran out, exiting...")
+                        break
+                    else:
+                        print("Patience ran out, trying sim...")
+                        do_sim = True
+                        continue
 
             print(f"Quit Training Signal?: {signal_pressed}")
             if signal_pressed:
@@ -332,6 +372,20 @@ def main(
 
         if best_state is not None:
             learned_system.load_state_dict(best_state)
+
+            ## Reinit Visualization
+            forward_args = learned_system(
+                ctrl_desired=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_desired"
+                ),
+                timestamps=data_trajectories.get_full_trajectory(key="time"),
+                ctrl_actual=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_state"
+                ),
+            )
+
+            gui_vis.learned_plant_traj = forward_args[0]
+            gui_vis.update()
 
         print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
 
@@ -371,7 +425,8 @@ def main(
 
             reset_robot()
 
-            for _ in range(10):
+            max_iter = 10
+            for idx in range(max_iter):
                 print("Collecting Data...")
                 reset_robot(non_blocking=False)
                 collect_data()
@@ -382,6 +437,8 @@ def main(
                 print("Record Chamfer Distance...")
                 report_chamfer_dist()
                 print(f"Chamfer Distances So Far: {cham_dists}")
+                if idx == (max_iter - 1):
+                    break
                 print("Select next action...")
                 select_action()
 
@@ -423,11 +480,22 @@ def main(
 
         elif command_char == "o":
             """DEBUGGING COMMAND"""
-            cham_dist = experiment_utils.chamfer_metric(
-                learned_system, true_mesh, trifinger_lcm.get_current_object_pose()
+            if len(data_trajectories.trajectories) == 0:
+                print("Need data for sim overwrite.\n")
+                return
+            learned_system.learned_trajectory_sim_overwrite(data_trajectories)
+            forward_args = learned_system(
+                ctrl_desired=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_desired"
+                ),
+                timestamps=data_trajectories.get_full_trajectory(key="time"),
+                ctrl_actual=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_state"
+                ),
             )
-            print(f"Chamfer Distance (m): {cham_dist}")
-            continue
+
+            gui_vis.learned_plant_traj = forward_args[0]
+            gui_vis.update()
 
         elif command_char == "t":
             train_on_data()

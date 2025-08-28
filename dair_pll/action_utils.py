@@ -128,9 +128,9 @@ class Action:
     def __post_init__(self):
         """Method to check validity of parameters."""
         self.finger_0_ra = np.clip(self.finger_0_ra, -np.pi / 2.0, np.pi / 2.0)
-        self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi / 18.0, np.pi / 2.0)
+        self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi / 9.0, np.pi / 2.0)
         self.finger_120_ra = np.clip(self.finger_120_ra, -np.pi / 2.0, np.pi / 2.0)
-        self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi / 18.0, np.pi / 2.0)
+        self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi / 9.0, np.pi / 2.0)
 
 
 @gin.configurable
@@ -164,7 +164,7 @@ class ActionCEM:
         assert self._init_mean.shape == (N_ACTION_PARAMS,)
 
         self._init_cov = (
-            np.eye(N_ACTION_PARAMS) * (np.pi / 2.0)
+            np.eye(N_ACTION_PARAMS) * (np.pi / 4.0)
             if init_var is None
             else np.eye(N_ACTION_PARAMS) * init_var
         )
@@ -183,6 +183,10 @@ class ActionCEM:
         assert 0 < self._n_iter
 
         self._rng = np.random.default_rng()
+
+    def random_action(self) -> Action:
+        param = self._rng.multivariate_normal(self._init_mean, self._init_cov)
+        return Action(*param.tolist())
 
     def best_action(
         self,
@@ -239,6 +243,7 @@ def action_to_knots(
     actions: list[Action],
     object_pose_estimate: np.ndarray,
     include_finger_240: bool = True,
+    force_finger: Optional[int] = None,
 ):
     """
     Convert Actions into knot points
@@ -325,7 +330,7 @@ def action_to_knots(
         start_120 = np.copy(ret2[:, 0, 3:6])
         start_dists = np.linalg.norm(start_0 - start_120, axis=-1)
         start_penetration = np.clip(
-            2.0 * params.robot_radius - start_dists, a_min=0.0, a_max=None
+            2.5 * params.robot_radius - start_dists, a_min=0.0, a_max=None
         )
         new_start_0 = start_0 + (
             start_penetration[:, np.newaxis] * 0.5 * pref_0[np.newaxis, :]
@@ -357,11 +362,20 @@ def action_to_knots(
         dir_120 = (new_start_120 - new_end_120) / np.linalg.norm(
             new_start_120 - new_end_120, axis=-1, keepdims=True
         )
-        new_new_end_0 = new_end_0 + (end_penetration[:, np.newaxis] * 0.5 * dir_0)
-        new_new_end_120 = new_end_120 + (end_penetration[:, np.newaxis] * 0.5 * dir_120)
 
-        ret2[:, 1, :3] = new_new_end_0
-        ret2[:, 1, 3:6] = new_new_end_120
+        finger_select = np.random.randint(2) if force_finger is None else force_finger
+        while np.all(end_penetration > 1e-3):
+            if finger_select == 0:
+                new_end_120 = new_end_120 + (end_penetration[:, np.newaxis] * dir_120)
+            else:
+                new_end_0 = new_end_0 + (end_penetration[:, np.newaxis] * dir_0)
+            end_dists = np.linalg.norm(new_end_0 - new_end_120, axis=-1)
+            end_penetration = np.clip(
+                2.0 * params.robot_radius - end_dists, a_min=0.0, a_max=None
+            )
+
+        ret2[:, 1, :3] = new_end_0
+        ret2[:, 1, 3:6] = new_end_120
 
     # Add fixed 240 position
     if include_finger_240:

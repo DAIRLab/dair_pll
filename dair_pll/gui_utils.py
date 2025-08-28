@@ -241,8 +241,10 @@ class PLLMeshcatVisualizer:
                 start_loc = np.zeros(3)
                 # Negative normal to go into object
                 end_loc = start_loc - 0.02 * normals.detach().cpu().numpy()[timestep]
+                # print(f"Normal: {normals.detach().cpu().numpy()[timestep]}")
                 vertices = np.stack([start_loc, end_loc], axis=1)
                 assert vertices.shape == (3, 2), str(vertices.shape)
+                # print(f"Drawing Normal: {normals.detach().cpu().numpy()[timestep]}")
                 self._meshcat.SetLine(
                     path=str_key,
                     vertices=vertices,
