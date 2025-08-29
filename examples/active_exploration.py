@@ -110,7 +110,7 @@ def main(
 
     # Sample initial action (from true obj pose)
     action_cem = action_utils.ActionCEM()
-    selected_action = action_cem.random_action()
+    selected_action = action_utils.Action.random_uniform()
     selected_knots = np.stack(
         [action_params.get_reset_knot(), action_params.get_reset_knot()]
     )
@@ -130,10 +130,10 @@ def main(
     cham_dists = []
 
     ## Visualizing Action Samples
-    def action_vis(actions):
+    def action_vis(force_finger, actions):
         print("Visualizing...")
         obj_pose_guess = learned_system.get_learned_centroid()
-        knots = action_utils.action_to_knots(action_params, actions, obj_pose_guess)
+        knots = action_utils.action_to_knots(action_params, actions, obj_pose_guess, force_finger=force_finger)
         gui_vis.draw_action_samples(knots)
 
     ### Function Definitions
@@ -148,7 +148,6 @@ def main(
 
     def select_action():
         nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
-        # score_fn = experiment_utils.score_random
         score_fn = partial(
             experiment_utils.score_eig,
             action_params,
@@ -157,7 +156,8 @@ def main(
             trifinger_lcm,
             force_finger,
         )
-        selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=action_vis)
+        selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=partial(action_vis, force_finger))
+        #selected_action = action_utils.Action.random_uniform()
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params,
@@ -354,6 +354,9 @@ def main(
             else:
                 epochs_since_best += 1
                 if epochs_since_best >= patience:
+                    print("Patience ran out, exiting...")
+                    break
+                    """
                     if did_sim:
                         print("Patience ran out, exiting...")
                         break
@@ -361,6 +364,7 @@ def main(
                         print("Patience ran out, trying sim...")
                         do_sim = True
                         continue
+                    """
 
             print(f"Quit Training Signal?: {signal_pressed}")
             if signal_pressed:
@@ -425,7 +429,7 @@ def main(
 
             reset_robot()
 
-            max_iter = 10
+            max_iter = 5
             for idx in range(max_iter):
                 print("Collecting Data...")
                 reset_robot(non_blocking=False)

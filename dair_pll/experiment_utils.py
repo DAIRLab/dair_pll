@@ -140,7 +140,14 @@ def chamfer_distance(
 
 
 ### Scoring Functions
-def score_random(actions: list[Action]) -> list[float]:
+def score_random(
+    params: ActionWorkspaceParams,
+    learned_system: MultibodyLearnableTactileSystem,
+    data_trajectories: TrajectorySet,
+    trifinger_lcm: TrifingerLCMService,
+    force_finger: int,
+    actions: list[Action],
+) -> list[float]:
     """Random actions have equal score"""
     return [1.0] * len(actions)
 
@@ -183,6 +190,8 @@ def score_eig(
         print("Cached Obs Info")
         obs_info = dataset_management.obs_info_cache
     obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[0]))
+
+    print(f"Obs Info Diag: {torch.diag(obs_info)}")
 
     # ignore object qw
     fisher = learned_system.expected_fisher_info(

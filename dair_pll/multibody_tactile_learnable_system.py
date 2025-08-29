@@ -1263,7 +1263,7 @@ class MultibodyLearnableTactileSystem(Module):
         # pylint: disable=too-many-statements, too-many-locals
 
         # TODO: Make Hyperparameter
-        eps = 1e-6
+        eps = 1e-5
 
         # Input Validation
         batch_dims = plant_x.size()[:-2]

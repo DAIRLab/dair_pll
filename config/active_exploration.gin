@@ -24,14 +24,19 @@ NPI2 = -1.5707963267948966
 # Paralellism in cvxpylayers (added manually)
 CvxpyLayer.n_proc=-1
 DynamicCvxpyLCQPLayer.solver_args = {
-    "solve_method": "ECOS",
+    "solve_method": "Clarabel",
     "n_jobs_forward": -1,
     "n_jobs_backward": 1,
-    "max_iters": 1000,
-    "abstol": 1e-4,
-    "reltol": 1e-4,
-    "feastol": 1e-4,
 }
+#DynamicCvxpyLCQPLayer.solver_args = {
+#    "solve_method": "ECOS",
+#    "n_jobs_forward": -1,
+#    "n_jobs_backward": 1,
+#    "max_iters": 1000,
+#    "abstol": 1e-4,
+#    "reltol": 1e-4,
+#    "feastol": 1e-4,
+#}
 
 ## LCM Trajectory Execution
 TrifingerLCMService.fingertip_body_names = %fingertip_body_names
@@ -130,10 +135,10 @@ TactileHyperparameters.w_normal_var = 0.01519224261 #0.04557672783 #30deg   # co
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
 TactileHyperparameters.w_pen = 1e3
-TactileHyperparameters.w_v_pred = 1e3
+TactileHyperparameters.w_v_pred = 3e3
 TactileHyperparameters.w_q_pred = 2e3
 TactileHyperparameters.w_comp = 1e1
-TactileHyperparameters.w_diss = 1e0
+TactileHyperparameters.w_diss = 5e0
 TactileHyperparameters.w_elas = 1e0
 
 # Learning Optimizer
