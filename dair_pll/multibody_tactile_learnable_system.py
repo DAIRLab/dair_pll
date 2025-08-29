@@ -846,17 +846,15 @@ class MultibodyLearnableTactileSystem(Module):
                 )
             )
             data_state_vec = self.space.x(
-                        self.space.euler_step(step_q, step_vplus, sim_dt),
-                        step_vplus,
-                    )
+                self.space.euler_step(step_q, step_vplus, sim_dt),
+                step_vplus,
+            )
             try:
                 assert torch.all(~torch.isnan(data_state_vec)), f"NaN in data_state_vec"
             except AssertionError:
                 breakpoint()
             data_state[..., sim_idx] = (
-                self._multibody_terms.model_states_from_state_tensor(
-                    data_state_vec
-                )
+                self._multibody_terms.model_states_from_state_tensor(data_state_vec)
             )
             # Overwrite actual robot state
             if ctrl_actual_splits is not None:
@@ -1771,7 +1769,7 @@ class MultibodyLearnableTactileSystem(Module):
                     plant_step_u,
                     step_dts,
                     geom_param_dict,
-                    all_phis=True,
+                    all_phis=False,
                     no_sim=True,
                 )
             )
@@ -1920,18 +1918,27 @@ class MultibodyLearnableTactileSystem(Module):
     ) -> None:
         """Apply rotation to all poses in trajectory"""
         # 45 deg about +Z
-        quat = torch.tensor([0.9238795,  0., 0., 0.3826834]) if quat_in is None else quat_in #45deg about +Z
+        quat = (
+            torch.tensor([0.9238795, 0.0, 0.0, 0.3826834])
+            if quat_in is None
+            else quat_in
+        )  # 45deg about +Z
         assert quat.shape == (4,)
-        quat_rotmat = Rotation.from_quat(quat.detach().cpu().numpy(), scalar_first=True).as_matrix()
+        quat_rotmat = Rotation.from_quat(
+            quat.detach().cpu().numpy(), scalar_first=True
+        ).as_matrix()
 
         current_traj = self._learned_trajectory.get_current_traj().detach().clone()
         assert current_traj.shape[-1] == 7
-        current_rotmat = Rotation.from_quat(current_traj[..., :4].detach().cpu().numpy(), scalar_first=True).as_matrix()
+        current_rotmat = Rotation.from_quat(
+            current_traj[..., :4].detach().cpu().numpy(), scalar_first=True
+        ).as_matrix()
         new_rotmat = quat_rotmat @ current_rotmat
 
-        current_traj[..., :4] = torch.tensor(Rotation.from_matrix(new_rotmat).as_quat(canonical=True, scalar_first=True))
+        current_traj[..., :4] = torch.tensor(
+            Rotation.from_matrix(new_rotmat).as_quat(canonical=True, scalar_first=True)
+        )
         self._learned_trajectory.overwrite_pose_params(current_traj)
-
 
     @torch.no_grad
     def learned_trajectory_sim_overwrite(

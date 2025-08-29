@@ -120,10 +120,12 @@ class Action:
 
     @staticmethod
     def random_uniform():
-        return Action(np.random.uniform(-2.0*np.pi / 5.0, 2.0*np.pi / 5.0), 
-            np.random.uniform(-np.pi / 9.0, np.pi / 2.0), 
-            np.random.uniform(-2.0*np.pi / 5.0, 2.0*np.pi / 5.0), 
-            np.random.uniform(-np.pi / 9.0, np.pi / 2.0))
+        return Action(
+            np.random.uniform(-2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0),
+            np.random.uniform(-np.pi / 9.0, np.pi / 2.0),
+            np.random.uniform(-2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0),
+            np.random.uniform(-np.pi / 9.0, np.pi / 2.0),
+        )
 
     # Order is arbitrary
     def __lt__(self, _):
@@ -135,9 +137,13 @@ class Action:
 
     def __post_init__(self):
         """Method to check validity of parameters."""
-        self.finger_0_ra = np.clip(self.finger_0_ra, -2.0*np.pi / 5.0, 2.0*np.pi / 5.0)
+        self.finger_0_ra = np.clip(
+            self.finger_0_ra, -2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0
+        )
         self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi / 9.0, np.pi / 2.0)
-        self.finger_120_ra = np.clip(self.finger_120_ra, -2.0*np.pi / 5.0, 2.0*np.pi / 5.0)
+        self.finger_120_ra = np.clip(
+            self.finger_120_ra, -2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0
+        )
         self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi / 9.0, np.pi / 2.0)
 
 
@@ -145,6 +151,7 @@ class CEMReturnStyle(Enum):
     SAMPLE = 1
     MEAN = 2
     ARGMAX = 3
+
 
 @gin.configurable
 class ActionCEM:
@@ -199,7 +206,9 @@ class ActionCEM:
             ## Sample Batch of Actions
             if iter_idx == 0:
                 # Uniform
-                batch_actions = [Action.random_uniform() for _ in range(self._n_samples)]
+                batch_actions = [
+                    Action.random_uniform() for _ in range(self._n_samples)
+                ]
             else:
                 batch_actions = [
                     Action(*param.tolist())
@@ -241,8 +250,6 @@ class ActionCEM:
             return Action(*sample.tolist())
         else:
             raise ValueError(f"Unimplemented Return Style: {self._return_style}")
-
-        
 
 
 @gin.configurable
@@ -374,11 +381,15 @@ def action_to_knots(
         finger_select = np.random.randint(2) if force_finger is None else force_finger
         while np.all(end_penetration > 1e-3):
             if finger_select == 0:
-                new_end_120 = new_end_120 + (0.6*end_penetration[:, np.newaxis] * dir_120)
-                new_end_0 = new_end_0 + (0.4*end_penetration[:, np.newaxis] * dir_0)
+                new_end_120 = new_end_120 + (
+                    0.6 * end_penetration[:, np.newaxis] * dir_120
+                )
+                new_end_0 = new_end_0 + (0.4 * end_penetration[:, np.newaxis] * dir_0)
             else:
-                new_end_0 = new_end_0 + (0.6*end_penetration[:, np.newaxis] * dir_0)
-                new_end_120 = new_end_120 + (0.4*end_penetration[:, np.newaxis] * dir_120)
+                new_end_0 = new_end_0 + (0.6 * end_penetration[:, np.newaxis] * dir_0)
+                new_end_120 = new_end_120 + (
+                    0.4 * end_penetration[:, np.newaxis] * dir_120
+                )
             end_dists = np.linalg.norm(new_end_0 - new_end_120, axis=-1)
             end_penetration = np.clip(
                 2.0 * params.robot_radius - end_dists, a_min=0.0, a_max=None

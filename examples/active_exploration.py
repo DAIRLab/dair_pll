@@ -133,7 +133,9 @@ def main(
     def action_vis(force_finger, actions):
         print("Visualizing...")
         obj_pose_guess = learned_system.get_learned_centroid()
-        knots = action_utils.action_to_knots(action_params, actions, obj_pose_guess, force_finger=force_finger)
+        knots = action_utils.action_to_knots(
+            action_params, actions, obj_pose_guess, force_finger=force_finger
+        )
         gui_vis.draw_action_samples(knots)
 
     ### Function Definitions
@@ -156,8 +158,10 @@ def main(
             trifinger_lcm,
             force_finger,
         )
-        selected_action = action_cem.best_action(score_fn=score_fn, vis_fn=partial(action_vis, force_finger))
-        #selected_action = action_utils.Action.random_uniform()
+        selected_action = action_cem.best_action(
+            score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
+        )
+        # selected_action = action_utils.Action.random_uniform()
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params,
@@ -208,7 +212,7 @@ def main(
         if first_contact == len(new_trajectory["time"]):
             first_contact = 0
         # Minimize ground truth teleportation
-        #if first_contact > 0:
+        # if first_contact > 0:
         #    first_contact -= 1
         # Get entire desired trajectory
         desired_traj = extract_robot_trajectory(
@@ -275,9 +279,7 @@ def main(
         # Re-init optimizer and data-loader
         optimizer = optimizer_cls(learned_system.parameters())
 
-    def train_on_data(
-        n_epochs: Optional[int] = None, patience: int = 50
-    ):
+    def train_on_data(n_epochs: Optional[int] = None, patience: int = 50):
         nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, cham_dists
         global signal_pressed
         if len(data_trajectories.trajectories) == 0:
@@ -323,7 +325,7 @@ def main(
                 learned_system.learned_trajectory_rotate()
                 learned_system.learned_trajectory_sim_overwrite(data_trajectories)
                 # Reset Patience, give a runway for the rotated object
-                epochs_since_best = -4.0*patience
+                epochs_since_best = -4.0 * patience
 
             forward_args = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(

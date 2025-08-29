@@ -204,7 +204,7 @@ def score_eig(
     fisher_obs_weighted = fisher @ obs_info_inv
     ### Capture Diminishing Returns of information
     # TODO: Make Hyperparameter Switch
-    fisher_obs_weighted = torch.log(fisher_obs_weighted + 1.)
+    fisher_obs_weighted = torch.log(fisher_obs_weighted + 1.0)
     ###
     fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)
     print(f"Evaluated {len(fisher_traces)} actions in {(time.time()-start):.3f}s")
