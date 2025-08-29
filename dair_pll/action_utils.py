@@ -9,6 +9,7 @@ The main contents of this file are as follows:
 """
 
 from dataclasses import dataclass, field
+from enum import Enum
 import random
 from typing import Optional, Callable
 
@@ -140,6 +141,11 @@ class Action:
         self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi / 9.0, np.pi / 2.0)
 
 
+class CEMReturnStyle(Enum):
+    SAMPLE = 1
+    MEAN = 2
+    ARGMAX = 3
+
 @gin.configurable
 class ActionCEM:
     """Class to handle CEM sampling of Actions"""
@@ -148,38 +154,19 @@ class ActionCEM:
 
     _rng: np.random.Generator
 
-    # Current Distribution
-    _init_mean: np.ndarray
-    _init_cov: np.ndarray
-
     # CEM Parameters
     _n_samples: int
     _n_dist: int
     _n_iter: int
+    _return_style: CEMReturnStyle
 
     def __init__(
         self,
-        init_mean: Optional[list[float]] = None,
-        init_var: Optional[float] = None,
         n_samples: int = 50,
         n_dist: int = 10,
         n_iter: int = 3,
+        return_style: CEMReturnStyle = CEMReturnStyle.MEAN,
     ) -> None:
-        self._init_mean = (
-            np.zeros(N_ACTION_PARAMS) if init_mean is None else np.array(init_mean)
-        )
-        assert self._init_mean.shape == (N_ACTION_PARAMS,)
-
-        self._init_cov = (
-            np.eye(N_ACTION_PARAMS) * (np.pi / 4.0)
-            if init_var is None
-            else np.eye(N_ACTION_PARAMS) * init_var
-        )
-        assert self._init_cov.shape == (N_ACTION_PARAMS, N_ACTION_PARAMS)
-
-        self._mean = np.copy(self._init_mean)
-        self._cov = np.copy(self._init_cov)
-
         self._n_samples = n_samples
         assert self._n_samples > 0
 
@@ -188,6 +175,8 @@ class ActionCEM:
 
         self._n_iter = n_iter
         assert 0 < self._n_iter
+
+        self._return_style = return_style
 
         self._rng = np.random.default_rng()
 
@@ -203,17 +192,21 @@ class ActionCEM:
     ) -> Action:
         """Run CEM to determine the best action to take"""
 
-        mean = np.copy(self._init_mean)
-        cov = np.copy(self._init_cov)
+        mean = np.zeros(N_ACTION_PARAMS)
+        cov = np.eye(N_ACTION_PARAMS)
 
-        for _ in range(self._n_iter):
+        for iter_idx in range(self._n_iter):
             ## Sample Batch of Actions
-            batch_actions = [
-                Action(*param.tolist())
-                for param in self._rng.multivariate_normal(
-                    mean, cov, size=self._n_samples
-                )
-            ]
+            if iter_idx == 0:
+                # Uniform
+                batch_actions = [Action.random_uniform() for _ in range(self._n_samples)]
+            else:
+                batch_actions = [
+                    Action(*param.tolist())
+                    for param in self._rng.multivariate_normal(
+                        mean, cov, size=self._n_samples
+                    )
+                ]
             assert len(batch_actions) == self._n_samples
 
             ## Visualize actions
@@ -236,12 +229,20 @@ class ActionCEM:
             )  # Each col is a variable, each row is a sample
             assert cov.shape == (N_ACTION_PARAMS, N_ACTION_PARAMS)
 
-        if final_iter_argmax:
+        if self._return_style == CEMReturnStyle.MEAN:
+            # Take the mean of the final distribution
+            return Action(*mean.tolist())
+        elif self._return_style == CEMReturnStyle.ARGMAX:
             # Take the best action from the last batch
             return sorted_actions[0]
+        elif self._return_style == CEMReturnStyle.SAMPLE:
+            # Sample from the final distribution
+            sample = self._rng.multivariate_normal(mean, cov)
+            return Action(*sample.tolist())
+        else:
+            raise ValueError(f"Unimplemented Return Style: {self._return_style}")
 
-        # Take the mean
-        return Action(*mean.tolist())
+        
 
 
 @gin.configurable
@@ -373,9 +374,11 @@ def action_to_knots(
         finger_select = np.random.randint(2) if force_finger is None else force_finger
         while np.all(end_penetration > 1e-3):
             if finger_select == 0:
-                new_end_120 = new_end_120 + (end_penetration[:, np.newaxis] * dir_120)
+                new_end_120 = new_end_120 + (0.6*end_penetration[:, np.newaxis] * dir_120)
+                new_end_0 = new_end_0 + (0.4*end_penetration[:, np.newaxis] * dir_0)
             else:
-                new_end_0 = new_end_0 + (end_penetration[:, np.newaxis] * dir_0)
+                new_end_0 = new_end_0 + (0.6*end_penetration[:, np.newaxis] * dir_0)
+                new_end_120 = new_end_120 + (0.4*end_penetration[:, np.newaxis] * dir_120)
             end_dists = np.linalg.norm(new_end_0 - new_end_120, axis=-1)
             end_penetration = np.clip(
                 2.0 * params.robot_radius - end_dists, a_min=0.0, a_max=None

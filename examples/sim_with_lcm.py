@@ -592,6 +592,7 @@ def main_fn():
         config_file = sys.argv[1]
 
     # Parse config file and start
+    gin.register(np.random.uniform, module="np.random")
     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
     main()
 

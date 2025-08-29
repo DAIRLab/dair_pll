@@ -204,9 +204,12 @@ def main(
                     first_contact = test_firstcontact
             except (IndexError, KeyError):  # e.g. object, time
                 continue
+        # Didn't make contact
+        if first_contact == len(new_trajectory["time"]):
+            first_contact = 0
         # Minimize ground truth teleportation
-        if first_contact > 0:
-            first_contact -= 1
+        #if first_contact > 0:
+        #    first_contact -= 1
         # Get entire desired trajectory
         desired_traj = extract_robot_trajectory(
             action_utils.interpolate_sampled_action(
@@ -273,7 +276,7 @@ def main(
         optimizer = optimizer_cls(learned_system.parameters())
 
     def train_on_data(
-        n_epochs: Optional[int] = None, patience: int = 200, n_sim_overwrite: int = 300
+        n_epochs: Optional[int] = None, patience: int = 50
     ):
         nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, cham_dists
         global signal_pressed
@@ -317,9 +320,10 @@ def main(
             if do_sim:
                 do_sim = False
                 did_sim = True
+                learned_system.learned_trajectory_rotate()
                 learned_system.learned_trajectory_sim_overwrite(data_trajectories)
-                # Reset Patience
-                epochs_since_best = 0
+                # Reset Patience, give a runway for the rotated object
+                epochs_since_best = -4.0*patience
 
             forward_args = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(
@@ -354,9 +358,6 @@ def main(
             else:
                 epochs_since_best += 1
                 if epochs_since_best >= patience:
-                    print("Patience ran out, exiting...")
-                    break
-                    """
                     if did_sim:
                         print("Patience ran out, exiting...")
                         break
@@ -364,7 +365,6 @@ def main(
                         print("Patience ran out, trying sim...")
                         do_sim = True
                         continue
-                    """
 
             print(f"Quit Training Signal?: {signal_pressed}")
             if signal_pressed:
@@ -429,7 +429,7 @@ def main(
 
             reset_robot()
 
-            max_iter = 5
+            max_iter = 6
             for idx in range(max_iter):
                 print("Collecting Data...")
                 reset_robot(non_blocking=False)
@@ -484,10 +484,7 @@ def main(
 
         elif command_char == "o":
             """DEBUGGING COMMAND"""
-            if len(data_trajectories.trajectories) == 0:
-                print("Need data for sim overwrite.\n")
-                return
-            learned_system.learned_trajectory_sim_overwrite(data_trajectories)
+            learned_system.learned_trajectory_rotate()
             forward_args = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(
                     key=learned_system.controlled_model_names[0] + "_desired"
@@ -517,6 +514,7 @@ def main_fn():
 
     # Parse config file and start
     gin.register(np.array, module="np")
+    gin.register(np.random.uniform, module="np.random")
     gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
     # Pylint doesn't know about gin
     # pylint: disable=no-value-for-parameter

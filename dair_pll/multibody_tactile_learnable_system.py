@@ -53,6 +53,7 @@ from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
 from dair_pll.solvers import jaxopt_solver, DynamicCvxpyLCQPLayer
 from dair_pll.state_space import StateSpace, ProductSpace
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz, sappy_reorder_mat, stable_inv
+from dair_pll.quaternion import quaternion_to_rotmat_vec
 
 
 @gin.constants_from_enum
@@ -828,6 +829,15 @@ class MultibodyLearnableTactileSystem(Module):
                     data_state[..., sim_idx - 1]
                 )
             )
+            try:
+                assert torch.all(~torch.isnan(step_q)), f"NaN in step_q"
+                assert torch.all(~torch.isnan(step_v)), f"NaN in step_v"
+            except AssertionError:
+                breakpoint()
+
+            ### TODO: HACK clip step_v magnitude
+            step_v = torch.clamp(step_v, min=-1e3, max=1e3)
+
             # print(f"With robot_state: {data_state[..., sim_idx - 1]["robot_state"].detach().cpu().numpy()}")
             # print(f"With cube_state: {data_state[..., sim_idx - 1]["cube_state"].detach().cpu().numpy()}")
             step_vplus, step_contact_forces, step_contact_normals, step_contact_phis = (
@@ -835,12 +845,17 @@ class MultibodyLearnableTactileSystem(Module):
                     step_q, step_v, torch.cat(step_u, dim=-1), sim_dt, solver=solver
                 )
             )
-            data_state[..., sim_idx] = (
-                self._multibody_terms.model_states_from_state_tensor(
-                    self.space.x(
+            data_state_vec = self.space.x(
                         self.space.euler_step(step_q, step_vplus, sim_dt),
                         step_vplus,
                     )
+            try:
+                assert torch.all(~torch.isnan(data_state_vec)), f"NaN in data_state_vec"
+            except AssertionError:
+                breakpoint()
+            data_state[..., sim_idx] = (
+                self._multibody_terms.model_states_from_state_tensor(
+                    data_state_vec
                 )
             )
             # Overwrite actual robot state
@@ -1897,6 +1912,26 @@ class MultibodyLearnableTactileSystem(Module):
         print(f"...Done in {(time.time()-start):.6f}s")
         # breakpoint()
         return ret_info
+
+    @torch.no_grad
+    def learned_trajectory_rotate(
+        self,
+        quat_in: Optional[Tensor] = None,
+    ) -> None:
+        """Apply rotation to all poses in trajectory"""
+        # 45 deg about +Z
+        quat = torch.tensor([0.9238795,  0., 0., 0.3826834]) if quat_in is None else quat_in #45deg about +Z
+        assert quat.shape == (4,)
+        quat_rotmat = Rotation.from_quat(quat.detach().cpu().numpy(), scalar_first=True).as_matrix()
+
+        current_traj = self._learned_trajectory.get_current_traj().detach().clone()
+        assert current_traj.shape[-1] == 7
+        current_rotmat = Rotation.from_quat(current_traj[..., :4].detach().cpu().numpy(), scalar_first=True).as_matrix()
+        new_rotmat = quat_rotmat @ current_rotmat
+
+        current_traj[..., :4] = torch.tensor(Rotation.from_matrix(new_rotmat).as_quat(canonical=True, scalar_first=True))
+        self._learned_trajectory.overwrite_pose_params(current_traj)
+
 
     @torch.no_grad
     def learned_trajectory_sim_overwrite(

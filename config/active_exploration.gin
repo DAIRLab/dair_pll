@@ -56,7 +56,7 @@ ActionWorkspaceParams.workspace_radius = %workspace_radius
 ActionWorkspaceParams.robot_radius = %robot_buffer_radius
 fixed_240_w/np.array.object = [0.15, 0.15, 0.15]
 ActionWorkspaceParams.fixed_240_w = @fixed_240_w/np.array()
-ActionWorkspaceParams.approach_radius = 0.1
+ActionWorkspaceParams.approach_radius = 0.12
 finger_0_vec/np.array.object = [-1., 0., 0.]
 ActionWorkspaceParams.finger_0_vec = @finger_0_vec/np.array()
 finger_120_vec/np.array.object = [1., 0., 0.]
@@ -69,8 +69,8 @@ interpolate_sampled_action.traj_len_s = %traj_len_s
 interpolate_sampled_action.traj_n_steps = %traj_len_dts
 
 ## CEM
-ActionCEM.n_samples = 60
-ActionCEM.n_dist = 5
+ActionCEM.n_samples = 70
+ActionCEM.n_dist = 10
 ActionCEM.n_iter = 3
 
 ## Robot config
@@ -97,18 +97,21 @@ TactileSystem.learnable_body_dict = {
 }
 
 # Initial guesses
+size/np.random.uniform.low = 0.005
+size/np.random.uniform.high = 0.015
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": 0.01, # m
-	"length_y": 0.01, # m
-	"length_z": 0.01, # m
-	"mu": 0.1,
+	"length_x": @size/np.random.uniform(), # m
+	"length_y": @size/np.random.uniform(), # m
+	"length_z": @size/np.random.uniform(), # m
+	"mu": 0.3,
 	"planar_xz": "false",
 }
-
+pose/np.random.uniform.low = -0.05
+pose/np.random.uniform.high = 0.05
 TactileSystem.init_learned_state = [
-	1.0, 0.0, 0.0, 0.0, # Quat (WXYZ)
-	0.02, 0.02, 0.02,     # XYZ
+	1.0, 0., 0., @np.random.uniform(), # Quat (WXYZ)
+	@pose/np.random.uniform(), @pose/np.random.uniform(), 0.03,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
 ]

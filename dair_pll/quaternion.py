@@ -232,14 +232,17 @@ def sinc(x: Tensor) -> Tensor:
     """
     # pylint: disable=E1103
     # vmap doesn't support boolean index, use eps instead
-    if torch._C._functorch.is_batchedtensor(x):
-        return torch.sin(x + torch.finfo(x.dtype).eps) / (x + torch.finfo(x.dtype).eps)
+    #if torch._C._functorch.is_batchedtensor(x):
+    ## WHY DIDN'T WE JUST USE THIS!?
+    return torch.special.sinc(x)
+    """
     notnull = torch.abs(x) > 0
     null = torch.logical_not(notnull)
     sinc_x = torch.zeros_like(x)
     sinc_x[null] += 1.0
     sinc_x[notnull] += torch.sin(x[notnull]) / (x[notnull])
     return sinc_x
+    """
 
 
 def log(q: Tensor) -> Tensor:
