@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 import trimesh
 import torch
 
-from dair_pll import action_utils, dataset_management
+from dair_pll import action_utils, dataset_management, tensor_utils
 from dair_pll.action_utils import Action, ActionWorkspaceParams, action_to_knots
 from dair_pll.trifinger_utils import TrifingerLCMService
 from dair_pll.drake_system import DrakeSystem
@@ -183,13 +183,14 @@ def score_eig(
         obs_info = (
             torch.zeros_like(fisher[0])
             if len(data_trajectories.trajectories) == 0
-            else learned_system.observed_info(data_trajectories)[..., 1:, 1:]
+            else learned_system.observed_info(data_trajectories)
         )
         dataset_management.obs_info_cache = obs_info
     else:
         print("Cached Obs Info")
         obs_info = dataset_management.obs_info_cache
-    obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[0]))
+    # obs_info_inv = torch.linalg.inv(obs_info + 1e-1 * torch.eye(obs_info.size()[0]))
+    obs_info_inv = tensor_utils.stable_inv(obs_info, 1e-3)
 
     print(f"Obs Info Diag: {torch.diag(obs_info)}")
 
@@ -197,15 +198,19 @@ def score_eig(
     fisher = learned_system.expected_fisher_info(
         ctrl_desired=robot_traj,
         timestamps=traj_time,
-    )[..., 1:, 1:]
-
+    )
     # breakpoint()
 
     fisher_obs_weighted = fisher @ obs_info_inv
     ### Capture Diminishing Returns of information
     # TODO: Make Hyperparameter Switch
-    fisher_obs_weighted = torch.log(fisher_obs_weighted + 1.0)
+    # fisher_obs_weighted = torch.log(fisher_obs_weighted + 1.0)
     ###
-    fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)
+    # breakpoint()
+    # fisher_traces = torch.vmap(torch.trace)(fisher_obs_weighted)
+    # Above is an upper bound for:
+    fisher_traces = torch.log(
+        torch.det(fisher_obs_weighted + torch.eye(fisher_obs_weighted.shape[-1]))
+    )
     print(f"Evaluated {len(fisher_traces)} actions in {(time.time()-start):.3f}s")
     return fisher_traces.detach().cpu().numpy().tolist()

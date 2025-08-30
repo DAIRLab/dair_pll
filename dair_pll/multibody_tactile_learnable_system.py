@@ -1908,6 +1908,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ret_info += info_normals
         print(f"...Done in {(time.time()-start):.6f}s")
+        # print("Observed Info Breakpoint...")
         # breakpoint()
         return ret_info
 
@@ -2261,6 +2262,8 @@ class MultibodyLearnableTactileSystem(Module):
         )
         ret_info_batch += info_normals_batch
         print(f"...Done in {(time.time()-start):.6f}s")
+        # print("Expected Info Breakpoint...")
+        # breakpoint()
         return ret_info_batch
 
     def observed_info_full(self, traj_data: TrajectorySet) -> Tensor:

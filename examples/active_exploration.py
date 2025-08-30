@@ -150,6 +150,7 @@ def main(
 
     def select_action():
         nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
+        # TODO: Make action selection a gin param
         score_fn = partial(
             experiment_utils.score_eig,
             action_params,

@@ -151,6 +151,7 @@ class CEMReturnStyle(Enum):
     SAMPLE = 1
     MEAN = 2
     ARGMAX = 3
+    SAMPLEDIS = 4
 
 
 @gin.configurable
@@ -172,7 +173,7 @@ class ActionCEM:
         n_samples: int = 50,
         n_dist: int = 10,
         n_iter: int = 3,
-        return_style: CEMReturnStyle = CEMReturnStyle.MEAN,
+        return_style: CEMReturnStyle = CEMReturnStyle.SAMPLEDIS,
     ) -> None:
         self._n_samples = n_samples
         assert self._n_samples > 0
@@ -238,16 +239,20 @@ class ActionCEM:
             )  # Each col is a variable, each row is a sample
             assert cov.shape == (N_ACTION_PARAMS, N_ACTION_PARAMS)
 
+        if vis_fn is not None:
+            vis_fn(best_actions)
         if self._return_style == CEMReturnStyle.MEAN:
             # Take the mean of the final distribution
             return Action(*mean.tolist())
         elif self._return_style == CEMReturnStyle.ARGMAX:
             # Take the best action from the last batch
-            return sorted_actions[0]
+            return best_actions[0]
         elif self._return_style == CEMReturnStyle.SAMPLE:
             # Sample from the final distribution
             sample = self._rng.multivariate_normal(mean, cov)
             return Action(*sample.tolist())
+        elif self._return_style == CEMReturnStyle.SAMPLEDIS:
+            return self._rng.choice(best_actions)
         else:
             raise ValueError(f"Unimplemented Return Style: {self._return_style}")
 
