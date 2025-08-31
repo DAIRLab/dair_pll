@@ -66,8 +66,8 @@ class ActionWorkspaceParams:
         ret[3:6] = self.finger_120_vec * self.workspace_radius
         ret[6:9] = self.fixed_240_w
         if self.ground_buffer:
-            ret[2] = np.clip(ret[2], a_min=self.robot_radius, a_max=None)
-            ret[5] = np.clip(ret[5], a_min=self.robot_radius, a_max=None)
+            ret[2] = np.clip(ret[2], a_min=2.0 * self.robot_radius, a_max=None)
+            ret[5] = np.clip(ret[5], a_min=2.0 * self.robot_radius, a_max=None)
         return ret
 
     def __post_init__(self):
@@ -328,12 +328,12 @@ def action_to_knots(
         if params.ground_buffer:
             start_poses[:, 2] = np.clip(
                 start_poses[:, 2],
-                a_min=params.robot_radius,
+                a_min=1.5 * params.robot_radius,
                 a_max=None,
             )
             end_poses[:, 2] = np.clip(
                 end_poses[:, 2],
-                a_min=params.robot_radius,
+                a_min=1.5 * params.robot_radius,
                 a_max=None,
             )
 
@@ -387,13 +387,13 @@ def action_to_knots(
         while np.all(end_penetration > 1e-3):
             if finger_select == 0:
                 new_end_120 = new_end_120 + (
-                    0.6 * end_penetration[:, np.newaxis] * dir_120
+                    0.5 * end_penetration[:, np.newaxis] * dir_120
                 )
-                new_end_0 = new_end_0 + (0.4 * end_penetration[:, np.newaxis] * dir_0)
+                new_end_0 = new_end_0 + (0.5 * end_penetration[:, np.newaxis] * dir_0)
             else:
-                new_end_0 = new_end_0 + (0.6 * end_penetration[:, np.newaxis] * dir_0)
+                new_end_0 = new_end_0 + (0.5 * end_penetration[:, np.newaxis] * dir_0)
                 new_end_120 = new_end_120 + (
-                    0.4 * end_penetration[:, np.newaxis] * dir_120
+                    0.5 * end_penetration[:, np.newaxis] * dir_120
                 )
             end_dists = np.linalg.norm(new_end_0 - new_end_120, axis=-1)
             end_penetration = np.clip(
