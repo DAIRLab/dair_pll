@@ -1,9 +1,9 @@
 # Default GIN Config File for rss_experiment.py
 
 ## General Config
-robot_radius = 0.015#75 # Add 1mm buffer on each robot for REAL only
+robot_radius = 0.01#575 # Add 1mm buffer on each robot for REAL only
 robot_buffer_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
-workspace_radius = 0.1
+workspace_radius = 0.12
 #workspace_radius = 0.15
 robot_model_name = "robot"
 object_model_name = "cube"
@@ -11,8 +11,8 @@ object_model_name = "cube"
 object_body_name = "cube_body" 
 fingertip_body_names = ["finger_0", "finger_1"]
 default_dt = 0.03333333333333333 # 30 Hz
-traj_len_s = 1.0 # s, how long each trajectory is
-traj_len_dts = 31 # 30Hz + 1
+traj_len_s = 1.5 # s, how long each trajectory is
+traj_len_dts = 46 # 30Hz + 1
 
 # CONSTANTS
 PI = 3.141592653589793
@@ -57,9 +57,9 @@ ActionWorkspaceParams.robot_radius = %robot_buffer_radius
 fixed_240_w/np.array.object = [0.15, 0.15, 0.15]
 ActionWorkspaceParams.fixed_240_w = @fixed_240_w/np.array()
 ActionWorkspaceParams.approach_radius = 0.12
-finger_0_vec/np.array.object = [-1., 0., 0.]
+finger_0_vec/np.array.object = [-1., 0., 0.] #[-0.8660254, 0.5, 0.] #
 ActionWorkspaceParams.finger_0_vec = @finger_0_vec/np.array()
-finger_120_vec/np.array.object = [1., 0., 0.]
+finger_120_vec/np.array.object = [1., 0., 0.] #[0.8660254, -0.5, 0.] #
 ActionWorkspaceParams.finger_120_vec = @finger_120_vec/np.array()
 ActionWorkspaceParams.ground_buffer = True
 ActionWorkspaceParams.robot_buffer = True
@@ -70,8 +70,8 @@ interpolate_sampled_action.traj_n_steps = %traj_len_dts
 
 ## CEM
 ActionCEM.n_samples = 70
-ActionCEM.n_dist = 7
-ActionCEM.n_iter = 3
+ActionCEM.n_dist = 15
+ActionCEM.n_iter = 2
 
 ## Robot config
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
@@ -132,9 +132,9 @@ TactileHyperparameters.loss_fn = %LossFunction.VIMP
 TactileHyperparameters.supervise_non_contact_force = True
 TactileHyperparameters.rsim_eps = 1e-1
 
-TactileHyperparameters.w_phi_nominal = 0.007  # m, distance where p(contact_measured) drops below CI
+TactileHyperparameters.w_phi_nominal = 0.005  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
-TactileHyperparameters.w_normal_var = 0.04557672783 #30deg #0.01519224261 # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
+TactileHyperparameters.w_normal_var = 0.01519224261 #0.04557672783 #30deg # # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
 TactileHyperparameters.w_pen = 1e3

@@ -87,6 +87,16 @@ class TrifingerLCMService:
         assert ret.shape == (self._object_raw_data[-1].num_positions,)
         return ret
 
+    def get_current_fingertip_pose(self) -> np.ndarray:
+        """Blocks and retrieves the most recent fingertip state"""
+
+        print("Waiting for fingertip state...")
+        self._fingertip_pose_raw_data.clear()
+        while len(self._fingertip_pose_raw_data) < 1:
+            self._lcm.handle()
+
+        return np.copy(np.array(self._fingertip_pose_raw_data[-1].curPos))
+
     def sub_handler(self, channel: str, data: Any):
         """
         Write LCM incoming messages to cache

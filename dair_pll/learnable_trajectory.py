@@ -123,7 +123,9 @@ class LearnableTrajectories(Module):
         )
 
     @torch.no_grad
-    def overwrite_pose_params(self, new_poses: Tensor) -> None:
+    def overwrite_pose_params(
+        self, new_poses: Tensor, set_v_to_zero: bool = False
+    ) -> None:
         """Overwrite current pose parameters with new data."""
         assert new_poses.shape == (len(self), self.space.n_q)
         self._trajectories_q0[0].set_(new_poses[0].detach().clone())
@@ -140,6 +142,10 @@ class LearnableTrajectories(Module):
             new_idx += 1
 
         assert new_idx == len(self)
+
+        if set_v_to_zero:
+            for traj_vel_param in self._trajectories_v:
+                traj_vel_param.set_(torch.zeros_like(traj_vel_param))
 
     def current_pose_params(
         self, traj_num: Optional[int] = None

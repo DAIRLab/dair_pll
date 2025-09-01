@@ -1942,6 +1942,20 @@ class MultibodyLearnableTactileSystem(Module):
         self._learned_trajectory.overwrite_pose_params(current_traj)
 
     @torch.no_grad
+    def learned_trajectory_average(
+        self,
+        quat_in: Optional[Tensor] = None,
+    ) -> None:
+        """Reset trajectory to average of current trajectory"""
+
+        current_traj = self._learned_trajectory.get_current_traj().detach().clone()
+        assert current_traj.shape[-1] == 7
+
+        new_traj = current_traj.mean(dim=0).unsqueeze(0).expand(current_traj.shape)
+
+        self._learned_trajectory.overwrite_pose_params(new_traj, set_v_to_zero=True)
+
+    @torch.no_grad
     def learned_trajectory_sim_overwrite(
         self,
         traj_data: TrajectorySet,

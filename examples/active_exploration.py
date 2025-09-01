@@ -110,8 +110,8 @@ def main(
 
     # Sample initial action (from true obj pose)
     action_cem = action_utils.ActionCEM()
-    selected_action = action_utils.Action()
-    # selected_action = action_utils.Action.random_uniform()
+    # selected_action = action_utils.Action()
+    selected_action = action_utils.Action.random_uniform()
     selected_knots = np.stack(
         [action_params.get_reset_knot(), action_params.get_reset_knot()]
     )
@@ -121,15 +121,37 @@ def main(
         trifinger_lcm.get_current_object_pose(),
         force_finger=0,
     )[0]
-    selected_knots = first_knots
+    # selected_knots = first_knots
     # Only move one finger
-    # selected_knots[:, :3] = first_knots[:, :3]
+    selected_knots[:, :3] = first_knots[:, :3]
     gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
     # Initialize Optimizer and Data config
     optimizer = optimizer_cls(learned_system.parameters())
     total_epochs = 0
     cham_dists = []
+
+    init_geom = deepcopy(learned_system._multibody_terms.state_dict())
+
+    ### Reinit learned system
+    def reinit_learned():
+        nonlocal learned_system, init_geom, data_trajectories, gui_vis
+        learned_system._multibody_terms.load_state_dict(init_geom)
+        learned_system.learned_trajectory_average()
+
+        ## Reinit Visualization
+        forward_args = learned_system(
+            ctrl_desired=data_trajectories.get_full_trajectory(
+                key=learned_system.controlled_model_names[0] + "_desired"
+            ),
+            timestamps=data_trajectories.get_full_trajectory(key="time"),
+            ctrl_actual=data_trajectories.get_full_trajectory(
+                key=learned_system.controlled_model_names[0] + "_state"
+            ),
+        )
+
+        gui_vis.learned_plant_traj = forward_args[0]
+        gui_vis.update()
 
     ## Visualizing Action Samples
     def action_vis(force_finger, actions):
@@ -141,12 +163,18 @@ def main(
         gui_vis.draw_action_samples(knots)
 
     ### Function Definitions
-    def reset_robot(non_blocking=True):
+    def reset_robot(safe_height_first=False):
         nonlocal action_params, trifinger_lcm
+        # TODO: make gin config param
+        safe_height = 0.1
         print("Resetting Trifinger Position...")
-        trifinger_lcm.execute_trajectory(
-            action_params.get_reset_knot(), no_data=True, non_blocking=non_blocking
-        )
+        if safe_height_first:
+            cur_pose = trifinger_lcm.get_current_fingertip_pose()
+            safe_knot = np.concatenate([cur_pose, np.zeros(9)])
+            safe_knot[2] = safe_height
+            safe_knot[5] = safe_height
+            trifinger_lcm.execute_trajectory(safe_knot, no_data=True)
+        trifinger_lcm.execute_trajectory(action_params.get_reset_knot(), no_data=True)
 
     force_finger = 1
 
@@ -179,16 +207,22 @@ def main(
         nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, selected_action, selected_knots, trifinger_lcm
         ## Execute selected action
         # Move to start state
-        trifinger_lcm.execute_trajectory(selected_knots[0], no_data=True)
-        time.sleep(0.1)
+        new_trajectory = None
+        while new_trajectory is None:
+            trifinger_lcm.execute_trajectory(selected_knots[0], no_data=True)
+            time.sleep(0.1)
 
-        # Execute and collect data
-        new_trajectory = trifinger_lcm.execute_trajectory(selected_knots[1])
+            # Execute and collect data
+            new_trajectory = trifinger_lcm.execute_trajectory(selected_knots[1])
 
-        # Move back to start state
-        trifinger_lcm.execute_trajectory(
-            selected_knots[0], no_data=True, non_blocking=True
-        )
+            # Move back to start state
+            trifinger_lcm.execute_trajectory(selected_knots[0], no_data=True)
+
+            if new_trajectory is None:
+                input("None trajectoy, check densetacts. Enter to retry...")
+                continue
+
+            break
 
         if len(new_trajectory) < 1:
             print("WARNING: No data collected")
@@ -283,7 +317,7 @@ def main(
         optimizer = optimizer_cls(learned_system.parameters())
 
     def train_on_data(n_epochs: Optional[int] = None, patience: int = 50):
-        nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, cham_dists
+        nonlocal total_epochs, learned_system, optimizer, data_trajectories, gui_vis, cham_dists, reinit_learned
         global signal_pressed
         if len(data_trajectories.trajectories) == 0:
             print("Cannot train without data.\n")
@@ -313,22 +347,11 @@ def main(
             ).items()
         }
         timestamps = data_trajectories.get_full_trajectory(key="time")
-        best_loss = 0.0
+        best_loss_v1 = 0.0
+        best_state_v1 = None
         epochs_since_best = 0
-        best_state = None
-        did_sim = False
-        do_sim = False
         for idx in range(epochs):
             optimizer.zero_grad()
-
-            # Overwrite with simulation
-            if do_sim:
-                do_sim = False
-                did_sim = True
-                learned_system.learned_trajectory_rotate()
-                learned_system.learned_trajectory_sim_overwrite(data_trajectories)
-                # Reset Patience, give a runway for the rotated object
-                epochs_since_best = -4.0 * patience
 
             forward_args = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(
@@ -355,21 +378,17 @@ def main(
             )
 
             total_epochs = total_epochs + 1
+            print(f"Best Loss: {best_loss_v1}")
             print(total_epochs, f"Loss: {loss_total:.3e};\n", *loss_print)
-            if idx == 0 or float(loss_total.detach().cpu().numpy()) < best_loss:
-                best_loss = float(loss_total.detach().cpu().numpy())
+            if idx == 0 or float(loss_total.detach().cpu().numpy()) < best_loss_v1:
+                best_loss_v1 = float(loss_total.detach().cpu().numpy())
                 epochs_since_best = 0
-                best_state = deepcopy(learned_system.state_dict())
+                best_state_v1 = deepcopy(learned_system.state_dict())
             else:
                 epochs_since_best += 1
                 if epochs_since_best >= patience:
-                    if did_sim:
-                        print("Patience ran out, exiting...")
-                        break
-                    else:
-                        print("Patience ran out, trying sim...")
-                        do_sim = True
-                        continue
+                    print("Patience ran out, exiting...")
+                    break
 
             print(f"Quit Training Signal?: {signal_pressed}")
             if signal_pressed:
@@ -378,6 +397,67 @@ def main(
                 breakpoint()
                 epochs = idx + 1
                 break
+
+        epochs_since_best = 0
+        best_loss_v2 = 0.0
+        best_state_v2 = None
+        # Get out of local min by shrinking geometry
+        reinit_learned()
+        # Rotate in case in rotated local min
+        # learned_system.learned_trajectory_rotate()
+        # get out of balancing local min
+        learned_system.learned_trajectory_sim_overwrite(data_trajectories)
+        # Reset Patience, give a runway for the rotated object
+        for idx in range(epochs):
+            optimizer.zero_grad()
+
+            forward_args = learned_system(
+                ctrl_desired=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_desired"
+                ),
+                timestamps=data_trajectories.get_full_trajectory(key="time"),
+                ctrl_actual=data_trajectories.get_full_trajectory(
+                    key=learned_system.controlled_model_names[0] + "_state"
+                ),
+            )
+
+            gui_vis.learned_plant_traj = forward_args[0]
+            gui_vis.update()
+
+            loss_dict = learned_system.loss_fn(
+                None, meas_contact_normals, timestamps, *forward_args
+            )
+            loss_total = sum(torch.sum(v) for _, v in loss_dict.items())
+            loss_total.backward()
+            optimizer.step()
+
+            loss_print = tuple(
+                f"\t{k}: {torch.sum(v).detach().cpu()};\n" for k, v in loss_dict.items()
+            )
+
+            total_epochs = total_epochs + 1
+            print(f"Best Loss v1: {best_loss_v1}")
+            print(f"Best Loss v2: {best_loss_v2}")
+            print(total_epochs, f"Loss: {loss_total:.3e};\n", *loss_print)
+            if idx == 0 or float(loss_total.detach().cpu().numpy()) < best_loss_v2:
+                best_loss_v2 = float(loss_total.detach().cpu().numpy())
+                epochs_since_best = 0
+                best_state_v2 = deepcopy(learned_system.state_dict())
+            else:
+                epochs_since_best += 1
+                if epochs_since_best >= patience:
+                    print("Patience ran out, exiting...")
+                    break
+
+            print(f"Quit Training Signal?: {signal_pressed}")
+            if signal_pressed:
+                signal_pressed = False
+                print("Training cancelled...")
+                breakpoint()
+                epochs = idx + 1
+                break
+
+        best_state = best_state_v1 if best_loss_v1 < best_loss_v2 else best_state_v2
 
         if best_state is not None:
             learned_system.load_state_dict(best_state)
@@ -437,9 +517,8 @@ def main(
             max_iter = 6
             for idx in range(max_iter):
                 print("Collecting Data...")
-                reset_robot(non_blocking=False)
                 collect_data()
-                reset_robot(non_blocking=False)
+                reset_robot(safe_height_first=True)
                 print("Visualizing...")
                 gui_vis.sweep()
                 print("Training...")
@@ -490,7 +569,7 @@ def main(
 
         elif command_char == "o":
             """DEBUGGING COMMAND"""
-            learned_system.learned_trajectory_rotate()
+            learned_system.learned_trajectory_average()
             forward_args = learned_system(
                 ctrl_desired=data_trajectories.get_full_trajectory(
                     key=learned_system.controlled_model_names[0] + "_desired"

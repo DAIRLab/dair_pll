@@ -154,7 +154,9 @@ class TrajectorySet:
                 ) * torch.ones(trajectory.shape[0], dtype=torch.int).reshape(
                     trajectory.shape + (1,)
                 )
-            self.slices.add_slices_from_trajectory(trajectory.squeeze())
+            self.slices.add_slices_from_trajectory(
+                trajectory
+            )  # TODO: Handle batch dims
         self.trajectories.extend(trajectory_list)
         self.indices = torch.cat([self.indices, indices.to(torch.get_default_device())])
         obs_info_cache = None
