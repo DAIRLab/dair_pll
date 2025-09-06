@@ -1859,6 +1859,7 @@ class MultibodyLearnableTactileSystem(Module):
         )
 
         # Scale by Nominal Half Length
+        # TODO: scale by geometry's nominal length instead
         jac_outs_params[..., -n_geom:] /= _NOMINAL_HALF_LENGTH
 
         print(f"... Done in {time.time() - start}s")

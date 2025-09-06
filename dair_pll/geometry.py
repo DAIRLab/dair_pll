@@ -23,6 +23,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Tuple, Dict, cast, Union, Optional
 
+import cvxpy as cp
+from cvxpylayers.torch import CvxpyLayer
 import fcl  # type: ignore
 import gin
 import numpy as np
@@ -75,6 +77,9 @@ _DEEP_SUPPORT_DEFAULT_N_QUERY = 5
 _DEEP_SUPPORT_EVAL_N_QUERY = 10
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
 _DEEP_SUPPORT_DEFAULT_WIDTH = 256
+
+## TODO: Remove
+_NOMINAL_HALF_LENGTH = 2e-1
 
 
 @gin.constants_from_enum
@@ -489,6 +494,14 @@ class SparseVertexConvexCollisionGeometry(BoundedConvexCollisionGeometry):
         """
 
 
+_DEFAULT_SOLVER_ARGS = {
+    "solve_method": "Clarabel",
+    "n_jobs_forward": -1,
+    "n_jobs_backward": 1,
+}
+
+
+@gin.configurable
 class Polygon(SparseVertexConvexCollisionGeometry):
     """Concrete implementation of a convex polytope.
 
@@ -499,6 +512,8 @@ class Polygon(SparseVertexConvexCollisionGeometry):
 
     _vertices_param: Parameter
     _nominal_scale: float
+    _solver_args: dict[str, Any]
+    _cvxpylayer: CvxpyLayer
 
     def __init__(
         self,
@@ -506,6 +521,7 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         n_query: int = _POLYGON_DEFAULT_N_QUERY,
         learnable: bool = True,
         nominal_scale: float = 1.0,
+        cvxpylayers_solver_args: Optional[dict[str, Any]] = None,
     ) -> None:
         """Inits ``Polygon`` object with initial vertex set.
 
@@ -532,14 +548,54 @@ class Polygon(SparseVertexConvexCollisionGeometry):
             )
         assert len(scaled_vertices.shape) == 2
         assert scaled_vertices.shape[-1] == 3
+        n_vertices = scaled_vertices.shape[0]
         self._vertices_param = Parameter(scaled_vertices, requires_grad=learnable)
         self.learnable = learnable
+
+        # Setup cvxpylayer
+        n_dim = 3
+        polygon_verts = cp.Parameter((n_dim, n_vertices))
+        lambdas_var = cp.Variable(n_vertices)
+        collide_point = cp.Parameter(n_dim)
+        dist_objective = cp.Minimize(
+            0.5 * cp.pnorm(polygon_verts @ lambdas_var - collide_point)
+        )
+        dist_constraints = [lambdas_var >= 0.0, cp.sum(lambdas_var) <= 1.0]
+        dist_problem = cp.Problem(dist_objective, dist_constraints)
+        self._cvxpylayer = CvxpyLayer(
+            dist_problem,
+            parameters=[polygon_verts, collide_point],
+            variables=[lambdas_var],
+        )
+        self._solver_args = (
+            cvxpylayers_solver_args
+            if cvxpylayers_solver_args is not None
+            else _DEFAULT_SOLVER_ARGS
+        )
+
+    def closest_point_to(self, point: Tensor) -> Tensor:
+        """Get the closest point to point (which could be inside polygon)"""
+        assert point.shape[-1] == 3
+        (soln,) = self._cvxpylayer(
+            self._vertices_param.T, point, solver_args=self._solver_args
+        )
+        return soln @ self._vertices_param
 
     def get_vertices(self, directions: Optional[Tensor] = None) -> Tensor:
         """Return batched view of static vertex set"""
         directions_in = directions if directions is not None else torch.ones(0)
         scaled_vertices = self._nominal_scale * self._vertices_param
         return scaled_vertices.expand(directions_in.shape[:-1] + scaled_vertices.shape)
+
+    @torch.no_grad
+    def bounding_radius(self):
+        """Return the radius of the smallest sphere centered at the origin that contains all vertices"""
+        return torch.max(torch.linalg.norm(self.get_vertices(), dim=-1))
+
+    @torch.no_grad
+    def recenter_vertices(self) -> None:
+        """Recenter vertices so the centroid is at the model origin"""
+        self._vertices_param.add_(-self._vertices_param.mean(dim=-2))
 
     def scalars(self) -> Dict[str, float]:
         """Return one scalar for each vertex index."""
@@ -780,7 +836,11 @@ class Box(SparseVertexConvexCollisionGeometry):
     _nominal_scale: float
 
     def __init__(
-        self, half_lengths: Tensor, n_query: int, learnable: bool = True, nominal_scale=2e-1,
+        self,
+        half_lengths: Tensor,
+        n_query: int,
+        learnable: bool = True,
+        nominal_scale=2e-1,
     ) -> None:
         """Inits ``Box`` object with initial size.
 
@@ -818,10 +878,11 @@ class Box(SparseVertexConvexCollisionGeometry):
         the box as its absolute value."""
         return torch.abs(self.length_params) * self._nominal_scale
 
-    def get_vertices(self, directions: Tensor) -> Tensor:
+    def get_vertices(self, directions: Optional[Tensor] = None) -> Tensor:
         """Returns view of cuboid's static vertex set."""
+        directions_in = directions if directions is not None else torch.ones(0)
         return (self.unit_vertices * self.get_half_lengths()).expand(
-            directions.shape[:-1] + self.unit_vertices.shape
+            directions_in.shape[:-1] + self.unit_vertices.shape
         )
 
     def scalars(self) -> Dict[str, float]:
@@ -989,7 +1050,9 @@ class PydrakeToCollisionGeometryFactory:
         learnable: bool = True,
     ) -> Union[Box, Polygon]:
         """Converts ``pydrake.geometry.Box`` to ``Box`` or ``Polygon``."""
-        half_widths = 0.5 * torch.tensor(np.copy(drake_box.size()))
+        half_widths = 0.5 * torch.tensor(np.copy(drake_box.size())).to(
+            torch.get_default_dtype()
+        )
         if representation == GeometryRepresentation.NONE:
             print(
                 "Warning: no representation supplied for DrakeBox, default to PRIMITIVE"
@@ -1087,10 +1150,10 @@ class PydrakeToCollisionGeometryFactory:
             GeometryRepresentation.PRIMITIVE,
             GeometryRepresentation.NONE,
         ]:
-            return Sphere(torch.tensor([drake_sphere.radius()]), learnable)
+            return Sphere(torch.tensor([drake_sphere.radius()]), learnable=learnable)
 
         if representation == GeometryRepresentation.POLYGON:
-            return Polygon(nominal_scale=drake_sphere.radius())
+            return Polygon(nominal_scale=drake_sphere.radius(), learnable=learnable)
 
         raise NotImplementedError(
             "Cannot presently represent a DrakeSphere()" + f"as {representation} type."
@@ -1133,7 +1196,7 @@ class GeometryCollider:
         geometry_b: CollisionGeometry,
         R_AB: Tensor,
         p_AoBo_A: Tensor,
-        estimated_normals_A: Optional[Tensor],
+        estimated_normals_A: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Collides two collision geometries.
 
@@ -1189,7 +1252,11 @@ class GeometryCollider:
         # case 3: polygon to sphere collision
         if isinstance(geometry_a, Sphere) and isinstance(geometry_b, Polygon):
             return GeometryCollider.collide_sphere_polygon(
-                geometry_a, geometry_b, R_AB, p_AoBo_A
+                geometry_a,
+                geometry_b,
+                R_AB,
+                p_AoBo_A,
+                return_R_BC=False,
             )
         if isinstance(geometry_a, Polygon) and isinstance(geometry_b, Sphere):
             return GeometryCollider.collide_sphere_polygon(
@@ -1197,6 +1264,7 @@ class GeometryCollider:
                 geometry_a,
                 R_AB.transpose(-1, -2),
                 -pbmm(p_AoBo_A.unsqueeze(-2), R_AB).squeeze(-2),
+                return_R_BC=True,
             )
 
         # case 4: sparse-convex to sphere collision (e.g. DSC to robot)
@@ -1498,6 +1566,7 @@ class GeometryCollider:
         polygon_b: Polygon,
         R_AB: Tensor,
         p_AoBo_A: Tensor,
+        return_R_BC: bool = False,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """
         Implementation of ``GeometryCollider.collide()`` when
@@ -1508,6 +1577,7 @@ class GeometryCollider:
         polygon_b: Polygon object
         R_AB (batch, 3, 3): rotation from sphere to polygon model frames
         p_AoBo_A (batch, 3): vector from sphere to polygon in sphere frame
+        return_R_BC: if true, return R_BC instead of R_AC
 
         Returns:
         phi (batch, n_c=1): distance between objects
@@ -1522,18 +1592,51 @@ class GeometryCollider:
         assert isinstance(sphere_a, Sphere)
         assert isinstance(polygon_b, Polygon)
 
-        # TODO: fill this out
+        ## Recenter polygon before doing any geometry calculations
+        polygon_b.recenter_vertices()
 
-        # Cvxpylayer (or Jaxopt) to get convex multipliers of vertices -> contact point
+        eps = 1e-8
 
-        # If contact point is external: vector is {3+ points: projected onto surface normal of face, 
-        ## 2 points: projected onto plane orthogonal to edge
-        ## 1 point: no projection}
-        ## normal = normalized(vector), distance = norm(vector)
+        ## Get Closest Point on Polygon to Sphere Center
+        p_AoBo_B = p_AoBo_A @ R_AB
+        p_BoAo_B = -p_AoBo_B
+        p_BoBc_B = polygon_b.closest_point_to(p_BoAo_B)
+        p_AoBc_B = p_AoBo_B + p_BoBc_B
+        p_AoBc_A = p_AoBc_B @ R_AB.transpose(-1, -2)
 
-        # If contact point is internal: normal is "centroid" -> point; 
-        # distance is (support_pt(normal) - point) projected onto normal
-        assert False
+        # Contact normal calculation
+        # If center of sphere inside, just say normal == vector towards centroid
+        inside_mask = torch.all(
+            torch.isclose(p_AoBc_B, torch.zeros_like(p_AoBc_B), atol=1e-6), dim=-1
+        ).float()
+        assert inside_mask.shape == batch_dim
+        contact_normal_A = torch.nn.functional.normalize(
+            p_AoBc_A + inside_mask * (p_AoBo_A + eps), dim=-1
+        )
+        contact_normal_B = -(contact_normal_A @ R_AB.transpose(-1, -2))
+        p_AoAc_A = contact_normal_A * sphere_a.get_radius()
+
+        # If center of sphere is inside, compute distance only using origin
+        inside_dist = torch.linalg.norm(p_AoBo_A, dim=-1) - polygon_b.bounding_radius()
+        phi = (
+            torch.linalg.norm(p_AoBc_A, dim=-1)
+            + inside_mask * inside_dist
+            - sphere_a.get_radius()
+        )
+        assert phi.shape == batch_dim, f"Bad Phi Shape: {phi.shape} vs. {batch_dim}"
+
+        R_AC = rotation_matrix_from_one_vector(contact_normal_A, 2)
+        R_BC = rotation_matrix_from_one_vector(contact_normal_B, 2)
+        assert R_AC.shape == batch_dim + (3, 3)
+        assert R_BC.shape == batch_dim + (3, 3)
+
+        # Return all values
+        return (
+            phi.unsqueeze(-1),
+            R_BC.unsqueeze(-3) if return_R_BC else R_AC.unsqueeze(-3),
+            p_AoAc_A.unsqueeze(-2),
+            p_BoBc_B.unsqueeze(-2),
+        )
 
     @staticmethod
     def collide_box_sphere(
