@@ -1,7 +1,7 @@
 # Default GIN Config File for rss_experiment.py
 
 ## General Config
-robot_radius = 0.01#575 # Add 1mm buffer on each robot for REAL only
+robot_radius = 0.01575 # Add 1mm buffer on each robot for REAL only
 robot_buffer_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
 workspace_radius = 0.12
 #workspace_radius = 0.15
@@ -43,10 +43,10 @@ TrifingerLCMService.fingertip_body_names = %fingertip_body_names
 TrifingerLCMService.object_name = %object_model_name
 TrifingerLCMService.traj_time_len = %traj_len_s
 TrifingerLCMService.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
-	"object_state": "CUBE_STATE", # lcmt_object_state
-	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
-	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
+	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+	"densetact": "DENSETACT_DATA_SIMULATION", # lcmt_densetact_measurement_data
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS_SIMULATION", #lcmt_fingertips_target_kinematics
 }
 
 ## Action Sampling
@@ -122,7 +122,7 @@ object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
 object_init/LearnableBodySettings.friction = False
-object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
+object_init/LearnableBodySettings.representation = %GeometryRepresentation.POLYGON
 
 # Learning hyperparams
 TactileHyperparameters.default_dt = %default_dt

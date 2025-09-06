@@ -985,7 +985,7 @@ class PydrakeToCollisionGeometryFactory:
             return DrakeSphere(geometry.get_radius())
         elif isinstance(geometry, Polygon):
             return DrakeConvex(
-                geometry.get_vertices().detach().cpu().numpy(), "ConvexPolygon"
+                geometry.get_vertices().detach().cpu().numpy().T, "ConvexPolygon"
             )
         elif isinstance(geometry, DeepSupportConvex):
             mesh_data = extract_obj_from_mesh_summary(
@@ -1592,38 +1592,42 @@ class GeometryCollider:
         assert isinstance(sphere_a, Sphere)
         assert isinstance(polygon_b, Polygon)
 
-        ## Recenter polygon before doing any geometry calculations
-        polygon_b.recenter_vertices()
-
         eps = 1e-8
 
         ## Get Closest Point on Polygon to Sphere Center
-        p_AoBo_B = p_AoBo_A @ R_AB
+        p_AoBo_B = pbmm(p_AoBo_A.unsqueeze(-2), R_AB).squeeze(-2)
         p_BoAo_B = -p_AoBo_B
         p_BoBc_B = polygon_b.closest_point_to(p_BoAo_B)
         p_AoBc_B = p_AoBo_B + p_BoBc_B
-        p_AoBc_A = p_AoBc_B @ R_AB.transpose(-1, -2)
+        p_AoBc_A = pbmm(p_AoBc_B.unsqueeze(-2), R_AB.transpose(-1, -2)).squeeze(-2)
 
         # Contact normal calculation
         # If center of sphere inside, just say normal == vector towards centroid
-        inside_mask = torch.all(
-            torch.isclose(p_AoBc_B, torch.zeros_like(p_AoBc_B), atol=1e-6), dim=-1
-        ).float()
-        assert inside_mask.shape == batch_dim
+        inside_mask = (
+            torch.all(
+                torch.isclose(p_AoBc_B, torch.zeros_like(p_AoBc_B), atol=1e-6), dim=-1
+            )
+            .float()
+            .unsqueeze(-1)
+        )
+        assert inside_mask.shape == batch_dim + (1,)
         contact_normal_A = torch.nn.functional.normalize(
             p_AoBc_A + inside_mask * (p_AoBo_A + eps), dim=-1
         )
-        contact_normal_B = -(contact_normal_A @ R_AB.transpose(-1, -2))
+        contact_normal_B = -(pbmm(contact_normal_A.unsqueeze(-2), R_AB).squeeze(-2))
         p_AoAc_A = contact_normal_A * sphere_a.get_radius()
 
         # If center of sphere is inside, compute distance only using origin
-        inside_dist = torch.linalg.norm(p_AoBo_A, dim=-1) - polygon_b.bounding_radius()
+        inside_dist = (
+            torch.linalg.norm(p_AoBo_A, dim=-1, keepdims=True)
+            - polygon_b.bounding_radius()
+        )
         phi = (
-            torch.linalg.norm(p_AoBc_A, dim=-1)
+            torch.linalg.norm(p_AoBc_A, dim=-1, keepdims=True)
             + inside_mask * inside_dist
             - sphere_a.get_radius()
         )
-        assert phi.shape == batch_dim, f"Bad Phi Shape: {phi.shape} vs. {batch_dim}"
+        assert phi.shape == batch_dim + (1,)
 
         R_AC = rotation_matrix_from_one_vector(contact_normal_A, 2)
         R_BC = rotation_matrix_from_one_vector(contact_normal_B, 2)
@@ -1632,7 +1636,7 @@ class GeometryCollider:
 
         # Return all values
         return (
-            phi.unsqueeze(-1),
+            phi,
             R_BC.unsqueeze(-3) if return_R_BC else R_AC.unsqueeze(-3),
             p_AoAc_A.unsqueeze(-2),
             p_BoBc_B.unsqueeze(-2),

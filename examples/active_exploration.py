@@ -181,18 +181,18 @@ def main(
     def select_action():
         nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
         # TODO: Make action selection a gin param
-        score_fn = partial(
-            experiment_utils.score_eig,
-            action_params,
-            learned_system,
-            data_trajectories,
-            trifinger_lcm,
-            force_finger,
-        )
-        selected_action = action_cem.best_action(
-            score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
-        )
-        # selected_action = action_utils.Action.random_uniform()
+        # score_fn = partial(
+        #    experiment_utils.score_eig,
+        #    action_params,
+        #    learned_system,
+        #    data_trajectories,
+        #    trifinger_lcm,
+        #    force_finger,
+        # )
+        # selected_action = action_cem.best_action(
+        #    score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
+        # )
+        selected_action = action_utils.Action.random_uniform()
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params,
@@ -372,6 +372,7 @@ def main(
             loss_total = sum(torch.sum(v) for _, v in loss_dict.items())
             loss_total.backward()
             optimizer.step()
+            learned_system.recenter_learned_geometry()
 
             loss_print = tuple(
                 f"\t{k}: {torch.sum(v).detach().cpu()};\n" for k, v in loss_dict.items()
@@ -430,6 +431,7 @@ def main(
             loss_total = sum(torch.sum(v) for _, v in loss_dict.items())
             loss_total.backward()
             optimizer.step()
+            learned_system.recenter_learned_geometry()
 
             loss_print = tuple(
                 f"\t{k}: {torch.sum(v).detach().cpu()};\n" for k, v in loss_dict.items()

@@ -47,6 +47,7 @@ from dair_pll.geometry import (
     CollisionGeometry,
     PydrakeToCollisionGeometryFactory,
     _NOMINAL_HALF_LENGTH,
+    Polygon,
 )
 from dair_pll.learnable_trajectory import LearnableTrajectories
 from dair_pll.multibody_terms import MultibodyTerms, LearnableBodySettings
@@ -152,6 +153,7 @@ class MultibodyLearnableTactileSystem(Module):
         """
         super().__init__()
 
+        self.debug = False
         # Input Validation
         if learnable_body_dict is None:
             learnable_body_dict = {}
@@ -1609,6 +1611,8 @@ class MultibodyLearnableTactileSystem(Module):
                     traj_len - 1,
                     3,
                 )
+                if self.debug:
+                    breakpoint()
                 contact_bool = torch.ones(batch_dims + (traj_len - 1,))
                 contact_bool[
                     torch.isclose(
@@ -3105,6 +3109,25 @@ class MultibodyLearnableTactileSystem(Module):
         if surface_sample:
             return body_geometry.sample_surface(sample_count)
         return PydrakeToCollisionGeometryFactory.reverse_convert(body_geometry)
+
+    @torch.no_grad
+    def recenter_learned_geometry(self):
+        """Recenter the learned geometry parameter if polygon"""
+        assert len(self._learned_model_names) == 1, "Only 1 learnable object supported"
+        model_name = self._learned_model_names[0]
+        plant = self._multibody_terms.plant_diagram.plant
+        bodies = get_bodies_in_model_instance(
+            plant, plant.GetModelInstanceByName(model_name)
+        )
+        assert len(bodies) == 1, "Only 1 learnable body supported"
+        body_id = unique_body_identifier(plant, bodies[0])
+        body_geometry_indices = self._multibody_terms.geometry_body_assignment[body_id]
+        assert len(body_geometry_indices) == 1, "Only 1 learnable geometry"
+        body_geometry = self._multibody_terms.contact_terms.geometries[
+            body_geometry_indices[0]
+        ]
+        if isinstance(body_geometry, Polygon):
+            body_geometry.recenter_vertices()
 
     @torch.no_grad
     def get_learned_centroid(self) -> np.ndarray:
