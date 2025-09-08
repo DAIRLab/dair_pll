@@ -282,19 +282,23 @@ class TrifingerLCMService:
             fingertip_force_w[body_name] = body_r_cw.apply(force_c)
             fingertip_force_c[body_name] = force_c
 
-        ret["time"] = torch.tensor(densetact_time_s)
+        ret["time"] = torch.tensor(densetact_time_s).to(torch.get_default_dtype())
         for body_name in self._fingertip_body_names:
-            ret[body_name, "position"] = torch.tensor(fingertip_pos_w[body_name])
-            ret[body_name, "velocity"] = torch.tensor(fingertip_vel_w[body_name])
+            ret[body_name, "position"] = torch.tensor(fingertip_pos_w[body_name]).to(
+                torch.get_default_dtype()
+            )
+            ret[body_name, "velocity"] = torch.tensor(fingertip_vel_w[body_name]).to(
+                torch.get_default_dtype()
+            )
             ret[body_name, "contact_force_C"] = torch.tensor(
                 fingertip_force_c[body_name]
-            )
+            ).to(torch.get_default_dtype())
             ret[body_name, "contact_force_W"] = torch.tensor(
                 fingertip_force_w[body_name]
-            )
+            ).to(torch.get_default_dtype())
             ret[body_name, "contact_normal_W"] = torch.tensor(
                 fingertip_normal_w[body_name]
-            )
+            ).to(torch.get_default_dtype())
 
         # Interp ground-truth object data
         if len(self._object_raw_data) > 0:
@@ -316,7 +320,7 @@ class TrifingerLCMService:
             assert object_pos_interp.shape == (len(densetact_time_s), num_positions)
             ret[obj_name, "position"] = torch.tensor(
                 object_pos_interp,
-            )
+            ).to(torch.get_default_dtype())
 
             # Velocity Interpolation
             num_velocities = self._object_raw_data[0].num_velocities
@@ -333,7 +337,7 @@ class TrifingerLCMService:
             assert object_vel_interp.shape == (len(densetact_time_s), num_velocities)
             ret[obj_name, "velocity"] = torch.tensor(
                 object_vel_interp,
-            )
+            ).to(torch.get_default_dtype())
 
         # Return
         # Prune repeat timestamps

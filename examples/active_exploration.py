@@ -77,6 +77,7 @@ def main(
     # Debug: Remove scientific notation for numpy printing
     np.set_printoptions(suppress=True)
     torch.set_default_device("cuda")
+    # Need float64 for 64-bit time variable
     torch.set_default_dtype(torch.float64)
 
     # Create run directory
@@ -110,8 +111,8 @@ def main(
 
     # Sample initial action (from true obj pose)
     action_cem = action_utils.ActionCEM()
-    # selected_action = action_utils.Action()
-    selected_action = action_utils.Action.random_uniform()
+    selected_action = action_utils.Action()
+    # selected_action = action_utils.Action.random_uniform()
     selected_knots = np.stack(
         [action_params.get_reset_knot(), action_params.get_reset_knot()]
     )
@@ -181,18 +182,18 @@ def main(
     def select_action():
         nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
         # TODO: Make action selection a gin param
-        # score_fn = partial(
-        #    experiment_utils.score_eig,
-        #    action_params,
-        #    learned_system,
-        #    data_trajectories,
-        #    trifinger_lcm,
-        #    force_finger,
-        # )
-        # selected_action = action_cem.best_action(
-        #    score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
-        # )
-        selected_action = action_utils.Action.random_uniform()
+        score_fn = partial(
+            experiment_utils.score_eig,
+            action_params,
+            learned_system,
+            data_trajectories,
+            trifinger_lcm,
+            force_finger,
+        )
+        selected_action = action_cem.best_action(
+            score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
+        )
+        # selected_action = action_utils.Action.random_uniform()
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params,
@@ -254,13 +255,16 @@ def main(
         # Get entire desired trajectory
         desired_traj = extract_robot_trajectory(
             action_utils.interpolate_sampled_action(
-                data=torch.tensor(np.array(selected_knots)),
+                data=torch.tensor(np.array(selected_knots)).to(
+                    torch.get_default_dtype()
+                ),
                 traj_len_s=(new_trajectory["time"][-1] - new_trajectory["time"][0]),
                 traj_n_steps=len(new_trajectory),
             )[0],
             learned_system,
             trifinger_lcm,
         )
+
         # Crop to first contact
         new_trajectory = new_trajectory[first_contact:]
         add_trajectory = TensorDict({}, batch_size=new_trajectory.batch_size)

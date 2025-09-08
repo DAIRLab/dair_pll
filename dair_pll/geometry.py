@@ -50,6 +50,30 @@ from dair_pll.deep_support_function import (
 )
 from dair_pll.tensor_utils import pbmm, tile_dim, rotation_matrix_from_one_vector
 
+### Jaxopt
+import os
+
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+import jax
+import jax.numpy as jnp
+from jaxopt import OSQP
+from jax2torch import jax2torch
+
+
+def closest_point_jax(osqp: OSQP, polygon_verts: jax.Array, point: jax.Array):
+    n_dims = 3
+    n_verts = polygon_verts.shape[-2]
+    Qj = polygon_verts @ polygon_verts.T
+    qj = -point @ polygon_verts.T
+    Gj = jnp.concatenate([-jnp.eye(n_verts), jnp.ones((1, n_verts))])
+    hj = jnp.concatenate([jnp.zeros(n_verts), jnp.ones(1)])
+    soln = osqp.run(params_obj=(Qj, qj), params_ineq=(Gj, hj)).params.primal
+    out = soln @ polygon_verts
+    return out
+
+
+###
+
 _UNIT_BOX_VERTICES = (
     torch.tensor(
         [
@@ -515,12 +539,17 @@ class Polygon(SparseVertexConvexCollisionGeometry):
     _solver_args: dict[str, Any]
     _cvxpylayer: CvxpyLayer
 
+    ## Jaxopt
+    _osqp: OSQP
+    closest_point_to_jax: Callable[[Tensor, Tensor], Tensor]
+
     def __init__(
         self,
         vertices: Union[Tensor, int] = 20,
         n_query: int = _POLYGON_DEFAULT_N_QUERY,
         learnable: bool = True,
         nominal_scale: float = 1.0,
+        scale: float = 1.0,
         cvxpylayers_solver_args: Optional[dict[str, Any]] = None,
     ) -> None:
         """Inits ``Polygon`` object with initial vertex set.
@@ -532,13 +561,13 @@ class Polygon(SparseVertexConvexCollisionGeometry):
         super().__init__(n_query)
         self._nominal_scale = nominal_scale
         if isinstance(vertices, Tensor):
-            scaled_vertices = vertices.clone() / nominal_scale
+            scaled_vertices = scale * vertices.clone() / nominal_scale
         else:
             n_vertices = int(vertices)
             # Sample from Unit Sphere
             phis = torch.rand(n_vertices) * np.pi * 2.0  # [0, 2*pi)
             costhetas = (torch.rand(n_vertices) * 2.0) - 1.0  # [-1, 1)
-            scaled_vertices = torch.stack(
+            scaled_vertices = scale * torch.stack(
                 [
                     torch.sin(torch.acos(costhetas)) * torch.cos(phis),
                     torch.sin(torch.acos(costhetas)) * torch.sin(phis),
@@ -571,6 +600,14 @@ class Polygon(SparseVertexConvexCollisionGeometry):
             cvxpylayers_solver_args
             if cvxpylayers_solver_args is not None
             else _DEFAULT_SOLVER_ARGS
+        )
+
+        ### Jaxopt
+        self._osqp = OSQP(tol=1e-6)
+        self.closest_point_to_jax = jax2torch(
+            jax.vmap(
+                jax.tree_util.Partial(closest_point_jax, self._osqp), in_axes=(None, 0)
+            )
         )
 
     def closest_point_to(self, point: Tensor) -> Tensor:
@@ -1153,7 +1190,7 @@ class PydrakeToCollisionGeometryFactory:
             return Sphere(torch.tensor([drake_sphere.radius()]), learnable=learnable)
 
         if representation == GeometryRepresentation.POLYGON:
-            return Polygon(nominal_scale=drake_sphere.radius(), learnable=learnable)
+            return Polygon(scale=drake_sphere.radius(), learnable=learnable)
 
         raise NotImplementedError(
             "Cannot presently represent a DrakeSphere()" + f"as {representation} type."
@@ -1597,7 +1634,16 @@ class GeometryCollider:
         ## Get Closest Point on Polygon to Sphere Center
         p_AoBo_B = pbmm(p_AoBo_A.unsqueeze(-2), R_AB).squeeze(-2)
         p_BoAo_B = -p_AoBo_B
-        p_BoBc_B = polygon_b.closest_point_to(p_BoAo_B)
+        if not torch._C._functorch.is_batchedtensor(p_AoBo_A):
+            p_BoBc_B = polygon_b.closest_point_to(p_BoAo_B)
+        else:
+            # Need to run solver at a nominal scale of 1.0 for numerical stability
+            p_BoBc_B = polygon_b.closest_point_to_jax(
+                polygon_b.get_vertices() / (polygon_b.bounding_radius() + eps),
+                p_BoAo_B.unsqueeze(-2) / (polygon_b.bounding_radius() + eps),
+            ).to(torch.get_default_dtype()).squeeze(-2) * (
+                polygon_b.bounding_radius() + eps
+            )
         p_AoBc_B = p_AoBo_B + p_BoBc_B
         p_AoBc_A = pbmm(p_AoBc_B.unsqueeze(-2), R_AB.transpose(-1, -2)).squeeze(-2)
 
