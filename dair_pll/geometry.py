@@ -31,6 +31,7 @@ import numpy as np
 import pywavefront  # type: ignore
 import torch
 import trimesh
+from scipy.spatial import ConvexHull
 from pydrake.geometry import Box as DrakeBox  # type: ignore
 from pydrake.geometry import Sphere as DrakeSphere  # type: ignore
 from pydrake.geometry import HalfSpace as DrakeHalfSpace  # type: ignore
@@ -96,7 +97,7 @@ _ROT_Z_45 = torch.tensor(
 
 _total_ordering = ["Plane", "Polygon", "Box", "Sphere", "DeepSupportConvex"]
 
-_POLYGON_DEFAULT_N_QUERY = 3
+_POLYGON_DEFAULT_N_QUERY = 4
 _DEEP_SUPPORT_DEFAULT_N_QUERY = 5
 _DEEP_SUPPORT_EVAL_N_QUERY = 10
 _DEEP_SUPPORT_DEFAULT_DEPTH = 2
@@ -631,8 +632,27 @@ class Polygon(SparseVertexConvexCollisionGeometry):
 
     @torch.no_grad
     def recenter_vertices(self) -> None:
-        """Recenter vertices so the centroid is at the model origin"""
+        """Recenter vertices so the centroid is at the model origin
+        Also: Take any internal vertices and make external again.
+        """
         self._vertices_param.add_(-self._vertices_param.mean(dim=-2))
+        qhull = ConvexHull(self.get_vertices().detach().cpu().numpy())
+        if len(qhull.vertices) < self._vertices_param.shape[0]:
+            print("Point Went Internal")
+
+            # Re-add on bounding sphere
+            new_params = self._vertices_param.detach().clone()
+            for idx in range(self._vertices_param.shape[0]):
+                if idx in qhull.vertices:
+                    continue
+                new_vertex = self.sample_surface(count=1) * (1.0 + 1e-4)
+                new_params[idx] = (
+                    torch.tensor(new_vertex).to(torch.get_default_dtype()).squeeze()
+                    / self._nominal_scale
+                )
+
+            self._vertices_param.set_(new_params)
+            self._vertices_param.add_(-self._vertices_param.mean(dim=-2))
 
     def scalars(self) -> Dict[str, float]:
         """Return one scalar for each vertex index."""

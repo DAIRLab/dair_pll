@@ -1,8 +1,8 @@
 # Default GIN Config File for rss_experiment.py
 
 ## General Config
-robot_radius = 0.01575 # Add 1mm buffer on each robot for REAL only
-robot_buffer_radius = 0.02 # 0.01575 from trifingeredu.urdf + buffer
+robot_radius = 0.005#0.01575 # Add 1mm buffer on each robot for REAL only
+robot_buffer_radius = 0.008 # 0.01575 from trifingeredu.urdf + buffer
 workspace_radius = 0.12
 #workspace_radius = 0.15
 robot_model_name = "robot"
@@ -77,6 +77,7 @@ ActionCEM.n_iter = 2
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
 robot/get_urdf_asset_contents.mappings = {
 	"num_fingers": 2,
+	"mass": 0.5,
 	"mu": 1.0,
 	"radius": %robot_radius,
 }
@@ -102,6 +103,7 @@ size/np.random.uniform.high = 0.015
 object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_sphere.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
 	"radius": @size/np.random.uniform(), #0.04, # m
+	"mass": 0.1,
 	"mu": 0.1,
 	"planar_xz": "false",
 }
@@ -144,17 +146,17 @@ TactileHyperparameters.w_normal_var = 0.01519224261 #0.04557672783 #30deg # # co
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
 TactileHyperparameters.w_pen = 1e3
-TactileHyperparameters.w_v_pred = 3e3
-TactileHyperparameters.w_q_pred = 2e3
+TactileHyperparameters.w_v_pred = 4e3
+TactileHyperparameters.w_q_pred = 4e3
 TactileHyperparameters.w_comp = 1e1
-TactileHyperparameters.w_diss = 1e2
+TactileHyperparameters.w_diss = 3e2
 TactileHyperparameters.w_elas = 1e0
 
 # Learning Optimizer
 main.optimizer_cls = @Adam
 SGD.lr=8e-4
 SGD.momentum=2e-4
-Adam.lr=2e-3
+Adam.lr=1e-3
 #Adam.lr = 1e-4
 Adam.amsgrad=True
 Adam.fused=False
@@ -173,10 +175,11 @@ DrakeSystem.urdfs = {
 	%object_model_name: @object/get_urdf_asset_contents()
 }
 DrakeSystem.visualization_file = None
-object/get_asset_uri.asset_file_basename = "active/dynamixel_box.obj"
+object/get_asset_uri.asset_file_basename = "active/d8_5cm_mmscale.obj"
 object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
 	"mesh": @object/get_asset_uri(),
+	"mass": 0.1,
 	"mu": 0.1,
 	"planar_xz": "false",
 }

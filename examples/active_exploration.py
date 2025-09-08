@@ -111,8 +111,8 @@ def main(
 
     # Sample initial action (from true obj pose)
     action_cem = action_utils.ActionCEM()
-    selected_action = action_utils.Action()
-    # selected_action = action_utils.Action.random_uniform()
+    # selected_action = action_utils.Action()
+    selected_action = action_utils.Action.random_uniform()
     selected_knots = np.stack(
         [action_params.get_reset_knot(), action_params.get_reset_knot()]
     )
@@ -122,9 +122,9 @@ def main(
         trifinger_lcm.get_current_object_pose(),
         force_finger=0,
     )[0]
-    # selected_knots = first_knots
+    selected_knots = first_knots
     # Only move one finger
-    selected_knots[:, :3] = first_knots[:, :3]
+    # selected_knots[:, :3] = first_knots[:, :3]
     gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
     # Initialize Optimizer and Data config
@@ -520,7 +520,7 @@ def main(
 
             reset_robot()
 
-            max_iter = 6
+            max_iter = 9
             for idx in range(max_iter):
                 print("Collecting Data...")
                 collect_data()

@@ -574,6 +574,8 @@ def main(
 
     # Run Simulator
     print("Running Sim... Press Ctrl-C to Stop")
+    # plant_diagram.sim.AdvanceTo(0.1)
+    # breakpoint()
     plant_diagram.sim.set_target_realtime_rate(sim_rate)
     plant_diagram.sim.set_publish_every_time_step(False)
     try:

@@ -121,10 +121,10 @@ class Action:
     @staticmethod
     def random_uniform():
         return Action(
-            np.random.uniform(-np.pi / 4.0, np.pi / 4.0),
-            np.random.uniform(-np.pi / 9.0, np.pi / 4.0),
-            np.random.uniform(-np.pi / 4.0, np.pi / 4.0),
-            np.random.uniform(-np.pi / 9.0, np.pi / 4.0),
+            np.random.uniform(-2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0),
+            np.random.uniform(-np.pi / 9.0, 2.0 * np.pi / 5.0),
+            np.random.uniform(-2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0),
+            np.random.uniform(-np.pi / 9.0, 2.0 * np.pi / 5.0),
         )
 
     # Order is arbitrary
@@ -137,10 +137,16 @@ class Action:
 
     def __post_init__(self):
         """Method to check validity of parameters."""
-        self.finger_0_ra = np.clip(self.finger_0_ra, -np.pi / 4.0, np.pi / 4.0)
-        self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi / 9.0, np.pi / 4.0)
-        self.finger_120_ra = np.clip(self.finger_120_ra, -np.pi / 4.0, np.pi / 4.0)
-        self.finger_120_dec = np.clip(self.finger_120_dec, -np.pi / 9.0, np.pi / 4.0)
+        self.finger_0_ra = np.clip(
+            self.finger_0_ra, -2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0
+        )
+        self.finger_0_dec = np.clip(self.finger_0_dec, -np.pi / 9.0, 2.0 * np.pi / 5.0)
+        self.finger_120_ra = np.clip(
+            self.finger_120_ra, -2.0 * np.pi / 5.0, 2.0 * np.pi / 5.0
+        )
+        self.finger_120_dec = np.clip(
+            self.finger_120_dec, -np.pi / 9.0, 2.0 * np.pi / 5.0
+        )
 
 
 class CEMReturnStyle(Enum):

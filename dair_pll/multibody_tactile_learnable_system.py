@@ -1314,6 +1314,7 @@ class MultibodyLearnableTactileSystem(Module):
             "loss_comp": torch.zeros(batch_dims + (traj_len - 1,)),
             "loss_diss": torch.zeros(batch_dims + (traj_len - 1,)),
             "loss_elas": torch.zeros(batch_dims + (traj_len - 1,)),
+            "reg_ground": torch.zeros(batch_dims + (traj_len - 1,)),
         }
 
         # Compute DTs, switch trajectory jumps to default_dt
@@ -1650,6 +1651,20 @@ class MultibodyLearnableTactileSystem(Module):
                 )
                 assert ret_loss["loss_meas_bool"].size() == batch_dims + (traj_len - 1,)
 
+        # Regularizer: Ground Contact (bottom of shape should generally stay on the ground)
+        # TODO: Make parameter or get name based on HalfPlane in plant
+        ground_name = "world"
+        # TODO: Make Hyperparemter
+        hyperparam_reg_ground = 1e1
+        ground_indices = [
+            index for index, key in enumerate(obj_pair_list) if ground_name in key
+        ]
+        phi_ground = m_phi[..., ground_indices]
+        ret_loss["reg_ground"] = hyperparam_reg_ground * torch.max(
+            phi_ground, torch.zeros_like(phi_ground)
+        ).sum(dim=-1)
+        assert ret_loss["reg_ground"].size() == batch_dims + (traj_len - 1,)
+
         return ret_loss
 
     def loss_fn(
@@ -1911,7 +1926,8 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape((-1, n_params, n_params))
             .sum(dim=0)
         )
-        ret_info += info_normals
+        # TODO: make normal_weighting a hyperparameter
+        ret_info += info_normals + 1e-2
         print(f"...Done in {(time.time()-start):.6f}s")
         # print("Observed Info Breakpoint...")
         # breakpoint()
@@ -2279,7 +2295,8 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape(batch_dims + (-1, n_params, n_params))
             .sum(dim=-3)
         )
-        ret_info_batch += info_normals_batch
+        # TODO: Make Normal Weighting a hyperparameter
+        ret_info_batch += info_normals_batch * 1e-2
         print(f"...Done in {(time.time()-start):.6f}s")
         # print("Expected Info Breakpoint...")
         # breakpoint()

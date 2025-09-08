@@ -17,7 +17,7 @@ DensetactIOSystem.force_std = 0. # 1e-2
 
 ## Simulation Plant
 PlantDiagram.delta_t = %sim_dt # seconds
-PlantDiagram.ground_mu = 0.5
+PlantDiagram.ground_mu = 1.0
 PlantDiagram.visualization_file = "meshcat"
 PlantDiagram.urdfs = { 
 	%object_model_name: @object/get_urdf_asset_contents(), 
@@ -25,17 +25,18 @@ PlantDiagram.urdfs = {
 }
 
 ## Base URDF and State Config
-object/get_asset_uri.asset_file_basename = "active/dynamixel_box.obj"
+object/get_asset_uri.asset_file_basename = "active/d8_5cm_mmscale.obj"
 object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
 	"mesh": @object/get_asset_uri(),
-	"mu": 0.1,
+	"mass": 0.1,
+	"mu": 0.2,
 	"planar_xz": "false",
 }
 pose/np.random.uniform.low = -0.05
 pose/np.random.uniform.high = 0.05
 object_initial_state = [
-	1.0, 0., 0., @np.random.uniform(), # Quat (WXYZ)
+	0.8923991, 0.2391176, 0.3696438, 0.0990458, # Quat (WXYZ)
 	@pose/np.random.uniform(), @pose/np.random.uniform(), 0.06,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
@@ -50,8 +51,9 @@ object_initial_state = [
 robot/get_urdf_asset_contents.urdf_file_basename = "spherebot.urdf.xacro"
 robot/get_urdf_asset_contents.mappings = {
 	"num_fingers": 3,
+	"mass": 0.5,
 	"mu": 1.0,
-	"radius": 0.01575,
+	"radius": 0.005,#0.01575,
 }
 robot_initial_state = [
 	0., 0.15, 0.15, # Finger 2 q
