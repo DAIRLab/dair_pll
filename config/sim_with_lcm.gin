@@ -25,7 +25,7 @@ PlantDiagram.urdfs = {
 }
 
 ## Base URDF and State Config
-object/get_asset_uri.asset_file_basename = "active/d8_5cm_mmscale.obj"
+object/get_asset_uri.asset_file_basename = "active/cylinder_mscale.obj"
 object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
 	"mesh": @object/get_asset_uri(),
@@ -33,10 +33,11 @@ object/get_urdf_asset_contents.mappings = {
 	"mu": 0.2,
 	"planar_xz": "false",
 }
-pose/np.random.uniform.low = -0.05
-pose/np.random.uniform.high = 0.05
+pose/np.random.uniform.low = -0.02
+pose/np.random.uniform.high = 0.02
 object_initial_state = [
-	0.8923991, 0.2391176, 0.3696438, 0.0990458, # Quat (WXYZ)
+	0.7071068, 0.7071068, 0., 0.,
+#	0.8923991, 0.2391176, 0.3696438, 0.0990458, # Quat (WXYZ)
 	@pose/np.random.uniform(), @pose/np.random.uniform(), 0.06,     # XYZ
 	0.0, 0.0, 0.0,      # omega_XYZ
 	0.0, 0.0, 0.0,		# dXYZ
@@ -53,7 +54,7 @@ robot/get_urdf_asset_contents.mappings = {
 	"num_fingers": 3,
 	"mass": 0.5,
 	"mu": 1.0,
-	"radius": 0.005,#0.01575,
+	"radius": 0.01575, #0.005,
 }
 robot_initial_state = [
 	0., 0.15, 0.15, # Finger 2 q

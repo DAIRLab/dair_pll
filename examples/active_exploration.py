@@ -122,9 +122,9 @@ def main(
         trifinger_lcm.get_current_object_pose(),
         force_finger=0,
     )[0]
-    selected_knots = first_knots
+    # selected_knots = first_knots
     # Only move one finger
-    # selected_knots[:, :3] = first_knots[:, :3]
+    selected_knots[:, :3] = first_knots[:, :3]
     gui_vis.draw_action_samples(selected_knots[np.newaxis, :, :])
 
     # Initialize Optimizer and Data config
@@ -182,18 +182,18 @@ def main(
     def select_action():
         nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
         # TODO: Make action selection a gin param
-        score_fn = partial(
-            experiment_utils.score_eig,
-            action_params,
-            learned_system,
-            data_trajectories,
-            trifinger_lcm,
-            force_finger,
-        )
-        selected_action = action_cem.best_action(
-            score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
-        )
-        # selected_action = action_utils.Action.random_uniform()
+        # score_fn = partial(
+        #    experiment_utils.score_eig,
+        #    action_params,
+        #    learned_system,
+        #    data_trajectories,
+        #    trifinger_lcm,
+        #    force_finger,
+        # )
+        # selected_action = action_cem.best_action(
+        #    score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
+        # )
+        selected_action = action_utils.Action.random_uniform()
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params,
@@ -485,8 +485,14 @@ def main(
         print(f"Finished training {epochs} epochs in {time.time()-start_time} seconds!")
 
     def report_chamfer_dist():
+        ground_truth = (
+            data_trajectories.trajectories[-1]["cube_groundtruth"][-1]
+            .detach()
+            .cpu()
+            .numpy()
+        )
         cham_dist = experiment_utils.chamfer_metric(
-            learned_system, true_mesh, trifinger_lcm.get_current_object_pose()
+            learned_system, true_mesh, ground_truth
         )
         print(f"Chamfer Distance (m): {cham_dist}")
         cham_dists.append(cham_dist)
@@ -520,7 +526,7 @@ def main(
 
             reset_robot()
 
-            max_iter = 9
+            max_iter = 6
             for idx in range(max_iter):
                 print("Collecting Data...")
                 collect_data()

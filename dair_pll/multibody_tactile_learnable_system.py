@@ -1655,7 +1655,7 @@ class MultibodyLearnableTactileSystem(Module):
         # TODO: Make parameter or get name based on HalfPlane in plant
         ground_name = "world"
         # TODO: Make Hyperparemter
-        hyperparam_reg_ground = 1e1
+        hyperparam_reg_ground = 1e2
         ground_indices = [
             index for index, key in enumerate(obj_pair_list) if ground_name in key
         ]
@@ -1927,7 +1927,7 @@ class MultibodyLearnableTactileSystem(Module):
             .sum(dim=0)
         )
         # TODO: make normal_weighting a hyperparameter
-        ret_info += info_normals + 1e-2
+        ret_info += info_normals + 1e-1
         print(f"...Done in {(time.time()-start):.6f}s")
         # print("Observed Info Breakpoint...")
         # breakpoint()
@@ -2296,7 +2296,7 @@ class MultibodyLearnableTactileSystem(Module):
             .sum(dim=-3)
         )
         # TODO: Make Normal Weighting a hyperparameter
-        ret_info_batch += info_normals_batch * 1e-2
+        ret_info_batch += info_normals_batch * 1e-1
         print(f"...Done in {(time.time()-start):.6f}s")
         # print("Expected Info Breakpoint...")
         # breakpoint()
