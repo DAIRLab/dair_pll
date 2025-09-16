@@ -18,12 +18,14 @@ TODOs:
 
 from copy import deepcopy
 import os
+import pickle
 import pdb
 import signal
 import sys
 import time
 from typing import Type, Optional
 from functools import partial
+import shutil
 
 import gin
 import gin.torch.external_configurables
@@ -61,8 +63,8 @@ def signal_handler(_sig, _frame):
 
 @gin.configurable
 def main(
-    storage_folder_name: str = "storage_active",
-    run_name: str = "default_run",
+    config_file_fullpath: str,
+    storage_folder_name: str = "storage_active-real",
     optimizer_cls: Type = torch.optim.SGD,
     action_params: action_utils.ActionWorkspaceParams = action_utils.ActionWorkspaceParams(),
 ):
@@ -83,7 +85,12 @@ def main(
     # Create run directory
     print("Active Tactile Exploration")
     storage_name = os.path.join(REPO_DIR, "results", storage_folder_name)
-    print(f"Storing data and results at {file_utils.run_dir(storage_name, run_name)}")
+    run_name = f"{time.time()}-run"
+    run_dir = file_utils.run_dir(storage_name, run_name)
+    print(f"Storing data and results at {run_dir}")
+
+    # Save config file to run dir
+    shutil.copy(config_file_fullpath, os.path.join(run_dir, "config.gin"))
 
     # Initialize LCM
     trifinger_lcm = TrifingerLCMService()
@@ -134,7 +141,23 @@ def main(
 
     init_geom = deepcopy(learned_system._multibody_terms.state_dict())
 
-    ### Reinit learned system
+    ### Store Data for a Time Step
+    def record_data():
+        nonlocal data_trajectories, run_dir, learned_system
+        file_name = os.path.join(run_dir, f"{time.time()}-data.pkl")
+        save_dict = {}
+        save_dict["data"] = deepcopy(data_trajectories)
+        save_dict["learned"] = deepcopy(learned_system.state_dict())
+        if len(data_trajectories.trajectories) > 0:
+            save_dict["obs_info"] = learned_system.observed_info(data_trajectories).detach().cpu().numpy()
+        save_dict["next_action"] = deepcopy(selected_knots)
+        save_dict["cham_dists"] = deepcopy(cham_dists)
+        print(f"Saving data to...{file_name}")
+        with open(file_name, "wb") as file:
+            pickle.dump(save_dict, file)
+
+    ### Reinit learned systemls
+
     def reinit_learned():
         nonlocal learned_system, init_geom, data_trajectories, gui_vis
         learned_system._multibody_terms.load_state_dict(init_geom)
@@ -182,18 +205,19 @@ def main(
     def select_action():
         nonlocal force_finger, selected_action, selected_knots, gui_vis, action_params, trifinger_lcm, learned_system, data_trajectories
         # TODO: Make action selection a gin param
-        # score_fn = partial(
-        #    experiment_utils.score_eig,
-        #    action_params,
-        #    learned_system,
-        #    data_trajectories,
-        #    trifinger_lcm,
-        #    force_finger,
-        # )
-        # selected_action = action_cem.best_action(
-        #    score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
-        # )
-        selected_action = action_utils.Action.random_uniform()
+        score_fn = partial(
+           experiment_utils.score_eig,
+           action_params,
+           learned_system,
+           data_trajectories,
+           trifinger_lcm,
+           force_finger,
+           run_dir,
+        )
+        selected_action = action_cem.best_action(
+           score_fn=score_fn, vis_fn=partial(action_vis, force_finger)
+        )
+        #selected_action = action_utils.Action.random_uniform()
         obj_pose_guess = learned_system.get_learned_centroid()
         selected_knots = action_utils.action_to_knots(
             action_params,
@@ -526,7 +550,7 @@ def main(
 
             reset_robot()
 
-            max_iter = 6
+            max_iter = 5
             for idx in range(max_iter):
                 print("Collecting Data...")
                 collect_data()
@@ -538,10 +562,10 @@ def main(
                 print("Record Chamfer Distance...")
                 report_chamfer_dist()
                 print(f"Chamfer Distances So Far: {cham_dists}")
-                if idx == (max_iter - 1):
-                    break
                 print("Select next action...")
                 select_action()
+                # Record data
+                record_data()
 
         elif command_char == "b":
             # pylint: disable-next=forgotten-debug-statement
@@ -612,10 +636,11 @@ def main_fn():
     # Parse config file and start
     gin.register(np.array, module="np")
     gin.register(np.random.uniform, module="np.random")
-    gin.parse_config_file(os.path.join(REPO_DIR, "config", config_file))
+    config_file_fullpath = os.path.join(REPO_DIR, "config", config_file)
+    gin.parse_config_file(config_file_fullpath)
     # Pylint doesn't know about gin
     # pylint: disable=no-value-for-parameter
-    main()
+    main(config_file_fullpath)
 
 
 if __name__ == "__main__":

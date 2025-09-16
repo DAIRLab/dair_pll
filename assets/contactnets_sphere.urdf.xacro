@@ -13,12 +13,12 @@
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <mass value="${mass}" />
             <inertia
-                ixx="${2.0/5.0 * mass * (radius*radius)}"
+                ixx="${mass * (radius*radius)}"
                 ixy="0"
                 ixz="0"
-                iyy="${2.0/5.0 * mass * (radius*radius)}"
+                iyy="${mass * (radius*radius)}"
                 iyz="0"
-                izz="${2.0/5.0 * mass * (radius*radius)}"/>
+                izz="${mass * (radius*radius)}"/>
         </inertial>
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0" />

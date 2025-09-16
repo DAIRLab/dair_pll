@@ -158,6 +158,7 @@ def score_eig(
     data_trajectories: TrajectorySet,
     trifinger_lcm: TrifingerLCMService,
     force_finger: int,
+    output_file_dir: str,
     actions: list[Action],
 ) -> list[float]:
     """Score is EIG"""
@@ -198,6 +199,7 @@ def score_eig(
     fisher = learned_system.expected_fisher_info(
         ctrl_desired=robot_traj,
         timestamps=traj_time,
+        output_file_dir=output_file_dir,
     )
     # breakpoint()
 
