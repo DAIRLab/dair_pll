@@ -64,7 +64,7 @@ def signal_handler(_sig, _frame):
 @gin.configurable
 def main(
     config_file_fullpath: str,
-    storage_folder_name: str = "storage_active-real",
+    storage_folder_name: str = "storage_active-d8",
     optimizer_cls: Type = torch.optim.SGD,
     action_params: action_utils.ActionWorkspaceParams = action_utils.ActionWorkspaceParams(),
 ):

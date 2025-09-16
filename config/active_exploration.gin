@@ -2,7 +2,7 @@
 
 ## General Config
 robot_radius = 0.01#575 #0.005 #0.009#75  # Add 1mm buffer on each robot for REAL only
-robot_buffer_radius =  0.023 #0.012 #0.008 #0.022 # 0.01575 from trifingeredu.urdf + buffer
+robot_buffer_radius =  0.012#0.023 #0.012 #0.008 #0.022 # 0.01575 from trifingeredu.urdf + buffer
 workspace_radius = 0.12
 #workspace_radius = 0.15
 robot_model_name = "robot"
@@ -43,10 +43,10 @@ TrifingerLCMService.fingertip_body_names = %fingertip_body_names
 TrifingerLCMService.object_name = %object_model_name
 TrifingerLCMService.traj_time_len = %traj_len_s
 TrifingerLCMService.lcm_channels = {
-	"fingertips_position": "FINGERTIPS_POSITION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
-	"object_state": "CUBE_STATE", # lcmt_object_state
-	"densetact": "DENSETACT_DATA", # lcmt_densetact_measurement_data
-	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS", #lcmt_fingertips_target_kinematics
+	"fingertips_position": "FINGERTIPS_POSITION_SIMULATION", # lcmt_fingertips_position "FINGERTIPS_POSITION"
+	"object_state": "CUBE_STATE_SIMULATION", # lcmt_object_state
+	"densetact": "DENSETACT_DATA_SIMULATION", # lcmt_densetact_measurement_data
+	"fingertips_target": "FINGERTIPS_TARGET_KINEMATICS_SIMULATION", #lcmt_fingertips_target_kinematics
 }
 
 ## Action Sampling
@@ -100,22 +100,22 @@ TactileSystem.learnable_body_dict = {
 # Initial guesses
 size/np.random.uniform.low = 0.005
 size/np.random.uniform.high = 0.015
-#object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_sphere.urdf.xacro"
-#object_init/get_urdf_asset_contents.mappings = {
-#	"radius": @size/np.random.uniform(), #0.04, # m
-#	"mass": 0.5,
-#	"mu": 0.1,
-#	"planar_xz": "false",
-#}
-object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_sphere.urdf.xacro"
 object_init/get_urdf_asset_contents.mappings = {
-	"length_x": @size/np.random.uniform(), #0.04, # m
-	"length_y": @size/np.random.uniform(), #0.04, # m
-	"length_z": @size/np.random.uniform(), #0.04, # m
+	"radius": @size/np.random.uniform(), #0.04, # m
 	"mass": 0.5,
-	"mu": 1.0,
+	"mu": 0.4,
 	"planar_xz": "false",
 }
+#object_init/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+#object_init/get_urdf_asset_contents.mappings = {
+#	"length_x": @size/np.random.uniform(), #0.04, # m
+#	"length_y": @size/np.random.uniform(), #0.04, # m
+#	"length_z": @size/np.random.uniform(), #0.04, # m
+#	"mass": 0.5,
+#	"mu": 1.0,
+#	"planar_xz": "false",
+#}
 pose/np.random.uniform.low = -0.05
 pose/np.random.uniform.high = 0.05
 TactileSystem.init_learned_state = [
@@ -131,7 +131,7 @@ object_init/LearnableBodySettings.inertia_com = False
 object_init/LearnableBodySettings.inertia_moments_products = False
 object_init/LearnableBodySettings.geometry = True
 object_init/LearnableBodySettings.friction = False
-object_init/LearnableBodySettings.representation = %GeometryRepresentation.PRIMITIVE
+object_init/LearnableBodySettings.representation = %GeometryRepresentation.POLYGON
 
 # Learning hyperparams
 TactileHyperparameters.default_dt = %default_dt
@@ -141,12 +141,12 @@ TactileHyperparameters.loss_fn = %LossFunction.VIMP
 TactileHyperparameters.supervise_non_contact_force = True
 TactileHyperparameters.rsim_eps = 1e-1
 
-TactileHyperparameters.w_phi_nominal = 0.002  # m, distance where p(contact_measured) drops below CI
+TactileHyperparameters.w_phi_nominal = 0.005  # m, distance where p(contact_measured) drops below CI
 TactileHyperparameters.w_phi_ci = 0.05  # Confidence Interval [0,1] for above
-TactileHyperparameters.w_normal_var = 0.030384485 #0.01519224261 #0.04557672783 #30deg # # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
+TactileHyperparameters.w_normal_var = 0.01519224261 #0.030384485 #0.01519224261 #0.04557672783 #30deg # # cos(radians) [default 10 degrees], variance of cos(normal angle deviation)
 TactileHyperparameters.w_force_var = 1e-1  # N, variance of contact force measurement (assume identity covariance)
 
-TactileHyperparameters.w_pen = 1e2 #1e3 #
+TactileHyperparameters.w_pen = 1e3#1e2 #
 TactileHyperparameters.w_v_pred = 1e2
 TactileHyperparameters.w_q_pred = 1e2
 TactileHyperparameters.w_comp = 1e1
@@ -176,15 +176,15 @@ DrakeSystem.urdfs = {
 	%object_model_name: @object/get_urdf_asset_contents()
 }
 DrakeSystem.visualization_file = None
-#object/get_asset_uri.asset_file_basename = "active/dynamixel_box.obj"
-#object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
-object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
+object/get_asset_uri.asset_file_basename = "active/d8_5cm_mmscale.obj"
+object/get_urdf_asset_contents.urdf_file_basename = "active_mesh.urdf.xacro"
+#object/get_urdf_asset_contents.urdf_file_basename = "contactnets_cube.urdf.xacro"
 object/get_urdf_asset_contents.mappings = {
-	"length_x": 0.058,
-	"length_y": 0.059,#0.049,
-	"length_z": 0.053,
-#	"mesh": @object/get_asset_uri(),
+#	"length_x": 0.058,
+#	"length_y": 0.059,#0.049,
+#	"length_z": 0.053,
+	"mesh": @object/get_asset_uri(),
 	"mass": 0.5,
-	"mu": 1.0,
+	"mu": 0.4,
 	"planar_xz": "false",
 }
