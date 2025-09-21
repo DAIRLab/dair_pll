@@ -33,7 +33,7 @@ def main():
     key_idx -= 1
     learned_q = data_dict["learned"][key_base + f".{key_idx}"].detach().cpu().numpy()
     # Map to final location
-    learned_vertices = Rotation.from_quat(learned_q[:4], scalar_first=True).apply(learned_vertices_raw) + learned_q[-3:]
+    learned_vertices = Rotation.from_quat(learned_q[:4], scalar_first=True).apply(learned_vertices_raw) + learned_q[-3:] - ground_q[-3:]
     # Re-center instead
     #learned_vertices = Rotation.from_quat(learned_q[:4], scalar_first=True).apply(learned_vertices_raw) - learned_vertices_raw.mean(axis=0)
 
@@ -70,17 +70,21 @@ def main():
                                     ])
     ground_q = data_dict["data"].trajectories[-1]["cube_groundtruth"][-1].detach().cpu().numpy()
     # Map to ground_q
-    ground_vertices = Rotation.from_quat(ground_q[:4], scalar_first=True).apply(ground_vertex_raw) + ground_q[-3:]
+    ground_vertices = Rotation.from_quat(ground_q[:4], scalar_first=True).apply(ground_vertex_raw)
     # Recenter instead
     #ground_vertices = ground_vertex_raw - ground_vertex_raw.mean(axis=0)
     ground_hull = ConvexHull(ground_vertices)
     for simp in ground_hull.simplices:
         tri = Poly3DCollection([ground_vertices[simp]])
         tri.set_color('gray')
-        tri.set_alpha(0.1)
+        tri.set_alpha(0.05)
         ax.add_collection3d(tri)
 
     ax.set_axis_off()
+    ax.set_xlim3d(-0.03, 0.03)
+    ax.set_ylim3d(-0.03, 0.03)
+    ax.set_zlim3d(-0.03, 0.03)
+    ax.view_init(elev=20, azim=-97, roll=0)
     plt.show()
 
 if __name__ == '__main__':

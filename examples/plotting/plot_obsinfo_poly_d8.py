@@ -18,6 +18,7 @@ def main():
     with open(file_name, "rb") as datafile:
         data_dict = pickle.load(datafile)
     learned_vertices_raw = data_dict["learned"]['_multibody_terms.contact_terms.geometries.3._vertices_param'].detach().cpu().numpy()
+    ground_q = data_dict["data"].trajectories[-1]["cube_groundtruth"][-1].detach().cpu().numpy()
     obs_info_geometry = data_dict["obs_info"][7:, 7:] # Remove position-based
     # Get logdet for each vertex
     vertex_infos = []
@@ -33,7 +34,7 @@ def main():
     key_idx -= 1
     learned_q = data_dict["learned"][key_base + f".{key_idx}"].detach().cpu().numpy()
     # Map to final location
-    learned_vertices = Rotation.from_quat(learned_q[:4], scalar_first=True).apply(learned_vertices_raw) + learned_q[-3:]
+    learned_vertices = Rotation.from_quat(learned_q[:4], scalar_first=True).apply(learned_vertices_raw) + learned_q[-3:] - ground_q[-3:]
     # Re-center instead
     #learned_vertices = Rotation.from_quat(learned_q[:4], scalar_first=True).apply(learned_vertices_raw) - learned_vertices_raw.mean(axis=0)
 
@@ -67,9 +68,9 @@ def main():
                                     [0., 0.025, 0.],
                                     [-0.025, 0., 0.],
                                     ])
-    ground_q = data_dict["data"].trajectories[-1]["cube_groundtruth"][-1].detach().cpu().numpy()
+    
     # Map to ground_q
-    ground_vertices = Rotation.from_quat(ground_q[:4], scalar_first=True).apply(ground_vertex_raw) + ground_q[-3:]
+    ground_vertices = Rotation.from_quat(ground_q[:4], scalar_first=True).apply(ground_vertex_raw)
     # Recenter instead
     #ground_vertices = ground_vertex_raw - ground_vertex_raw.mean(axis=0)
     ground_hull = ConvexHull(ground_vertices)
@@ -80,6 +81,10 @@ def main():
         ax.add_collection3d(tri)
 
     ax.set_axis_off()
+    ax.set_xlim3d(-0.03, 0.03)
+    ax.set_ylim3d(-0.03, 0.03)
+    ax.set_zlim3d(-0.03, 0.03)
+    ax.view_init(elev=30, azim=70, roll=0)
     plt.show()
 
 if __name__ == '__main__':
