@@ -24,6 +24,16 @@ We recommend working within a virtual environment.
 * Some functions (such as [`rotation_matrix_from_one_vector`](https://dairlab.github.io/dair_pll/dair_pll.tensor_utils.html#dair_pll.tensor_utils.rotation_matrix_from_one_vector)) are Pytorch reimplementations of [drake](https://github.com/RobotLocomotion/drake) functionality, and are attributed accordingly in their documentation.
 * This code contains a repackaged version of the Manifold Unscented Kalman Filter developed by [Martin Brossard et al.](https://github.com/CAOR-MINES-ParisTech/ukfm)
 
-## 
+## Citation
+
+```
+@inproceedings{gordon2026active,
+  title={Active Tactile Exploration for Rigid Body Pose and Shape Estimation}, 
+  author={Ethan K. Gordon and Bruke Baraki and Hien Bui and Michael Posa},
+  booktitle={2026 IEEE International Conference on Robotics and Automation (ICRA)}, 
+  year={2026},
+  url={https://arxiv.org/abs/2510.13595}
+}
+```
 
   
