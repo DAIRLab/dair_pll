@@ -2,13 +2,14 @@ import jax
 import jax.numpy as jnp
 from typing import Tuple
 
-def project_second_order_cone_jax(l: jnp.ndarray) -> jnp.ndarray:
+def project_single(l: jnp.ndarray) -> jnp.ndarray:
     """
-    Projects a batch of vectors onto a series of 3D Lorentz (second-order) cones.
+    Projects a single vector onto a series of 3D Lorentz (second-order) cones.
+    Shape: (3 * k,)
     """
-    n_batch, total_dim = l.shape
+    total_dim = l.shape[0]
     k = total_dim // 3
-    l_reshaped = l.reshape(n_batch, k, 3)
+    l_reshaped = l.reshape(k, 3)
     
     xy = l_reshaped[..., :2]
     z  = l_reshaped[..., 2:3]
@@ -27,51 +28,60 @@ def project_second_order_cone_jax(l: jnp.ndarray) -> jnp.ndarray:
     
     return out.reshape(l.shape)
 
-def _mvp_jax_batched(J: jnp.ndarray, v: jnp.ndarray, eps: float) -> jnp.ndarray:
+def solve_single(J: jnp.ndarray, q: jnp.ndarray, eps: float, max_iter: int) -> jnp.ndarray:
     """
-    Batched Matrix-Vector Product H v = (J @ J.T + eps * I) v.
+    Solves a single SOCP instance using Linear Operators.
+    J: (dim_q, dim_inner), q: (dim_q,)
     """
-    # J: (n_batch, dim_q, dim_inner), v: (n_batch, dim_q, 1)
-    jt_v = jnp.matmul(jnp.swapaxes(J, -1, -2), v)
-    j_jt_v = jnp.matmul(J, jt_v)
-    return j_jt_v + eps * v
+    dim_q = q.shape[0]
+    
+    # Power Iteration (to establish step size)
+    v_init = jax.random.normal(jax.random.PRNGKey(0), (dim_q,), dtype=jnp.float32)
+    def pi_body(v, _):
+        # H v = J @ (J.T @ v) + eps * v
+        v_next = jnp.dot(J, jnp.dot(J.T, v)) + eps * v
+        v_next = v_next / jnp.linalg.norm(v_next)
+        return v_next, None
+        
+    v_final, _ = jax.lax.scan(pi_body, v_init, None, length=5)
+    
+    # Rayleigh quotient
+    Hv = jnp.dot(J, jnp.dot(J.T, v_final)) + eps * v_final
+    L = jnp.dot(v_final, Hv)
+    step_size = 1.0 / jnp.maximum(L, 1e-6)
+    
+    # Optimization Initialization
+    l_init = jnp.zeros((dim_q,), dtype=jnp.float32)
+    y_init = jnp.zeros((dim_q,), dtype=jnp.float32)
+    t_init = 1.0
+    
+    initial_state = (l_init, l_init, y_init, t_init)
+    
+    def scan_body(state, _):
+        l, l_old, y, t = state
+        
+        # grad = H * y + q = J @ (J.T @ y) + eps * y + q
+        grad = jnp.dot(J, jnp.dot(J.T, y)) + eps * y + q
+        
+        # Descent step and cone projection
+        l_next = project_single(y - step_size * grad)
+        
+        # Nesterov momentum update
+        t_next = 0.5 * (1.0 + jnp.sqrt(1.0 + 4.0 * t * t))
+        y_next = l_next + ((t - 1.0) / t_next) * (l_next - l)
+        
+        return (l_next, l, y_next, t_next), None
+
+    final_state, _ = jax.lax.scan(scan_body, initial_state, None, length=max_iter)
+    l_final, _, _, _ = final_state
+    
+    return l_final
 
 @jax.jit(static_argnums=(3,))
 def accelerated_pgd_socp_sappy_jax(J: jnp.ndarray, q: jnp.ndarray, eps: float, max_iter: int = 100) -> jnp.ndarray:
     """
-    Solves SOCP problems using unrolled Python loops to ensure memory reuse.
+    Solves SOCP problems using vmap + Linear Operators.
     """
-    n_batch, dim_q = q.shape
-    
-    # Power Iteration (Unrolled to avoid lax.scan memory issues)
-    v = jax.random.normal(jax.random.PRNGKey(0), (n_batch, dim_q, 1), dtype=jnp.float32)
-    for _ in range(5):
-        v = _mvp_jax_batched(J, v, eps)
-        v = v / jnp.linalg.norm(v, axis=1, keepdims=True)
-    
-    Hv = _mvp_jax_batched(J, v, eps)
-    L = jnp.matmul(jnp.swapaxes(v, -1, -2), Hv).squeeze(-1)
-    step_size = 1.0 / jnp.maximum(L, 1e-6)
-    
-    # Initialization
-    l = jnp.zeros((n_batch, dim_q), dtype=jnp.float32)
-    y = jnp.zeros((n_batch, dim_q), dtype=jnp.float32)
-    t = 1.0
-    
-    # Main Loop (Unrolled for discrete kernel launches and memory reuse)
-    for _ in range(max_iter):
-        l_old = l
-        
-        # grad = H * y + q
-        y_unsqueezed = y[..., jnp.newaxis]
-        grad = _mvp_jax_batched(J, y_unsqueezed, eps).squeeze(-1) + q
-        
-        # Descent step and projection
-        l = project_second_order_cone_jax(y - step_size * grad)
-        
-        # Nesterov momentum
-        t_next = 0.5 * (1.0 + jnp.sqrt(1.0 + 4.0 * t * t))
-        y = l + ((t - 1.0) / t_next) * (l - l_old)
-        t = t_next
-        
-    return l
+    # Use vmap to handle batching, which is more memory efficient than 3D tensor math in lax.scan
+    vmapped_solver = jax.vmap(solve_single, in_axes=(0, 0, None, None))
+    return vmapped_solver(J, q, eps, max_iter)
