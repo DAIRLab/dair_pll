@@ -153,9 +153,9 @@ def main(run_name: str = "",
 
     # Describes configuration of the data
     data_config = DataConfig(dt=DT,
-                             train_fraction=1.0 if dynamic else 0.5,
-                             valid_fraction=0.0 if dynamic else 0.25,
-                             test_fraction=0.0 if dynamic else 0.25,
+                             train_fraction=0.5 if dynamic else 0.5,
+                             valid_fraction=0.25 if dynamic else 0.25,
+                             test_fraction=0.25 if dynamic else 0.25,
                              slice_config=slice_config,
                              update_dynamically=dynamic)
 
@@ -253,7 +253,7 @@ def main(run_name: str = "",
               default=False,
               help="whether save updated URDF's each epoch.")
 @click.option('--clear-data/--keep-data',
-              default=False,
+              default=True,
               help="Whether to clear storage folder before running.")
 def main_command(run_name: str, system: str, source: str, contactnets: bool,
                  box: bool, regenerate: bool, clear_data: bool):

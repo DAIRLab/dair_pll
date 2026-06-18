@@ -36,7 +36,7 @@ from dair_pll.multibody_terms import MultibodyTerms
 from dair_pll.system import System, \
     SystemSummary
 from dair_pll.tensor_utils import pbmm, broadcast_lorentz
-
+from dair_pll.socp_solver import accelerated_pgd_socp_sappy
 
 class MultibodyLearnableSystem(System):
     """:py:class:`System` interface for dynamics associated with
@@ -182,6 +182,10 @@ class MultibodyLearnableSystem(System):
                 J_M,
                 pbmm(reorder_mat.transpose(-1, -2), q).squeeze(-1),
                 eps).detach().unsqueeze(-1))
+        # force = pbmm(
+        #     reorder_mat,
+        #     accelerated_pgd_socp_sappy(J_M, q[:,:,0], eps).detach().unsqueeze(-1))
+        
 
         # Hack: remove elements of ``force`` where solver likely failed.
         invalid = torch.any((force.abs() > 1e3) | force.isnan() | force.isinf(),

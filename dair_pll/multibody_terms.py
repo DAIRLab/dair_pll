@@ -370,7 +370,7 @@ class ContactTerms(Module):
                 context=context,
                 with_respect_to=JacobianWrtVariable.kV,
                 frame_B=geometry_frame,
-                p_BP=geometry_pose.translation().reshape(3, 1),
+                p_BoBp_B=geometry_pose.translation().reshape(3, 1),
                 frame_A=world_frame,
                 frame_E=world_frame)
             drake_spatial_jacobians.append(drake_spatial_jacobian)
