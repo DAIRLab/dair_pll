@@ -3,6 +3,15 @@ import time
 from dair_pll.socp_solver import accelerated_pgd_socp_sappy
 from sappy import SAPSolver
 
+# Try to import JAX-related components
+try:
+    import jax
+    import jax.numpy as jnp
+    from dair_pll.socp_jax_solver import accelerated_pgd_socp_sappy_jax
+    JAX_AVAILABLE = True
+except ImportError:
+    JAX_AVAILABLE = False
+
 def check_kkt(l, J, q, eps):
     """
     Verifies the KKT conditions for the SOCP problem:
@@ -13,6 +22,10 @@ def check_kkt(l, J, q, eps):
     2. Dual feasibility: g = H l + q in K
     3. Complementary slackness: l^T g = 0
     """
+    l = l.float()
+    J = J.float()
+    q = q.float()
+    
     is_batched = (l.dim() == 2)
     if not is_batched:
         l = l.unsqueeze(0)
@@ -66,9 +79,7 @@ def run_benchmark():
         (10, 10000, 1e-3),
         (100, 1, 1e-3),
         (100, 10, 1e-3),
-        (100, 100, 1e-3),
-        (100, 1000, 1e-3),
-    ]
+        (100, 100, 1e-3)]
     
     solver_sappy = SAPSolver()
     
@@ -86,8 +97,6 @@ def run_benchmark():
         kkt_pgd = check_kkt(l_pgd, J, q, eps)
         
         # Benchmark SAPSolver (sappy implementation)
-        # Note: SAPSolver.apply expect q to be (n_batch, dim_q) and J to be (n_batch, dim_q, dim_q)
-        # It returns l of shape (n_batch, dim_q)
         start_time = time.time()
         l_sap = solver_sappy.apply(J, q, eps)
         end_time = time.time()
@@ -101,6 +110,32 @@ def run_benchmark():
         print(f"  SAP Solver:")
         print(f"    Time: {duration_sap:.4f}s ({n_batch / duration_sap:.2f} samples/s)")
         print(f"    Primal Feas: {kkt_sap['primal_feas_min']:.2e}, Dual Feas: {kkt_sap['dual_feas_min']:.2e}, Comp: {kkt_sap['complementarity']:.2e}")
+        
+        # Benchmark JAX Solver
+        if JAX_AVAILABLE:
+            # Convert to JAX arrays
+            J_jax = jnp.array(J.cpu().numpy())
+            q_jax = jnp.array(q.cpu().numpy())
+            
+            # Warm-up (JIT compilation)
+            _ = accelerated_pgd_socp_sappy_jax(J_jax, q_jax, eps, max_iter=1000).block_until_ready()
+            
+            start_time = time.time()
+            l_jax_raw = accelerated_pgd_socp_sappy_jax(J_jax, q_jax, eps, max_iter=1000).block_until_ready()
+            end_time = time.time()
+            duration_jax = end_time - start_time
+            
+            # Convert back to PyTorch for KKT check
+            l_jax = torch.from_numpy(jax.device_get(l_jax_raw)).to(device).float()
+            kkt_jax = check_kkt(l_jax, J, q, eps)
+            
+            print(f"  JAX Solver:")
+            print(f"    Time: {duration_jax:.4f}s ({n_batch / duration_jax:.2f} samples/s)")
+            print(f"    Primal Feas: {kkt_jax['primal_feas_min']:.2e}, Dual Feas: {kkt_jax['dual_feas_min']:.2e}, Comp: {kkt_jax['complementarity']:.2e}")
+            print(f"  Speedup (PGD/JAX): {duration_pgd / duration_jax:.2f}x")
+        else:
+            print(f"  JAX Solver: Not available (JAX not installed)")
+
         print(f"  Speedup (PGD/SAP): {duration_pgd / duration_sap:.2f}x")
 
 if __name__ == "__main__":
