@@ -1,7 +1,6 @@
 import torch
 import time
 from dair_pll.socp_solver import accelerated_pgd_socp_sappy
-from sappy import SAPSolver
 
 # Try to import JAX-related components
 try:
@@ -69,7 +68,7 @@ def run_benchmark():
     torch.manual_seed(42)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Running on {device}")
-    
+    max_iter = 50
     test_cases = [
         # (k, n_batch, eps)
         (10, 1, 1e-3),
@@ -79,49 +78,47 @@ def run_benchmark():
         (10, 10000, 1e-3),
         (100, 1, 1e-3),
         (100, 10, 1e-3),
-        (100, 100, 1e-3)]
-    
-    solver_sappy = SAPSolver()
-    
+        (100, 100, 1e-3),
+        (100, 1000, 1e-3)]
+        
     for k, n_batch, eps in test_cases:
         dim_q = 3 * k
         # Random J of size (n_batch, dim_q, dim_q)
         J = torch.randn(n_batch, dim_q, dim_q, device=device)
+        J_warm = torch.randn(n_batch, dim_q, dim_q, device=device)
         q = torch.randn(n_batch, dim_q, device=device)
+        q_warm = torch.randn(n_batch, dim_q, device=device)
         
         # Benchmark PGD (dair_pll implementation)
+        if device.type =='cuda': torch.cuda.synchronize()
         start_time = time.time()
-        l_pgd = accelerated_pgd_socp_sappy(J, q, eps, max_iter=1000, tol=1e-7)
+        l_pgd = accelerated_pgd_socp_sappy(J, q, eps, max_iter=max_iter, tol=0)
+        if device.type =='cuda': torch.cuda.synchronize()
         end_time = time.time()
         duration_pgd = end_time - start_time
         kkt_pgd = check_kkt(l_pgd, J, q, eps)
         
-        # Benchmark SAPSolver (sappy implementation)
-        start_time = time.time()
-        l_sap = solver_sappy.apply(J, q, eps)
-        end_time = time.time()
-        duration_sap = end_time - start_time
-        kkt_sap = check_kkt(l_sap, J, q, eps)
         
         print(f"\nCase: k={k}, batch={n_batch}, eps={eps}")
         print(f"  PGD Solver:")
-        print(f"    Time: {duration_pgd:.4f}s ({n_batch / duration_pgd:.2f} samples/s)")
+        print(f"    Time: {duration_pgd:.4f}s ({n_batch / (duration_pgd + 1e-6):.2f} samples/s)")
         print(f"    Primal Feas: {kkt_pgd['primal_feas_min']:.2e}, Dual Feas: {kkt_pgd['dual_feas_min']:.2e}, Comp: {kkt_pgd['complementarity']:.2e}")
-        print(f"  SAP Solver:")
-        print(f"    Time: {duration_sap:.4f}s ({n_batch / duration_sap:.2f} samples/s)")
-        print(f"    Primal Feas: {kkt_sap['primal_feas_min']:.2e}, Dual Feas: {kkt_sap['dual_feas_min']:.2e}, Comp: {kkt_sap['complementarity']:.2e}")
-        
+
         # Benchmark JAX Solver
         if JAX_AVAILABLE:
             # Convert to JAX arrays
             J_jax = jnp.array(J.cpu().numpy())
             q_jax = jnp.array(q.cpu().numpy())
+            J_jax_warm = jnp.array(J_warm.cpu().numpy())
+            q_jax_warm = jnp.array(q_warm.cpu().numpy())
             
             # Warm-up (JIT compilation)
-            _ = accelerated_pgd_socp_sappy_jax(J_jax, q_jax, eps, max_iter=1000).block_until_ready()
+            _ = accelerated_pgd_socp_sappy_jax(J_jax_warm, q_jax_warm, eps, max_iter=max_iter).block_until_ready()
             
+            if device.type =='cuda': torch.cuda.synchronize()
             start_time = time.time()
-            l_jax_raw = accelerated_pgd_socp_sappy_jax(J_jax, q_jax, eps, max_iter=1000).block_until_ready()
+            l_jax_raw = accelerated_pgd_socp_sappy_jax(J_jax, q_jax, eps, max_iter=max_iter).block_until_ready()
+            if device.type =='cuda': torch.cuda.synchronize()
             end_time = time.time()
             duration_jax = end_time - start_time
             
@@ -130,13 +127,11 @@ def run_benchmark():
             kkt_jax = check_kkt(l_jax, J, q, eps)
             
             print(f"  JAX Solver:")
-            print(f"    Time: {duration_jax:.4f}s ({n_batch / duration_jax:.2f} samples/s)")
+            print(f"    Time: {duration_jax:.4f}s ({n_batch / (duration_jax + 1e-6):.2f} samples/s)")
             print(f"    Primal Feas: {kkt_jax['primal_feas_min']:.2e}, Dual Feas: {kkt_jax['dual_feas_min']:.2e}, Comp: {kkt_jax['complementarity']:.2e}")
-            print(f"  Speedup (PGD/JAX): {duration_pgd / duration_jax:.2f}x")
         else:
             print(f"  JAX Solver: Not available (JAX not installed)")
 
-        print(f"  Speedup (PGD/SAP): {duration_pgd / duration_sap:.2f}x")
 
 if __name__ == "__main__":
     run_benchmark()
