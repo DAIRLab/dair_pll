@@ -1929,7 +1929,7 @@ class MultibodyLearnableTactileSystem(Module):
             .sum(dim=0)
         )
         # TODO: make normal_weighting a hyperparameter
-        ret_info += info_normals #* 1e-1
+        ret_info += info_normals  # * 1e-1
         print(f"...Done in {(time.time()-start):.6f}s")
         # print("Observed Info Breakpoint...")
         # breakpoint()
@@ -2299,7 +2299,7 @@ class MultibodyLearnableTactileSystem(Module):
             .sum(dim=-3)
         )
         # TODO: Make Normal Weighting a hyperparameter
-        ret_info_batch += info_normals_batch #* 1e-1
+        ret_info_batch += info_normals_batch  # * 1e-1
         print(f"...Done in {(time.time()-start):.6f}s")
         if output_file_dir is not None:
             file_name = os.path.join(output_file_dir, f"{time.time()}-sample.pkl")
@@ -2307,7 +2307,11 @@ class MultibodyLearnableTactileSystem(Module):
             save_dict["robot_desired"] = deepcopy(ctrl_desired.detach().cpu().numpy())
             save_dict["timestamps"] = deepcopy(timestamps.detach().cpu().numpy())
             save_dict["control"] = deepcopy(plant_u_batch.detach().cpu().numpy())
-            save_dict["trajectories"] = deepcopy(self._multibody_terms.model_states_from_state_tensor(plant_x_batch).detach().cpu())
+            save_dict["trajectories"] = deepcopy(
+                self._multibody_terms.model_states_from_state_tensor(plant_x_batch)
+                .detach()
+                .cpu()
+            )
             save_dict["expected_info"] = deepcopy(ret_info_batch.detach().cpu().numpy())
             print(f"Saving samples to...{file_name}")
             with open(file_name, "wb") as file:
@@ -2656,7 +2660,7 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape((-1, n_params, n_params))
             .sum(dim=0)
         )
-        ret_info += info_normals #* 1e-1
+        ret_info += info_normals  # * 1e-1
         print(f"...Done in {(time.time()-start):.6f}s")
         breakpoint()
         return ret_info
@@ -3104,7 +3108,7 @@ class MultibodyLearnableTactileSystem(Module):
             .reshape(batch_dims + (-1, n_params, n_params))
             .sum(dim=-3)
         )
-        ret_info_batch += info_normals_batch #* 1e-1
+        ret_info_batch += info_normals_batch  # * 1e-1
         print(f"...Done in {(time.time()-start):.6f}s")
         return ret_info_batch
 
